@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Trash2, User } from 'lucide-react';
@@ -29,12 +30,12 @@ const ClientCard = ({ client, onDelete }: ClientCardProps) => {
     <div className="card-glass">
       <div className="flex items-start justify-between">
         <div className="flex items-center">
-          <div className="w-12 h-12 rounded-full bg-neuro-soft-purple flex items-center justify-center">
-            <User className="text-neuro-primary" />
+          <div className="w-12 h-12 rounded-full bg-[#c5cfce] flex items-center justify-center">
+            <User className="text-[#265255]" />
           </div>
           <div className="ml-4">
             <h3 className="font-medium text-lg">{client.name}</h3>
-            <p className="text-sm text-neuro-gray">{client.email}</p>
+            <p className="text-sm text-gray-600">{client.email}</p>
           </div>
         </div>
         <Button 
@@ -49,21 +50,21 @@ const ClientCard = ({ client, onDelete }: ClientCardProps) => {
       
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
         <div>
-          <p className="text-neuro-gray">Phone</p>
+          <p className="text-gray-600">Telefone</p>
           <p>{client.phone}</p>
         </div>
         <div>
-          <p className="text-neuro-gray">Sessions</p>
+          <p className="text-gray-600">Sessões</p>
           <p>{client.sessionCount}</p>
         </div>
         <div>
-          <p className="text-neuro-gray">Total Paid</p>
+          <p className="text-gray-600">Total Pago</p>
           <p>€{client.totalPaid.toFixed(2)}</p>
         </div>
       </div>
       
       {client.nextSession && (
-        <div className="mt-4 flex items-center text-sm text-neuro-gray">
+        <div className="mt-4 flex items-center text-sm text-gray-600">
           <Calendar className="w-4 h-4 mr-1" />
           <span>Próxima sessão: {client.nextSession}</span>
         </div>
@@ -72,7 +73,7 @@ const ClientCard = ({ client, onDelete }: ClientCardProps) => {
       <div className="mt-4 flex justify-end">
         <Link 
           to={`/clients/${client.id}`}
-          className="px-4 py-2 bg-neuro-primary text-white rounded-lg text-sm hover:bg-neuro-secondary transition-colors"
+          className="px-4 py-2 bg-[#3f9094] text-white rounded-lg text-sm hover:bg-[#265255] transition-colors"
         >
           Ver Perfil
         </Link>

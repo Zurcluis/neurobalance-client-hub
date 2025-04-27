@@ -10,9 +10,9 @@ const Sidebar = () => {
 
   const menuItems = [
     { name: 'Dashboard', icon: <Home />, path: '/' },
-    { name: 'Clients', icon: <User />, path: '/clients' },
-    { name: 'Calendar', icon: <Calendar />, path: '/calendar' },
-    { name: 'Finances', icon: <BarChart3 />, path: '/finances' },
+    { name: 'Clientes', icon: <User />, path: '/clients' },
+    { name: 'Calendário', icon: <Calendar />, path: '/calendar' },
+    { name: 'Finanças', icon: <BarChart3 />, path: '/finances' },
   ];
 
   return (
@@ -22,14 +22,27 @@ const Sidebar = () => {
     )}>
       <div className="flex flex-col h-full p-4">
         <div className="flex items-center justify-between mb-8">
-          {!isCollapsed && (
-            <h1 className="text-2xl font-bold gradient-heading">
-              NeuroBalance
-            </h1>
+          {!isCollapsed ? (
+            <div className="flex flex-col items-center">
+              <img 
+                src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
+                alt="NeuroBalance Logo" 
+                className="h-16 w-auto mb-2"
+              />
+              <h1 className="text-xl font-bold gradient-heading">
+                NeuroBalance
+              </h1>
+            </div>
+          ) : (
+            <img 
+              src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
+              alt="NeuroBalance Logo" 
+              className="h-12 w-auto mx-auto"
+            />
           )}
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-lg hover:bg-neuro-soft-purple transition-colors"
+            className="p-2 rounded-lg hover:bg-[#c5cfce] transition-colors"
           >
             {isCollapsed ? <Menu /> : <X />}
           </button>
@@ -44,8 +57,8 @@ const Sidebar = () => {
                   className={cn(
                     'flex items-center p-3 rounded-lg transition-all duration-200',
                     location.pathname === item.path
-                      ? 'bg-neuro-primary text-white shadow-md'
-                      : 'hover:bg-neuro-soft-purple',
+                      ? 'bg-[#3f9094] text-white shadow-md'
+                      : 'hover:bg-[#c5cfce]',
                     isCollapsed ? 'justify-center' : 'justify-start'
                   )}
                 >
@@ -59,9 +72,9 @@ const Sidebar = () => {
 
         <div className="pt-4">
           {!isCollapsed && (
-            <div className="text-xs text-center text-neuro-gray">
+            <div className="text-xs text-center text-gray-600">
               <p>NeuroBalance Clinic</p>
-              <p className="mt-1">Client Management System</p>
+              <p className="mt-1">Sistema de Gestão de Clientes</p>
             </div>
           )}
         </div>

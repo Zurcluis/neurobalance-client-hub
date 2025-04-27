@@ -7,44 +7,44 @@
 
 @layer base {
   :root {
-    --background: 260 100% 99%;
-    --foreground: 260 10% 15%;
+    --background: 0 0% 100%;
+    --foreground: 180 40% 24%;
 
     --card: 0 0% 100%;
-    --card-foreground: 260 10% 15%;
+    --card-foreground: 180 40% 24%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 260 10% 15%;
+    --popover-foreground: 180 40% 24%;
 
-    --primary: 260 80% 75%;
+    --primary: 180 40% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 260 40% 96%;
-    --secondary-foreground: 260 10% 15%;
+    --secondary: 180 20% 84%;
+    --secondary-foreground: 180 40% 24%;
 
-    --muted: 260 40% 96%;
-    --muted-foreground: 260 10% 40%;
+    --muted: 180 20% 84%;
+    --muted-foreground: 180 40% 46%;
 
-    --accent: 260 40% 96%;
-    --accent-foreground: 260 10% 15%;
+    --accent: 180 20% 84%;
+    --accent-foreground: 180 40% 24%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 260 30% 92%;
-    --input: 260 30% 92%;
-    --ring: 260 80% 75%;
+    --border: 180 20% 88%;
+    --input: 180 20% 88%;
+    --ring: 180 40% 40%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 260 80% 97%;
-    --sidebar-foreground: 260 10% 25%;
-    --sidebar-primary: 260 80% 60%;
+    --sidebar-background: 180 20% 94%;
+    --sidebar-foreground: 180 40% 24%;
+    --sidebar-primary: 180 40% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 260 30% 94%;
-    --sidebar-accent-foreground: 260 10% 25%;
-    --sidebar-border: 260 30% 90%;
-    --sidebar-ring: 260 80% 75%;
+    --sidebar-accent: 180 20% 90%;
+    --sidebar-accent-foreground: 180 40% 24%;
+    --sidebar-border: 180 20% 88%;
+    --sidebar-ring: 180 40% 40%;
   }
 
   * {
@@ -52,7 +52,7 @@
   }
 
   body {
-    @apply bg-gradient-to-br from-neuro-soft-purple to-neuro-soft-blue text-foreground overflow-x-hidden min-h-screen;
+    @apply bg-gradient-to-br from-[#c5cfce] to-[#e5e9e9] text-foreground overflow-x-hidden min-h-screen;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -63,7 +63,7 @@
   }
 
   .gradient-heading {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-neuro-primary to-neuro-tertiary;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#265255] to-[#3f9094];
   }
 
   .card-glass {

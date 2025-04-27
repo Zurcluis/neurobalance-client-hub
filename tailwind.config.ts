@@ -66,18 +66,12 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				neuro: {
-					primary: '#9b87f5',
-					secondary: '#7E69AB',
-					tertiary: '#6E59A5',
-					soft: {
-						purple: '#E5DEFF',
-						pink: '#FFDEE2',
-						blue: '#D3E4FD',
-						gray: '#F1F0FB',
-					},
+				neurobalance: {
+					primary: '#3f9094',
+					secondary: '#265255',
+					tertiary: '#c5cfce',
+					light: '#e5e9e9',
 					dark: '#1A1F2C',
-					gray: '#8E9196',
 				}
 			},
 			borderRadius: {

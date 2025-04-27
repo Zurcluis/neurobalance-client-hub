@@ -1,241 +1,433 @@
 
+// Atualizando o arquivo para corrigir os erros de tipos
+// As strings devem ser alteradas de "session", "assessment", "consultation" para "sessão", "avaliação", "consulta"
+
 import React, { useState } from 'react';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
-import { CalendarPlus, Plus } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+  Calendar,
+  CalendarCell,
+  CalendarGrid,
+  CalendarHeader,
+  CalendarHeadCell,
+  CalendarMonth,
+  CalendarMonthName,
+  CalendarNav,
+  CalendarNextButton,
+  CalendarPrevButton,
+  CalendarWeek,
+} from '../ui/calendar';
+import { Button } from '../ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Textarea } from '../ui/textarea';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { addDays, format, isSameDay, parseISO } from 'date-fns';
+import { pt } from 'date-fns/locale';
+
+type AppointmentType = 'sessão' | 'avaliação' | 'consulta';
 
 interface Appointment {
   id: string;
-  clientId: string;
+  title: string;
+  date: string;
   clientName: string;
-  date: Date;
-  time: string;
-  type: 'sessão' | 'avaliação' | 'consulta';
+  type: AppointmentType;
   notes?: string;
 }
 
-interface AddAppointmentFormData {
-  clientId: string;
-  clientName: string;
+interface AppointmentFormValues {
+  title: string;
+  date: string;
   time: string;
-  type: 'sessão' | 'avaliação' | 'consulta';
-  notes?: string;
+  clientName: string;
+  type: AppointmentType;
+  notes: string;
 }
 
-// Sample appointments data
-const sampleAppointments: Appointment[] = [
+const defaultAppointments: Appointment[] = [
   {
     id: '1',
-    clientId: '1',
+    title: 'Sessão de Neurofeedback',
+    date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
     clientName: 'Maria Silva',
-    date: new Date(2025, 3, 28),
-    time: '10:00',
-    type: 'session',
-    notes: 'Regular neurofeedback session'
+    type: 'sessão',
+    notes: 'Segunda sessão de follow-up.',
   },
   {
     id: '2',
-    clientId: '2',
-    clientName: 'João Santos',
-    date: new Date(2025, 3, 28),
-    time: '14:00',
-    type: 'assessment',
-    notes: 'Initial assessment'
+    title: 'Avaliação Inicial',
+    date: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
+    clientName: 'Pedro Carvalho',
+    type: 'avaliação',
+    notes: 'Primeiro contacto, avaliação inicial.',
   },
   {
     id: '3',
-    clientId: '3',
-    clientName: 'Ana Costa',
-    date: new Date(2025, 3, 29),
-    time: '11:00',
-    type: 'consultation',
-    notes: 'Follow-up consultation'
-  }
+    title: 'Consulta de Acompanhamento',
+    date: format(addDays(new Date(), 5), 'yyyy-MM-dd'),
+    clientName: 'Ana Ferreira',
+    type: 'consulta',
+    notes: 'Discussão de resultados após 5 sessões.',
+  },
 ];
 
 const AppointmentCalendar = () => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [appointments, setAppointments] = useState<Appointment[]>(sampleAppointments);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [appointments, setAppointments] = useState<Appointment[]>(() => {
+    const savedAppointments = localStorage.getItem('appointments');
+    return savedAppointments ? JSON.parse(savedAppointments) : defaultAppointments;
+  });
   
-  // Filter appointments for the selected date
-  const appointmentsForSelectedDate = selectedDate 
-    ? appointments.filter(
-        app => app.date.toDateString() === selectedDate.toDateString()
-      ) 
-    : [];
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+  const form = useForm<AppointmentFormValues>({
+    defaultValues: {
+      title: '',
+      date: '',
+      time: '',
+      clientName: '',
+      type: 'sessão',
+      notes: '',
+    },
+  });
+
+  const onSubmit = (data: AppointmentFormValues) => {
+    const combinedDateTime = `${data.date}T${data.time}`;
     
-  // Get appropriate background color based on appointment type
-  const getAppointmentColor = (type: string) => {
-    switch(type) {
-      case 'sessão':
-        return 'bg-neuro-soft-purple';
-      case 'avaliação':
-        return 'bg-neuro-soft-pink';
-      case 'consulta':
-        return 'bg-neuro-soft-blue';
-      default:
-        return 'bg-neuro-soft-gray';
+    if (selectedAppointment) {
+      // Editar agendamento existente
+      const updatedAppointments = appointments.map(app => 
+        app.id === selectedAppointment.id ? 
+        { ...app, title: data.title, clientName: data.clientName, type: data.type, notes: data.notes, date: combinedDateTime } : 
+        app
+      );
+      setAppointments(updatedAppointments);
+      localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+      toast.success('Agendamento atualizado com sucesso');
+    } else {
+      // Adicionar novo agendamento
+      const newAppointment: Appointment = {
+        id: Date.now().toString(),
+        title: data.title,
+        clientName: data.clientName,
+        type: data.type,
+        notes: data.notes,
+        date: combinedDateTime,
+      };
+      
+      const newAppointments = [...appointments, newAppointment];
+      setAppointments(newAppointments);
+      localStorage.setItem('appointments', JSON.stringify(newAppointments));
+      toast.success('Agendamento adicionado com sucesso');
+    }
+    
+    setIsDialogOpen(false);
+    form.reset();
+    setSelectedAppointment(null);
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    form.setValue('date', format(date, 'yyyy-MM-dd'));
+    // Se não houver um agendamento selecionado, abra para adicionar novo
+    if (!selectedAppointment) {
+      setIsDialogOpen(true);
     }
   };
 
-  const handleAddAppointment = (data: AddAppointmentFormData) => {
-    if (!selectedDate) {
-      toast.error('Por favor, selecione uma data');
-      return;
+  const handleAppointmentSelect = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    const [datePart, timePart] = appointment.date.split('T');
+    
+    form.reset({
+      title: appointment.title,
+      date: datePart,
+      time: timePart || '09:00',
+      clientName: appointment.clientName,
+      type: appointment.type,
+      notes: appointment.notes || '',
+    });
+    
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteAppointment = () => {
+    if (selectedAppointment) {
+      const updatedAppointments = appointments.filter(app => app.id !== selectedAppointment.id);
+      setAppointments(updatedAppointments);
+      localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+      toast.success('Agendamento removido com sucesso');
+      setIsDialogOpen(false);
+      setSelectedAppointment(null);
+      form.reset();
     }
+  };
 
-    const newAppointment: Appointment = {
-      id: (appointments.length + 1).toString(),
-      date: selectedDate,
-      ...data
-    };
+  const getDayAppointments = (day: Date) => {
+    return appointments.filter(appointment => {
+      const appointmentDate = parseISO(appointment.date);
+      return isSameDay(appointmentDate, day);
+    });
+  };
 
-    setAppointments([...appointments, newAppointment]);
-    setIsDialogOpen(false);
-    toast.success('Agendamento criado com sucesso');
+  const getAppointmentTypeColor = (type: AppointmentType) => {
+    switch (type) {
+      case 'sessão':
+        return 'bg-[#c5cfce] text-[#265255]';
+      case 'avaliação':
+        return 'bg-[#3f9094]/20 text-[#265255]';
+      case 'consulta':
+        return 'bg-[#3f9094]/40 text-[#265255]';
+      default:
+        return 'bg-gray-200 text-gray-800';
+    }
+  };
+
+  const renderCalendarCell = (day: Date) => {
+    const dayAppointments = getDayAppointments(day);
+    
+    return (
+      <div className="h-full min-h-[100px] p-1">
+        <div className="font-medium mb-1">{format(day, 'd')}</div>
+        <div className="space-y-1">
+          {dayAppointments.slice(0, 2).map((appointment) => (
+            <button
+              key={appointment.id}
+              onClick={() => handleAppointmentSelect(appointment)}
+              className={`w-full text-left px-1 py-0.5 text-xs rounded truncate ${getAppointmentTypeColor(appointment.type)}`}
+            >
+              {appointment.title}
+            </button>
+          ))}
+          {dayAppointments.length > 2 && (
+            <div className="text-xs text-gray-500">
+              +{dayAppointments.length - 2} mais
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="lg:col-span-1 glassmorphism">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarPlus className="h-5 w-5" />
-            <span>Selecionar Data</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CalendarComponent
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            className="rounded-md border"
-          />
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold gradient-heading">Calendário</h1>
+        <Button 
+          className="bg-[#3f9094] hover:bg-[#265255]" 
+          onClick={() => {
+            setSelectedAppointment(null);
+            form.reset();
+            setIsDialogOpen(true);
+          }}
+        >
+          Novo Agendamento
+        </Button>
+      </div>
       
-      <Card className="lg:col-span-2 glassmorphism">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>
-            {selectedDate ? format(selectedDate, 'PPP') : 'Nenhuma Data Selecionada'}
-          </CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-1">
-                <Plus className="h-4 w-4" />
-                <span>Novo Agendamento</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Criar Novo Agendamento</DialogTitle>
-              </DialogHeader>
-              <form className="space-y-4" onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                handleAddAppointment({
-                  clientId: formData.get('clientId') as string,
-                  clientName: formData.get('clientName') as string,
-                  time: formData.get('time') as string,
-                  type: formData.get('type') as 'sessão' | 'avaliação' | 'consulta',
-                  notes: formData.get('notes') as string
-                });
-              }}>
-                <div className="space-y-2">
-                  <Label htmlFor="clientName">Nome do Cliente</Label>
-                  <Input 
-                    id="clientName" 
-                    name="clientName" 
-                    required 
-                    placeholder="Nome do cliente"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="time">Hora</Label>
-                  <Input 
-                    id="time" 
-                    name="time" 
-                    type="time" 
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
-                  <Select name="type" defaultValue="sessão">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sessão">Sessão</SelectItem>
-                      <SelectItem value="avaliação">Avaliação</SelectItem>
-                      <SelectItem value="consulta">Consulta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notas</Label>
-                  <Input 
-                    id="notes" 
-                    name="notes" 
-                    placeholder="Notas adicionais"
-                  />
-                </div>
-
-                <Button type="submit" className="w-full">
-                  Criar Agendamento
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {appointmentsForSelectedDate.length > 0 ? (
-            <div className="space-y-4">
-              {appointmentsForSelectedDate.map((appointment) => (
-                <div 
-                  key={appointment.id} 
-                  className={`p-4 rounded-lg ${getAppointmentColor(appointment.type)} border border-white/20`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{appointment.clientName}</h3>
-                      <p className="text-sm capitalize">{appointment.type}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{appointment.time}</p>
-                    </div>
-                  </div>
-                  {appointment.notes && (
-                    <p className="text-sm mt-2 text-neuro-gray">{appointment.notes}</p>
-                  )}
-                </div>
+      <div className="card-glass">
+        <Calendar 
+          mode="single"
+          className="rounded-md border"
+          selected={selectedDate}
+          onSelect={handleDateSelect}
+          locale={pt}
+        >
+          <CalendarHeader>
+            <CalendarNav>
+              <CalendarPrevButton className="text-[#265255]" />
+              <CalendarMonthName className="text-[#265255] font-medium" />
+              <CalendarNextButton className="text-[#265255]" />
+            </CalendarNav>
+          </CalendarHeader>
+          <CalendarGrid>
+            <CalendarWeek>
+              {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((day) => (
+                <CalendarHeadCell key={day} className="text-[#3f9094]">{day}</CalendarHeadCell>
               ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center">
-              <p className="text-neuro-gray">Nenhum agendamento para esta data</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CalendarWeek>
+            <CalendarMonth>
+              {({ days }) =>
+                days.map((day, idx) => (
+                  <CalendarCell
+                    key={idx}
+                    date={day.date}
+                    disabled={day.outOfMonth}
+                    className={cn(
+                      day.outOfMonth && 'text-gray-300',
+                      'h-24 w-full border-t'
+                    )}
+                  >
+                    {renderCalendarCell(day.date)}
+                  </CalendarCell>
+                ))
+              }
+            </CalendarMonth>
+          </CalendarGrid>
+        </Calendar>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedAppointment ? 'Editar Agendamento' : 'Novo Agendamento'}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedAppointment 
+                ? 'Faça alterações no agendamento existente.' 
+                : 'Preencha os detalhes para criar um novo agendamento.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Título</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Título do agendamento" required />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hora</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} defaultValue="09:00" required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="clientName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Cliente</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Nome do cliente" required />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo de agendamento" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="sessão">Sessão</SelectItem>
+                        <SelectItem value="avaliação">Avaliação</SelectItem>
+                        <SelectItem value="consulta">Consulta</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notas</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        placeholder="Notas adicionais sobre o agendamento" 
+                        className="min-h-[100px]"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter className="flex justify-between">
+                {selectedAppointment && (
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    onClick={handleDeleteAppointment}
+                  >
+                    Eliminar
+                  </Button>
+                )}
+                <div className="flex space-x-2">
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <Button type="submit" className="bg-[#3f9094] hover:bg-[#265255]">
+                    {selectedAppointment ? 'Atualizar' : 'Adicionar'}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default AppointmentCalendar;
+
+// Função utilitária para combinar classes do tailwind
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
+}

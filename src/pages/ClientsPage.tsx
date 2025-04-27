@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import ClientCard, { ClientData } from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,18 @@ import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Função para carregar clientes do localStorage
+const loadClientsFromStorage = (): ClientData[] => {
+  const storedClients = localStorage.getItem('clients');
+  return storedClients ? JSON.parse(storedClients) : sampleClients;
+};
+
+// Função para salvar clientes no localStorage
+const saveClientsToStorage = (clients: ClientData[]) => {
+  localStorage.setItem('clients', JSON.stringify(clients));
+};
+
+// Dados de exemplo para novos utilizadores
 const sampleClients: ClientData[] = [
   {
     id: '1',
@@ -15,7 +28,7 @@ const sampleClients: ClientData[] = [
     email: 'maria.silva@example.com',
     phone: '912345678',
     sessionCount: 12,
-    nextSession: '28 Apr, 10:00',
+    nextSession: '28 Abr, 10:00',
     totalPaid: 1440
   },
   {
@@ -24,7 +37,7 @@ const sampleClients: ClientData[] = [
     email: 'joao.santos@example.com',
     phone: '923456789',
     sessionCount: 5,
-    nextSession: '28 Apr, 14:00',
+    nextSession: '28 Abr, 14:00',
     totalPaid: 600
   },
   {
@@ -33,33 +46,20 @@ const sampleClients: ClientData[] = [
     email: 'ana.costa@example.com',
     phone: '934567890',
     sessionCount: 8,
-    nextSession: '29 Apr, 11:00',
+    nextSession: '29 Abr, 11:00',
     totalPaid: 960
-  },
-  {
-    id: '4',
-    name: 'Carlos Oliveira',
-    email: 'carlos.oliveira@example.com',
-    phone: '945678901',
-    sessionCount: 3,
-    nextSession: null,
-    totalPaid: 360
-  },
-  {
-    id: '5',
-    name: 'Sofia Mendes',
-    email: 'sofia.mendes@example.com',
-    phone: '956789012',
-    sessionCount: 15,
-    nextSession: '30 Apr, 15:00',
-    totalPaid: 1800
   }
 ];
 
 const ClientsPage = () => {
-  const [clients, setClients] = useState<ClientData[]>(sampleClients);
+  const [clients, setClients] = useState<ClientData[]>(loadClientsFromStorage);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Salvar clientes no localStorage sempre que houver alterações
+  useEffect(() => {
+    saveClientsToStorage(clients);
+  }, [clients]);
 
   const filteredClients = clients.filter(client => 
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -69,7 +69,7 @@ const ClientsPage = () => {
 
   const handleAddClient = (data: ClientFormData) => {
     const newClient: ClientData = {
-      id: (clients.length + 1).toString(),
+      id: data.id,
       name: data.nome,
       email: data.email,
       phone: data.contato,
@@ -85,6 +85,7 @@ const ClientsPage = () => {
 
   const handleDeleteClient = (clientId: string) => {
     setClients(clients.filter(client => client.id !== clientId));
+    toast.success('Cliente eliminado com sucesso');
   };
 
   return (
@@ -92,12 +93,12 @@ const ClientsPage = () => {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold gradient-heading">Clientes</h1>
-          <p className="text-neuro-gray mt-2">Gerir informações dos clientes</p>
+          <p className="text-gray-600 mt-2">Gerir informações dos clientes</p>
         </div>
         
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-4">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neuro-gray" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
             <Input
               placeholder="Pesquisar clientes..."
               className="pl-9 w-full sm:w-[250px]"
@@ -108,7 +109,7 @@ const ClientsPage = () => {
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-neuro-primary hover:bg-neuro-secondary">
+              <Button className="bg-[#3f9094] hover:bg-[#265255]">
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Cliente
               </Button>
@@ -136,7 +137,7 @@ const ClientsPage = () => {
       ) : (
         <div className="text-center py-12">
           <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
-          <p className="text-neuro-gray">Tente ajustar a sua pesquisa ou adicione um novo cliente</p>
+          <p className="text-gray-600">Tente ajustar a sua pesquisa ou adicione um novo cliente</p>
         </div>
       )}
     </PageLayout>
