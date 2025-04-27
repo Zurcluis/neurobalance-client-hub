@@ -1,21 +1,6 @@
 
-// Atualizando o arquivo para corrigir os erros de tipos
-// As strings devem ser alteradas de "session", "assessment", "consultation" para "sessão", "avaliação", "consulta"
-
 import React, { useState } from 'react';
-import {
-  Calendar,
-  CalendarCell,
-  CalendarGrid,
-  CalendarHeader,
-  CalendarHeadCell,
-  CalendarMonth,
-  CalendarMonthName,
-  CalendarNav,
-  CalendarNextButton,
-  CalendarPrevButton,
-  CalendarWeek,
-} from '../ui/calendar';
+import { Calendar } from '../ui/calendar';
 import { Button } from '../ui/button';
 import {
   Dialog,
@@ -25,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '../ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Input } from '../ui/input';
@@ -92,6 +76,7 @@ const AppointmentCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
   const form = useForm<AppointmentFormValues>({
     defaultValues: {
@@ -139,7 +124,9 @@ const AppointmentCalendar = () => {
     setSelectedAppointment(null);
   };
 
-  const handleDateSelect = (date: Date) => {
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    
     setSelectedDate(date);
     form.setValue('date', format(date, 'yyyy-MM-dd'));
     // Se não houver um agendamento selecionado, abra para adicionar novo
@@ -196,17 +183,27 @@ const AppointmentCalendar = () => {
     }
   };
 
-  const renderCalendarCell = (day: Date) => {
+  // Custom Day Renderer for the Calendar
+  const renderDay = (day: Date, selectedDate: Date | undefined, props: React.HTMLAttributes<HTMLDivElement>) => {
     const dayAppointments = getDayAppointments(day);
     
     return (
-      <div className="h-full min-h-[100px] p-1">
-        <div className="font-medium mb-1">{format(day, 'd')}</div>
-        <div className="space-y-1">
+      <div
+        {...props}
+        className={`relative h-20 w-full border p-1 ${props.className}`}
+        onClick={() => handleDateSelect(day)}
+      >
+        <span className="absolute top-1 left-1 text-sm font-medium">
+          {format(day, 'd')}
+        </span>
+        <div className="mt-5 space-y-1 overflow-y-auto max-h-14">
           {dayAppointments.slice(0, 2).map((appointment) => (
             <button
               key={appointment.id}
-              onClick={() => handleAppointmentSelect(appointment)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAppointmentSelect(appointment);
+              }}
               className={`w-full text-left px-1 py-0.5 text-xs rounded truncate ${getAppointmentTypeColor(appointment.type)}`}
             >
               {appointment.title}
@@ -241,43 +238,56 @@ const AppointmentCalendar = () => {
       <div className="card-glass">
         <Calendar 
           mode="single"
-          className="rounded-md border"
+          className="rounded-md border p-3"
           selected={selectedDate}
           onSelect={handleDateSelect}
           locale={pt}
-        >
-          <CalendarHeader>
-            <CalendarNav>
-              <CalendarPrevButton className="text-[#265255]" />
-              <CalendarMonthName className="text-[#265255] font-medium" />
-              <CalendarNextButton className="text-[#265255]" />
-            </CalendarNav>
-          </CalendarHeader>
-          <CalendarGrid>
-            <CalendarWeek>
-              {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((day) => (
-                <CalendarHeadCell key={day} className="text-[#3f9094]">{day}</CalendarHeadCell>
-              ))}
-            </CalendarWeek>
-            <CalendarMonth>
-              {({ days }) =>
-                days.map((day, idx) => (
-                  <CalendarCell
-                    key={idx}
-                    date={day.date}
-                    disabled={day.outOfMonth}
-                    className={cn(
-                      day.outOfMonth && 'text-gray-300',
-                      'h-24 w-full border-t'
-                    )}
-                  >
-                    {renderCalendarCell(day.date)}
-                  </CalendarCell>
-                ))
-              }
-            </CalendarMonth>
-          </CalendarGrid>
-        </Calendar>
+          month={currentMonth}
+          onMonthChange={setCurrentMonth}
+          modifiersStyles={{
+            selected: { backgroundColor: "#3f9094" }
+          }}
+          modifiers={{
+            hasAppointment: (date) => {
+              return getDayAppointments(date).length > 0;
+            }
+          }}
+          styles={{
+            months: { display: "flex", flexDirection: "row" },
+            month: { margin: "0 1rem" },
+            caption: { display: "flex", justifyContent: "space-between", padding: "0 1rem", alignItems: "center" },
+            caption_label: { fontSize: "1rem", fontWeight: "500", color: "#265255" },
+            nav: { display: "flex", gap: "0.25rem" },
+            nav_button: { cursor: "pointer", padding: "0.25rem", border: "none", backgroundColor: "transparent", color: "#3f9094" },
+            nav_button_previous: {},
+            nav_button_next: {},
+            table: { width: "100%" },
+            head_row: { display: "flex", margin: "0.5rem 0" },
+            head_cell: { width: "2.5rem", textAlign: "center", color: "#3f9094", fontWeight: "500" },
+            row: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", margin: "0.25rem 0" },
+            cell: { 
+              textAlign: "center", 
+              padding: "0.25rem",
+              position: "relative",
+              height: "2.5rem",
+              width: "2.5rem"
+            },
+            day: { 
+              margin: 0,
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer"
+            },
+            day_selected: { backgroundColor: "#3f9094", color: "white", borderRadius: "50%" },
+            day_today: { fontWeight: "bold", border: "1px solid #3f9094", borderRadius: "50%" },
+            day_outside: { opacity: 0.5 },
+            day_disabled: { opacity: 0.5, cursor: "default" },
+            day_hidden: { visibility: "hidden" }
+          }}
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
