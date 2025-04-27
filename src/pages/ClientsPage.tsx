@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import ClientCard, { ClientData } from '@/components/clients/ClientCard';
@@ -9,7 +8,6 @@ import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Sample clients data
 const sampleClients: ClientData[] = [
   {
     id: '1',
@@ -63,20 +61,18 @@ const ClientsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Filter clients based on search query
   const filteredClients = clients.filter(client => 
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     client.phone.includes(searchQuery)
   );
 
-  // Handle adding a new client
   const handleAddClient = (data: ClientFormData) => {
     const newClient: ClientData = {
       id: (clients.length + 1).toString(),
-      name: data.name,
+      name: data.nome,
       email: data.email,
-      phone: data.phone,
+      phone: data.contato,
       sessionCount: 0,
       nextSession: null,
       totalPaid: 0
@@ -84,22 +80,26 @@ const ClientsPage = () => {
     
     setClients([...clients, newClient]);
     setDialogOpen(false);
-    toast.success('Client added successfully');
+    toast.success('Cliente adicionado com sucesso');
+  };
+
+  const handleDeleteClient = (clientId: string) => {
+    setClients(clients.filter(client => client.id !== clientId));
   };
 
   return (
     <PageLayout>
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold gradient-heading">Clients</h1>
-          <p className="text-neuro-gray mt-2">Manage your client information</p>
+          <h1 className="text-3xl font-bold gradient-heading">Clientes</h1>
+          <p className="text-neuro-gray mt-2">Gerir informações dos clientes</p>
         </div>
         
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-4">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neuro-gray" />
             <Input
-              placeholder="Search clients..."
+              placeholder="Pesquisar clientes..."
               className="pl-9 w-full sm:w-[250px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -110,12 +110,12 @@ const ClientsPage = () => {
             <DialogTrigger asChild>
               <Button className="bg-neuro-primary hover:bg-neuro-secondary">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Client
+                Adicionar Cliente
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
-                <DialogTitle>Add New Client</DialogTitle>
+                <DialogTitle>Adicionar Novo Cliente</DialogTitle>
               </DialogHeader>
               <ClientForm onSubmit={handleAddClient} />
             </DialogContent>
@@ -126,13 +126,17 @@ const ClientsPage = () => {
       {filteredClients.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClients.map(client => (
-            <ClientCard key={client.id} client={client} />
+            <ClientCard 
+              key={client.id} 
+              client={client} 
+              onDelete={handleDeleteClient}
+            />
           ))}
         </div>
       ) : (
         <div className="text-center py-12">
-          <h3 className="text-xl font-medium mb-2">No clients found</h3>
-          <p className="text-neuro-gray">Try adjusting your search or add a new client</p>
+          <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
+          <p className="text-neuro-gray">Tente ajustar a sua pesquisa ou adicione um novo cliente</p>
         </div>
       )}
     </PageLayout>

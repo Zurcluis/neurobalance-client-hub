@@ -4,13 +4,27 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export interface ClientFormData {
-  name: string;
+  nome: string;
+  id: string;
+  idade: number;
+  problematica: string;
   email: string;
-  phone: string;
-  address: string;
-  notes: string;
+  contato: string;
+  localidade: string;
+  tipoContato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
+  comoConheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
+  estado: 'On Going' | 'Thinking' | 'No need' | 'Finished' | 'call';
+  notes?: string;
 }
 
 interface ClientFormProps {
@@ -28,16 +42,41 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
+          <Label htmlFor="nome">Nome</Label>
           <Input
-            id="name"
-            {...register('name', { required: 'Name is required' })}
-            placeholder="Client name"
-            className={errors.name ? 'border-red-500' : ''}
+            id="nome"
+            {...register('nome', { required: 'Nome é obrigatório' })}
+            placeholder="Nome do cliente"
+            className={errors.nome ? 'border-red-500' : ''}
           />
-          {errors.name && (
-            <p className="text-sm text-red-500">{errors.name.message}</p>
+          {errors.nome && (
+            <p className="text-sm text-red-500">{errors.nome.message}</p>
           )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="id">ID</Label>
+          <Input
+            id="id"
+            {...register('id', { required: 'ID é obrigatório' })}
+            placeholder="ID do cliente"
+            className={errors.id ? 'border-red-500' : ''}
+          />
+          {errors.id && (
+            <p className="text-sm text-red-500">{errors.id.message}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="idade">Idade</Label>
+          <Input
+            id="idade"
+            type="number"
+            {...register('idade', { valueAsNumber: true })}
+            placeholder="Idade"
+          />
         </div>
         
         <div className="space-y-2">
@@ -45,14 +84,13 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
           <Input
             id="email"
             type="email"
-            {...register('email', { 
-              required: 'Email is required',
+            {...register('email', {
               pattern: {
                 value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'Invalid email address'
+                message: 'Email inválido'
               }
             })}
-            placeholder="Email address"
+            placeholder="Email"
             className={errors.email ? 'border-red-500' : ''}
           />
           {errors.email && (
@@ -63,43 +101,83 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone</Label>
+          <Label htmlFor="contato">Contacto</Label>
           <Input
-            id="phone"
-            {...register('phone', { required: 'Phone is required' })}
-            placeholder="Phone number"
-            className={errors.phone ? 'border-red-500' : ''}
+            id="contato"
+            {...register('contato')}
+            placeholder="Número de contacto"
           />
-          {errors.phone && (
-            <p className="text-sm text-red-500">{errors.phone.message}</p>
-          )}
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="address">Address</Label>
+          <Label htmlFor="localidade">Localidade</Label>
           <Input
-            id="address"
-            {...register('address')}
-            placeholder="Address (optional)"
+            id="localidade"
+            {...register('localidade')}
+            placeholder="Localidade"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
-        <textarea
-          id="notes"
-          {...register('notes')}
-          placeholder="Additional notes about the client (optional)"
-          className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        <Label htmlFor="problematica">Problemática</Label>
+        <Textarea
+          id="problematica"
+          {...register('problematica')}
+          placeholder="Descreva a problemática do cliente"
+          className="min-h-[100px]"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="tipoContato">Tipo de Contacto</Label>
+          <Select {...register('tipoContato')}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o tipo de contacto" />
+            </SelectTrigger>
+            <SelectContent>
+              {['Lead', 'Contato', 'Email', 'Instagram', 'Facebook'].map((tipo) => (
+                <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="comoConheceu">Como teve conhecimento</Label>
+          <Select {...register('comoConheceu')}>
+            <SelectTrigger>
+              <SelectValue placeholder="Como conheceu a clínica?" />
+            </SelectTrigger>
+            <SelectContent>
+              {['Anúncio', 'Instagram', 'Facebook', 'Recomendação'].map((fonte) => (
+                <SelectItem key={fonte} value={fonte}>{fonte}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="estado">Estado</Label>
+        <Select {...register('estado')}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o estado" />
+          </SelectTrigger>
+          <SelectContent>
+            {['On Going', 'Thinking', 'No need', 'Finished', 'call'].map((estado) => (
+              <SelectItem key={estado} value={estado}>{estado}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Button 
         type="submit" 
         className="bg-neuro-primary hover:bg-neuro-secondary text-white"
       >
-        {isEditing ? 'Update Client' : 'Add Client'}
+        {isEditing ? 'Atualizar Cliente' : 'Adicionar Cliente'}
       </Button>
     </form>
   );

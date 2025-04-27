@@ -1,7 +1,8 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Calendar as CalendarIcon, User } from 'lucide-react';
+import { Calendar, Trash2, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export interface ClientData {
   id: string;
@@ -15,9 +16,15 @@ export interface ClientData {
 
 interface ClientCardProps {
   client: ClientData;
+  onDelete: (id: string) => void;
 }
 
-const ClientCard = ({ client }: ClientCardProps) => {
+const ClientCard = ({ client, onDelete }: ClientCardProps) => {
+  const handleDelete = () => {
+    onDelete(client.id);
+    toast.success('Cliente eliminado com sucesso');
+  };
+
   return (
     <div className="card-glass">
       <div className="flex items-start justify-between">
@@ -30,6 +37,14 @@ const ClientCard = ({ client }: ClientCardProps) => {
             <p className="text-sm text-neuro-gray">{client.email}</p>
           </div>
         </div>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={handleDelete}
+          className="text-red-500 hover:text-red-700 hover:bg-red-100"
+        >
+          <Trash2 className="h-5 w-5" />
+        </Button>
       </div>
       
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
@@ -49,8 +64,8 @@ const ClientCard = ({ client }: ClientCardProps) => {
       
       {client.nextSession && (
         <div className="mt-4 flex items-center text-sm text-neuro-gray">
-          <CalendarIcon className="w-4 h-4 mr-1" />
-          <span>Next session: {client.nextSession}</span>
+          <Calendar className="w-4 h-4 mr-1" />
+          <span>Próxima sessão: {client.nextSession}</span>
         </div>
       )}
       
@@ -59,7 +74,7 @@ const ClientCard = ({ client }: ClientCardProps) => {
           to={`/clients/${client.id}`}
           className="px-4 py-2 bg-neuro-primary text-white rounded-lg text-sm hover:bg-neuro-secondary transition-colors"
         >
-          View Profile
+          Ver Perfil
         </Link>
       </div>
     </div>
