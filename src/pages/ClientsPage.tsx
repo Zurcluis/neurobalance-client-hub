@@ -1,0 +1,142 @@
+
+import React, { useState } from 'react';
+import PageLayout from '@/components/layout/PageLayout';
+import ClientCard, { ClientData } from '@/components/clients/ClientCard';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
+import { Plus, Search } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Sample clients data
+const sampleClients: ClientData[] = [
+  {
+    id: '1',
+    name: 'Maria Silva',
+    email: 'maria.silva@example.com',
+    phone: '912345678',
+    sessionCount: 12,
+    nextSession: '28 Apr, 10:00',
+    totalPaid: 1440
+  },
+  {
+    id: '2',
+    name: 'João Santos',
+    email: 'joao.santos@example.com',
+    phone: '923456789',
+    sessionCount: 5,
+    nextSession: '28 Apr, 14:00',
+    totalPaid: 600
+  },
+  {
+    id: '3',
+    name: 'Ana Costa',
+    email: 'ana.costa@example.com',
+    phone: '934567890',
+    sessionCount: 8,
+    nextSession: '29 Apr, 11:00',
+    totalPaid: 960
+  },
+  {
+    id: '4',
+    name: 'Carlos Oliveira',
+    email: 'carlos.oliveira@example.com',
+    phone: '945678901',
+    sessionCount: 3,
+    nextSession: null,
+    totalPaid: 360
+  },
+  {
+    id: '5',
+    name: 'Sofia Mendes',
+    email: 'sofia.mendes@example.com',
+    phone: '956789012',
+    sessionCount: 15,
+    nextSession: '30 Apr, 15:00',
+    totalPaid: 1800
+  }
+];
+
+const ClientsPage = () => {
+  const [clients, setClients] = useState<ClientData[]>(sampleClients);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Filter clients based on search query
+  const filteredClients = clients.filter(client => 
+    client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    client.phone.includes(searchQuery)
+  );
+
+  // Handle adding a new client
+  const handleAddClient = (data: ClientFormData) => {
+    const newClient: ClientData = {
+      id: (clients.length + 1).toString(),
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      sessionCount: 0,
+      nextSession: null,
+      totalPaid: 0
+    };
+    
+    setClients([...clients, newClient]);
+    setDialogOpen(false);
+    toast.success('Client added successfully');
+  };
+
+  return (
+    <PageLayout>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold gradient-heading">Clients</h1>
+          <p className="text-neuro-gray mt-2">Manage your client information</p>
+        </div>
+        
+        <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neuro-gray" />
+            <Input
+              placeholder="Search clients..."
+              className="pl-9 w-full sm:w-[250px]"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-neuro-primary hover:bg-neuro-secondary">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Client
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Add New Client</DialogTitle>
+              </DialogHeader>
+              <ClientForm onSubmit={handleAddClient} />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+      
+      {filteredClients.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredClients.map(client => (
+            <ClientCard key={client.id} client={client} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <h3 className="text-xl font-medium mb-2">No clients found</h3>
+          <p className="text-neuro-gray">Try adjusting your search or add a new client</p>
+        </div>
+      )}
+    </PageLayout>
+  );
+};
+
+export default ClientsPage;
