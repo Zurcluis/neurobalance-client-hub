@@ -12,44 +12,13 @@ import { toast } from 'sonner';
 // Função para carregar clientes do localStorage
 const loadClientsFromStorage = (): ClientData[] => {
   const storedClients = localStorage.getItem('clients');
-  return storedClients ? JSON.parse(storedClients) : sampleClients;
+  return storedClients ? JSON.parse(storedClients) : [];
 };
 
 // Função para salvar clientes no localStorage
 const saveClientsToStorage = (clients: ClientData[]) => {
   localStorage.setItem('clients', JSON.stringify(clients));
 };
-
-// Dados de exemplo para novos utilizadores
-const sampleClients: ClientData[] = [
-  {
-    id: '1',
-    name: 'Maria Silva',
-    email: 'maria.silva@example.com',
-    phone: '912345678',
-    sessionCount: 12,
-    nextSession: '28 Abr, 10:00',
-    totalPaid: 1440
-  },
-  {
-    id: '2',
-    name: 'João Santos',
-    email: 'joao.santos@example.com',
-    phone: '923456789',
-    sessionCount: 5,
-    nextSession: '28 Abr, 14:00',
-    totalPaid: 600
-  },
-  {
-    id: '3',
-    name: 'Ana Costa',
-    email: 'ana.costa@example.com',
-    phone: '934567890',
-    sessionCount: 8,
-    nextSession: '29 Abr, 11:00',
-    totalPaid: 960
-  }
-];
 
 const ClientsPage = () => {
   const [clients, setClients] = useState<ClientData[]>(loadClientsFromStorage);
@@ -69,7 +38,7 @@ const ClientsPage = () => {
 
   const handleAddClient = (data: ClientFormData) => {
     const newClient: ClientData = {
-      id: data.id,
+      id: data.id || Date.now().toString(),
       name: data.nome,
       email: data.email,
       phone: data.contato,
@@ -84,7 +53,9 @@ const ClientsPage = () => {
   };
 
   const handleDeleteClient = (clientId: string) => {
-    setClients(clients.filter(client => client.id !== clientId));
+    const updatedClients = clients.filter(client => client.id !== clientId);
+    setClients(updatedClients);
+    saveClientsToStorage(updatedClients); // Ensure deletion persists to localStorage
     toast.success('Cliente eliminado com sucesso');
   };
 
@@ -96,12 +67,12 @@ const ClientsPage = () => {
           <p className="text-gray-600 mt-2">Gerir informações dos clientes</p>
         </div>
         
-        <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-4">
-          <div className="relative">
+        <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
             <Input
               placeholder="Pesquisar clientes..."
-              className="pl-9 w-full sm:w-[250px]"
+              className="pl-9 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -109,7 +80,7 @@ const ClientsPage = () => {
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#3f9094] hover:bg-[#265255]">
+              <Button className="bg-[#3f9094] hover:bg-[#265255] w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Cliente
               </Button>
@@ -135,9 +106,16 @@ const ClientsPage = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm p-8">
           <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
-          <p className="text-gray-600">Tente ajustar a sua pesquisa ou adicione um novo cliente</p>
+          <p className="text-gray-600 mb-6">Adicione seu primeiro cliente para começar</p>
+          <Button 
+            className="bg-[#3f9094] hover:bg-[#265255]" 
+            onClick={() => setDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar Novo Cliente
+          </Button>
         </div>
       )}
     </PageLayout>

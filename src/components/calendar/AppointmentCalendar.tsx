@@ -183,46 +183,10 @@ const AppointmentCalendar = () => {
     }
   };
 
-  // Custom Day Renderer for the Calendar
-  const renderDay = (day: Date, selectedDate: Date | undefined, props: React.HTMLAttributes<HTMLDivElement>) => {
-    const dayAppointments = getDayAppointments(day);
-    
-    return (
-      <div
-        {...props}
-        className={`relative h-20 w-full border p-1 ${props.className}`}
-        onClick={() => handleDateSelect(day)}
-      >
-        <span className="absolute top-1 left-1 text-sm font-medium">
-          {format(day, 'd')}
-        </span>
-        <div className="mt-5 space-y-1 overflow-y-auto max-h-14">
-          {dayAppointments.slice(0, 2).map((appointment) => (
-            <button
-              key={appointment.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAppointmentSelect(appointment);
-              }}
-              className={`w-full text-left px-1 py-0.5 text-xs rounded truncate ${getAppointmentTypeColor(appointment.type)}`}
-            >
-              {appointment.title}
-            </button>
-          ))}
-          {dayAppointments.length > 2 && (
-            <div className="text-xs text-gray-500">
-              +{dayAppointments.length - 2} mais
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold gradient-heading">Calendário</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-[#265255]">Calendário</h2>
         <Button 
           className="bg-[#3f9094] hover:bg-[#265255]" 
           onClick={() => {
@@ -235,59 +199,54 @@ const AppointmentCalendar = () => {
         </Button>
       </div>
       
-      <div className="card-glass">
+      <div className="card-glass p-4">
         <Calendar 
           mode="single"
-          className="rounded-md border p-3"
+          className="rounded-md border w-full"
           selected={selectedDate}
           onSelect={handleDateSelect}
           locale={pt}
           month={currentMonth}
           onMonthChange={setCurrentMonth}
-          modifiersStyles={{
-            selected: { backgroundColor: "#3f9094" }
-          }}
           modifiers={{
-            hasAppointment: (date) => {
-              return getDayAppointments(date).length > 0;
-            }
+            hasAppointment: (date) => getDayAppointments(date).length > 0
           }}
-          styles={{
-            months: { display: "flex", flexDirection: "row" },
-            month: { margin: "0 1rem" },
-            caption: { display: "flex", justifyContent: "space-between", padding: "0 1rem", alignItems: "center" },
-            caption_label: { fontSize: "1rem", fontWeight: "500", color: "#265255" },
-            nav: { display: "flex", gap: "0.25rem" },
-            nav_button: { cursor: "pointer", padding: "0.25rem", border: "none", backgroundColor: "transparent", color: "#3f9094" },
-            nav_button_previous: {},
-            nav_button_next: {},
-            table: { width: "100%" },
-            head_row: { display: "flex", margin: "0.5rem 0" },
-            head_cell: { width: "2.5rem", textAlign: "center", color: "#3f9094", fontWeight: "500" },
-            row: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", margin: "0.25rem 0" },
-            cell: { 
-              textAlign: "center", 
-              padding: "0.25rem",
-              position: "relative",
-              height: "2.5rem",
-              width: "2.5rem"
-            },
-            day: { 
-              margin: 0,
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer"
-            },
-            day_selected: { backgroundColor: "#3f9094", color: "white", borderRadius: "50%" },
-            day_today: { fontWeight: "bold", border: "1px solid #3f9094", borderRadius: "50%" },
-            day_outside: { opacity: 0.5 },
-            day_disabled: { opacity: 0.5, cursor: "default" },
-            day_hidden: { visibility: "hidden" }
+          classNames={{
+            day_selected: "bg-[#3f9094] text-primary-foreground hover:bg-[#265255] hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
           }}
         />
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-lg font-medium mb-3 text-[#265255]">Eventos do dia</h3>
+        {selectedDate ? (
+          <div className="space-y-2">
+            {getDayAppointments(selectedDate).map((appointment) => (
+              <div 
+                key={appointment.id} 
+                className="p-3 rounded-lg bg-white shadow-sm border border-gray-100 cursor-pointer"
+                onClick={() => handleAppointmentSelect(appointment)}
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="font-medium">{appointment.title}</h4>
+                    <p className="text-sm text-gray-600">{appointment.clientName}</p>
+                  </div>
+                  <div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${getAppointmentTypeColor(appointment.type)}`}>
+                      {appointment.type}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {getDayAppointments(selectedDate).length === 0 && (
+              <p className="text-center py-4 text-gray-500">Sem agendamentos para este dia</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-center py-4 text-gray-500">Selecione uma data para ver os agendamentos</p>
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -436,8 +395,3 @@ const AppointmentCalendar = () => {
 };
 
 export default AppointmentCalendar;
-
-// Função utilitária para combinar classes do tailwind
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
