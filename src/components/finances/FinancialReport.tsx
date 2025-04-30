@@ -14,7 +14,7 @@ const financialData = [
     consultations: 400
   },
   {
-    month: 'Feb',
+    month: 'Fev',
     neurofeedback: 3000,
     assessments: 1200,
     consultations: 600
@@ -26,7 +26,7 @@ const financialData = [
     consultations: 500
   },
   {
-    month: 'Apr',
+    month: 'Abr',
     neurofeedback: 3700,
     assessments: 1500,
     consultations: 700
@@ -52,36 +52,36 @@ const FinancialReport = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glassmorphism">
           <CardHeader className="pb-2">
-            <p className="text-sm text-neuro-gray">Neurofeedback Sessions</p>
+            <p className="text-sm text-neuro-gray">Sessões de Neurofeedback</p>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{totals.neurofeedback.toLocaleString()}</div>
             <p className="text-xs text-neuro-gray mt-1">
-              {((totals.neurofeedback / total) * 100).toFixed(1)}% of total revenue
+              {((totals.neurofeedback / total) * 100).toFixed(1)}% da receita total
             </p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism">
           <CardHeader className="pb-2">
-            <p className="text-sm text-neuro-gray">Assessments</p>
+            <p className="text-sm text-neuro-gray">Avaliações</p>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{totals.assessments.toLocaleString()}</div>
             <p className="text-xs text-neuro-gray mt-1">
-              {((totals.assessments / total) * 100).toFixed(1)}% of total revenue
+              {((totals.assessments / total) * 100).toFixed(1)}% da receita total
             </p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism">
           <CardHeader className="pb-2">
-            <p className="text-sm text-neuro-gray">Consultations</p>
+            <p className="text-sm text-neuro-gray">Consultas</p>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{totals.consultations.toLocaleString()}</div>
             <p className="text-xs text-neuro-gray mt-1">
-              {((totals.consultations / total) * 100).toFixed(1)}% of total revenue
+              {((totals.consultations / total) * 100).toFixed(1)}% da receita total
             </p>
           </CardContent>
         </Card>
@@ -91,11 +91,11 @@ const FinancialReport = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            <span>Revenue Breakdown</span>
+            <span>Detalhe de Receitas</span>
           </CardTitle>
           <Button variant="outline" size="sm" className="flex items-center gap-1">
             <Download className="h-4 w-4" />
-            <span>Export</span>
+            <span>Exportar</span>
           </Button>
         </CardHeader>
         <CardContent>
@@ -123,8 +123,8 @@ const FinancialReport = () => {
                 />
                 <Legend />
                 <Bar dataKey="neurofeedback" name="Neurofeedback" fill="#9b87f5" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="assessments" name="Assessments" fill="#FFDEE2" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="consultations" name="Consultations" fill="#D3E4FD" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="assessments" name="Avaliações" fill="#FFDEE2" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="consultations" name="Consultas" fill="#D3E4FD" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

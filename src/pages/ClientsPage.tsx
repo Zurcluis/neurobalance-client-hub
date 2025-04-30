@@ -4,7 +4,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import ClientCard, { ClientData } from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,7 +47,7 @@ const ClientsPage = () => {
       totalPaid: 0
     };
     
-    setClients([...clients, newClient]);
+    setClients(prev => [...prev, newClient]);
     setDialogOpen(false);
     toast.success('Cliente adicionado com sucesso');
   };
@@ -88,6 +88,9 @@ const ClientsPage = () => {
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Cliente</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados abaixo para adicionar um novo cliente.
+                </DialogDescription>
               </DialogHeader>
               <ClientForm onSubmit={handleAddClient} />
             </DialogContent>
