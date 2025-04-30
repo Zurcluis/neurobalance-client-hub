@@ -69,4 +69,21 @@
   .card-glass {
     @apply glassmorphism rounded-xl p-4 transition-all duration-300 hover:shadow-xl;
   }
+  
+  /* New Glassmorphism Calendar Styles */
+  .calendar-glassmorphism {
+    @apply bg-gradient-to-br from-[#e5f6f7]/70 to-[#f0f7f7]/70 backdrop-blur-md border border-white/30 rounded-xl shadow-[0_8px_32px_0_rgba(31,38,135,0.1)];
+  }
+  
+  .event-avaliacao {
+    @apply bg-[#F2FCE2]/80 text-[#265255] backdrop-blur-sm border border-[#F2FCE2] shadow-[0_0_15px_rgba(165,219,133,0.3)];
+  }
+  
+  .event-neurofeedback {
+    @apply bg-[#FEF7CD]/80 text-[#265255] backdrop-blur-sm border border-[#FEF7CD] shadow-[0_0_15px_rgba(255,228,132,0.3)];
+  }
+  
+  .event-discussao {
+    @apply bg-[#FDE1D3]/80 text-[#265255] backdrop-blur-sm border border-[#FDE1D3] shadow-[0_0_15px_rgba(250,169,135,0.3)];
+  }
 }
