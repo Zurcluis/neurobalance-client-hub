@@ -5,18 +5,57 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useForm } from 'react-hook-form';
 import { Payment } from '@/types/client';
+import { Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ClientPaymentsProps {
   payments: Payment[];
   clientId: string;
   onAddPayment: (payment: Payment) => void;
+  onDeletePayment: (paymentId: string) => void;
 }
 
-const ClientPayments = ({ payments, clientId, onAddPayment }: ClientPaymentsProps) => {
+const PAYMENT_TYPES = [
+  { id: 'avaliacao-inicial', label: 'Avaliação Inicial', value: 120 },
+  { id: 'segunda-avaliacao', label: 'Segunda Avaliação', value: 100 },
+  { id: 'pack-mensal', label: 'Pack Mensal Neurofeedback', value: 400 },
+  { id: 'neurofeedback', label: 'Neurofeedback', value: 80 }
+];
+
+const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: ClientPaymentsProps) => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState(false);
-  const paymentForm = useForm<Payment>();
+  const [selectedPaymentType, setSelectedPaymentType] = React.useState(PAYMENT_TYPES[0]);
+  const paymentForm = useForm<Payment>({
+    defaultValues: {
+      id: '',
+      clientId: clientId,
+      date: new Date().toISOString().split('T')[0],
+      amount: PAYMENT_TYPES[0].value,
+      description: PAYMENT_TYPES[0].label,
+      method: '',
+    }
+  });
+
+  const handleServiceTypeChange = (typeId: string) => {
+    const selectedType = PAYMENT_TYPES.find(type => type.id === typeId) || PAYMENT_TYPES[0];
+    setSelectedPaymentType(selectedType);
+    
+    paymentForm.setValue('description', selectedType.label);
+    paymentForm.setValue('amount', selectedType.value);
+  };
+
+  const handleSubmit = (data: Payment) => {
+    onAddPayment(data);
+    setIsPaymentDialogOpen(false);
+    toast.success('Pagamento registado com sucesso');
+  };
+
+  const handleDeletePayment = (paymentId: string) => {
+    onDeletePayment(paymentId);
+  };
 
   return (
     <Card className="glassmorphism">
@@ -44,10 +83,11 @@ const ClientPayments = ({ payments, clientId, onAddPayment }: ClientPaymentsProp
               id: '',
               clientId: clientId,
               date: new Date().toISOString().split('T')[0],
-              amount: 0,
-              description: '',
+              amount: PAYMENT_TYPES[0].value,
+              description: PAYMENT_TYPES[0].label,
               method: '',
             });
+            setSelectedPaymentType(PAYMENT_TYPES[0]);
             setIsPaymentDialogOpen(true);
           }}
         >
@@ -66,11 +106,18 @@ const ClientPayments = ({ payments, clientId, onAddPayment }: ClientPaymentsProp
                       Data: {new Date(payment.date).toLocaleDateString('pt-PT')}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center gap-3">
                     <p className="font-medium">€{payment.amount.toLocaleString()}</p>
-                    <p className="text-xs text-gray-600">{payment.method}</p>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDeletePayment(payment.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
                   </div>
                 </div>
+                <p className="text-xs text-gray-600 mt-1">{payment.method}</p>
               </div>
             ))}
           </div>
@@ -87,15 +134,32 @@ const ClientPayments = ({ payments, clientId, onAddPayment }: ClientPaymentsProp
             <DialogTitle>Registar Pagamento</DialogTitle>
           </DialogHeader>
           <Form {...paymentForm}>
-            <form onSubmit={paymentForm.handleSubmit(onAddPayment)} className="space-y-4">
+            <form onSubmit={paymentForm.handleSubmit(handleSubmit)} className="space-y-4">
               <FormField
                 control={paymentForm.control}
                 name="description"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição</FormLabel>
+                  <FormItem className="space-y-3">
+                    <FormLabel>Tipo de Serviço</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Descrição do pagamento" required />
+                      <RadioGroup
+                        onValueChange={(value) => {
+                          handleServiceTypeChange(value);
+                          field.onChange(PAYMENT_TYPES.find(type => type.id === value)?.label);
+                        }}
+                        defaultValue={PAYMENT_TYPES[0].id}
+                        className="grid grid-cols-1 gap-2"
+                      >
+                        {PAYMENT_TYPES.map((type) => (
+                          <div key={type.id} className="flex items-center space-x-2 rounded-md border p-3">
+                            <RadioGroupItem value={type.id} id={type.id} />
+                            <FormLabel htmlFor={type.id} className="flex-1 cursor-pointer">
+                              {type.label}
+                              <span className="ml-1 text-sm text-muted-foreground"> - €{type.value}</span>
+                            </FormLabel>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </FormControl>
                   </FormItem>
                 )}

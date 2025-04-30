@@ -121,7 +121,35 @@ const ClientDetailPage = () => {
     
     setPayments(prev => [...prev, newPayment]);
     setClient(prev => prev ? {...prev, totalPaid: (prev.totalPaid || 0) + data.amount} : null);
-    toast.success('Pagamento registado com sucesso');
+  };
+
+  const deletePayment = (paymentId: string) => {
+    const paymentToDelete = payments.find(p => p.id === paymentId);
+    
+    if (!paymentToDelete) return;
+    
+    // Update client's total paid amount
+    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
+    const updatedClients = clients.map(c => 
+      c.id === clientId 
+        ? {...c, totalPaid: Math.max(0, (c.totalPaid || 0) - paymentToDelete.amount)} 
+        : c
+    );
+    saveToStorage('clients', updatedClients);
+    
+    // Update payments in localStorage
+    const allPayments = loadFromStorage<Payment[]>('payments', []);
+    const updatedPayments = allPayments.filter(p => p.id !== paymentId);
+    saveToStorage('payments', updatedPayments);
+    
+    // Update state
+    setPayments(prev => prev.filter(p => p.id !== paymentId));
+    setClient(prev => prev 
+      ? {...prev, totalPaid: Math.max(0, (prev.totalPaid || 0) - paymentToDelete.amount)} 
+      : null
+    );
+    
+    toast.success('Pagamento eliminado com sucesso');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,6 +263,7 @@ const ClientDetailPage = () => {
             payments={payments}
             clientId={clientId as string}
             onAddPayment={addPayment}
+            onDeletePayment={deletePayment}
           />
         </TabsContent>
         

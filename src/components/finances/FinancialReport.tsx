@@ -1,55 +1,107 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-// Sample financial data
-const financialData = [
-  {
-    month: 'Jan',
-    neurofeedback: 2500,
-    assessments: 800,
-    consultations: 400
-  },
-  {
-    month: 'Fev',
-    neurofeedback: 3000,
-    assessments: 1200,
-    consultations: 600
-  },
-  {
-    month: 'Mar',
-    neurofeedback: 3200,
-    assessments: 900,
-    consultations: 500
-  },
-  {
-    month: 'Abr',
-    neurofeedback: 3700,
-    assessments: 1500,
-    consultations: 700
-  }
-];
+import { Payment } from '@/types/client';
 
 const FinancialReport = () => {
-  // Calculate totals
-  const totals = financialData.reduce(
-    (acc, curr) => {
-      acc.neurofeedback += curr.neurofeedback;
-      acc.assessments += curr.assessments;
-      acc.consultations += curr.consultations;
-      return acc;
-    },
-    { neurofeedback: 0, assessments: 0, consultations: 0 }
-  );
+  const [financialData, setFinancialData] = useState<any[]>([]);
+  const [totals, setTotals] = useState({
+    neurofeedback: 0,
+    assessments: 0,
+    consultations: 0,
+    monthly: 0
+  });
   
-  const total = totals.neurofeedback + totals.assessments + totals.consultations;
+  useEffect(() => {
+    // Load all payments from localStorage
+    const loadPayments = (): Payment[] => {
+      const storedPayments = localStorage.getItem('payments');
+      return storedPayments ? JSON.parse(storedPayments) : [];
+    };
+    
+    const payments = loadPayments();
+    
+    // Group payments by month and categorize them
+    const monthlyData = payments.reduce((acc: Record<string, any>, payment) => {
+      const date = new Date(payment.date);
+      const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      
+      if (!acc[monthYear]) {
+        acc[monthYear] = {
+          month: getMonthName(date.getMonth()),
+          neurofeedback: 0,
+          assessments: 0,
+          consultations: 0,
+          monthly: 0,
+        };
+      }
+      
+      // Categorize payments based on description
+      const description = payment.description.toLowerCase();
+      if (description.includes('neurofeedback') && !description.includes('pack')) {
+        acc[monthYear].neurofeedback += payment.amount;
+      } else if (description.includes('avaliação')) {
+        acc[monthYear].assessments += payment.amount;
+      } else if (description.includes('pack')) {
+        acc[monthYear].monthly += payment.amount;
+      } else {
+        acc[monthYear].consultations += payment.amount;
+      }
+      
+      return acc;
+    }, {});
+    
+    // Convert to array and sort by month/year
+    const sortedData = Object.values(monthlyData).sort((a, b) => {
+      const monthA = getMonthIndex(a.month);
+      const monthB = getMonthIndex(b.month);
+      return monthA - monthB;
+    });
+    
+    setFinancialData(sortedData);
+    
+    // Calculate totals
+    const calculatedTotals = {
+      neurofeedback: payments.reduce((sum, payment) => {
+        const desc = payment.description.toLowerCase();
+        return desc.includes('neurofeedback') && !desc.includes('pack') ? sum + payment.amount : sum;
+      }, 0),
+      assessments: payments.reduce((sum, payment) => {
+        const desc = payment.description.toLowerCase();
+        return desc.includes('avaliação') ? sum + payment.amount : sum;
+      }, 0),
+      consultations: payments.reduce((sum, payment) => {
+        const desc = payment.description.toLowerCase();
+        return !desc.includes('neurofeedback') && !desc.includes('avaliação') && !desc.includes('pack') 
+          ? sum + payment.amount : sum;
+      }, 0),
+      monthly: payments.reduce((sum, payment) => {
+        const desc = payment.description.toLowerCase();
+        return desc.includes('pack') ? sum + payment.amount : sum;
+      }, 0)
+    };
+    
+    setTotals(calculatedTotals);
+  }, []);
+  
+  const getMonthName = (monthIndex: number): string => {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return months[monthIndex];
+  };
+  
+  const getMonthIndex = (monthName: string): number => {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return months.indexOf(monthName);
+  };
+  
+  const total = totals.neurofeedback + totals.assessments + totals.consultations + totals.monthly;
   
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="glassmorphism">
           <CardHeader className="pb-2">
             <p className="text-sm text-neuro-gray">Sessões de Neurofeedback</p>
@@ -57,7 +109,7 @@ const FinancialReport = () => {
           <CardContent>
             <div className="text-2xl font-bold">€{totals.neurofeedback.toLocaleString()}</div>
             <p className="text-xs text-neuro-gray mt-1">
-              {((totals.neurofeedback / total) * 100).toFixed(1)}% da receita total
+              {total ? ((totals.neurofeedback / total) * 100).toFixed(1) : '0'}% da receita total
             </p>
           </CardContent>
         </Card>
@@ -69,19 +121,31 @@ const FinancialReport = () => {
           <CardContent>
             <div className="text-2xl font-bold">€{totals.assessments.toLocaleString()}</div>
             <p className="text-xs text-neuro-gray mt-1">
-              {((totals.assessments / total) * 100).toFixed(1)}% da receita total
+              {total ? ((totals.assessments / total) * 100).toFixed(1) : '0'}% da receita total
             </p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism">
           <CardHeader className="pb-2">
-            <p className="text-sm text-neuro-gray">Consultas</p>
+            <p className="text-sm text-neuro-gray">Pack Mensal</p>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">€{totals.monthly.toLocaleString()}</div>
+            <p className="text-xs text-neuro-gray mt-1">
+              {total ? ((totals.monthly / total) * 100).toFixed(1) : '0'}% da receita total
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="glassmorphism">
+          <CardHeader className="pb-2">
+            <p className="text-sm text-neuro-gray">Outros</p>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{totals.consultations.toLocaleString()}</div>
             <p className="text-xs text-neuro-gray mt-1">
-              {((totals.consultations / total) * 100).toFixed(1)}% da receita total
+              {total ? ((totals.consultations / total) * 100).toFixed(1) : '0'}% da receita total
             </p>
           </CardContent>
         </Card>
@@ -120,11 +184,22 @@ const FinancialReport = () => {
                     border: '1px solid rgba(255, 255, 255, 0.2)',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
                   }} 
+                  formatter={(value) => [`€${value}`, ``]}
+                  labelFormatter={(label) => `Mês: ${label}`}
                 />
-                <Legend />
-                <Bar dataKey="neurofeedback" name="Neurofeedback" fill="#9b87f5" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="assessments" name="Avaliações" fill="#FFDEE2" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="consultations" name="Consultas" fill="#D3E4FD" radius={[4, 4, 0, 0]} />
+                <Legend formatter={(value) => {
+                  switch(value) {
+                    case "neurofeedback": return "Neurofeedback";
+                    case "assessments": return "Avaliações";
+                    case "monthly": return "Pack Mensal";
+                    case "consultations": return "Outros";
+                    default: return value;
+                  }
+                }} />
+                <Bar dataKey="neurofeedback" name="neurofeedback" fill="#9b87f5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="assessments" name="assessments" fill="#FFDEE2" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="monthly" name="monthly" fill="#F2FCE2" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="consultations" name="consultations" fill="#D3E4FD" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
