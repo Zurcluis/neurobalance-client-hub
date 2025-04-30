@@ -175,7 +175,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
 
       <Button 
         type="submit" 
-        className="bg-neuro-primary hover:bg-neuro-secondary text-white"
+        className="bg-[#3f9094] hover:bg-[#265255] text-white w-full"
       >
         {isEditing ? 'Atualizar Cliente' : 'Adicionar Cliente'}
       </Button>
