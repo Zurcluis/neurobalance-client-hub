@@ -196,10 +196,10 @@ const FinancialReport = () => {
                     default: return value;
                   }
                 }} />
-                <Bar dataKey="neurofeedback" name="neurofeedback" fill="#9b87f5" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="assessments" name="assessments" fill="#FFDEE2" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="monthly" name="monthly" fill="#F2FCE2" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="consultations" name="consultations" fill="#D3E4FD" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="neurofeedback" name="neurofeedback" fill="#1088c4" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="assessments" name="assessments" fill="#9e50b3" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="monthly" name="monthly" fill="#3f9094" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="consultations" name="consultations" fill="#ecc249" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

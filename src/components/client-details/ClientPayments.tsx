@@ -1,14 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calculator, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { Payment } from '@/types/client';
-import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ClientPaymentsProps {
@@ -18,106 +18,102 @@ interface ClientPaymentsProps {
   onDeletePayment: (paymentId: string) => void;
 }
 
-const PAYMENT_TYPES = [
-  { id: 'avaliacao-inicial', label: 'Avaliação Inicial', value: 120 },
-  { id: 'segunda-avaliacao', label: 'Segunda Avaliação', value: 100 },
-  { id: 'pack-mensal', label: 'Pack Mensal Neurofeedback', value: 400 },
-  { id: 'neurofeedback', label: 'Neurofeedback', value: 80 }
+// Tipos de pagamento e valores
+const paymentTypes = [
+  { id: 'initial', label: 'Avaliação Inicial', value: 85 },
+  { id: 'second', label: 'Segunda Avaliação', value: 85 },
+  { id: 'monthly', label: 'Pack Mensal Neurofeedback', value: 400 },
+  { id: 'session', label: 'Sessão Individual Neurofeedback', value: 55 }
 ];
 
 const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: ClientPaymentsProps) => {
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState(false);
-  const [selectedPaymentType, setSelectedPaymentType] = React.useState(PAYMENT_TYPES[0]);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  
   const paymentForm = useForm<Payment>({
     defaultValues: {
       id: '',
-      clientId: clientId,
+      clientId,
       date: new Date().toISOString().split('T')[0],
-      amount: PAYMENT_TYPES[0].value,
-      description: PAYMENT_TYPES[0].label,
-      method: '',
+      amount: 85,
+      description: 'Avaliação Inicial',
+      method: 'Multibanco'
     }
   });
-
-  const handleServiceTypeChange = (typeId: string) => {
-    const selectedType = PAYMENT_TYPES.find(type => type.id === typeId) || PAYMENT_TYPES[0];
-    setSelectedPaymentType(selectedType);
-    
-    paymentForm.setValue('description', selectedType.label);
-    paymentForm.setValue('amount', selectedType.value);
+  
+  // Handle payment type selection
+  const handlePaymentTypeChange = (value: string) => {
+    const selectedType = paymentTypes.find(type => type.id === value);
+    if (selectedType) {
+      paymentForm.setValue('description', selectedType.label);
+      paymentForm.setValue('amount', selectedType.value);
+    }
   };
-
-  const handleSubmit = (data: Payment) => {
-    onAddPayment(data);
+  
+  const onSubmit = (data: Payment) => {
+    onAddPayment({
+      ...data,
+      id: Date.now().toString(),
+      clientId
+    });
     setIsPaymentDialogOpen(false);
+    paymentForm.reset({
+      id: '',
+      clientId,
+      date: new Date().toISOString().split('T')[0],
+      amount: 85,
+      description: 'Avaliação Inicial',
+      method: 'Multibanco'
+    });
     toast.success('Pagamento registado com sucesso');
   };
 
-  const handleDeletePayment = (paymentId: string) => {
-    onDeletePayment(paymentId);
+  const calculateTotal = () => {
+    return payments.reduce((total, payment) => total + payment.amount, 0);
   };
 
   return (
     <Card className="glassmorphism">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-5 w-5"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 6v6l4 2" />
-          </svg>
-          <span>Histórico de Pagamentos</span>
+          <Calculator className="h-5 w-5" />
+          <span>Pagamentos</span>
         </CardTitle>
         <Button 
           className="bg-[#3f9094] hover:bg-[#265255]"
-          onClick={() => {
-            paymentForm.reset({
-              id: '',
-              clientId: clientId,
-              date: new Date().toISOString().split('T')[0],
-              amount: PAYMENT_TYPES[0].value,
-              description: PAYMENT_TYPES[0].label,
-              method: '',
-            });
-            setSelectedPaymentType(PAYMENT_TYPES[0]);
-            setIsPaymentDialogOpen(true);
-          }}
+          onClick={() => setIsPaymentDialogOpen(true)}
         >
           Registar Pagamento
         </Button>
       </CardHeader>
       <CardContent>
+        <div className="flex justify-end mb-4">
+          <div className="bg-[#c5cfce]/40 p-2 rounded-lg text-right">
+            <span className="text-sm text-gray-600">Total Pago</span>
+            <p className="text-xl font-bold">€{calculateTotal().toLocaleString()}</p>
+          </div>
+        </div>
+        
         {payments.length > 0 ? (
           <div className="space-y-4">
             {payments.map((payment) => (
-              <div key={payment.id} className="p-4 rounded-lg bg-[#3f9094]/20 border border-white/20">
+              <div key={payment.id} className="p-4 rounded-lg bg-[#c5cfce]/40 relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1 h-8 w-8 p-0"
+                  onClick={() => onDeletePayment(payment.id)}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Remover</span>
+                </Button>
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-medium">{payment.description}</h3>
-                    <p className="text-sm text-gray-600">
-                      Data: {new Date(payment.date).toLocaleDateString('pt-PT')}
-                    </p>
+                    <p className="text-sm text-gray-500">{new Date(payment.date).toLocaleDateString('pt-PT')}</p>
+                    <p className="text-sm text-gray-600 mt-1">{payment.method}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <p className="font-medium">€{payment.amount.toLocaleString()}</p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeletePayment(payment.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
+                  <div className="text-xl font-bold">€{payment.amount}</div>
                 </div>
-                <p className="text-xs text-gray-600 mt-1">{payment.method}</p>
               </div>
             ))}
           </div>
@@ -131,74 +127,71 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Registar Pagamento</DialogTitle>
+            <DialogTitle>Registar Novo Pagamento</DialogTitle>
           </DialogHeader>
           <Form {...paymentForm}>
-            <form onSubmit={paymentForm.handleSubmit(handleSubmit)} className="space-y-4">
+            <form onSubmit={paymentForm.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={paymentForm.control}
-                name="description"
+                name="date"
                 render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Tipo de Serviço</FormLabel>
+                  <FormItem>
+                    <FormLabel>Data do Pagamento</FormLabel>
                     <FormControl>
-                      <RadioGroup
-                        onValueChange={(value) => {
-                          handleServiceTypeChange(value);
-                          field.onChange(PAYMENT_TYPES.find(type => type.id === value)?.label);
-                        }}
-                        defaultValue={PAYMENT_TYPES[0].id}
-                        className="grid grid-cols-1 gap-2"
-                      >
-                        {PAYMENT_TYPES.map((type) => (
-                          <div key={type.id} className="flex items-center space-x-2 rounded-md border p-3">
-                            <RadioGroupItem value={type.id} id={type.id} />
-                            <FormLabel htmlFor={type.id} className="flex-1 cursor-pointer">
-                              {type.label}
-                              <span className="ml-1 text-sm text-muted-foreground"> - €{type.value}</span>
-                            </FormLabel>
-                          </div>
-                        ))}
-                      </RadioGroup>
+                      <Input {...field} type="date" />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={paymentForm.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data</FormLabel>
+              <FormField
+                control={paymentForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Pagamento</FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        handlePaymentTypeChange(value);
+                      }}
+                      defaultValue="initial"
+                    >
                       <FormControl>
-                        <Input {...field} type="date" required />
+                        <SelectTrigger>
+                          <SelectValue placeholder={field.value} />
+                        </SelectTrigger>
                       </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={paymentForm.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor (€)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number" 
-                          min="0" 
-                          step="0.01" 
-                          required 
-                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+                      <SelectContent>
+                        {paymentTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.label} (€{type.value})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={paymentForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor (€)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="number"
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <FormField
                 control={paymentForm.control}
@@ -206,12 +199,20 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Método de Pagamento</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder="MB WAY, Transferência, Cartão, etc."
-                      />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={field.value} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="Multibanco">Multibanco</SelectItem>
+                        <SelectItem value="MBWay">MBWay</SelectItem>
+                        <SelectItem value="Transferência">Transferência</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

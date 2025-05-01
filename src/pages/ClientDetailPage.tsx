@@ -12,6 +12,7 @@ import ClientProfile from '@/components/client-details/ClientProfile';
 import ClientSessions from '@/components/client-details/ClientSessions';
 import ClientPayments from '@/components/client-details/ClientPayments';
 import ClientFiles from '@/components/client-details/ClientFiles';
+import { parseISO, format, isSameDay, isBefore } from 'date-fns';
 
 // Função para carregar dados do localStorage
 const loadFromStorage = <T extends unknown>(key: string, defaultValue: T): T => {
@@ -53,6 +54,37 @@ const ClientDetailPage = () => {
     const allFiles = loadFromStorage<ClientFile[]>('clientFiles', []);
     const clientFiles = allFiles.filter(file => file.clientId === clientId);
     setFiles(clientFiles);
+
+    // Load appointments to get next session
+    const appointments = loadFromStorage('appointments', []);
+    const clientAppointments = appointments.filter((app: any) => app.clientId === clientId);
+    
+    // Find closest future appointment
+    const now = new Date();
+    const futureAppointments = clientAppointments
+      .filter((app: any) => {
+        const appDate = parseISO(app.date);
+        return !isBefore(appDate, now);
+      })
+      .sort((a: any, b: any) => {
+        return parseISO(a.date).getTime() - parseISO(b.date).getTime();
+      });
+    
+    // Update client with next session info if available
+    if (foundClient && futureAppointments.length > 0) {
+      const nextSession = futureAppointments[0];
+      const appointmentDate = parseISO(nextSession.date);
+      const formattedDate = format(appointmentDate, "dd/MM/yyyy 'às' HH:mm");
+      
+      const updatedClient = {
+        ...foundClient,
+        nextSession: formattedDate
+      };
+      
+      // Update in state but don't save to localStorage yet to avoid circular updates
+      setClient(updatedClient);
+    }
+
   }, [clientId]);
 
   // Se o cliente não for encontrado, mostrar erro

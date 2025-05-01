@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar } from '../ui/calendar';
 import { Button } from '../ui/button';
 import {
@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { addDays, format, isSameDay, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Card, CardContent } from '../ui/card';
+import { ClientDetailData } from '@/types/client';
 
 type AppointmentType = 'sessão' | 'avaliação' | 'consulta';
 
@@ -83,6 +84,15 @@ const AppointmentCalendar = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [clients, setClients] = useState<ClientDetailData[]>([]);
+
+  useEffect(() => {
+    // Load clients from localStorage
+    const loadedClients = localStorage.getItem('clients');
+    if (loadedClients) {
+      setClients(JSON.parse(loadedClients));
+    }
+  }, []);
 
   const form = useForm<AppointmentFormValues>({
     defaultValues: {
@@ -98,6 +108,14 @@ const AppointmentCalendar = () => {
 
   const onSubmit = (data: AppointmentFormValues) => {
     const combinedDateTime = `${data.date}T${data.time}`;
+    
+    // If client was selected from dropdown, update client name
+    if (data.clientId) {
+      const selectedClient = clients.find(client => client.id === data.clientId);
+      if (selectedClient) {
+        data.clientName = selectedClient.name;
+      }
+    }
     
     if (selectedAppointment) {
       // Editar agendamento existente
@@ -182,11 +200,11 @@ const AppointmentCalendar = () => {
   const getAppointmentTypeColor = (type: AppointmentType) => {
     switch (type) {
       case 'avaliação':
-        return 'bg-[#F2FCE2] text-[#265255]';
+        return 'bg-[#9e50b3]/20 text-[#9e50b3]';
       case 'sessão':
-        return 'bg-[#FEF7CD] text-[#265255]';
+        return 'bg-[#1088c4]/20 text-[#1088c4]';
       case 'consulta':
-        return 'bg-[#FDE1D3] text-[#265255]';
+        return 'bg-[#ecc249]/20 text-[#ecc249]';
       default:
         return 'bg-gray-200 text-[#265255]';
     }
@@ -195,11 +213,11 @@ const AppointmentCalendar = () => {
   const getAppointmentTypeBoxShadow = (type: AppointmentType) => {
     switch (type) {
       case 'avaliação':
-        return 'shadow-[0_0_15px_rgba(165,219,133,0.3)]';
+        return 'shadow-[0_0_15px_rgba(158,80,179,0.3)]';
       case 'sessão':
-        return 'shadow-[0_0_15px_rgba(255,228,132,0.3)]';
+        return 'shadow-[0_0_15px_rgba(16,136,196,0.3)]';
       case 'consulta':
-        return 'shadow-[0_0_15px_rgba(250,169,135,0.3)]';
+        return 'shadow-[0_0_15px_rgba(236,194,73,0.3)]';
       default:
         return 'shadow-md';
     }
@@ -331,15 +349,15 @@ const AppointmentCalendar = () => {
             <div className="mt-8 space-y-2">
               <h4 className="font-medium text-[#265255]">Tipos de Eventos</h4>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-[#F2FCE2]"></div>
+                <div className="w-4 h-4 rounded-full bg-[#9e50b3]/20"></div>
                 <span className="text-sm text-[#265255]">Avaliação Inicial</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-[#FEF7CD]"></div>
+                <div className="w-4 h-4 rounded-full bg-[#1088c4]/20"></div>
                 <span className="text-sm text-[#265255]">Neurofeedback</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-[#FDE1D3]"></div>
+                <div className="w-4 h-4 rounded-full bg-[#ecc249]/20"></div>
                 <span className="text-sm text-[#265255]">Discussão de resultados</span>
               </div>
             </div>
@@ -406,35 +424,49 @@ const AppointmentCalendar = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="clientName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome do Cliente</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Nome do cliente" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
+              <div className="grid grid-cols-1 gap-4">
                 <FormField
                   control={form.control}
                   name="clientId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ID do Cliente</FormLabel>
+                      <FormLabel>Cliente</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="ID do cliente" />
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um cliente" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.name} ({client.id})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+              
+              <FormField
+                control={form.control}
+                name="clientName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Cliente (se não estiver na lista)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Nome do cliente" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <FormField
                 control={form.control}
