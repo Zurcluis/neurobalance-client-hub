@@ -126,3 +126,45 @@
 .switch-checked {
   @apply bg-[#3f9094];
 }
+
+/* Fix for dark mode text visibility */
+.dark .text-gray-600,
+.dark .text-gray-700,
+.dark .text-gray-800 {
+  @apply text-gray-300;
+}
+
+/* Fix for logo visibility in dark mode */
+.dark .logo-container svg path,
+.dark .logo-icon {
+  @apply fill-white stroke-white;
+}
+
+/* Card styling for client categories */
+.card-glass {
+  @apply bg-white/90 backdrop-blur-sm border border-white/50 shadow-sm p-4 rounded-lg;
+}
+
+.dark .card-glass {
+  @apply bg-[#1A1F2C]/80 backdrop-blur-sm border border-white/10 shadow-lg;
+}
+
+.client-ongoing {
+  @apply border-l-4 border-l-green-500;
+}
+
+.client-thinking {
+  @apply border-l-4 border-l-yellow-500;
+}
+
+.client-no-need {
+  @apply border-l-4 border-l-red-500;
+}
+
+.client-finished {
+  @apply border-l-4 border-l-blue-500;
+}
+
+.client-call {
+  @apply border-l-4 border-l-purple-500;
+}

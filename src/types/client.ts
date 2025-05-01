@@ -11,6 +11,7 @@ export interface ClientDetailData {
   notes?: string;
   birthday?: string;
   maxSessions?: number;
+  status?: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
 }
 
 export interface Session {

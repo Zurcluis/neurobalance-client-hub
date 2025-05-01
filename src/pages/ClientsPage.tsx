@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Função para carregar clientes do localStorage
 const loadClientsFromStorage = (): ClientData[] => {
@@ -36,6 +37,14 @@ const ClientsPage = () => {
     client.phone.includes(searchQuery)
   );
 
+  const clientsByStatus = {
+    ongoing: filteredClients.filter(client => client.status === 'ongoing' || !client.status),
+    thinking: filteredClients.filter(client => client.status === 'thinking'),
+    'no-need': filteredClients.filter(client => client.status === 'no-need'),
+    finished: filteredClients.filter(client => client.status === 'finished'),
+    call: filteredClients.filter(client => client.status === 'call'),
+  };
+
   const handleAddClient = (data: ClientFormData) => {
     const newClient: ClientData = {
       id: data.id || Date.now().toString(),
@@ -44,7 +53,8 @@ const ClientsPage = () => {
       phone: data.contato,
       sessionCount: 0,
       nextSession: null,
-      totalPaid: 0
+      totalPaid: 0,
+      status: 'ongoing'
     };
     
     setClients(prev => [...prev, newClient]);
@@ -64,7 +74,7 @@ const ClientsPage = () => {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold gradient-heading">Clientes</h1>
-          <p className="text-gray-600 mt-2">Gerir informações dos clientes</p>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">Gerir informações dos clientes</p>
         </div>
         
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-4 w-full md:w-auto">
@@ -98,29 +108,44 @@ const ClientsPage = () => {
         </div>
       </div>
       
-      {filteredClients.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredClients.map(client => (
-            <ClientCard 
-              key={client.id} 
-              client={client} 
-              onDelete={handleDeleteClient}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm p-8">
-          <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
-          <p className="text-gray-600 mb-6">Adicione seu primeiro cliente para começar</p>
-          <Button 
-            className="bg-[#3f9094] hover:bg-[#265255]" 
-            onClick={() => setDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Novo Cliente
-          </Button>
-        </div>
-      )}
+      <Tabs defaultValue="ongoing" className="w-full">
+        <TabsList className="grid grid-cols-5 mb-6">
+          <TabsTrigger value="ongoing">Em Progresso</TabsTrigger>
+          <TabsTrigger value="thinking">Em Consideração</TabsTrigger>
+          <TabsTrigger value="no-need">Sem Necessidade</TabsTrigger>
+          <TabsTrigger value="finished">Concluídos</TabsTrigger>
+          <TabsTrigger value="call">Contactar</TabsTrigger>
+        </TabsList>
+        
+        {Object.entries(clientsByStatus).map(([status, clientList]) => (
+          <TabsContent key={status} value={status} className="mt-0">
+            {clientList.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {clientList.map(client => (
+                  <ClientCard 
+                    key={client.id} 
+                    client={client} 
+                    onDelete={handleDeleteClient}
+                    statusClass={`client-${status}`}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-white dark:bg-[#1A1F2C] rounded-lg shadow-sm p-8">
+                <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">Adicione seu primeiro cliente para começar</p>
+                <Button 
+                  className="bg-[#3f9094] hover:bg-[#265255]" 
+                  onClick={() => setDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Novo Cliente
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
     </PageLayout>
   );
 };

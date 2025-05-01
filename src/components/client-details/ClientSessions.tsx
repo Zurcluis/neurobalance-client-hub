@@ -25,6 +25,7 @@ interface ClientSessionsProps {
 const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClient }: ClientSessionsProps) => {
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
   const [isMaxSessionsDialogOpen, setIsMaxSessionsDialogOpen] = useState(false);
+  const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const sessionForm = useForm<Session>();
   const maxSessionsForm = useForm<{ maxSessions: number }>({
     defaultValues: {
@@ -99,6 +100,18 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     toast.success("Número máximo de sessões definido com sucesso");
   };
 
+  const handleCompleteProcess = () => {
+    const updatedClient = { ...client, status: 'finished' as const };
+    onUpdateClient(updatedClient);
+    setIsCompleteDialogOpen(false);
+    toast.success("Processo concluído com sucesso");
+    
+    // Redirect to clients page after completion
+    setTimeout(() => {
+      window.location.href = '/clients';
+    }, 1500);
+  };
+
   return (
     <Card className="glassmorphism">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -132,6 +145,13 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
           >
             Adicionar Sessão
           </Button>
+          <Button
+            variant="outline"
+            className="bg-blue-500 hover:bg-blue-700 text-white"
+            onClick={() => setIsCompleteDialogOpen(true)}
+          >
+            Concluir Processo
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -159,7 +179,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-medium text-sm">{session.title}</h4>
-                      <p className="text-xs text-gray-700">
+                      <p className="text-xs text-gray-700 dark:text-gray-300">
                         {format(new Date(session.date), 'dd/MM/yyyy')} às {session.date.split('T')[1] || ''}
                       </p>
                     </div>
@@ -196,7 +216,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                         {session.paid ? 'Pago' : 'Não Pago'}
                       </Badge>
                     </div>
-                    <p className="text-sm mt-2 text-gray-700">{session.notes}</p>
+                    <p className="text-sm mt-2 text-gray-700 dark:text-gray-300">{session.notes}</p>
                   </div>
                   <Check className="h-5 w-5 text-[#3f9094]" />
                 </div>
@@ -205,7 +225,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
           </div>
         ) : (
           <div className="py-8 text-center">
-            <p className="text-gray-600">Sem histórico de sessões disponível</p>
+            <p className="text-gray-600 dark:text-gray-300">Sem histórico de sessões disponível</p>
           </div>
         )}
       </CardContent>
@@ -216,7 +236,10 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
             <DialogTitle>Adicionar Nova Sessão</DialogTitle>
           </DialogHeader>
           <Form {...sessionForm}>
-            <form onSubmit={sessionForm.handleSubmit(onAddSession)} className="space-y-4">
+            <form onSubmit={sessionForm.handleSubmit((data) => {
+              onAddSession(data);
+              setIsSessionDialogOpen(false);
+            })} className="space-y-4">
               <FormField
                 control={sessionForm.control}
                 name="date"
@@ -328,6 +351,33 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCompleteDialogOpen} onOpenChange={setIsCompleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Concluir Processo</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>Tem certeza que deseja marcar este processo como concluído? O cliente será movido para a categoria "Concluídos".</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => setIsCompleteDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="button"
+              className="bg-blue-500 hover:bg-blue-700"
+              onClick={handleCompleteProcess}
+            >
+              Confirmar Conclusão
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>

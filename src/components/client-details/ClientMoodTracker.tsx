@@ -2,183 +2,482 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
 import { ClientMood } from '@/types/client';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { AlertTriangle, Edit, Smile, Trash2 } from 'lucide-react';
+import { 
+  AlertDialog, 
+  AlertDialogContent, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction
+} from '@/components/ui/alert-dialog';
 
 interface ClientMoodTrackerProps {
   clientId: string;
-  onSubmitMood: (mood: ClientMood) => void;
   moods: ClientMood[];
+  onSubmitMood: (mood: ClientMood) => void;
 }
 
-const moodOptions = [
-  { value: 'happy', label: 'Bem disposto' },
-  { value: 'tired', label: 'Cansado' },
-  { value: 'sleepy', label: 'Com sono' },
-  { value: 'angry', label: 'Irritado' },
-  { value: 'anxious', label: 'Ansioso' },
-  { value: 'relaxed', label: 'Relaxado' },
-  { value: 'sad', label: 'Triste' },
-  { value: 'stressed', label: 'Stressado' },
-];
+interface MoodFormValues {
+  mood: string;
+  sleepQuality?: string;
+  notes?: string;
+  date: string;
+}
 
-const sleepOptions = [
-  { value: 'good', label: 'Bem' },
-  { value: 'average', label: 'Razoável' },
-  { value: 'bad', label: 'Mal' }
-];
-
-const ClientMoodTracker = ({ clientId, onSubmitMood, moods }: ClientMoodTrackerProps) => {
-  const [currentMood, setCurrentMood] = useState<string>('');
-  const [sleepQuality, setSleepQuality] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!currentMood) {
-      toast.error('Por favor selecione o seu estado emocional');
-      return;
+const ClientMoodTracker = ({ clientId, moods, onSubmitMood }: ClientMoodTrackerProps) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<ClientMood | null>(null);
+  
+  const form = useForm<MoodFormValues>({
+    defaultValues: {
+      mood: 'happy',
+      sleepQuality: 'good',
+      notes: '',
+      date: new Date().toISOString().split('T')[0]
     }
-    
+  });
+  
+  const editForm = useForm<MoodFormValues & { id: string }>({
+    defaultValues: {
+      id: '',
+      mood: 'happy',
+      sleepQuality: 'good',
+      notes: '',
+      date: new Date().toISOString().split('T')[0]
+    }
+  });
+
+  const handleOpenEditDialog = (mood: ClientMood) => {
+    setSelectedMood(mood);
+    editForm.reset({
+      id: mood.id,
+      mood: mood.mood,
+      sleepQuality: mood.sleepQuality,
+      notes: mood.notes,
+      date: mood.date.split('T')[0]
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleOpenDeleteDialog = (mood: ClientMood) => {
+    setSelectedMood(mood);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleSubmit = (data: MoodFormValues) => {
     const newMood: ClientMood = {
       id: Date.now().toString(),
       clientId,
-      mood: currentMood,
-      sleepQuality,
-      notes,
-      date: new Date().toISOString(),
+      ...data,
+      date: `${data.date}T00:00:00.000Z`
     };
     
     onSubmitMood(newMood);
-    
-    // Reset form
-    setCurrentMood('');
-    setSleepQuality('');
-    setNotes('');
-    
-    toast.success('Estado emocional registado com sucesso');
+    setIsDialogOpen(false);
+    form.reset();
+    toast.success('Estado emocional registrado com sucesso');
   };
 
-  // Sort moods by date (newest first)
-  const sortedMoods = [...moods].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const handleEditSubmit = (data: MoodFormValues & { id: string }) => {
+    // Get all moods from localStorage
+    const allMoods = JSON.parse(localStorage.getItem('clientMoods') || '[]');
+    
+    // Update the specific mood
+    const updatedMoods = allMoods.map((mood: ClientMood) => 
+      mood.id === data.id ? {
+        ...mood,
+        mood: data.mood,
+        sleepQuality: data.sleepQuality,
+        notes: data.notes,
+        date: `${data.date}T00:00:00.000Z`
+      } : mood
+    );
+    
+    // Save back to localStorage
+    localStorage.setItem('clientMoods', JSON.stringify(updatedMoods));
+    
+    setIsEditDialogOpen(false);
+    toast.success('Estado emocional atualizado com sucesso');
+    
+    // Reload page to reflect changes
+    window.location.reload();
+  };
+
+  const handleDeleteMood = () => {
+    if (!selectedMood) return;
+    
+    // Get all moods from localStorage
+    const allMoods = JSON.parse(localStorage.getItem('clientMoods') || '[]');
+    
+    // Filter out the mood to delete
+    const updatedMoods = allMoods.filter((mood: ClientMood) => mood.id !== selectedMood.id);
+    
+    // Save back to localStorage
+    localStorage.setItem('clientMoods', JSON.stringify(updatedMoods));
+    
+    setIsDeleteDialogOpen(false);
+    toast.success('Estado emocional excluído com sucesso');
+    
+    // Reload page to reflect changes
+    window.location.reload();
+  };
+
+  const getMoodIcon = (mood: string) => {
+    switch (mood) {
+      case 'happy':
+        return '😊';
+      case 'sad':
+        return '😢';
+      case 'angry':
+        return '😠';
+      case 'anxious':
+        return '😰';
+      case 'neutral':
+        return '😐';
+      case 'tired':
+        return '😴';
+      default:
+        return '🙂';
+    }
+  };
+
+  const getSleepQualityText = (quality?: string) => {
+    switch (quality) {
+      case 'good':
+        return 'Boa';
+      case 'average':
+        return 'Média';
+      case 'poor':
+        return 'Má';
+      default:
+        return 'Não especificada';
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <Card className="glassmorphism">
-        <CardHeader>
-          <CardTitle className="text-lg font-medium">Registar Estado Emocional</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Estado Emocional</label>
-              <Select value={currentMood} onValueChange={setCurrentMood}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o seu estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {moodOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Qualidade do Sono</label>
-              <Select value={sleepQuality} onValueChange={setSleepQuality}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Como dormiu?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sleepOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Observações</label>
-              <Textarea
-                placeholder="Notas adicionais sobre o estado emocional"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-[#3f9094] hover:bg-[#265255]"
-            >
-              Registar
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-      
-      <Card className="glassmorphism">
-        <CardHeader>
-          <CardTitle className="text-lg font-medium">Histórico de Estados Emocionais</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {sortedMoods.length > 0 ? (
-            <div className="space-y-3">
-              {sortedMoods.map((mood) => {
-                const moodLabel = moodOptions.find(m => m.value === mood.mood)?.label || mood.mood;
-                const sleepLabel = sleepOptions.find(s => s.value === mood.sleepQuality)?.label || mood.sleepQuality;
-                
-                return (
-                  <div 
-                    key={mood.id} 
-                    className="p-3 border rounded-lg bg-[#c5cfce]/10"
-                  >
-                    <div className="flex justify-between mb-1">
-                      <div className="font-medium">{moodLabel}</div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(mood.date).toLocaleDateString('pt-PT')}
-                      </div>
-                    </div>
-                    
-                    {mood.sleepQuality && (
-                      <div className="text-sm">
-                        <span className="text-gray-600">Sono:</span> {sleepLabel}
-                      </div>
-                    )}
-                    
-                    {mood.notes && (
-                      <div className="text-sm mt-1 text-gray-700">
-                        {mood.notes}
-                      </div>
-                    )}
+    <Card className="glassmorphism">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <Smile className="h-5 w-5" />
+          <span>Estado Emocional</span>
+        </CardTitle>
+        <Button 
+          className="bg-[#3f9094] hover:bg-[#265255]"
+          onClick={() => setIsDialogOpen(true)}
+        >
+          Registrar Estado
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {moods.length > 0 ? (
+          <div className="space-y-4">
+            {moods
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .map(mood => (
+                <div key={mood.id} className="p-4 rounded-lg bg-[#c5cfce]/50 border border-white/20 relative">
+                  <div className="absolute top-2 right-2 flex space-x-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleOpenEditDialog(mood)} 
+                      className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-100"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Editar</span>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleOpenDeleteDialog(mood)}
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Apagar</span>
+                    </Button>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="py-6 text-center text-gray-500">
-              Nenhum registo de estado emocional
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                  <div className="flex items-start gap-4 pr-16">
+                    <div className="text-4xl">{getMoodIcon(mood.mood)}</div>
+                    <div>
+                      <div className="font-medium text-lg">
+                        {mood.mood === 'happy' ? 'Feliz' : 
+                         mood.mood === 'sad' ? 'Triste' : 
+                         mood.mood === 'angry' ? 'Irritado' : 
+                         mood.mood === 'anxious' ? 'Ansioso' : 
+                         mood.mood === 'neutral' ? 'Neutro' : 
+                         mood.mood === 'tired' ? 'Cansado' : 'Desconhecido'}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        {format(new Date(mood.date), 'dd/MM/yyyy')}
+                      </div>
+                      <div className="text-sm mt-1">
+                        <span className="font-medium">Qualidade do sono:</span> {getSleepQualityText(mood.sleepQuality)}
+                      </div>
+                      {mood.notes && (
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                          {mood.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center py-8 text-center">
+            <AlertTriangle className="h-12 w-12 text-yellow-500 mb-2" />
+            <p className="text-gray-600 dark:text-gray-300 mb-4">Ainda não há registro do estado emocional.</p>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(true)}
+            >
+              Registrar Primeiro Estado
+            </Button>
+          </div>
+        )}
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Registrar Estado Emocional</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" required />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="mood"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado Emocional</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o estado emocional" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="happy">Feliz 😊</SelectItem>
+                          <SelectItem value="sad">Triste 😢</SelectItem>
+                          <SelectItem value="angry">Irritado 😠</SelectItem>
+                          <SelectItem value="anxious">Ansioso 😰</SelectItem>
+                          <SelectItem value="neutral">Neutro 😐</SelectItem>
+                          <SelectItem value="tired">Cansado 😴</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="sleepQuality"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Qualidade do Sono</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a qualidade do sono" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="good">Boa</SelectItem>
+                          <SelectItem value="average">Média</SelectItem>
+                          <SelectItem value="poor">Má</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notas Adicionais</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Alguma observação adicional?" 
+                          className="min-h-[100px]"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-[#3f9094] hover:bg-[#265255]"
+                  >
+                    Salvar
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Editar Estado Emocional</DialogTitle>
+            </DialogHeader>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" required />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="mood"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado Emocional</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o estado emocional" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="happy">Feliz 😊</SelectItem>
+                          <SelectItem value="sad">Triste 😢</SelectItem>
+                          <SelectItem value="angry">Irritado 😠</SelectItem>
+                          <SelectItem value="anxious">Ansioso 😰</SelectItem>
+                          <SelectItem value="neutral">Neutro 😐</SelectItem>
+                          <SelectItem value="tired">Cansado 😴</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="sleepQuality"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Qualidade do Sono</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a qualidade do sono" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="good">Boa</SelectItem>
+                          <SelectItem value="average">Média</SelectItem>
+                          <SelectItem value="poor">Má</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notas Adicionais</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Alguma observação adicional?" 
+                          className="min-h-[100px]"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => setIsEditDialogOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-[#3f9094] hover:bg-[#265255]"
+                  >
+                    Atualizar
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir este registro de estado emocional? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteMood}
+                className="bg-red-500 hover:bg-red-700"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Calendar, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 export interface ClientData {
   id: string;
@@ -13,21 +14,45 @@ export interface ClientData {
   sessionCount: number;
   nextSession: string | null;
   totalPaid: number;
+  status?: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
 }
 
 interface ClientCardProps {
   client: ClientData;
   onDelete: (id: string) => void;
+  statusClass?: string;
 }
 
-const ClientCard = ({ client, onDelete }: ClientCardProps) => {
+const ClientCard = ({ client, onDelete, statusClass }: ClientCardProps) => {
   const handleDelete = () => {
     onDelete(client.id);
     toast.success('Cliente eliminado com sucesso');
   };
 
+  const getStatusLabel = (status?: string) => {
+    switch(status) {
+      case 'ongoing': return 'Em Progresso';
+      case 'thinking': return 'Em Consideração';
+      case 'no-need': return 'Sem Necessidade';
+      case 'finished': return 'Concluído';
+      case 'call': return 'Contactar';
+      default: return 'Em Progresso';
+    }
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch(status) {
+      case 'ongoing': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      case 'thinking': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'no-need': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      case 'finished': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'call': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100';
+      default: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+    }
+  };
+
   return (
-    <div className="card-glass">
+    <div className={`card-glass ${statusClass || ''}`}>
       <div className="flex items-start justify-between">
         <div className="flex items-center">
           <div className="w-12 h-12 rounded-full bg-[#c5cfce] flex items-center justify-center">
@@ -35,7 +60,7 @@ const ClientCard = ({ client, onDelete }: ClientCardProps) => {
           </div>
           <div className="ml-4">
             <h3 className="font-medium text-lg">{client.name}</h3>
-            <p className="text-sm text-gray-600">{client.email}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">{client.email}</p>
           </div>
         </div>
         <Button 
@@ -48,23 +73,29 @@ const ClientCard = ({ client, onDelete }: ClientCardProps) => {
         </Button>
       </div>
       
+      <div className="mt-3">
+        <Badge className={`${getStatusColor(client.status)}`}>
+          {getStatusLabel(client.status)}
+        </Badge>
+      </div>
+
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
         <div>
-          <p className="text-gray-600">Telefone</p>
+          <p className="text-gray-600 dark:text-gray-300">Telefone</p>
           <p>{client.phone}</p>
         </div>
         <div>
-          <p className="text-gray-600">Sessões</p>
+          <p className="text-gray-600 dark:text-gray-300">Sessões</p>
           <p>{client.sessionCount}</p>
         </div>
         <div>
-          <p className="text-gray-600">Total Pago</p>
+          <p className="text-gray-600 dark:text-gray-300">Total Pago</p>
           <p>€{client.totalPaid.toFixed(2)}</p>
         </div>
       </div>
       
       {client.nextSession && (
-        <div className="mt-4 flex items-center text-sm text-gray-600">
+        <div className="mt-4 flex items-center text-sm text-gray-600 dark:text-gray-300">
           <Calendar className="w-4 h-4 mr-1" />
           <span>Próxima sessão: {client.nextSession}</span>
         </div>
