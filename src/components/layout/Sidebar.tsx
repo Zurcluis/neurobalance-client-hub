@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -12,24 +12,40 @@ import {
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import CommunicationsPanel from '@/components/communications/CommunicationsPanel';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { LanguageSwitch } from '@/components/language/LanguageSwitch';
+import { useLanguage } from '@/hooks/use-language';
+import SearchDialog from '@/components/search/SearchDialog';
+import GoogleCalendarSync from '@/components/calendar/GoogleCalendarSync';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showCommunications, setShowCommunications] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showCalendarSync, setShowCalendarSync] = useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
+  
+  // Get communication type from localStorage if exists
+  React.useEffect(() => {
+    const commType = localStorage.getItem('communicationType');
+    if (commType) {
+      localStorage.removeItem('communicationType');
+    }
+  }, []);
 
   const menuItems = [
-    { name: 'Dashboard', icon: <Home />, path: '/' },
-    { name: 'Clientes', icon: <User />, path: '/clients' },
-    { name: 'Calendário', icon: <Calendar />, path: '/calendar' },
-    { name: 'Finanças', icon: <BarChart3 />, path: '/finances' },
+    { name: t('dashboard'), icon: <Home />, path: '/' },
+    { name: t('clients'), icon: <User />, path: '/clients' },
+    { name: t('calendar'), icon: <Calendar />, path: '/calendar' },
+    { name: t('finances'), icon: <BarChart3 />, path: '/finances' },
   ];
   
   const communicationItems = [
-    { name: 'Mensagens', icon: <MessageSquare />, action: () => setShowCommunications(true), type: 'sms' },
-    { name: 'Email', icon: <Mail />, action: () => setShowCommunications(true), type: 'email' },
-    { name: 'Chamada', icon: <Phone />, action: () => setShowCommunications(true), type: 'call' },
+    { name: t('messages'), icon: <MessageSquare />, action: () => setShowCommunications(true), type: 'sms' },
+    { name: t('email'), icon: <Mail />, action: () => setShowCommunications(true), type: 'email' },
+    { name: t('call'), icon: <Phone />, action: () => setShowCommunications(true), type: 'call' },
   ];
 
   const renderSidebarContent = () => (
@@ -40,7 +56,7 @@ const Sidebar = () => {
             <img 
               src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
               alt="NeuroBalance Logo" 
-              className="h-32 w-auto mb-2" // Logo size doubled again (from 16 to 32)
+              className="h-32 w-auto mb-2" // Logo size doubled to 32
             />
             <h1 className="text-xl font-bold gradient-heading">
               NeuroBalance
@@ -50,18 +66,43 @@ const Sidebar = () => {
           <img 
             src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
             alt="NeuroBalance Logo" 
-            className="h-24 w-auto mx-auto" // Logo size doubled (from 12 to 24)
+            className="h-24 w-auto mx-auto" // Logo size doubled from 12 to 24
           />
         )}
         {!isMobile && (
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-lg hover:bg-[#c5cfce] transition-colors"
+            className="p-2 rounded-lg hover:bg-[#c5cfce] dark:hover:bg-[#265255]/40 transition-colors"
           >
             {isCollapsed ? <Menu /> : <X />}
           </button>
         )}
       </div>
+
+      <div className="flex items-center justify-center space-x-2 mb-4">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="rounded-full" 
+          onClick={() => setShowSearch(true)}
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+        
+        <ThemeToggle />
+        
+        <LanguageSwitch />
+      </div>
+
+      <Button 
+        variant="outline" 
+        size="sm"
+        className="mb-4 w-full text-xs"
+        onClick={() => setShowCalendarSync(true)}
+      >
+        <Calendar className="h-3 w-3 mr-1" />
+        Google Calendar
+      </Button>
 
       <nav className="flex-1">
         <ul className="space-y-2">
@@ -73,7 +114,7 @@ const Sidebar = () => {
                   'flex items-center p-3 rounded-lg transition-all duration-200',
                   location.pathname === item.path
                     ? 'bg-[#3f9094] text-white shadow-md'
-                    : 'hover:bg-[#c5cfce]',
+                    : 'hover:bg-[#c5cfce] dark:hover:bg-[#265255]/40',
                   isCollapsed && !isMobile ? 'justify-center' : 'justify-start'
                 )}
               >
@@ -87,10 +128,10 @@ const Sidebar = () => {
         {/* Communication section */}
         <div className="mt-8">
           <h3 className={cn(
-            'text-[#265255] font-medium mb-2',
+            'text-[#265255] dark:text-[#c5cfce] font-medium mb-2',
             isCollapsed && !isMobile ? 'text-center text-xs' : 'px-3'
           )}>
-            {(!isCollapsed || isMobile) ? 'Comunicações' : 'Com.'}
+            {(!isCollapsed || isMobile) ? t('communications') : 'Com.'}
           </h3>
           <ul className="space-y-2">
             {communicationItems.map((item) => (
@@ -101,7 +142,7 @@ const Sidebar = () => {
                     localStorage.setItem('communicationType', item.type);
                   }}
                   className={cn(
-                    'w-full flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-[#c5cfce]',
+                    'w-full flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-[#c5cfce] dark:hover:bg-[#265255]/40',
                     isCollapsed && !isMobile ? 'justify-center' : 'justify-start'
                   )}
                 >
@@ -116,14 +157,14 @@ const Sidebar = () => {
 
       <div className="pt-4">
         {(!isCollapsed || isMobile) && (
-          <div className="text-xs text-center text-gray-600">
+          <div className="text-xs text-center text-gray-600 dark:text-gray-400">
             <p>NeuroBalance Clinic</p>
-            <p className="mt-1">Sistema de Gestão de Clientes</p>
+            <p className="mt-1">{t('system')}</p>
           </div>
         )}
       </div>
-      
-      {/* Fixed: Moved the Drawer component outside and only use DrawerContent inside */}
+
+      {/* Communications Panel Drawer */}
       <Drawer open={showCommunications} onOpenChange={setShowCommunications}>
         <DrawerContent>
           <div className="p-4">
@@ -139,12 +180,18 @@ const Sidebar = () => {
           </div>
         </DrawerContent>
       </Drawer>
+      
+      {/* Search Dialog */}
+      <SearchDialog open={showSearch} onOpenChange={setShowSearch} />
+      
+      {/* Google Calendar Sync Dialog */}
+      <GoogleCalendarSync open={showCalendarSync} onOpenChange={setShowCalendarSync} />
     </div>
   );
 
   if (isMobile) {
     return (
-      <div className="fixed top-0 left-0 z-10 w-full bg-white/90 backdrop-blur-sm border-b border-gray-200 flex justify-between items-center px-4 py-3">
+      <div className="fixed top-0 left-0 z-10 w-full bg-white/90 dark:bg-[#1A1F2C]/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 flex justify-between items-center px-4 py-3">
         <Drawer>
           <DrawerTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -162,14 +209,16 @@ const Sidebar = () => {
           className="h-12 w-auto"
         />
         
-        <div className="w-10"></div> {/* Placeholder for balance */}
+        <Button variant="ghost" size="icon" onClick={() => setShowSearch(true)}>
+          <Search />
+        </Button>
       </div>
     );
   }
 
   return (
     <div className={cn(
-      'fixed top-0 left-0 h-screen glassmorphism z-10 transition-all duration-300',
+      'fixed top-0 left-0 h-screen glassmorphism z-10 transition-all duration-300 dark:bg-[#1A1F2C]/80 dark:border-r dark:border-white/10',
       isCollapsed ? 'w-20' : 'w-64',
     )}>
       {renderSidebarContent()}

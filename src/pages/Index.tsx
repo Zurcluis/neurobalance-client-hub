@@ -56,17 +56,9 @@ const Index = () => {
         <p className="text-neuro-gray mt-2">Welcome to NeuroBalance Client Management System</p>
       </div>
       
-      <div className="flex justify-center mb-8">
-        <img 
-          src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-          alt="NeuroBalance Logo" 
-          className="h-40 w-auto" // Logo size doubled
-        />
-      </div>
-      
       <DashboardOverview />
       
-      {/* MOVED: Today and Upcoming Appointments moved to bottom */}
+      {/* Today and Upcoming Appointments moved to bottom */}
       <div className="mt-8 space-y-8">
         {todayAppointments.length > 0 ? (
           <Card className="glassmorphism mb-8">

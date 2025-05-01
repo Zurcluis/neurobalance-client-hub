@@ -7,12 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { ClientDetailData, Session, Payment, ClientFile } from '@/types/client';
+import { ClientDetailData, Session, Payment, ClientFile, ClientMood } from '@/types/client';
 import ClientProfile from '@/components/client-details/ClientProfile';
 import ClientSessions from '@/components/client-details/ClientSessions';
 import ClientPayments from '@/components/client-details/ClientPayments';
 import ClientFiles from '@/components/client-details/ClientFiles';
 import ClientReports from '@/components/client-details/ClientReports';
+import ClientMoodTracker from '@/components/client-details/ClientMoodTracker';
 import { parseISO, format, isSameDay, isBefore } from 'date-fns';
 
 // Função para carregar dados do localStorage
@@ -34,6 +35,7 @@ const ClientDetailPage = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [files, setFiles] = useState<ClientFile[]>([]);
+  const [moods, setMoods] = useState<ClientMood[]>([]);
 
   // Carregar dados
   useEffect(() => {
@@ -55,6 +57,10 @@ const ClientDetailPage = () => {
     const allFiles = loadFromStorage<ClientFile[]>('clientFiles', []);
     const clientFiles = allFiles.filter(file => file.clientId === clientId);
     setFiles(clientFiles);
+    
+    const allMoods = loadFromStorage<ClientMood[]>('clientMoods', []);
+    const clientMoods = allMoods.filter(mood => mood.clientId === clientId);
+    setMoods(clientMoods);
 
     // Load appointments to get next session
     const appointments = loadFromStorage('appointments', []);
@@ -189,9 +195,17 @@ const ClientDetailPage = () => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       
-      const allowedTypes = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+      const allowedTypes = [
+        'application/pdf', 
+        'text/plain', 
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'image/jpeg',
+        'image/jpg',
+        'image/png'
+      ];
+      
       if (!allowedTypes.includes(file.type)) {
-        toast.error('Tipo de ficheiro não suportado. Apenas PDF, TXT e XLSX são permitidos.');
+        toast.error('Tipo de ficheiro não suportado. Apenas PDF, TXT, XLSX, JPG e PNG são permitidos.');
         return;
       }
       
@@ -201,6 +215,8 @@ const ClientDetailPage = () => {
       if (file.type === 'application/pdf') fileType = 'pdf';
       else if (file.type === 'text/plain') fileType = 'txt';
       else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') fileType = 'xlsx';
+      else if (file.type === 'image/jpeg' || file.type === 'image/jpg') fileType = 'jpg';
+      else if (file.type === 'image/png') fileType = 'png';
       
       const newFile: ClientFile = {
         id: Date.now().toString(),
@@ -229,6 +245,13 @@ const ClientDetailPage = () => {
     toast.success('Ficheiro eliminado com sucesso');
   };
   
+  const handleAddMood = (mood: ClientMood) => {
+    const allMoods = loadFromStorage<ClientMood[]>('clientMoods', []);
+    const updatedMoods = [...allMoods, mood];
+    saveToStorage('clientMoods', updatedMoods);
+    setMoods(prev => [...prev, mood]);
+  };
+  
   return (
     <PageLayout>
       <div className="flex items-center mb-8">
@@ -240,44 +263,45 @@ const ClientDetailPage = () => {
         </Link>
         <div>
           <h1 className="text-3xl font-bold gradient-heading">{client.name}</h1>
-          <p className="text-gray-600 mt-1">{client.email} • {client.phone}</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">{client.email} • {client.phone}</p>
         </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card className="glassmorphism">
           <CardContent className="pt-6">
-            <p className="text-gray-600">Total de Sessões</p>
+            <p className="text-gray-600 dark:text-gray-400">Total de Sessões</p>
             <p className="text-2xl font-bold">{client.sessionCount}</p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism">
           <CardContent className="pt-6">
-            <p className="text-gray-600">Total Pago</p>
+            <p className="text-gray-600 dark:text-gray-400">Total Pago</p>
             <p className="text-2xl font-bold">€{client.totalPaid?.toLocaleString()}</p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism md:col-span-2">
           <CardContent className="pt-6">
-            <p className="text-gray-600">Próxima Sessão</p>
+            <p className="text-gray-600 dark:text-gray-400">Próxima Sessão</p>
             {client.nextSession ? (
               <p className="text-xl font-medium">{client.nextSession}</p>
             ) : (
-              <p className="text-gray-500">Sem sessões agendadas</p>
+              <p className="text-gray-500 dark:text-gray-400">Sem sessões agendadas</p>
             )}
           </CardContent>
         </Card>
       </div>
       
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid grid-cols-5 mb-6">
+        <TabsList className="grid grid-cols-6 mb-6">
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
           <TabsTrigger value="payments">Pagamentos</TabsTrigger>
           <TabsTrigger value="files">Ficheiros</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
+          <TabsTrigger value="mood">Estado Emocional</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile" className="mt-0">
@@ -316,6 +340,14 @@ const ClientDetailPage = () => {
             client={client}
             sessions={sessions}
             payments={payments}
+          />
+        </TabsContent>
+        
+        <TabsContent value="mood" className="mt-0">
+          <ClientMoodTracker 
+            clientId={clientId as string} 
+            onSubmitMood={handleAddMood}
+            moods={moods}
           />
         </TabsContent>
       </Tabs>

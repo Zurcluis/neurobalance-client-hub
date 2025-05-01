@@ -50,3 +50,17 @@ export interface Communication {
   date: string;
   status: string;
 }
+
+export interface ClientMood {
+  id: string;
+  clientId: string;
+  mood: string;
+  sleepQuality?: string;
+  notes?: string;
+  date: string;
+}
+
+export interface Language {
+  key: string;
+  label: string;
+}

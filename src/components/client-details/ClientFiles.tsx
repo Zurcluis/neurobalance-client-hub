@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Trash2, Upload } from 'lucide-react';
+import { FileText, Trash2, Upload, Image } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ClientFile } from '@/types/client';
@@ -24,6 +24,10 @@ const ClientFiles = ({ files, onUploadFile, onDeleteFile }: ClientFilesProps) =>
         return <FileText className="h-5 w-5 text-blue-500" />;
       case 'xlsx':
         return <FileText className="h-5 w-5 text-green-500" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return <Image className="h-5 w-5 text-purple-500" />;
       default:
         return <FileText className="h-5 w-5 text-gray-500" />;
     }
@@ -55,13 +59,13 @@ const ClientFiles = ({ files, onUploadFile, onDeleteFile }: ClientFilesProps) =>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Selecione um ficheiro para carregar (PDF, TXT ou XLSX)
+                Selecione um ficheiro para carregar (PDF, TXT, XLSX, JPG, PNG)
               </p>
               <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
                 <Input 
                   type="file" 
                   onChange={onUploadFile}
-                  accept=".pdf,.txt,.xlsx,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  accept=".pdf,.txt,.xlsx,.jpg,.jpeg,.png,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png"
                   className="w-full"
                 />
               </div>

@@ -1,6 +1,4 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,82 +6,123 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 180 40% 24%;
-
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 180 40% 24%;
-
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 180 40% 24%;
-
-    --primary: 180 40% 40%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 180 20% 84%;
-    --secondary-foreground: 180 40% 24%;
-
-    --muted: 180 20% 84%;
-    --muted-foreground: 180 40% 46%;
-
-    --accent: 180 20% 84%;
-    --accent-foreground: 180 40% 24%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 180 20% 88%;
-    --input: 180 20% 88%;
-    --ring: 180 40% 40%;
-
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 162 40% 34%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 168 15% 79%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 162 40% 34%;
     --radius: 0.75rem;
-
-    --sidebar-background: 180 20% 94%;
-    --sidebar-foreground: 180 40% 24%;
-    --sidebar-primary: 180 40% 32%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 180 20% 90%;
-    --sidebar-accent-foreground: 180 40% 24%;
-    --sidebar-border: 180 20% 88%;
-    --sidebar-ring: 180 40% 40%;
+    
+    --neuro-teal: 172 40% 34%;
+    --neuro-light-teal: 172 20% 49%;
+    --neuro-dark-teal: 172 40% 24%;
+    --neuro-gray: 168 15% 79%;
+    --neuro-background: 168 20% 90%;
   }
 
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-gradient-to-br from-[#c5cfce] to-[#e5e9e9] text-foreground overflow-x-hidden min-h-screen;
-    font-feature-settings: "rlig" 1, "calt" 1;
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 172 40% 34%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 172 40% 34%;
+    
+    --neuro-teal: 172 40% 54%;
+    --neuro-light-teal: 172 20% 69%;
+    --neuro-dark-teal: 172 40% 44%;
+    --neuro-gray: 168 15% 59%;
+    --neuro-background: 240 10% 10%;
   }
 }
 
-@layer components {
-  .glassmorphism {
-    @apply backdrop-blur-sm bg-white/60 border border-white/20 shadow-lg;
+@layer base {
+  * {
+    @apply border-border;
   }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
 
-  .gradient-heading {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#265255] to-[#3f9094];
-  }
+.gradient-heading {
+  @apply bg-gradient-to-r from-[#3f9094] to-[#265255] bg-clip-text text-transparent;
+}
 
-  .card-glass {
-    @apply glassmorphism rounded-xl p-4 transition-all duration-300 hover:shadow-xl;
-  }
-  
-  /* New Glassmorphism Calendar Styles */
-  .calendar-glassmorphism {
-    @apply bg-gradient-to-br from-[#e5f6f7]/70 to-[#f0f7f7]/70 backdrop-blur-md border border-white/30 rounded-xl shadow-[0_8px_32px_0_rgba(31,38,135,0.1)];
-  }
-  
-  .event-avaliacao {
-    @apply bg-[#F2FCE2]/80 text-[#265255] backdrop-blur-sm border border-[#F2FCE2] shadow-[0_0_15px_rgba(165,219,133,0.3)];
-  }
-  
-  .event-neurofeedback {
-    @apply bg-[#FEF7CD]/80 text-[#265255] backdrop-blur-sm border border-[#FEF7CD] shadow-[0_0_15px_rgba(255,228,132,0.3)];
-  }
-  
-  .event-discussao {
-    @apply bg-[#FDE1D3]/80 text-[#265255] backdrop-blur-sm border border-[#FDE1D3] shadow-[0_0_15px_rgba(250,169,135,0.3)];
-  }
+.dark .gradient-heading {
+  @apply bg-gradient-to-r from-[#5fb1b6] to-[#3a7476] bg-clip-text text-transparent;
+}
+
+.glassmorphism {
+  @apply bg-white/90 backdrop-blur-sm border border-white/50 shadow-sm;
+}
+
+.dark .glassmorphism {
+  @apply bg-[#1A1F2C]/80 backdrop-blur-sm border border-white/10 shadow-lg;
+}
+
+.text-neuro-gray {
+  @apply text-gray-500 dark:text-gray-400;
+}
+
+/* Calendar event styling */
+.rbc-event {
+  @apply bg-[#3f9094] border-[#265255];
+}
+
+.rbc-today {
+  @apply bg-[#c5cfce]/30 dark:bg-[#265255]/20;
+}
+
+.rbc-toolbar button.rbc-active {
+  @apply bg-[#3f9094] text-white border-[#265255];
+}
+
+.rbc-toolbar button:hover {
+  @apply bg-[#c5cfce];
+}
+
+/* Progress bar styling for dark mode */
+.dark .progress-indicator {
+  @apply bg-[#5fb1b6];
+}
+
+/* Progress bar styling for light mode */
+.progress-indicator {
+  @apply bg-[#3f9094];
+}
+
+/* Switch for dark mode */
+.dark .switch-checked {
+  @apply bg-[#5fb1b6];
+}
+
+.switch-checked {
+  @apply bg-[#3f9094];
 }
