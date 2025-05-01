@@ -39,3 +39,14 @@ export interface ClientFile {
   url: string;
   uploadDate: string;
 }
+
+export interface Communication {
+  id: string;
+  clientId: string;
+  clientName: string;
+  type: 'sms' | 'email' | 'call';
+  subject: string;
+  message: string;
+  date: string;
+  status: string;
+}

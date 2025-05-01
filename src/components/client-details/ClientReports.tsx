@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ClientDetailData, Session, Payment } from '@/types/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ClientReportsProps {
   client: ClientDetailData;
@@ -14,6 +15,23 @@ interface ClientReportsProps {
 }
 
 const ClientReports = ({ client, sessions, payments }: ClientReportsProps) => {
+  const [notes, setNotes] = useState<string>(client.notes || '');
+
+  const handleSaveNotes = () => {
+    // Update client notes in localStorage
+    const clients = JSON.parse(localStorage.getItem('clients') || '[]');
+    const updatedClients = clients.map((c: ClientDetailData) => {
+      if (c.id === client.id) {
+        return { ...c, notes: notes };
+      }
+      return c;
+    });
+    localStorage.setItem('clients', JSON.stringify(updatedClients));
+    
+    // Show toast or some feedback
+    alert('Notas salvas com sucesso');
+  };
+  
   const generateProgressReport = () => {
     const totalSessions = sessions.length;
     const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -37,6 +55,8 @@ const ClientReports = ({ client, sessions, payments }: ClientReportsProps) => {
     content += `\nRESUMO FINANCEIRO\n`;
     content += `Total Pago: €${totalPaid.toFixed(2)}\n`;
     content += `Média por Sessão: €${averagePerSession.toFixed(2)}\n\n`;
+    
+    content += `NOTAS DO CLIENTE:\n${notes || 'Sem notas'}\n\n`;
     
     content += `DETALHES DAS SESSÕES:\n`;
     sessions.forEach((session, index) => {
@@ -85,6 +105,22 @@ const ClientReports = ({ client, sessions, payments }: ClientReportsProps) => {
             >
               <Download className="h-4 w-4" />
               <span>Baixar Relatório</span>
+            </Button>
+          </div>
+          
+          <div className="bg-white/30 backdrop-blur-sm p-6 rounded-lg border border-white/20">
+            <h3 className="text-lg font-medium mb-4">Notas do Cliente</h3>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Adicione notas sobre o cliente aqui..."
+              className="min-h-[150px] mb-4"
+            />
+            <Button 
+              onClick={handleSaveNotes}
+              className="bg-[#3f9094] hover:bg-[#265255]"
+            >
+              Salvar Notas
             </Button>
           </div>
 

@@ -8,10 +8,13 @@ import { parseISO, format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import UpcomingAppointmentsTable from '@/components/dashboard/UpcomingAppointmentsTable';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
   const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Load appointments from localStorage
@@ -46,19 +49,6 @@ const Index = () => {
     setUpcomingAppointments(future.slice(0, 5));
   }, []);
 
-  const getAppointmentTypeColor = (type: string) => {
-    switch (type) {
-      case 'avaliação':
-        return 'bg-[#9e50b3]/20 text-[#9e50b3] border-[#9e50b3]/30';
-      case 'sessão':
-        return 'bg-[#1088c4]/20 text-[#1088c4] border-[#1088c4]/30';
-      case 'consulta':
-        return 'bg-[#ecc249]/20 text-[#ecc249] border-[#ecc249]/30';
-      default:
-        return 'bg-gray-200 text-[#265255] border-gray-300';
-    }
-  };
-
   return (
     <PageLayout>
       <div className="mb-8">
@@ -74,91 +64,72 @@ const Index = () => {
         />
       </div>
       
-      {todayAppointments.length > 0 && (
-        <Card className="glassmorphism mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              <span>Agendamentos de Hoje</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {todayAppointments.map((appointment: any) => (
-                <div 
-                  key={appointment.id} 
-                  className={`p-3 rounded-lg border ${getAppointmentTypeColor(appointment.type)}`}
+      <DashboardOverview />
+      
+      {/* MOVED: Today and Upcoming Appointments moved to bottom */}
+      <div className="mt-8 space-y-8">
+        {todayAppointments.length > 0 ? (
+          <Card className="glassmorphism mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                <span>Agendamentos de Hoje</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UpcomingAppointmentsTable appointments={todayAppointments} />
+              <div className="mt-3 text-right">
+                <Link 
+                  to="/calendar" 
+                  className="text-[#3f9094] hover:text-[#265255] text-sm inline-flex items-center"
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-medium">{appointment.title}</h3>
-                      <p className="text-sm">{appointment.clientName}</p>
-                      <p className="text-xs">ID: {appointment.clientId}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm px-3 py-1 rounded-full bg-white/30 backdrop-blur-sm">
-                        {appointment.date.split('T')[1] || '09:00'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {upcomingAppointments.length > 0 && (
-        <Card className="glassmorphism mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              <span>Próximos Agendamentos</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {upcomingAppointments.map((appointment: any) => (
-                <div 
-                  key={appointment.id} 
-                  className={`p-3 rounded-lg border ${getAppointmentTypeColor(appointment.type)}`}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <Link to={`/clients/${appointment.clientId}`} className="hover:underline">
-                        <h3 className="font-medium">{appointment.title}</h3>
-                      </Link>
-                      <p className="text-sm">{appointment.clientName}</p>
-                      <p className="text-xs">ID: {appointment.clientId}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-sm px-3 py-1 rounded-full bg-white/30 backdrop-blur-sm">
-                        {format(parseISO(appointment.date), "dd/MM/yyyy")} às {appointment.date.split('T')[1] || '09:00'}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className={appointment.confirmed ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
-                      >
-                        {appointment.confirmed ? "Confirmado" : "Pendente"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 text-right">
+                  Ver calendário completo
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="glassmorphism mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                <span>Agendamentos de Hoje</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-8">
+              <p className="text-gray-500 mb-2">Sem agendamentos para hoje</p>
               <Link 
                 to="/calendar" 
-                className="text-[#3f9094] hover:text-[#265255] text-sm inline-flex items-center"
+                className="text-[#3f9094] hover:text-[#265255] text-sm inline-block"
               >
-                Ver todos os agendamentos
+                Ir para o calendário
               </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
-      <DashboardOverview />
+            </CardContent>
+          </Card>
+        )}
+
+        {upcomingAppointments.length > 0 && (
+          <Card className="glassmorphism mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                <span>Próximos Agendamentos</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UpcomingAppointmentsTable appointments={upcomingAppointments} />
+              <div className="mt-3 text-right">
+                <Link 
+                  to="/calendar" 
+                  className="text-[#3f9094] hover:text-[#265255] text-sm inline-flex items-center"
+                >
+                  Ver todos os agendamentos
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </PageLayout>
   );
 };

@@ -21,6 +21,7 @@ import { addDays, format, isSameDay, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Card, CardContent } from '../ui/card';
 import { ClientDetailData } from '@/types/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type AppointmentType = 'sessão' | 'avaliação' | 'consulta';
 
@@ -32,6 +33,7 @@ interface Appointment {
   clientId: string;
   type: AppointmentType;
   notes?: string;
+  confirmed?: boolean;
 }
 
 interface AppointmentFormValues {
@@ -42,6 +44,7 @@ interface AppointmentFormValues {
   clientId: string;
   type: AppointmentType;
   notes: string;
+  confirmed?: boolean;
 }
 
 const defaultAppointments: Appointment[] = [
@@ -53,6 +56,7 @@ const defaultAppointments: Appointment[] = [
     clientId: 'CL001',
     type: 'sessão',
     notes: 'Segunda sessão de follow-up.',
+    confirmed: true
   },
   {
     id: '2',
@@ -62,6 +66,7 @@ const defaultAppointments: Appointment[] = [
     clientId: 'CL002',
     type: 'avaliação',
     notes: 'Primeiro contacto, avaliação inicial.',
+    confirmed: true
   },
   {
     id: '3',
@@ -71,6 +76,7 @@ const defaultAppointments: Appointment[] = [
     clientId: 'CL003',
     type: 'consulta',
     notes: 'Discussão de resultados após 5 sessões.',
+    confirmed: false
   },
 ];
 
@@ -85,6 +91,7 @@ const AppointmentCalendar = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [clients, setClients] = useState<ClientDetailData[]>([]);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Load clients from localStorage
@@ -103,6 +110,7 @@ const AppointmentCalendar = () => {
       clientId: '',
       type: 'sessão',
       notes: '',
+      confirmed: false
     },
   });
 
@@ -121,7 +129,7 @@ const AppointmentCalendar = () => {
       // Editar agendamento existente
       const updatedAppointments = appointments.map(app => 
         app.id === selectedAppointment.id ? 
-        { ...app, title: data.title, clientName: data.clientName, clientId: data.clientId, type: data.type, notes: data.notes, date: combinedDateTime } : 
+        { ...app, title: data.title, clientName: data.clientName, clientId: data.clientId, type: data.type, notes: data.notes, date: combinedDateTime, confirmed: data.confirmed } : 
         app
       );
       setAppointments(updatedAppointments);
@@ -137,6 +145,7 @@ const AppointmentCalendar = () => {
         type: data.type,
         notes: data.notes,
         date: combinedDateTime,
+        confirmed: data.confirmed
       };
       
       const newAppointments = [...appointments, newAppointment];
@@ -155,10 +164,20 @@ const AppointmentCalendar = () => {
     
     setSelectedDate(date);
     form.setValue('date', format(date, 'yyyy-MM-dd'));
-    // Se não houver um agendamento selecionado, abra para adicionar novo
-    if (!selectedAppointment) {
-      setIsDialogOpen(true);
-    }
+    // Always open dialog when selecting a date to add a new appointment
+    // This allows scheduling multiple events on the same day
+    setSelectedAppointment(null);
+    form.reset({
+      title: '',
+      date: format(date, 'yyyy-MM-dd'),
+      time: '09:00',
+      clientName: '',
+      clientId: '',
+      type: 'sessão',
+      notes: '',
+      confirmed: false
+    });
+    setIsDialogOpen(true);
   };
 
   const handleAppointmentSelect = (appointment: Appointment) => {
@@ -173,6 +192,7 @@ const AppointmentCalendar = () => {
       clientId: appointment.clientId || '',
       type: appointment.type,
       notes: appointment.notes || '',
+      confirmed: appointment.confirmed || false
     });
     
     setIsDialogOpen(true);
@@ -239,8 +259,8 @@ const AppointmentCalendar = () => {
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-        <Card className="glassmorphism lg:col-span-3 p-4 min-h-[800px]">
+      <div className={`grid grid-cols-1 gap-6 ${isMobile ? '' : 'lg:grid-cols-4'}`}>
+        <Card className={`glassmorphism ${isMobile ? '' : 'lg:col-span-3'} p-4 min-h-[800px]`}>
           <CardContent className="p-0 h-full">
             <Calendar 
               mode="single"
@@ -488,6 +508,32 @@ const AppointmentCalendar = () => {
                         <SelectItem value="sessão">Neurofeedback</SelectItem>
                         <SelectItem value="avaliação">Avaliação Inicial</SelectItem>
                         <SelectItem value="consulta">Discussão de resultados</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="confirmed"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === 'true')} 
+                      defaultValue={String(field.value)}
+                      value={String(field.value)}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Confirmado</SelectItem>
+                        <SelectItem value="false">Pendente</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
