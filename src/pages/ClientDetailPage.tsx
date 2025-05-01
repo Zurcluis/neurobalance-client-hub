@@ -12,6 +12,7 @@ import ClientProfile from '@/components/client-details/ClientProfile';
 import ClientSessions from '@/components/client-details/ClientSessions';
 import ClientPayments from '@/components/client-details/ClientPayments';
 import ClientFiles from '@/components/client-details/ClientFiles';
+import ClientReports from '@/components/client-details/ClientReports';
 import { parseISO, format, isSameDay, isBefore } from 'date-fns';
 
 // Função para carregar dados do localStorage
@@ -271,11 +272,12 @@ const ClientDetailPage = () => {
       </div>
       
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid grid-cols-4 mb-6">
+        <TabsList className="grid grid-cols-5 mb-6">
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
           <TabsTrigger value="payments">Pagamentos</TabsTrigger>
           <TabsTrigger value="files">Ficheiros</TabsTrigger>
+          <TabsTrigger value="reports">Relatórios</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile" className="mt-0">
@@ -287,6 +289,8 @@ const ClientDetailPage = () => {
             sessions={sessions}
             clientId={clientId as string}
             onAddSession={addSession}
+            client={client}
+            onUpdateClient={updateClient}
           />
         </TabsContent>
         
@@ -304,6 +308,14 @@ const ClientDetailPage = () => {
             files={files}
             onUploadFile={handleFileUpload}
             onDeleteFile={deleteFile}
+          />
+        </TabsContent>
+
+        <TabsContent value="reports" className="mt-0">
+          <ClientReports
+            client={client}
+            sessions={sessions}
+            payments={payments}
           />
         </TabsContent>
       </Tabs>

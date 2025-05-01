@@ -2,13 +2,14 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, User } from 'lucide-react';
+import { Calendar as CalendarIcon, Edit, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { ClientDetailData } from '@/types/client';
+import { format } from 'date-fns';
 
 interface ClientProfileProps {
   client: ClientDetailData;
@@ -56,6 +57,10 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
           <div>
             <h3 className="text-sm font-medium text-gray-600 mb-1">Morada</h3>
             <p>{client.address || "Não especificado"}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 mb-1">Data de Nascimento</h3>
+            <p>{client.birthday ? format(new Date(client.birthday), 'dd/MM/yyyy') : "Não especificada"}</p>
           </div>
         </div>
         
@@ -121,6 +126,23 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
                     <FormLabel>Morada</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ''} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={profileForm.control}
+                name="birthday"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Nascimento</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        value={field.value || ''} 
+                      />
                     </FormControl>
                   </FormItem>
                 )}

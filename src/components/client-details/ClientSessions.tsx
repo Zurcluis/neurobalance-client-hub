@@ -2,28 +2,46 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Check } from 'lucide-react';
+import { Calendar, Check, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Session } from '@/types/client';
+import { ClientDetailData, Session } from '@/types/client';
 import { Progress } from '@/components/ui/progress';
-import { parseISO, isBefore } from 'date-fns';
+import { parseISO, isBefore, format } from 'date-fns';
+import { toast } from 'sonner';
 
 interface ClientSessionsProps {
   sessions: Session[];
   clientId: string;
   onAddSession: (session: Session) => void;
+  onUpdateClient: (client: ClientDetailData) => void;
+  client: ClientDetailData;
 }
 
-const ClientSessions = ({ sessions, clientId, onAddSession }: ClientSessionsProps) => {
+const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClient }: ClientSessionsProps) => {
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
+  const [isMaxSessionsDialogOpen, setIsMaxSessionsDialogOpen] = useState(false);
   const sessionForm = useForm<Session>();
+  const maxSessionsForm = useForm<{ maxSessions: number }>({
+    defaultValues: {
+      maxSessions: client.maxSessions || 0
+    }
+  });
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
   const [completedSessionsPercentage, setCompletedSessionsPercentage] = useState(0);
+
+  const loadFromStorage = <T extends unknown>(key: string, defaultValue: T): T => {
+    const storedData = localStorage.getItem(key);
+    return storedData ? JSON.parse(storedData) : defaultValue;
+  };
+
+  const saveToStorage = <T extends unknown>(key: string, data: T): void => {
+    localStorage.setItem(key, JSON.stringify(data));
+  };
 
   useEffect(() => {
     // Load appointments from localStorage to sync with calendar
@@ -45,13 +63,41 @@ const ClientSessions = ({ sessions, clientId, onAddSession }: ClientSessionsProp
     setUpcomingSessions(future);
 
     // Calculate completed sessions percentage
-    const totalSessions = sessions.length + future.length;
-    const completedPercentage = totalSessions > 0 
-      ? (sessions.length / totalSessions) * 100
-      : 0;
+    const maxSessions = client.maxSessions || 0;
+    const totalCompleted = sessions.length;
     
-    setCompletedSessionsPercentage(completedPercentage);
-  }, [clientId, sessions]);
+    const completedPercentage = maxSessions > 0 
+      ? (totalCompleted / maxSessions) * 100
+      : totalCompleted > 0 ? (totalCompleted / (totalCompleted + future.length)) * 100 : 0;
+    
+    setCompletedSessionsPercentage(completedPercentage > 100 ? 100 : completedPercentage);
+  }, [clientId, sessions, client.maxSessions]);
+
+  const handleDeleteSession = (sessionId: string) => {
+    const allSessions = loadFromStorage<Session[]>('sessions', []);
+    const updatedSessions = allSessions.filter(session => session.id !== sessionId);
+    saveToStorage('sessions', updatedSessions);
+    
+    // Update client's sessionCount
+    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
+    const updatedClients = clients.map(c => 
+      c.id === clientId ? {...c, sessionCount: Math.max(0, (c.sessionCount || 0) - 1)} : c
+    );
+    saveToStorage('clients', updatedClients);
+    
+    // Update the UI by filtering out the deleted session
+    toast.success("Sessão eliminada com sucesso");
+    
+    // Refresh the page to update the sessions list
+    window.location.reload();
+  };
+
+  const handleSetMaxSessions = (data: { maxSessions: number }) => {
+    const updatedClient = { ...client, maxSessions: data.maxSessions };
+    onUpdateClient(updatedClient);
+    setIsMaxSessionsDialogOpen(false);
+    toast.success("Número máximo de sessões definido com sucesso");
+  };
 
   return (
     <Card className="glassmorphism">
@@ -60,31 +106,47 @@ const ClientSessions = ({ sessions, clientId, onAddSession }: ClientSessionsProp
           <Calendar className="h-5 w-5" />
           <span>Histórico de Sessões</span>
         </CardTitle>
-        <Button 
-          className="bg-[#3f9094] hover:bg-[#265255]"
-          onClick={() => {
-            sessionForm.reset({
-              id: '',
-              clientId: clientId,
-              date: new Date().toISOString().split('T')[0],
-              notes: '',
-              paid: false,
-            });
-            setIsSessionDialogOpen(true);
-          }}
-        >
-          Adicionar Sessão
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              maxSessionsForm.reset({ maxSessions: client.maxSessions || 0 });
+              setIsMaxSessionsDialogOpen(true);
+            }}
+          >
+            Definir Total de Sessões
+          </Button>
+          <Button 
+            className="bg-[#3f9094] hover:bg-[#265255]"
+            onClick={() => {
+              sessionForm.reset({
+                id: '',
+                clientId: clientId,
+                date: new Date().toISOString().split('T')[0],
+                notes: '',
+                paid: false,
+              });
+              setIsSessionDialogOpen(true);
+            }}
+          >
+            Adicionar Sessão
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="mb-6">
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium">Progresso das Sessões</span>
-            <span className="text-sm font-medium">{Math.round(completedSessionsPercentage)}%</span>
+            <span className="text-sm font-medium">
+              {sessions.length} / {client.maxSessions ? client.maxSessions : (sessions.length + upcomingSessions.length)} 
+              ({Math.round(completedSessionsPercentage)}%)
+            </span>
           </div>
           <Progress value={completedSessionsPercentage} className="h-2" />
           <div className="mt-2 text-xs text-gray-500">
             {sessions.length} sessões realizadas, {upcomingSessions.length} sessões agendadas
+            {client.maxSessions ? `, ${client.maxSessions} sessões planeadas no total` : ''}
           </div>
         </div>
 
@@ -98,7 +160,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession }: ClientSessionsProp
                     <div>
                       <h4 className="font-medium text-sm">{session.title}</h4>
                       <p className="text-xs text-gray-700">
-                        {new Date(session.date).toLocaleDateString('pt-PT')} às {session.date.split('T')[1] || ''}
+                        {format(new Date(session.date), 'dd/MM/yyyy')} às {session.date.split('T')[1] || ''}
                       </p>
                     </div>
                     <Badge variant="outline" className="text-xs bg-[#1088c4]/20">
@@ -115,8 +177,16 @@ const ClientSessions = ({ sessions, clientId, onAddSession }: ClientSessionsProp
         {sessions.length > 0 ? (
           <div className="space-y-3">
             {sessions.map((session) => (
-              <div key={session.id} className="p-4 rounded-lg bg-[#c5cfce] border border-white/20">
-                <div className="flex justify-between items-start">
+              <div key={session.id} className="p-4 rounded-lg bg-[#c5cfce] border border-white/20 relative">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-100"
+                  onClick={() => handleDeleteSession(session.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <div className="flex justify-between items-start pr-8">
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium">
@@ -209,6 +279,51 @@ const ClientSessions = ({ sessions, clientId, onAddSession }: ClientSessionsProp
                   className="bg-[#3f9094] hover:bg-[#265255]"
                 >
                   Adicionar Sessão
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMaxSessionsDialogOpen} onOpenChange={setIsMaxSessionsDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Definir Total de Sessões</DialogTitle>
+          </DialogHeader>
+          <Form {...maxSessionsForm}>
+            <form onSubmit={maxSessionsForm.handleSubmit(handleSetMaxSessions)} className="space-y-4">
+              <FormField
+                control={maxSessionsForm.control}
+                name="maxSessions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número Total de Sessões Planeadas</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="number" 
+                        min="0"
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex justify-end gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => setIsMaxSessionsDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="bg-[#3f9094] hover:bg-[#265255]"
+                >
+                  Guardar
                 </Button>
               </div>
             </form>

@@ -9,6 +9,8 @@ export interface ClientDetailData {
   totalPaid: number;
   address?: string;
   notes?: string;
+  birthday?: string;
+  maxSessions?: number;
 }
 
 export interface Session {
