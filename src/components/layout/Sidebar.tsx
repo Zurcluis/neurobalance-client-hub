@@ -123,7 +123,7 @@ const Sidebar = () => {
         )}
       </div>
       
-      {/* Communication Panel Drawer */}
+      {/* Fixed: Moved the Drawer component outside and only use DrawerContent inside */}
       <Drawer open={showCommunications} onOpenChange={setShowCommunications}>
         <DrawerContent>
           <div className="p-4">
@@ -145,11 +145,16 @@ const Sidebar = () => {
   if (isMobile) {
     return (
       <div className="fixed top-0 left-0 z-10 w-full bg-white/90 backdrop-blur-sm border-b border-gray-200 flex justify-between items-center px-4 py-3">
-        <DrawerTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <Menu />
-          </Button>
-        </DrawerTrigger>
+        <Drawer>
+          <DrawerTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Menu />
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent className="max-h-[90vh]">
+            {renderSidebarContent()}
+          </DrawerContent>
+        </Drawer>
         
         <img 
           src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
@@ -158,12 +163,6 @@ const Sidebar = () => {
         />
         
         <div className="w-10"></div> {/* Placeholder for balance */}
-        
-        <Drawer>
-          <DrawerContent className="max-h-[90vh]">
-            {renderSidebarContent()}
-          </DrawerContent>
-        </Drawer>
       </div>
     );
   }
