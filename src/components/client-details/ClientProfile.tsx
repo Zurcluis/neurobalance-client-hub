@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { useForm } from 'react-hook-form';
 import { ClientDetailData } from '@/types/client';
 import { format } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ClientProfileProps {
   client: ClientDetailData;
@@ -61,6 +62,10 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
           <div>
             <h3 className="text-sm font-medium text-gray-600 mb-1">Data de Nascimento</h3>
             <p>{client.birthday ? format(new Date(client.birthday), 'dd/MM/yyyy') : "Não especificada"}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 mb-1">Estado</h3>
+            <p>{client.status ? getStatusLabel(client.status) : "On Going"}</p>
           </div>
         </div>
         
@@ -147,6 +152,33 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={profileForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado</FormLabel>
+                    <FormControl>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value || 'ongoing'}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ongoing">On Going</SelectItem>
+                          <SelectItem value="thinking">Thinking</SelectItem>
+                          <SelectItem value="no-need">No Need</SelectItem>
+                          <SelectItem value="finished">Finished</SelectItem>
+                          <SelectItem value="call">Call</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
               
               <FormField
                 control={profileForm.control}
@@ -183,5 +215,17 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
     </Card>
   );
 };
+
+// Função para obter o rótulo do status
+function getStatusLabel(status?: string) {
+  switch(status) {
+    case 'ongoing': return 'On Going';
+    case 'thinking': return 'Thinking';
+    case 'no-need': return 'No Need';
+    case 'finished': return 'Finished';
+    case 'call': return 'Call';
+    default: return 'On Going';
+  }
+}
 
 export default ClientProfile;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
@@ -91,7 +90,6 @@ const ClientDetailPage = () => {
       // Update in state but don't save to localStorage yet to avoid circular updates
       setClient(updatedClient);
     }
-
   }, [clientId]);
 
   // Se o cliente não for encontrado, mostrar erro
@@ -117,6 +115,14 @@ const ClientDetailPage = () => {
     const clients = loadFromStorage<ClientDetailData[]>('clients', []);
     const updatedClients = clients.map(c => c.id === clientId ? {...c, ...data} : c);
     saveToStorage('clients', updatedClients);
+    
+    // Update client in ClientsPage
+    const clientsPageClients = loadFromStorage<ClientDetailData[]>('clients', []);
+    const updatedClientsPageClients = clientsPageClients.map(c =>
+      c.id === clientId ? {...c, ...data} : c
+    );
+    saveToStorage('clients', updatedClientsPageClients);
+
     setClient({...client, ...data});
     toast.success('Informações do cliente atualizadas com sucesso');
   };

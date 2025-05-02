@@ -161,7 +161,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
 
       <div className="space-y-2">
         <Label htmlFor="estado">Estado</Label>
-        <Select {...register('estado')}>
+        <Select {...register('estado')} defaultValue="On Going">
           <SelectTrigger>
             <SelectValue placeholder="Selecione o estado" />
           </SelectTrigger>
