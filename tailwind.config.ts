@@ -20,7 +20,7 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['Poppins', 'sans-serif'],
+				sans: ['Inter', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -67,10 +67,10 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				neurobalance: {
-					primary: '#3f9094',
-					secondary: '#265255',
-					tertiary: '#c5cfce',
-					light: '#e5e9e9',
+					primary: '#3A726D',
+					secondary: '#2A5854',
+					tertiary: '#E6ECEA',
+					light: '#F5F7F7',
 					dark: '#1A1F2C',
 				}
 			},

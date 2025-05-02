@@ -31,13 +31,8 @@ const DashboardOverview = () => {
   if (totalClients === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-lg shadow-sm text-center">
-          <img 
-            src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-            alt="NeuroBalance Logo" 
-            className="h-20 w-auto mb-6"
-          />
-          <h2 className="text-2xl font-bold text-[#265255] mb-4">Bem-vindo ao NeuroBalance CMS</h2>
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-md text-center">
+          <h2 className="text-2xl font-bold text-[#3A726D] mb-4">Bem-vindo ao NeuroBalance CMS</h2>
           <p className="text-gray-600 max-w-md mb-8">
             Este é o seu sistema de gestão de clientes. Comece adicionando o seu primeiro cliente para
             visualizar estatísticas e agendamentos.
@@ -45,7 +40,7 @@ const DashboardOverview = () => {
           <div className="flex gap-4">
             <Button 
               asChild
-              className="bg-[#3f9094] hover:bg-[#265255]"
+              className="bg-[#3A726D] hover:bg-[#2A5854]"
             >
               <Link to="/clients">
                 <Plus className="h-4 w-4 mr-2" />
@@ -71,30 +66,30 @@ const DashboardOverview = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="glassmorphism">
+        <Card className="dashboard-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Clientes</CardTitle>
-            <User className="h-4 w-4 text-[#3f9094]" />
+            <User className="h-5 w-5 text-[#3A726D]" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalClients}</p>
           </CardContent>
         </Card>
         
-        <Card className="glassmorphism">
+        <Card className="dashboard-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Sessões</CardTitle>
-            <Calendar className="h-4 w-4 text-[#3f9094]" />
+            <Calendar className="h-5 w-5 text-[#3A726D]" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalSessions}</p>
           </CardContent>
         </Card>
         
-        <Card className="glassmorphism">
+        <Card className="dashboard-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <BarChart3 className="h-4 w-4 text-[#3f9094]" />
+            <BarChart3 className="h-5 w-5 text-[#3A726D]" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">€{totalRevenue.toLocaleString()}</p>
@@ -103,7 +98,7 @@ const DashboardOverview = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="glassmorphism">
+        <Card className="dashboard-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -114,7 +109,7 @@ const DashboardOverview = () => {
             {todayAppointments.length > 0 ? (
               <div className="space-y-4">
                 {todayAppointments.map(client => (
-                  <div key={client.id} className="flex items-center justify-between p-3 bg-[#c5cfce]/30 rounded-lg">
+                  <div key={client.id} className="flex items-center justify-between p-3 bg-[#E6ECEA]/50 rounded-lg">
                     <div>
                       <p className="font-medium">{client.name}</p>
                       <p className="text-sm text-gray-600">{client.phone}</p>
@@ -131,7 +126,7 @@ const DashboardOverview = () => {
                 <p className="text-gray-500">Sem agendamentos para hoje</p>
                 <Link 
                   to="/calendar" 
-                  className="text-[#3f9094] hover:text-[#265255] text-sm mt-2 inline-block"
+                  className="text-[#3A726D] hover:text-[#2A5854] text-sm mt-2 inline-block"
                 >
                   Ir para o calendário
                 </Link>
@@ -140,7 +135,7 @@ const DashboardOverview = () => {
           </CardContent>
         </Card>
         
-        <Card className="glassmorphism">
+        <Card className="dashboard-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -150,7 +145,7 @@ const DashboardOverview = () => {
           <CardContent>
             <div className="space-y-4">
               {clients.slice(0, 3).map(client => (
-                <div key={client.id} className="flex items-center justify-between p-3 bg-[#3f9094]/10 rounded-lg">
+                <div key={client.id} className="flex items-center justify-between p-3 bg-[#E6ECEA]/50 rounded-lg">
                   <div>
                     <p className="font-medium">{client.name}</p>
                     <p className="text-sm text-gray-600">{client.email}</p>
@@ -164,7 +159,7 @@ const DashboardOverview = () => {
               {clients.length > 3 && (
                 <Link 
                   to="/clients" 
-                  className="text-[#3f9094] hover:text-[#265255] text-sm flex justify-center mt-2"
+                  className="text-[#3A726D] hover:text-[#2A5854] text-sm flex justify-center mt-2"
                 >
                   Ver todos os clientes
                 </Link>

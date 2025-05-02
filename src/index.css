@@ -1,19 +1,21 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 180 20% 95%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 162 40% 34%;
+    --primary: 175 35% 35%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 168 15% 79%;
+    --secondary: 172 8% 91%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
@@ -23,14 +25,14 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 162 40% 34%;
+    --ring: 175 35% 35%;
     --radius: 0.75rem;
     
-    --neuro-teal: 172 40% 34%;
-    --neuro-light-teal: 172 20% 49%;
-    --neuro-dark-teal: 172 40% 24%;
-    --neuro-gray: 168 15% 79%;
-    --neuro-background: 168 20% 90%;
+    --neuro-teal: 175 35% 35%;
+    --neuro-light-teal: 175 30% 50%;
+    --neuro-dark-teal: 175 35% 25%;
+    --neuro-gray: 174 8% 91%;
+    --neuro-background: 180 20% 95%;
   }
 
   .dark {
@@ -40,7 +42,7 @@
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 172 40% 34%;
+    --primary: 175 35% 45%;
     --primary-foreground: 0 0% 98%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -52,12 +54,12 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 172 40% 34%;
+    --ring: 175 35% 45%;
     
-    --neuro-teal: 172 40% 54%;
-    --neuro-light-teal: 172 20% 69%;
-    --neuro-dark-teal: 172 40% 44%;
-    --neuro-gray: 168 15% 59%;
+    --neuro-teal: 175 35% 55%;
+    --neuro-light-teal: 175 30% 65%;
+    --neuro-dark-teal: 175 35% 45%;
+    --neuro-gray: 174 8% 71%;
     --neuro-background: 240 10% 10%;
   }
 }
@@ -68,19 +70,20 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
   }
 }
 
 .gradient-heading {
-  @apply bg-gradient-to-r from-[#3f9094] to-[#265255] bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-[#3A726D] to-[#2A5854] bg-clip-text text-transparent;
 }
 
 .dark .gradient-heading {
-  @apply bg-gradient-to-r from-[#5fb1b6] to-[#3a7476] bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-[#65ada7] to-[#478682] bg-clip-text text-transparent;
 }
 
 .glassmorphism {
-  @apply bg-white/90 backdrop-blur-sm border border-white/50 shadow-sm;
+  @apply bg-white/90 backdrop-blur-sm border border-white/50 shadow-md rounded-lg;
 }
 
 .dark .glassmorphism {
@@ -93,38 +96,38 @@
 
 /* Calendar event styling */
 .rbc-event {
-  @apply bg-[#3f9094] border-[#265255];
+  @apply bg-[#3A726D] border-[#2A5854];
 }
 
 .rbc-today {
-  @apply bg-[#c5cfce]/30 dark:bg-[#265255]/20;
+  @apply bg-[#E6ECEA]/50 dark:bg-[#2A5854]/20;
 }
 
 .rbc-toolbar button.rbc-active {
-  @apply bg-[#3f9094] text-white border-[#265255];
+  @apply bg-[#3A726D] text-white border-[#2A5854];
 }
 
 .rbc-toolbar button:hover {
-  @apply bg-[#c5cfce];
+  @apply bg-[#E6ECEA];
 }
 
 /* Progress bar styling for dark mode */
 .dark .progress-indicator {
-  @apply bg-[#5fb1b6];
+  @apply bg-[#65ada7];
 }
 
 /* Progress bar styling for light mode */
 .progress-indicator {
-  @apply bg-[#3f9094];
+  @apply bg-[#3A726D];
 }
 
 /* Switch for dark mode */
 .dark .switch-checked {
-  @apply bg-[#5fb1b6];
+  @apply bg-[#65ada7];
 }
 
 .switch-checked {
-  @apply bg-[#3f9094];
+  @apply bg-[#3A726D];
 }
 
 /* Fix for dark mode text visibility */
@@ -142,7 +145,7 @@
 
 /* Card styling for client categories */
 .card-glass {
-  @apply bg-white/90 backdrop-blur-sm border border-white/50 shadow-sm p-4 rounded-lg;
+  @apply bg-white/90 backdrop-blur-sm border border-gray-100 shadow-md p-4 rounded-lg;
 }
 
 .dark .card-glass {
@@ -167,4 +170,44 @@
 
 .client-call {
   @apply border-l-4 border-l-purple-500;
+}
+
+/* Dashboard card styling */
+.dashboard-card {
+  @apply bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all;
+}
+
+.dark .dashboard-card {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.dashboard-card:hover {
+  @apply shadow-lg transform translate-y-[-2px];
+}
+
+/* Sidebar styling updates */
+.sidebar-item {
+  @apply flex items-center p-3 rounded-lg transition-all duration-200;
+}
+
+.sidebar-item-active {
+  @apply bg-[#3A726D] text-white;
+}
+
+.sidebar-item-inactive {
+  @apply hover:bg-[#E6ECEA] dark:hover:bg-[#2A5854]/40;
+}
+
+/* Button styling */
+.btn-primary {
+  @apply bg-[#3A726D] text-white hover:bg-[#2A5854] transition-colors;
+}
+
+.btn-outline {
+  @apply border border-[#3A726D] text-[#3A726D] hover:bg-[#E6ECEA] transition-colors;
+}
+
+/* Fix for dark mode logo */
+.dark .app-logo {
+  @apply brightness-0 invert;
 }

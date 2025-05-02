@@ -52,11 +52,11 @@ const ClientCard = ({ client, onDelete, statusClass }: ClientCardProps) => {
   };
 
   return (
-    <div className={`card-glass ${statusClass || ''}`}>
+    <div className={`dashboard-card ${statusClass || ''}`}>
       <div className="flex items-start justify-between">
         <div className="flex items-center">
-          <div className="w-12 h-12 rounded-full bg-[#c5cfce] flex items-center justify-center">
-            <User className="text-[#265255]" />
+          <div className="w-12 h-12 rounded-full bg-[#E6ECEA] flex items-center justify-center">
+            <User className="text-[#3A726D]" />
           </div>
           <div className="ml-4">
             <h3 className="font-medium text-lg">{client.name}</h3>
@@ -104,7 +104,7 @@ const ClientCard = ({ client, onDelete, statusClass }: ClientCardProps) => {
       <div className="mt-4 flex justify-end">
         <Link 
           to={`/clients/${client.id}`}
-          className="px-4 py-2 bg-[#3f9094] text-white rounded-lg text-sm hover:bg-[#265255] transition-colors"
+          className="px-4 py-2 bg-[#3A726D] text-white rounded-lg text-sm hover:bg-[#2A5854] transition-colors"
         >
           Ver Perfil
         </Link>

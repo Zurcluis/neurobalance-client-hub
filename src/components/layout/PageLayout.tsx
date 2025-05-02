@@ -11,7 +11,7 @@ const PageLayout = ({ children }: PageLayoutProps) => {
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#E6ECEA] dark:bg-gray-900">
       <Sidebar />
       <main className={`flex-1 transition-all duration-300 ${isMobile ? 'pt-20 px-4 pb-8' : 'p-8 ml-64'}`}>
         {children}

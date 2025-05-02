@@ -56,7 +56,7 @@ const Sidebar = () => {
             <img 
               src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
               alt="NeuroBalance Logo" 
-              className="h-32 w-auto mb-2" // Logo size doubled to 32
+              className="h-32 w-auto mb-2 app-logo" // Added app-logo class for dark mode fix
             />
             <h1 className="text-xl font-bold gradient-heading">
               NeuroBalance
@@ -66,13 +66,13 @@ const Sidebar = () => {
           <img 
             src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
             alt="NeuroBalance Logo" 
-            className="h-24 w-auto mx-auto" // Logo size doubled from 12 to 24
+            className="h-24 w-auto mx-auto app-logo" // Added app-logo class for dark mode fix
           />
         )}
         {!isMobile && (
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-lg hover:bg-[#c5cfce] dark:hover:bg-[#265255]/40 transition-colors"
+            className="p-2 rounded-lg hover:bg-[#E6ECEA] dark:hover:bg-[#2A5854]/40 transition-colors"
           >
             {isCollapsed ? <Menu /> : <X />}
           </button>
@@ -111,10 +111,10 @@ const Sidebar = () => {
               <Link
                 to={item.path}
                 className={cn(
-                  'flex items-center p-3 rounded-lg transition-all duration-200',
+                  'sidebar-item',
                   location.pathname === item.path
-                    ? 'bg-[#3f9094] text-white shadow-md'
-                    : 'hover:bg-[#c5cfce] dark:hover:bg-[#265255]/40',
+                    ? 'sidebar-item-active'
+                    : 'sidebar-item-inactive',
                   isCollapsed && !isMobile ? 'justify-center' : 'justify-start'
                 )}
               >
@@ -128,7 +128,7 @@ const Sidebar = () => {
         {/* Communication section */}
         <div className="mt-8">
           <h3 className={cn(
-            'text-[#265255] dark:text-[#c5cfce] font-medium mb-2',
+            'text-[#3A726D] dark:text-[#E6ECEA] font-medium mb-2',
             isCollapsed && !isMobile ? 'text-center text-xs' : 'px-3'
           )}>
             {(!isCollapsed || isMobile) ? t('communications') : 'Com.'}
@@ -142,7 +142,7 @@ const Sidebar = () => {
                     localStorage.setItem('communicationType', item.type);
                   }}
                   className={cn(
-                    'w-full flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-[#c5cfce] dark:hover:bg-[#265255]/40',
+                    'sidebar-item sidebar-item-inactive w-full',
                     isCollapsed && !isMobile ? 'justify-center' : 'justify-start'
                   )}
                 >
@@ -206,7 +206,7 @@ const Sidebar = () => {
         <img 
           src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
           alt="NeuroBalance Logo" 
-          className="h-12 w-auto"
+          className="h-12 w-auto app-logo" // Added app-logo class for dark mode fix
         />
         
         <Button variant="ghost" size="icon" onClick={() => setShowSearch(true)}>
@@ -218,7 +218,7 @@ const Sidebar = () => {
 
   return (
     <div className={cn(
-      'fixed top-0 left-0 h-screen glassmorphism z-10 transition-all duration-300 dark:bg-[#1A1F2C]/80 dark:border-r dark:border-white/10',
+      'fixed top-0 left-0 h-screen bg-white dark:bg-[#1A1F2C] border-r border-gray-200 dark:border-gray-800 z-10 transition-all duration-300 shadow-md',
       isCollapsed ? 'w-20' : 'w-64',
     )}>
       {renderSidebarContent()}
