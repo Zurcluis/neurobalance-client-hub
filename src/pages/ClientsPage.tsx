@@ -46,6 +46,15 @@ const ClientsPage = () => {
   };
 
   const handleAddClient = (data: ClientFormData) => {
+    // Map the form's estado value to the client's status
+    let clientStatus: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call' = 'ongoing';
+    
+    if (data.estado === 'On Going') clientStatus = 'ongoing';
+    else if (data.estado === 'Thinking') clientStatus = 'thinking';
+    else if (data.estado === 'No need') clientStatus = 'no-need';
+    else if (data.estado === 'Finished') clientStatus = 'finished';
+    else if (data.estado === 'call') clientStatus = 'call';
+    
     const newClient: ClientData = {
       id: data.id || Date.now().toString(),
       name: data.nome,
@@ -54,7 +63,7 @@ const ClientsPage = () => {
       sessionCount: 0,
       nextSession: null,
       totalPaid: 0,
-      status: 'ongoing'
+      status: clientStatus
     };
     
     setClients(prev => [...prev, newClient]);
@@ -110,11 +119,11 @@ const ClientsPage = () => {
       
       <Tabs defaultValue="ongoing" className="w-full">
         <TabsList className="grid grid-cols-5 mb-6">
-          <TabsTrigger value="ongoing">Em Progresso</TabsTrigger>
-          <TabsTrigger value="thinking">Em Consideração</TabsTrigger>
-          <TabsTrigger value="no-need">Sem Necessidade</TabsTrigger>
-          <TabsTrigger value="finished">Concluídos</TabsTrigger>
-          <TabsTrigger value="call">Contactar</TabsTrigger>
+          <TabsTrigger value="ongoing">On Going</TabsTrigger>
+          <TabsTrigger value="thinking">Thinking</TabsTrigger>
+          <TabsTrigger value="no-need">No Need</TabsTrigger>
+          <TabsTrigger value="finished">Finished</TabsTrigger>
+          <TabsTrigger value="call">Call</TabsTrigger>
         </TabsList>
         
         {Object.entries(clientsByStatus).map(([status, clientList]) => (

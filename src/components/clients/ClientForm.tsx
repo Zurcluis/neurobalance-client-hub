@@ -166,9 +166,11 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             <SelectValue placeholder="Selecione o estado" />
           </SelectTrigger>
           <SelectContent>
-            {['On Going', 'Thinking', 'No need', 'Finished', 'call'].map((estado) => (
-              <SelectItem key={estado} value={estado}>{estado}</SelectItem>
-            ))}
+            <SelectItem value="On Going">On Going</SelectItem>
+            <SelectItem value="Thinking">Thinking</SelectItem>
+            <SelectItem value="No need">No Need</SelectItem>
+            <SelectItem value="Finished">Finished</SelectItem>
+            <SelectItem value="call">Call</SelectItem>
           </SelectContent>
         </Select>
       </div>

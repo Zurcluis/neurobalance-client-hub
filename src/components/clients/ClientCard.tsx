@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Trash2, User } from 'lucide-react';
@@ -31,12 +30,12 @@ const ClientCard = ({ client, onDelete, statusClass }: ClientCardProps) => {
 
   const getStatusLabel = (status?: string) => {
     switch(status) {
-      case 'ongoing': return 'Em Progresso';
-      case 'thinking': return 'Em Consideração';
-      case 'no-need': return 'Sem Necessidade';
-      case 'finished': return 'Concluído';
-      case 'call': return 'Contactar';
-      default: return 'Em Progresso';
+      case 'ongoing': return 'On Going';
+      case 'thinking': return 'Thinking';
+      case 'no-need': return 'No Need';
+      case 'finished': return 'Finished';
+      case 'call': return 'Call';
+      default: return 'On Going';
     }
   };
 

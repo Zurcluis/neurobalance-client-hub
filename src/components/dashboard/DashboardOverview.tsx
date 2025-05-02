@@ -1,10 +1,21 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, User, BarChart3, Plus } from 'lucide-react';
 import { ClientData } from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import UpcomingAppointmentsTable from '@/components/dashboard/UpcomingAppointmentsTable';
+
+interface Appointment {
+  id: string;
+  title: string;
+  date: string;
+  clientName: string;
+  clientId: string;
+  type: 'sessão' | 'avaliação' | 'consulta';
+  confirmed?: boolean;
+}
 
 const DashboardOverview = () => {
   // Load clients from localStorage
@@ -13,19 +24,45 @@ const DashboardOverview = () => {
     return storedClients ? JSON.parse(storedClients) : [];
   };
   
+  // Load appointments from localStorage
+  const loadAppointmentsFromStorage = (): Appointment[] => {
+    const storedAppointments = localStorage.getItem('appointments');
+    return storedAppointments ? JSON.parse(storedAppointments) : [];
+  };
+  
   const clients = loadClientsFromStorage();
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  
+  useEffect(() => {
+    const appointments = loadAppointmentsFromStorage();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Filter today's appointments
+    const todaysAppts = appointments.filter((appointment) => {
+      const appointmentDate = new Date(appointment.date);
+      appointmentDate.setHours(0, 0, 0, 0);
+      return appointmentDate.getTime() === today.getTime();
+    });
+    
+    // Filter upcoming appointments (future dates, not today)
+    const futureAppts = appointments.filter((appointment) => {
+      const appointmentDate = new Date(appointment.date);
+      appointmentDate.setHours(0, 0, 0, 0);
+      return appointmentDate > today;
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    setTodayAppointments(todaysAppts);
+    setUpcomingAppointments(futureAppts.slice(0, 4)); // Get only the next 4 appointments
+  }, []);
   
   // Calculate summary statistics if there are clients
   const totalClients = clients.length;
   const totalSessions = clients.reduce((sum, client) => sum + client.sessionCount, 0);
   const totalRevenue = clients.reduce((sum, client) => sum + (client.totalPaid || 0), 0);
-  
-  // Get today's appointments
-  const today = new Date();
-  const todayString = today.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
-  const todayAppointments = clients.filter(client => 
-    client.nextSession?.includes(todayString)
-  );
   
   // If no clients exist, show welcome screen
   if (totalClients === 0) {
@@ -107,20 +144,7 @@ const DashboardOverview = () => {
           </CardHeader>
           <CardContent>
             {todayAppointments.length > 0 ? (
-              <div className="space-y-4">
-                {todayAppointments.map(client => (
-                  <div key={client.id} className="flex items-center justify-between p-3 bg-[#E6ECEA]/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{client.name}</p>
-                      <p className="text-sm text-gray-600">{client.phone}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{client.nextSession?.split(', ')[1]}</p>
-                      <p className="text-xs text-gray-500">Sessão #{client.sessionCount + 1}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <UpcomingAppointmentsTable appointments={todayAppointments} />
             ) : (
               <div className="py-8 text-center">
                 <p className="text-gray-500">Sem agendamentos para hoje</p>
@@ -168,6 +192,31 @@ const DashboardOverview = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* New section for Upcoming Appointments */}
+      <Card className="dashboard-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            <span>Próximos Agendamentos</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {upcomingAppointments.length > 0 ? (
+            <UpcomingAppointmentsTable appointments={upcomingAppointments} />
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-gray-500">Sem agendamentos futuros</p>
+              <Link 
+                to="/calendar" 
+                className="text-[#3A726D] hover:text-[#2A5854] text-sm mt-2 inline-block"
+              >
+                Adicionar agendamento
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
