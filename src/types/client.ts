@@ -1,4 +1,3 @@
-
 export interface ClientDetailData {
   id: string;
   name: string;
@@ -10,8 +9,11 @@ export interface ClientDetailData {
   address?: string;
   notes?: string;
   birthday?: string;
+  genero?: 'Homem' | 'Mulher' | 'Outro' | null;
   maxSessions?: number;
   status?: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
+  tipoContato?: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
+  comoConheceu?: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
 }
 
 export interface Session {

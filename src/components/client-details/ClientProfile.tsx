@@ -9,8 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { ClientDetailData } from '@/types/client';
-import { format } from 'date-fns';
+import { format, differenceInYears } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
 
 interface ClientProfileProps {
   client: ClientDetailData;
@@ -20,6 +23,11 @@ interface ClientProfileProps {
 const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const profileForm = useForm<ClientDetailData>();
+
+  const calculateAge = (birthday: string | undefined): number | null => {
+    if (!birthday) return null;
+    return differenceInYears(new Date(), new Date(birthday));
+  };
 
   return (
     <Card className="glassmorphism">
@@ -64,8 +72,24 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
             <p>{client.birthday ? format(new Date(client.birthday), 'dd/MM/yyyy') : "Não especificada"}</p>
           </div>
           <div>
+            <h3 className="text-sm font-medium text-gray-600 mb-1">Idade</h3>
+            <p>{client.birthday ? `${calculateAge(client.birthday)} anos` : "Não especificada"}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 mb-1">Género</h3>
+            <p>{client.genero || "Não especificado"}</p>
+          </div>
+          <div>
             <h3 className="text-sm font-medium text-gray-600 mb-1">Estado</h3>
             <p>{client.status ? getStatusLabel(client.status) : "On Going"}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 mb-1">Tipo de Contacto</h3>
+            <p>{client.tipoContato || "Não especificado"}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 mb-1">Como teve conhecimento</h3>
+            <p>{client.comoConheceu || "Não especificado"}</p>
           </div>
         </div>
         
@@ -136,23 +160,117 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
                 )}
               />
               
-              <FormField
-                control={profileForm.control}
-                name="birthday"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data de Nascimento</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="date" 
-                        {...field} 
-                        value={field.value || ''} 
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={profileForm.control}
+                  name="birthday"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Nascimento</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(new Date(field.value), 'dd/MM/yyyy') : <span>Selecione uma data</span>}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value ? new Date(field.value) : undefined}
+                            onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={profileForm.control}
+                  name="genero"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Género</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || ''}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o género" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Homem">Homem</SelectItem>
+                          <SelectItem value="Mulher">Mulher</SelectItem>
+                          <SelectItem value="Outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={profileForm.control}
+                  name="tipoContato"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Contacto</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || ''}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo de contacto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Lead">Lead</SelectItem>
+                          <SelectItem value="Contato">Contato</SelectItem>
+                          <SelectItem value="Email">Email</SelectItem>
+                          <SelectItem value="Instagram">Instagram</SelectItem>
+                          <SelectItem value="Facebook">Facebook</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={profileForm.control}
+                  name="comoConheceu"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Como teve conhecimento</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || ''}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Como conheceu a clínica?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Anúncio">Anúncio</SelectItem>
+                          <SelectItem value="Instagram">Instagram</SelectItem>
+                          <SelectItem value="Facebook">Facebook</SelectItem>
+                          <SelectItem value="Recomendação">Recomendação</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
               <FormField
                 control={profileForm.control}
                 name="status"
@@ -203,7 +321,7 @@ const ClientProfile = ({ client, onUpdateClient }: ClientProfileProps) => {
                 </Button>
                 <Button 
                   type="submit" 
-                  className="bg-[#3f9094] hover:bg-[#265255]"
+                  className="bg-[#3A726D] hover:bg-[#265255]"
                 >
                   Guardar Alterações
                 </Button>

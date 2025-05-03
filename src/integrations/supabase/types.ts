@@ -55,37 +55,46 @@ export type Database = {
       }
       clientes: {
         Row: {
+          como_conheceu: string | null
           criado_em: string | null
           data_nascimento: string | null
           email: string | null
           estado: string | null
+          genero: string | null
           id: string
           morada: string | null
           nome: string
           notas: string | null
           telefone: string | null
+          tipo_contato: string | null
         }
         Insert: {
+          como_conheceu?: string | null
           criado_em?: string | null
           data_nascimento?: string | null
           email?: string | null
           estado?: string | null
+          genero?: string | null
           id?: string
           morada?: string | null
           nome: string
           notas?: string | null
           telefone?: string | null
+          tipo_contato?: string | null
         }
         Update: {
+          como_conheceu?: string | null
           criado_em?: string | null
           data_nascimento?: string | null
           email?: string | null
           estado?: string | null
+          genero?: string | null
           id?: string
           morada?: string | null
           nome?: string
           notas?: string | null
           telefone?: string | null
+          tipo_contato?: string | null
         }
         Relationships: []
       }

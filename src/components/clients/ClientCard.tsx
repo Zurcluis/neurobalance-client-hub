@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Trash2, User } from 'lucide-react';
@@ -15,6 +16,7 @@ export interface ClientData {
   totalPaid: number;
   status?: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
   birthday?: string | null;
+  genero?: 'Homem' | 'Mulher' | 'Outro' | null;
   tipoContato?: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
   comoConheceu?: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
   problemática?: string;

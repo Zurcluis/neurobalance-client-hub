@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent, ChartLegendContent } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
+import { differenceInYears } from 'date-fns';
 
 // Cores para os gráficos
 const COLORS = ['#3A726D', '#5DA399', '#8AC1BB', '#B1D4CF', '#D8E6E3', '#265255'];
@@ -26,6 +27,8 @@ const StatisticsPage = () => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [contactTypeData, setContactTypeData] = useState<any[]>([]);
   const [referralSourceData, setReferralSourceData] = useState<any[]>([]);
+  const [genderData, setGenderData] = useState<any[]>([]);
+  const [ageGroupData, setAgeGroupData] = useState<any[]>([]);
   const [problemKeywords, setProblemKeywords] = useState<{text: string, value: number}[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +57,7 @@ const StatisticsPage = () => {
             totalPaid: 0, // Precisaria fazer outra consulta para somar pagamentos
             status: client.estado || 'ongoing',
             birthday: client.data_nascimento,
+            genero: client.genero,
             problemática: client.notas || '',
             tipoContato: (client.tipo_contato || 'Lead') as 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook',
             comoConheceu: (client.como_conheceu || 'Anúncio') as 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação'
@@ -109,8 +113,53 @@ const StatisticsPage = () => {
     
     const referralSourceArr = Object.entries(referralSources).map(([name, value]) => ({ name, value }));
     setReferralSourceData(referralSourceArr);
+    
+    // 3. Contagem por género
+    const genders: Record<string, number> = {};
+    clients.forEach(client => {
+      const gender = client.genero || 'Não especificado';
+      genders[gender] = (genders[gender] || 0) + 1;
+    });
+    
+    const genderArr = Object.entries(genders).map(([name, value]) => ({ name, value }));
+    setGenderData(genderArr);
+    
+    // 4. Contagem por faixa etária
+    const ageGroups: Record<string, number> = {
+      "0-18": 0,
+      "19-30": 0,
+      "31-40": 0,
+      "41-50": 0,
+      "51-60": 0,
+      "61+": 0,
+      "Não especificado": 0
+    };
+    
+    clients.forEach(client => {
+      if (!client.birthday) {
+        ageGroups["Não especificado"]++;
+        return;
+      }
+      
+      try {
+        const age = differenceInYears(new Date(), new Date(client.birthday));
+        if (age <= 18) ageGroups["0-18"]++;
+        else if (age <= 30) ageGroups["19-30"]++;
+        else if (age <= 40) ageGroups["31-40"]++;
+        else if (age <= 50) ageGroups["41-50"]++;
+        else if (age <= 60) ageGroups["51-60"]++;
+        else ageGroups["61+"]++;
+      } catch (e) {
+        ageGroups["Não especificado"]++;
+      }
+    });
+    
+    const ageGroupArr = Object.entries(ageGroups)
+      .filter(([_, value]) => value > 0) // Remover faixas etárias vazias
+      .map(([name, value]) => ({ name, value }));
+    setAgeGroupData(ageGroupArr);
 
-    // 3. Análise de palavras-chave nas problemáticas
+    // 5. Análise de palavras-chave nas problemáticas
     const problems = clients.map(client => client.problemática || '').join(' ').toLowerCase();
     const words = problems.split(/\s+/);
     const stopWords = ['de', 'a', 'o', 'que', 'e', 'do', 'da', 'em', 'um', 'para', 'é', 'com', 'não', 'uma', 'os', 'no', 'se', 'na', 'por', 'mais', 'as', 'dos', 'como', 'mas', 'foi', 'ao', 'ele', 'das', 'tem', 'à', 'seu', 'sua', 'ou', 'ser', 'quando', 'muito', 'há', 'nos', 'já', 'está', 'eu', 'também', 'só', 'pelo', 'pela', 'até', 'isso', 'ela', 'entre', 'era', 'depois', 'sem', 'mesmo', 'aos', 'ter', 'seus', 'quem', 'nas', 'me', 'esse', 'eles', 'estão', 'você', 'tinha', 'foram', 'essa', 'num', 'nem', 'suas', 'meu', 'às', 'minha', 'têm', 'numa', 'pelos', 'elas', 'havia', 'seja', 'qual', 'será', 'nós', 'tenho', 'lhe', 'deles', 'essas', 'esses', 'pelas', 'este', 'fosse', 'dele', 'tu', 'te', 'vocês', 'vos', 'lhes', 'meus', 'minhas', 'teu', 'tua', 'teus', 'tuas', 'nosso', 'nossa', 'nossos', 'nossas', 'dela', 'delas', 'esta', 'estes', 'estas', 'aquele', 'aquela', 'aqueles', 'aquelas', 'isto', 'aquilo', 'estou', 'está', 'estamos', 'estão', 'estive', 'esteve', 'estivemos', 'estiveram', 'estava', 'estávamos', 'estavam', 'estivera', 'estivéramos', 'esteja', 'estejamos', 'estejam', 'estivesse', 'estivéssemos', 'estivessem', 'estiver', 'estivermos', 'estiverem', 'hei', 'há', 'havemos', 'hão', 'houve', 'houvemos', 'houveram', 'houvera', 'houvéramos', 'haja', 'hajamos', 'hajam', 'houvesse', 'houvéssemos', 'houvessem', 'houver', 'houvermos', 'houverem', 'houverei', 'houverá', 'houveremos', 'houverão', 'houveria', 'houveríamos', 'houveriam', 'sou', 'somos', 'são', 'era', 'éramos', 'eram', 'fui', 'foi', 'fomos', 'foram', 'fora', 'fôramos', 'seja', 'sejamos', 'sejam', 'fosse', 'fôssemos', 'fossem', 'for', 'formos', 'forem', 'serei', 'será', 'seremos', 'serão', 'seria', 'seríamos', 'seriam', 'tenho', 'tem', 'temos', 'tém', 'tinha', 'tínhamos', 'tinham', 'tive', 'teve', 'tivemos', 'tiveram', 'tivera', 'tivéramos', 'tenha', 'tenhamos', 'tenham', 'tivesse', 'tivéssemos', 'tivessem', 'tiver', 'tivermos', 'tiverem', 'terei', 'terá', 'teremos', 'terão', 'teria', 'teríamos', 'teriam'];
@@ -225,6 +274,71 @@ const StatisticsPage = () => {
                         <Tooltip content={<ChartTooltipContent />} />
                         <Legend content={<ChartLegendContent />} />
                       </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                ) : (
+                  renderNoData()
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Gráfico de pizza: Distribuição por Género */}
+            <Card className="glassmorphism">
+              <CardHeader>
+                <CardTitle className="text-xl">Distribuição por Género</CardTitle>
+              </CardHeader>
+              <CardContent className="h-72">
+                {genderData.length > 0 ? (
+                  <ChartContainer className="h-full" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={genderData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {genderData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Legend content={<ChartLegendContent />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                ) : (
+                  renderNoData()
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Gráfico de barras: Distribuição por Idade */}
+            <Card className="glassmorphism">
+              <CardHeader>
+                <CardTitle className="text-xl">Distribuição por Faixa Etária</CardTitle>
+              </CardHeader>
+              <CardContent className="h-72">
+                {ageGroupData.length > 0 ? (
+                  <ChartContainer className="h-full" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={ageGroupData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                        <YAxis />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Legend content={<ChartLegendContent />} />
+                        <Bar dataKey="value" fill={chartConfig.primary.color} name="Clientes">
+                          {ageGroupData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (

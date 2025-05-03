@@ -65,6 +65,7 @@ const ClientsPage = () => {
       totalPaid: 0,
       status: clientStatus,
       birthday: data.dataNascimento || null,
+      genero: data.genero || null,
       problemática: data.problematica || '',
       tipoContato: data.tipoContato || 'Lead',
       comoConheceu: data.comoConheceu || 'Anúncio'
@@ -80,9 +81,12 @@ const ClientsPage = () => {
           email: newClient.email, 
           telefone: newClient.phone,
           data_nascimento: newClient.birthday,
+          genero: newClient.genero,
           morada: '',
           notas: newClient.problemática,
-          estado: newClient.status
+          estado: newClient.status,
+          tipo_contato: newClient.tipoContato,
+          como_conheceu: newClient.comoConheceu
         }).then((result: any) => {
           if (result.error) {
             console.error('Erro ao salvar cliente no Supabase:', result.error);
