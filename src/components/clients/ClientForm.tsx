@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 export interface ClientFormData {
   nome: string;
@@ -187,7 +188,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
 
       <Button 
         type="submit" 
-        className="bg-[#3f9094] hover:bg-[#265255] text-white w-full"
+        className="bg-[#3A726D] hover:bg-[#265255] text-white w-full"
       >
         {isEditing ? 'Atualizar Cliente' : 'Adicionar Cliente'}
       </Button>

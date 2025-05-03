@@ -14,6 +14,10 @@ export interface ClientData {
   nextSession: string | null;
   totalPaid: number;
   status?: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
+  birthday?: string | null;
+  tipoContato?: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
+  comoConheceu?: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
+  problemática?: string;
 }
 
 interface ClientCardProps {
