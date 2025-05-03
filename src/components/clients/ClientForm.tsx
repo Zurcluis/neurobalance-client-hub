@@ -21,6 +21,7 @@ export interface ClientFormData {
   email: string;
   contato: string;
   localidade: string;
+  dataNascimento?: string;
   tipoContato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
   comoConheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
   estado: 'On Going' | 'Thinking' | 'No need' | 'Finished' | 'call';
@@ -110,13 +111,22 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="localidade">Localidade</Label>
+          <Label htmlFor="dataNascimento">Data de Nascimento</Label>
           <Input
-            id="localidade"
-            {...register('localidade')}
-            placeholder="Localidade"
+            id="dataNascimento"
+            type="date"
+            {...register('dataNascimento')}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="localidade">Localidade</Label>
+        <Input
+          id="localidade"
+          {...register('localidade')}
+          placeholder="Localidade"
+        />
       </div>
 
       <div className="space-y-2">

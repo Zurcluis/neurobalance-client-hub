@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, Moon, Sun } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -40,6 +39,7 @@ const Sidebar = () => {
     { name: t('clients'), icon: <User />, path: '/clients' },
     { name: t('calendar'), icon: <Calendar />, path: '/calendar' },
     { name: t('finances'), icon: <BarChart3 />, path: '/finances' },
+    { name: 'Estatísticas', icon: <PieChart />, path: '/statistics' },
   ];
   
   const communicationItems = [

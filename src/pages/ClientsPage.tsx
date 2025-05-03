@@ -63,8 +63,35 @@ const ClientsPage = () => {
       sessionCount: 0,
       nextSession: null,
       totalPaid: 0,
-      status: clientStatus
+      status: clientStatus,
+      birthday: data.dataNascimento || null,
+      problemática: data.problematica || '',
+      tipoContato: data.tipoContato,
+      comoConheceu: data.comoConheceu
     };
+    
+    // Save to Supabase if connected
+    if (typeof window !== 'undefined' && 'supabase' in window) {
+      try {
+        const { supabase } = window as any;
+        supabase.from('clientes').insert({
+          id: newClient.id,
+          nome: newClient.name,
+          email: newClient.email, 
+          telefone: newClient.phone,
+          data_nascimento: newClient.birthday,
+          morada: '',
+          notas: '',
+          estado: newClient.status
+        }).then((result: any) => {
+          if (result.error) {
+            console.error('Erro ao salvar cliente no Supabase:', result.error);
+          }
+        });
+      } catch (error) {
+        console.error('Erro ao acessar Supabase:', error);
+      }
+    }
     
     setClients(prev => [...prev, newClient]);
     setDialogOpen(false);

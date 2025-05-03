@@ -9,7 +9,162 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      agendamentos: {
+        Row: {
+          criado_em: string | null
+          data: string | null
+          estado: string | null
+          hora: string | null
+          id: string
+          id_cliente: string | null
+          notas: string | null
+          tipo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          data?: string | null
+          estado?: string | null
+          hora?: string | null
+          id?: string
+          id_cliente?: string | null
+          notas?: string | null
+          tipo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          data?: string | null
+          estado?: string | null
+          hora?: string | null
+          id?: string
+          id_cliente?: string | null
+          notas?: string | null
+          tipo?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_id_cliente_fkey"
+            columns: ["id_cliente"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          criado_em: string | null
+          data_nascimento: string | null
+          email: string | null
+          estado: string | null
+          id: string
+          morada: string | null
+          nome: string
+          notas: string | null
+          telefone: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          estado?: string | null
+          id?: string
+          morada?: string | null
+          nome: string
+          notas?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          estado?: string | null
+          id?: string
+          morada?: string | null
+          nome?: string
+          notas?: string | null
+          telefone?: string | null
+        }
+        Relationships: []
+      }
+      pagamentos: {
+        Row: {
+          criado_em: string | null
+          data: string
+          descricao: string | null
+          id: string
+          id_cliente: string | null
+          metodo: string | null
+          valor: number
+        }
+        Insert: {
+          criado_em?: string | null
+          data: string
+          descricao?: string | null
+          id?: string
+          id_cliente?: string | null
+          metodo?: string | null
+          valor: number
+        }
+        Update: {
+          criado_em?: string | null
+          data?: string
+          descricao?: string | null
+          id?: string
+          id_cliente?: string | null
+          metodo?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_id_cliente_fkey"
+            columns: ["id_cliente"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessoes: {
+        Row: {
+          criada_em: string | null
+          data: string
+          hora: string | null
+          id: string
+          id_cliente: string | null
+          notas: string | null
+          tipo: string | null
+        }
+        Insert: {
+          criada_em?: string | null
+          data: string
+          hora?: string | null
+          id?: string
+          id_cliente?: string | null
+          notas?: string | null
+          tipo?: string | null
+        }
+        Update: {
+          criada_em?: string | null
+          data?: string
+          hora?: string | null
+          id?: string
+          id_cliente?: string | null
+          notas?: string | null
+          tipo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessoes_id_cliente_fkey"
+            columns: ["id_cliente"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

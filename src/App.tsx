@@ -9,6 +9,7 @@ import ClientsPage from "./pages/ClientsPage";
 import ClientDetailPage from "./pages/ClientDetailPage";
 import CalendarPage from "./pages/CalendarPage";
 import FinancesPage from "./pages/FinancesPage";
+import StatisticsPage from "./pages/StatisticsPage";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./hooks/use-theme";
 import { LanguageProvider } from "./hooks/use-language";
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/clients/:clientId" element={<ClientDetailPage />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/finances" element={<FinancesPage />} />
+              <Route path="/statistics" element={<StatisticsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
