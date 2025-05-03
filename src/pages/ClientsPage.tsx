@@ -58,16 +58,16 @@ const ClientsPage = () => {
     const newClient: ClientData = {
       id: data.id || Date.now().toString(),
       name: data.nome,
-      email: data.email,
-      phone: data.contato,
+      email: data.email || '',
+      phone: data.contato || '',
       sessionCount: 0,
       nextSession: null,
       totalPaid: 0,
       status: clientStatus,
       birthday: data.dataNascimento || null,
       problemática: data.problematica || '',
-      tipoContato: data.tipoContato,
-      comoConheceu: data.comoConheceu
+      tipoContato: data.tipoContato || 'Lead',
+      comoConheceu: data.comoConheceu || 'Anúncio'
     };
     
     // Save to Supabase if connected
@@ -81,7 +81,7 @@ const ClientsPage = () => {
           telefone: newClient.phone,
           data_nascimento: newClient.birthday,
           morada: '',
-          notas: '',
+          notas: newClient.problemática,
           estado: newClient.status
         }).then((result: any) => {
           if (result.error) {
@@ -126,7 +126,7 @@ const ClientsPage = () => {
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#3f9094] hover:bg-[#265255] w-full sm:w-auto">
+              <Button className="bg-[#3A726D] hover:bg-[#265255] w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Cliente
               </Button>
@@ -171,7 +171,7 @@ const ClientsPage = () => {
                 <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">Adicione seu primeiro cliente para começar</p>
                 <Button 
-                  className="bg-[#3f9094] hover:bg-[#265255]" 
+                  className="bg-[#3A726D] hover:bg-[#265255]" 
                   onClick={() => setDialogOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />

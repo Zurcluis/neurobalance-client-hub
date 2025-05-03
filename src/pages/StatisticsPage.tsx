@@ -55,9 +55,9 @@ const StatisticsPage = () => {
             status: client.estado || 'ongoing',
             birthday: client.data_nascimento,
             problemática: client.notas || '',
-            tipoContato: 'Lead',
-            comoConheceu: 'Anúncio'
-          }));
+            tipoContato: (client.tipo_contato || 'Lead') as 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook',
+            comoConheceu: (client.como_conheceu || 'Anúncio') as 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação'
+          })) as ClientData[];
           setClients(supabaseClients);
         } else {
           // Fallback para localStorage se não houver dados no Supabase
