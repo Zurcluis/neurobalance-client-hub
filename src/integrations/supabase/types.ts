@@ -6,172 +6,273 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       agendamentos: {
         Row: {
-          criado_em: string | null
-          data: string | null
-          estado: string | null
-          hora: string | null
-          id: string
-          id_cliente: string | null
-          notas: string | null
-          tipo: string | null
-          titulo: string | null
+          id: number
+          titulo: string
+          data: string
+          hora: string
+          tipo: string
+          estado: string
+          id_cliente: number
+          notas: string
+          criado_em: string
+          updated_at: string
         }
         Insert: {
-          criado_em?: string | null
-          data?: string | null
-          estado?: string | null
-          hora?: string | null
-          id?: string
-          id_cliente?: string | null
-          notas?: string | null
-          tipo?: string | null
-          titulo?: string | null
+          id?: number
+          titulo: string
+          data: string
+          hora: string
+          tipo?: string
+          estado: string
+          id_cliente: number
+          notas?: string
+          criado_em?: string
+          updated_at?: string
         }
         Update: {
-          criado_em?: string | null
-          data?: string | null
-          estado?: string | null
-          hora?: string | null
-          id?: string
-          id_cliente?: string | null
-          notas?: string | null
-          tipo?: string | null
-          titulo?: string | null
+          id?: number
+          titulo?: string
+          data?: string
+          hora?: string
+          tipo?: string
+          estado?: string
+          id_cliente?: number
+          notas?: string
+          criado_em?: string
+          updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "agendamentos_id_cliente_fkey"
             columns: ["id_cliente"]
-            isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       clientes: {
         Row: {
-          como_conheceu: string | null
-          criado_em: string | null
-          data_nascimento: string | null
-          email: string | null
-          estado: string | null
-          genero: string | null
-          id: string
-          morada: string | null
+          id: number
           nome: string
-          notas: string | null
-          telefone: string | null
-          tipo_contato: string | null
+          email: string
+          telefone: string
+          data_nascimento: string
+          genero: string
+          morada: string
+          notas: string
+          estado: string
+          tipo_contato: string
+          como_conheceu: string
+          numero_sessoes: number
+          total_pago: number
+          max_sessoes: number
+          proxima_sessao: string
+          criado_em: string
+          updated_at: string
         }
         Insert: {
-          como_conheceu?: string | null
-          criado_em?: string | null
-          data_nascimento?: string | null
-          email?: string | null
-          estado?: string | null
-          genero?: string | null
-          id?: string
-          morada?: string | null
+          id?: number
           nome: string
-          notas?: string | null
-          telefone?: string | null
-          tipo_contato?: string | null
+          email: string
+          telefone: string
+          data_nascimento: string
+          genero: string
+          morada: string
+          notas?: string
+          estado: string
+          tipo_contato: string
+          como_conheceu: string
+          numero_sessoes?: number
+          total_pago?: number
+          max_sessoes?: number
+          proxima_sessao?: string
+          criado_em?: string
+          updated_at?: string
         }
         Update: {
-          como_conheceu?: string | null
-          criado_em?: string | null
-          data_nascimento?: string | null
-          email?: string | null
-          estado?: string | null
-          genero?: string | null
-          id?: string
-          morada?: string | null
+          id?: number
           nome?: string
-          notas?: string | null
-          telefone?: string | null
-          tipo_contato?: string | null
+          email?: string
+          telefone?: string
+          data_nascimento?: string
+          genero?: string
+          morada?: string
+          notas?: string
+          estado?: string
+          tipo_contato?: string
+          como_conheceu?: string
+          numero_sessoes?: number
+          total_pago?: number
+          max_sessoes?: number
+          proxima_sessao?: string
+          criado_em?: string
+          updated_at?: string
         }
         Relationships: []
       }
-      pagamentos: {
+      comunicacoes: {
         Row: {
-          criado_em: string | null
+          id: number
+          tipo: string
+          conteudo: string
+          id_cliente: number
           data: string
-          descricao: string | null
-          id: string
-          id_cliente: string | null
-          metodo: string | null
-          valor: number
+          status: string
+          criado_em: string
+          updated_at: string
         }
         Insert: {
-          criado_em?: string | null
+          id?: number
+          tipo: string
+          conteudo: string
+          id_cliente: number
           data: string
-          descricao?: string | null
-          id?: string
-          id_cliente?: string | null
-          metodo?: string | null
-          valor: number
+          status: string
+          criado_em?: string
+          updated_at?: string
         }
         Update: {
-          criado_em?: string | null
+          id?: number
+          tipo?: string
+          conteudo?: string
+          id_cliente?: number
           data?: string
-          descricao?: string | null
-          id?: string
-          id_cliente?: string | null
-          metodo?: string | null
+          status?: string
+          criado_em?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comunicacoes_id_cliente_fkey"
+            columns: ["id_cliente"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      humor_cliente: {
+        Row: {
+          id: number
+          id_cliente: number
+          humor: string
+          qualidade_sono: string
+          notas: string
+          data: string
+          criado_em: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          id_cliente: number
+          humor: string
+          qualidade_sono?: string
+          notas?: string
+          data: string
+          criado_em?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          id_cliente?: number
+          humor?: string
+          qualidade_sono?: string
+          notas?: string
+          data?: string
+          criado_em?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "humor_cliente_id_cliente_fkey"
+            columns: ["id_cliente"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      pagamentos: {
+        Row: {
+          id: number
+          id_cliente: number
+          valor: number
+          data: string
+          tipo: string
+          descricao: string
+          criado_em: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          id_cliente: number
+          valor: number
+          data: string
+          tipo: string
+          descricao?: string
+          criado_em?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          id_cliente?: number
           valor?: number
+          data?: string
+          tipo?: string
+          descricao?: string
+          criado_em?: string
+          updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "pagamentos_id_cliente_fkey"
             columns: ["id_cliente"]
-            isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
-      sessoes: {
+      sessoes_ativas: {
         Row: {
-          criada_em: string | null
-          data: string
-          hora: string | null
-          id: string
-          id_cliente: string | null
-          notas: string | null
-          tipo: string | null
+          id: number
+          id_cliente: number
+          inicio: string
+          fim: string
+          duracao: number
+          notas: string
+          criado_em: string
+          updated_at: string
         }
         Insert: {
-          criada_em?: string | null
-          data: string
-          hora?: string | null
-          id?: string
-          id_cliente?: string | null
-          notas?: string | null
-          tipo?: string | null
+          id?: number
+          id_cliente: number
+          inicio: string
+          fim?: string
+          duracao?: number
+          notas?: string
+          criado_em?: string
+          updated_at?: string
         }
         Update: {
-          criada_em?: string | null
-          data?: string
-          hora?: string | null
-          id?: string
-          id_cliente?: string | null
-          notas?: string | null
-          tipo?: string | null
+          id?: number
+          id_cliente?: number
+          inicio?: string
+          fim?: string
+          duracao?: number
+          notas?: string
+          criado_em?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "sessoes_id_cliente_fkey"
+            foreignKeyName: "sessoes_ativas_id_cliente_fkey"
             columns: ["id_cliente"]
-            isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
     }

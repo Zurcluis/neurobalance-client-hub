@@ -1,105 +1,140 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ClientDetailData } from '@/types/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
 
-// Função para carregar clientes do localStorage
-const loadClientsFromStorage = (): ClientDetailData[] => {
-  if (typeof window === 'undefined') return [];
-  
-  try {
-    const storedClients = localStorage.getItem('clients');
-    return storedClients ? JSON.parse(storedClients) : [];
-  } catch (error) {
-    console.error('Erro ao carregar clientes do localStorage:', error);
-    return [];
-  }
-};
-
-// Função para salvar clientes no localStorage
-const saveClientsToStorage = (clients: ClientDetailData[]) => {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem('clients', JSON.stringify(clients));
-  } catch (error) {
-    console.error('Erro ao salvar clientes no localStorage:', error);
-    toast.error('Erro ao salvar clientes. Tente novamente.');
-  }
-};
+type Client = Database['public']['Tables']['clientes']['Row'];
+type NewClient = Database['public']['Tables']['clientes']['Insert'];
+type UpdateClient = Database['public']['Tables']['clientes']['Update'];
 
 export function useClients() {
-  const [clients, setClients] = useState<ClientDetailData[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Carregar clientes ao montar o componente
-  useEffect(() => {
+  // Load clients from Supabase
+  const loadClients = useCallback(async () => {
     try {
       setIsLoading(true);
-      const loadedClients = loadClientsFromStorage();
-      setClients(loadedClients);
+      const { data, error: supabaseError } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('nome', { ascending: true });
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      setClients(data);
       setError(null);
     } catch (err) {
-      setError('Erro ao carregar clientes');
-      console.error('Erro ao carregar clientes:', err);
+      setError('Error loading clients');
+      console.error('Error loading clients:', err);
+      toast.error('Failed to load clients');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Salvar clientes no localStorage sempre que houver alterações
+  // Initial load
   useEffect(() => {
-    if (!isLoading && clients.length > 0) {
-      saveClientsToStorage(clients);
-    }
-  }, [clients, isLoading]);
+    loadClients();
+  }, [loadClients]);
 
-  // Função para adicionar um novo cliente
-  const addClient = useCallback((newClient: ClientDetailData) => {
-    setClients(prev => {
-      // Verifica se o cliente já existe
-      const exists = prev.some(client => client.id === newClient.id);
-      if (exists) {
-        toast.error('Cliente já existe');
-        return prev;
+  // Add new client
+  const addClient = useCallback(async (client: NewClient) => {
+    try {
+      // Start a transaction
+      const { data: newClient, error: insertError } = await supabase
+        .from('clientes')
+        .insert([client])
+        .select()
+        .single();
+
+      if (insertError) {
+        throw insertError;
       }
-      
-      const updatedClients = [...prev, newClient];
-      saveClientsToStorage(updatedClients);
-      return updatedClients;
-    });
+
+      // If there's a payment amount, create a payment record
+      if (client.total_pago && client.total_pago > 0) {
+        const initialPayment = {
+          id_cliente: newClient.id,
+          data: new Date().toISOString(),
+          valor: client.total_pago,
+          descricao: client.total_pago === 85 ? 'Avaliação Inicial' : 
+                    client.total_pago === 400 ? 'Pack Mensal Neurofeedback' : 
+                    client.total_pago === 55 ? 'Sessão Individual Neurofeedback' : 'Pagamento Inicial',
+          tipo: 'Multibanco',
+          criado_em: new Date().toISOString()
+        };
+
+        const { error: paymentError } = await supabase
+          .from('pagamentos')
+          .insert([initialPayment]);
+
+        if (paymentError) {
+          console.error('Error adding initial payment:', paymentError);
+          // Don't throw here, as the client was already created
+        }
+      }
+
+      // Update the clients state with the new client
+      setClients(prev => [...prev, newClient]);
+      toast.success('Client added successfully');
+    } catch (err) {
+      console.error('Error adding client:', err);
+      toast.error('Failed to add client');
+    }
   }, []);
 
-  // Função para atualizar um cliente existente
-  const updateClient = useCallback((updatedClient: ClientDetailData) => {
-    setClients(prev => {
-      const updatedClients = prev.map(client => 
-        client.id === updatedClient.id ? updatedClient : client
-      );
-      saveClientsToStorage(updatedClients);
-      return updatedClients;
-    });
-  }, []);
+  // Update client
+  const updateClient = useCallback(async (id: number, updates: UpdateClient) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('clientes')
+        .update(updates)
+        .eq('id', id);
 
-  // Função para remover um cliente
-  const removeClient = useCallback((clientId: string) => {
-    setClients(prev => {
-      const updatedClients = prev.filter(client => client.id !== clientId);
-      saveClientsToStorage(updatedClients);
-      return updatedClients;
-    });
-  }, []);
+      if (updateError) {
+        throw updateError;
+      }
 
-  // Função para buscar clientes por nome ou ID
+      // Refresh the clients list
+      await loadClients();
+      toast.success('Client updated successfully');
+    } catch (err) {
+      console.error('Error updating client:', err);
+      toast.error('Failed to update client');
+    }
+  }, [loadClients]);
+
+  // Delete client
+  const deleteClient = useCallback(async (id: number) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Refresh the clients list
+      await loadClients();
+      toast.success('Client deleted successfully');
+    } catch (err) {
+      console.error('Error deleting client:', err);
+      toast.error('Failed to delete client');
+    }
+  }, [loadClients]);
+
+  // Search clients
   const searchClients = useCallback((query: string) => {
-    if (!query.trim()) return clients;
-    
-    const lowerQuery = query.toLowerCase().trim();
+    const searchTerm = query.toLowerCase();
     return clients.filter(client => 
-      client.id.toLowerCase().includes(lowerQuery) ||
-      client.name.toLowerCase().includes(lowerQuery) ||
-      client.email.toLowerCase().includes(lowerQuery) ||
-      client.phone.includes(lowerQuery)
+      client.nome.toLowerCase().includes(searchTerm) ||
+      client.email.toLowerCase().includes(searchTerm)
     );
   }, [clients]);
 
@@ -109,8 +144,9 @@ export function useClients() {
     error,
     addClient,
     updateClient,
-    removeClient,
-    searchClients
+    deleteClient,
+    searchClients,
+    refresh: loadClients
   };
 }
 

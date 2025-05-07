@@ -15,6 +15,9 @@ import ClientReports from '@/components/client-details/ClientReports';
 import ClientMoodTracker from '@/components/client-details/ClientMoodTracker';
 import ClientMonitoringTab from '@/components/client-details/ClientMonitoringTab';
 import { parseISO, format, isSameDay, isBefore, compareDesc } from 'date-fns';
+import useClients from '@/hooks/useClients';
+import usePayments from '@/hooks/usePayments';
+import { supabase } from '@/integrations/supabase/client';
 
 // Interface para Appointments (pode ser movida para types)
 interface Appointment {
@@ -41,11 +44,12 @@ const saveToStorage = <T extends unknown>(key: string, data: T): void => {
 
 const ClientDetailPage = () => {
   const { clientId } = useParams<{ clientId: string }>();
+  const { clients, isLoading: isLoadingClients, updateClient: updateClientInDb } = useClients();
+  const { payments, isLoading: isLoadingPayments, addPayment: addPaymentToDb, deletePayment: deletePaymentFromDb } = usePayments(clientId);
   
   // Estados
   const [client, setClient] = useState<ClientDetailData | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [files, setFiles] = useState<ClientFile[]>([]);
   const [moods, setMoods] = useState<ClientMood[]>([]);
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
@@ -54,62 +58,26 @@ const ClientDetailPage = () => {
 
   // Carregar dados
   useEffect(() => {
-    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
-    const foundClient = clients.find(c => c.id === clientId);
-    
-    let clientToSet = foundClient || null;
-    
-    if (foundClient) {
-      // Carregar sessões manuais
-    const allSessions = loadFromStorage<Session[]>('sessions', []);
-    const clientSessions = allSessions.filter(session => session.clientId === clientId);
-    setSessions(clientSessions);
-    
-      // Carregar pagamentos
-    const allPayments = loadFromStorage<Payment[]>('payments', []);
-    const clientPayments = allPayments.filter(payment => payment.clientId === clientId);
-    setPayments(clientPayments);
-    
-      // Carregar ficheiros
-    const allFiles = loadFromStorage<ClientFile[]>('clientFiles', []);
-    const clientFiles = allFiles.filter(file => file.clientId === clientId);
-    setFiles(clientFiles);
-    
-      // Carregar moods
-    const allMoods = loadFromStorage<ClientMood[]>('clientMoods', []);
-    const clientMoods = allMoods.filter(mood => mood.clientId === clientId);
-    setMoods(clientMoods);
-
-      // Carregar TODOS os agendamentos do cliente
-      const appointments = loadFromStorage<Appointment[]>('appointments', []);
-      const clientAppointments = appointments
-          .filter((app: Appointment) => app.clientId === clientId)
-          .sort((a, b) => compareDesc(parseISO(a.date), parseISO(b.date))); // Ordenar por data desc
-      setAllAppointments(clientAppointments);
+    if (!isLoadingClients && clientId) {
+      const foundClient = clients.find(c => c.id.toString() === clientId);
       
-      // Determinar próxima sessão (lógica existente)
-    const now = new Date();
-      const futureAppointments = clientAppointments.filter((app: Appointment) => !isBefore(parseISO(app.date), now))
-                                                .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); // Sort asc for next
-    
-      if (futureAppointments.length > 0) {
-      const nextSession = futureAppointments[0];
-      const appointmentDate = parseISO(nextSession.date);
-      const formattedDate = format(appointmentDate, "dd/MM/yyyy 'às' HH:mm");
-      
-        // Atualiza o cliente que será setado no estado
-        clientToSet = { ...foundClient, nextSession: formattedDate };
-      } else {
-        clientToSet = { ...foundClient, nextSession: null }; // Garante que nextSession é null se não houver futuras
+      if (foundClient) {
+        const clientToSet: ClientDetailData = {
+          ...foundClient,
+          genero: foundClient.genero as 'Homem' | 'Mulher' | 'Outro',
+          estado: foundClient.estado as 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call',
+          tipo_contato: foundClient.tipo_contato as 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook',
+          como_conheceu: foundClient.como_conheceu as 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação',
+          proxima_sessao: null
+        };
+        setClient(clientToSet);
       }
+      setIsLoading(false);
     }
-
-    setClient(clientToSet);
-    setIsLoading(false);
-  }, [clientId]);
+  }, [clientId, clients, isLoadingClients]);
 
   // Se o cliente não for encontrado, mostrar erro
-  if (isLoading) {
+  if (isLoading || isLoadingClients) {
     return (
       <PageLayout>
         <div>Carregando...</div>
@@ -135,21 +103,19 @@ const ClientDetailPage = () => {
   }
 
   // Handlers
-  const updateClient = (data: Partial<ClientDetailData>) => {
-    setClient(prevClient => {
-      if (!prevClient) return null;
-      const newClientData = { ...prevClient, ...data };
-      
-      // Atualizar a lista geral de clientes no localStorage
-    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
-      const updatedClients = clients.map(c => 
-        c.id === clientId ? newClientData : c
-      );
-    saveToStorage('clients', updatedClients);
+  const updateClient = async (data: Partial<ClientDetailData>) => {
+    if (!client) return;
     
-      toast.success("Dados do cliente atualizados.");
-      return newClientData;
-    });
+    try {
+      await updateClientInDb(client.id, data);
+      setClient(prevClient => {
+        if (!prevClient) return null;
+        return { ...prevClient, ...data };
+      });
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast.error('Failed to update client');
+    }
   };
 
   const addSession = (data: Omit<Session, 'id' | 'clientId'>) => {
@@ -169,11 +135,11 @@ const ClientDetailPage = () => {
              console.error("Erro Supabase insert session:", error);
           } else {
              // Se salvou no Supabase, atualiza localStorage e estado
-    const allSessions = loadFromStorage<Session[]>('sessions', []);
-    const updatedSessions = [...allSessions, newSession];
-    saveToStorage('sessions', updatedSessions);
+             const allSessions = loadFromStorage<Session[]>('sessions', []);
+             const updatedSessions = [...allSessions, newSession];
+             saveToStorage('sessions', updatedSessions);
              setSessions(prev => [...prev, newSession]);
-             updateClient({ sessionCount: (client?.sessionCount || 0) + 1 });
+             updateClient({ numero_sessoes: (client?.numero_sessoes || 0) + 1 });
              toast.success('Sessão adicionada com sucesso');
           }
        });
@@ -209,36 +175,45 @@ const ClientDetailPage = () => {
         
         // Se foi uma adição (vindo do calendário), atualiza contagem no cliente
         if (sessionIndex === -1) {
-             updateClient({ sessionCount: (client?.sessionCount || 0) + 1 });
+             updateClient({ numero_sessoes: (client?.numero_sessoes || 0) + 1 });
         }
 
         return updatedSessionList; // Retorna a lista atualizada para o estado local
      });
   };
 
-  const addPayment = (data: Omit<Payment, 'id' | 'clientId'>) => {
-    const newPayment: Payment = {
-      ...data,
-      id: Date.now().toString(),
-      clientId: clientId as string,
-    };
-    const allPayments = loadFromStorage<Payment[]>('payments', []);
-    const updatedPayments = [...allPayments, newPayment];
-    saveToStorage('payments', updatedPayments);
-    setPayments(prev => [...prev, newPayment]);
-    updateClient({ totalPaid: (client?.totalPaid || 0) + data.amount });
-    toast.success('Pagamento adicionado com sucesso');
+  const addPayment = async (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
+    try {
+      const newPayment = {
+        id_cliente: parseInt(clientId as string, 10),
+        data: data.data,
+        valor: data.valor,
+        descricao: data.descricao,
+        tipo: data.tipo,
+        criado_em: new Date().toISOString()
+      };
+
+      await addPaymentToDb(newPayment);
+      updateClient({ total_pago: (client?.total_pago || 0) + data.valor });
+      toast.success('Pagamento adicionado com sucesso');
+    } catch (error) {
+      console.error("Erro ao adicionar pagamento:", error);
+      toast.error("Erro ao adicionar pagamento");
+    }
   };
 
-  const deletePayment = (paymentId: string) => {
-    const paymentToDelete = payments.find(p => p.id === paymentId);
-    if (!paymentToDelete) return;
-    updateClient({ totalPaid: Math.max(0, (client?.totalPaid || 0) - paymentToDelete.amount) });
-    const allPayments = loadFromStorage<Payment[]>('payments', []);
-    const updatedPayments = allPayments.filter(p => p.id !== paymentId);
-    saveToStorage('payments', updatedPayments);
-    setPayments(prev => prev.filter(p => p.id !== paymentId));
-    toast.success('Pagamento eliminado com sucesso');
+  const deletePayment = async (paymentId: number) => {
+    try {
+      const paymentToDelete = payments.find(p => p.id === paymentId);
+      if (!paymentToDelete) return;
+
+      await deletePaymentFromDb(paymentId.toString());
+      updateClient({ total_pago: Math.max(0, (client?.total_pago || 0) - paymentToDelete.valor) });
+      toast.success('Pagamento eliminado com sucesso');
+    } catch (error) {
+      console.error("Erro ao eliminar pagamento:", error);
+      toast.error("Erro ao eliminar pagamento");
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,7 +280,7 @@ const ClientDetailPage = () => {
   };
 
   // Renderização
-  const renderContent = () => {
+  const renderTabContent = () => {
     switch (activeTab) {
       case 'profile':
         return <ClientProfile client={client!} onUpdateClient={updateClient} />;
@@ -319,7 +294,12 @@ const ClientDetailPage = () => {
                   onUpdateSession={handleUpdateSession}
                />;
       case 'payments':
-        return <ClientPayments payments={payments} clientId={clientId!} onAddPayment={addPayment} onDeletePayment={deletePayment}/>;
+        return <ClientPayments 
+                  payments={payments} 
+                  clientId={clientId!} 
+                  onAddPayment={addPayment} 
+                  onDeletePayment={deletePayment}
+               />;
       case 'files':
         return <ClientFiles files={files} onUploadFile={handleFileUpload} onDeleteFile={deleteFile} />;
       case 'reports':
@@ -348,8 +328,8 @@ const ClientDetailPage = () => {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold gradient-heading">{client.name}</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">{client.email} • {client.phone}</p>
+          <h1 className="text-3xl font-bold gradient-heading">{client.nome}</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">{client.email} • {client.telefone}</p>
         </div>
       </div>
       
@@ -357,22 +337,22 @@ const ClientDetailPage = () => {
         <Card className="glassmorphism">
           <CardContent className="pt-6">
             <p className="text-gray-600 dark:text-gray-400">Total de Sessões</p>
-            <p className="text-2xl font-bold">{client.sessionCount}</p>
+            <p className="text-2xl font-bold">{client.numero_sessoes || 0}</p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism">
           <CardContent className="pt-6">
             <p className="text-gray-600 dark:text-gray-400">Total Pago</p>
-            <p className="text-2xl font-bold">€{client.totalPaid?.toLocaleString()}</p>
+            <p className="text-2xl font-bold">€{client.total_pago?.toLocaleString() || '0.00'}</p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism md:col-span-2">
           <CardContent className="pt-6">
             <p className="text-gray-600 dark:text-gray-400">Próxima Sessão</p>
-            {client.nextSession ? (
-              <p className="text-xl font-medium">{client.nextSession}</p>
+            {client.proxima_sessao ? (
+              <p className="text-xl font-medium">{client.proxima_sessao}</p>
             ) : (
               <p className="text-gray-500 dark:text-gray-400">Sem sessões agendadas</p>
             )}
@@ -391,7 +371,7 @@ const ClientDetailPage = () => {
           <TabsTrigger value="monitoring">Monitorização</TabsTrigger>
         </TabsList>
         
-        {renderContent()}
+        {renderTabContent()}
       </Tabs>
     </PageLayout>
   );

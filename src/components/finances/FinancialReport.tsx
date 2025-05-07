@@ -1,10 +1,13 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Payment } from '@/types/client';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
+
+type Payment = Database['public']['Tables']['pagamentos']['Row'];
 
 const FinancialReport = () => {
   const [financialData, setFinancialData] = useState<any[]>([]);
@@ -14,77 +17,109 @@ const FinancialReport = () => {
     consultations: 0,
     monthly: 0
   });
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Load all payments from localStorage
-    const loadPayments = (): Payment[] => {
-      const storedPayments = localStorage.getItem('payments');
-      return storedPayments ? JSON.parse(storedPayments) : [];
-    };
-    
-    const payments = loadPayments();
-    
-    // Group payments by month and categorize them
-    const monthlyData = payments.reduce((acc: Record<string, any>, payment) => {
-      const date = new Date(payment.date);
-      const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
-      
-      if (!acc[monthYear]) {
-        acc[monthYear] = {
-          month: getMonthName(date.getMonth()),
-          neurofeedback: 0,
-          assessments: 0,
-          consultations: 0,
-          monthly: 0,
+    const loadPayments = async () => {
+      try {
+        setIsLoading(true);
+        console.log('Fetching payments from Supabase...');
+        const { data: payments, error } = await supabase
+          .from('pagamentos')
+          .select('*')
+          .order('data', { ascending: true });
+
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
+
+        console.log('Payments data:', payments);
+
+        if (!payments || payments.length === 0) {
+          console.log('No payments found');
+          setFinancialData([]);
+          setTotals({
+            neurofeedback: 0,
+            assessments: 0,
+            consultations: 0,
+            monthly: 0
+          });
+          return;
+        }
+        
+        // Group payments by month and categorize them
+        const monthlyData = payments.reduce((acc: Record<string, any>, payment) => {
+          const date = new Date(payment.data);
+          const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+          
+          if (!acc[monthYear]) {
+            acc[monthYear] = {
+              month: getMonthName(date.getMonth()),
+              neurofeedback: 0,
+              assessments: 0,
+              consultations: 0,
+              monthly: 0,
+            };
+          }
+          
+          // Categorize payments based on description
+          const description = payment.descricao?.toLowerCase() || '';
+          if (description.includes('neurofeedback') && !description.includes('pack')) {
+            acc[monthYear].neurofeedback += payment.valor;
+          } else if (description.includes('avaliação')) {
+            acc[monthYear].assessments += payment.valor;
+          } else if (description.includes('pack')) {
+            acc[monthYear].monthly += payment.valor;
+          } else {
+            acc[monthYear].consultations += payment.valor;
+          }
+          
+          return acc;
+        }, {});
+        
+        // Convert to array and sort by month/year
+        const sortedData = Object.values(monthlyData).sort((a, b) => {
+          const monthA = getMonthIndex(a.month);
+          const monthB = getMonthIndex(b.month);
+          return monthA - monthB;
+        });
+        
+        console.log('Processed monthly data:', sortedData);
+        setFinancialData(sortedData);
+        
+        // Calculate totals
+        const calculatedTotals = {
+          neurofeedback: payments.reduce((sum, payment) => {
+            const desc = payment.descricao?.toLowerCase() || '';
+            return desc.includes('neurofeedback') && !desc.includes('pack') ? sum + payment.valor : sum;
+          }, 0),
+          assessments: payments.reduce((sum, payment) => {
+            const desc = payment.descricao?.toLowerCase() || '';
+            return desc.includes('avaliação') ? sum + payment.valor : sum;
+          }, 0),
+          consultations: payments.reduce((sum, payment) => {
+            const desc = payment.descricao?.toLowerCase() || '';
+            return !desc.includes('neurofeedback') && !desc.includes('avaliação') && !desc.includes('pack') 
+              ? sum + payment.valor : sum;
+          }, 0),
+          monthly: payments.reduce((sum, payment) => {
+            const desc = payment.descricao?.toLowerCase() || '';
+            return desc.includes('pack') ? sum + payment.valor : sum;
+          }, 0)
         };
+        
+        console.log('Calculated totals:', calculatedTotals);
+        setTotals(calculatedTotals);
+      } catch (error) {
+        console.error('Error loading payments:', error);
+        toast.error('Failed to load financial data');
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Categorize payments based on description
-      const description = payment.description.toLowerCase();
-      if (description.includes('neurofeedback') && !description.includes('pack')) {
-        acc[monthYear].neurofeedback += payment.amount;
-      } else if (description.includes('avaliação')) {
-        acc[monthYear].assessments += payment.amount;
-      } else if (description.includes('pack')) {
-        acc[monthYear].monthly += payment.amount;
-      } else {
-        acc[monthYear].consultations += payment.amount;
-      }
-      
-      return acc;
-    }, {});
-    
-    // Convert to array and sort by month/year
-    const sortedData = Object.values(monthlyData).sort((a, b) => {
-      const monthA = getMonthIndex(a.month);
-      const monthB = getMonthIndex(b.month);
-      return monthA - monthB;
-    });
-    
-    setFinancialData(sortedData);
-    
-    // Calculate totals
-    const calculatedTotals = {
-      neurofeedback: payments.reduce((sum, payment) => {
-        const desc = payment.description.toLowerCase();
-        return desc.includes('neurofeedback') && !desc.includes('pack') ? sum + payment.amount : sum;
-      }, 0),
-      assessments: payments.reduce((sum, payment) => {
-        const desc = payment.description.toLowerCase();
-        return desc.includes('avaliação') ? sum + payment.amount : sum;
-      }, 0),
-      consultations: payments.reduce((sum, payment) => {
-        const desc = payment.description.toLowerCase();
-        return !desc.includes('neurofeedback') && !desc.includes('avaliação') && !desc.includes('pack') 
-          ? sum + payment.amount : sum;
-      }, 0),
-      monthly: payments.reduce((sum, payment) => {
-        const desc = payment.description.toLowerCase();
-        return desc.includes('pack') ? sum + payment.amount : sum;
-      }, 0)
     };
-    
-    setTotals(calculatedTotals);
+
+    loadPayments();
   }, []);
   
   const getMonthName = (monthIndex: number): string => {
@@ -98,6 +133,17 @@ const FinancialReport = () => {
   };
   
   const total = totals.neurofeedback + totals.assessments + totals.consultations + totals.monthly;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3f9094] mx-auto"></div>
+          <p className="mt-2 text-gray-600">Carregando dados financeiros...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">

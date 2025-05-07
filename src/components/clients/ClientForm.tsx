@@ -21,20 +21,18 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface ClientFormData {
   nome: string;
-  id: string;
-  idade?: number;
-  problematica: string;
   email: string;
-  contato: string;
-  localidade: string;
-  dataNascimento?: Date | null;
-  genero?: 'Homem' | 'Mulher' | 'Outro';
-  tipoContato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
-  comoConheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
-  estado: 'On Going' | 'Thinking' | 'No need' | 'Finished' | 'call';
-  notes?: string;
-  numeroSessoes?: number;
-  valorPacote?: number;
+  telefone: string;
+  data_nascimento: Date | null;
+  genero: 'Homem' | 'Mulher' | 'Outro';
+  morada: string;
+  notas?: string;
+  estado: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
+  tipo_contato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
+  como_conheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
+  numero_sessoes?: number;
+  total_pago?: number;
+  max_sessoes?: number;
 }
 
 interface ClientFormProps {
@@ -43,29 +41,46 @@ interface ClientFormProps {
   isEditing?: boolean;
 }
 
+// Update payment types array
+const paymentTypes = [
+  { id: 'none', label: 'Sem Pagamento', value: 0 },
+  { id: 'initial', label: 'Avaliação Inicial', value: 85 },
+  { id: 'second', label: 'Segunda Avaliação', value: 85 },
+  { id: 'monthly', label: 'Pack Mensal Neurofeedback', value: 400 },
+  { id: 'session', label: 'Sessão Individual Neurofeedback', value: 55 }
+];
+
 const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientFormProps) => {
   const { register, handleSubmit, formState: { errors }, control, setValue } = useForm<ClientFormData>({
     defaultValues: {
-      tipoContato: 'Lead',
-      comoConheceu: 'Anúncio',
-      estado: 'On Going',
+      tipo_contato: 'Lead',
+      como_conheceu: 'Anúncio',
+      estado: 'ongoing',
       ...defaultValues,
-      dataNascimento: defaultValues.dataNascimento ? new Date(defaultValues.dataNascimento) : null,
+      data_nascimento: defaultValues.data_nascimento ? new Date(defaultValues.data_nascimento) : null,
     }
   });
   const [birthDate, setBirthDate] = useState<Date | null>(
-    defaultValues.dataNascimento ? new Date(defaultValues.dataNascimento) : null
+    defaultValues.data_nascimento ? new Date(defaultValues.data_nascimento) : null
   );
-  const [statusValue, setStatusValue] = useState<'On Going' | 'Thinking' | 'No need' | 'Finished' | 'call'>(
-    (defaultValues.estado as any) || 'On Going'
+  const [statusValue, setStatusValue] = useState<'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call'>(
+    defaultValues.estado || 'ongoing'
   );
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  // Add payment type change handler
+  const handlePaymentTypeChange = (value: string) => {
+    const selectedType = paymentTypes.find(type => type.id === value);
+    if (selectedType) {
+      setValue('total_pago', selectedType.value);
+    }
+  };
+
   const handleFormSubmit = (data: ClientFormData) => {
     onSubmit({
       ...data,
-      dataNascimento: data.dataNascimento instanceof Date ? data.dataNascimento : birthDate,
+      data_nascimento: data.data_nascimento instanceof Date ? data.data_nascimento : birthDate,
     });
   };
 
@@ -89,29 +104,49 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="id" className="text-base">ID <span className="text-red-500">*</span></Label>
+          <Label htmlFor="email" className="text-base">Email <span className="text-red-500">*</span></Label>
           <Input
-            id="id"
-            type="text"
-            {...register('id', {
-              required: 'ID é obrigatório'
+            id="email"
+            type="email"
+            {...register('email', {
+              required: 'Email é obrigatório',
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: 'Email inválido'
+              }
             })}
-            placeholder="ID do cliente"
-            disabled={isEditing}
-            className={`h-11 text-base ${errors.id ? 'border-red-500' : ''}`}
+            placeholder="Email"
+            className={`h-11 text-base ${errors.email ? 'border-red-500' : ''}`}
           />
-          {errors.id && (
-            <p className="text-sm text-red-500">{errors.id.message}</p>
+          {errors.email && (
+            <p className="text-sm text-red-500">{errors.email.message}</p>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="dataNascimento" className="text-base">Data de Nascimento</Label>
+          <Label htmlFor="telefone" className="text-base">Telefone <span className="text-red-500">*</span></Label>
+          <Input
+            id="telefone"
+            type="tel"
+            {...register('telefone', {
+              required: 'Telefone é obrigatório'
+            })}
+            placeholder="Número de telefone"
+            className={`h-11 text-base ${errors.telefone ? 'border-red-500' : ''}`}
+          />
+          {errors.telefone && (
+            <p className="text-sm text-red-500">{errors.telefone.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="data_nascimento" className="text-base">Data de Nascimento <span className="text-red-500">*</span></Label>
           <Controller
             control={control}
-            name="dataNascimento"
+            name="data_nascimento"
+            rules={{ required: 'Data de nascimento é obrigatória' }}
             render={({ field }) => (
               <DatePicker
                 selected={field.value}
@@ -125,190 +160,174 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
                 dateFormat="dd/MM/yyyy"
                 placeholderText="Selecione a data"
                 wrapperClassName="w-full"
-                className="h-11 text-base w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className={`h-11 text-base w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errors.data_nascimento ? 'border-red-500' : ''}`}
               />
             )}
           />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="genero" className="text-base">Género</Label>
-          <Controller
-            control={control}
-            name="genero"
-            render={({ field }) => (
-          <Select 
-                onValueChange={field.onChange}
-                value={field.value}
-            defaultValue={defaultValues.genero}
-          >
-                <SelectTrigger className="h-11 text-base">
-              <SelectValue placeholder="Selecione o género" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Homem">Homem</SelectItem>
-              <SelectItem value="Mulher">Mulher</SelectItem>
-              <SelectItem value="Outro">Outro</SelectItem>
-            </SelectContent>
-          </Select>
-            )}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="email" className="text-base">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            {...register('email', {
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'Email inválido'
-              }
-            })}
-            placeholder="Email"
-            className={`h-11 text-base ${errors.email ? 'border-red-500' : ''}`}
-          />
-          {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
+          {errors.data_nascimento && (
+            <p className="text-sm text-red-500">{errors.data_nascimento.message}</p>
           )}
         </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="contato" className="text-base">Contacto</Label>
-          <Input
-            id="contato"
-            type="tel"
-            inputMode="tel"
-            {...register('contato')}
-            placeholder="Número de contacto"
-            className="h-11 text-base"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="localidade" className="text-base">Localidade</Label>
-        <Input
-          id="localidade"
-          {...register('localidade')}
-          placeholder="Localidade"
-          className="h-11 text-base"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="problematica" className="text-base">Problemática</Label>
-        <Textarea
-          id="problematica"
-          {...register('problematica')}
-          placeholder="Descreva a problemática do cliente"
-          className="min-h-[100px] sm:min-h-[120px] text-base pt-2 resize-none"
-        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="tipoContato" className="text-base">Tipo de Contacto</Label>
+          <Label htmlFor="genero" className="text-base">Género <span className="text-red-500">*</span></Label>
           <Controller
             control={control}
-            name="tipoContato"
+            name="genero"
+            rules={{ required: 'Género é obrigatório' }}
             render={({ field }) => (
-          <Select 
+              <Select 
                 onValueChange={field.onChange}
                 value={field.value}
-            defaultValue={defaultValues.tipoContato || 'Lead'}
-          >
-                <SelectTrigger className="h-11 text-base">
-              <SelectValue placeholder="Selecione o tipo de contacto" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Lead">Lead</SelectItem>
-              <SelectItem value="Contato">Contato</SelectItem>
-              <SelectItem value="Email">Email</SelectItem>
-              <SelectItem value="Instagram">Instagram</SelectItem>
-              <SelectItem value="Facebook">Facebook</SelectItem>
-            </SelectContent>
-          </Select>
+                defaultValue={defaultValues.genero}
+              >
+                <SelectTrigger className={`h-11 text-base ${errors.genero ? 'border-red-500' : ''}`}>
+                  <SelectValue placeholder="Selecione o género" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Homem">Homem</SelectItem>
+                  <SelectItem value="Mulher">Mulher</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
             )}
           />
+          {errors.genero && (
+            <p className="text-sm text-red-500">{errors.genero.message}</p>
+          )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="comoConheceu" className="text-base">Como teve conhecimento</Label>
+          <Label htmlFor="morada" className="text-base">Morada <span className="text-red-500">*</span></Label>
+          <Input
+            id="morada"
+            type="text"
+            {...register('morada', {
+              required: 'Morada é obrigatória'
+            })}
+            placeholder="Morada completa"
+            className={`h-11 text-base ${errors.morada ? 'border-red-500' : ''}`}
+          />
+          {errors.morada && (
+            <p className="text-sm text-red-500">{errors.morada.message}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="tipo_contato" className="text-base">Tipo de Contacto <span className="text-red-500">*</span></Label>
           <Controller
             control={control}
-            name="comoConheceu"
+            name="tipo_contato"
+            rules={{ required: 'Tipo de contacto é obrigatório' }}
             render={({ field }) => (
-          <Select 
+              <Select 
                 onValueChange={field.onChange}
                 value={field.value}
-            defaultValue={defaultValues.comoConheceu || 'Anúncio'}
-          >
-                <SelectTrigger className="h-11 text-base">
-              <SelectValue placeholder="Como conheceu a clínica?" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Anúncio">Anúncio</SelectItem>
-              <SelectItem value="Instagram">Instagram</SelectItem>
-              <SelectItem value="Facebook">Facebook</SelectItem>
-              <SelectItem value="Recomendação">Recomendação</SelectItem>
-            </SelectContent>
-          </Select>
+                defaultValue={defaultValues.tipo_contato || 'Lead'}
+              >
+                <SelectTrigger className={`h-11 text-base ${errors.tipo_contato ? 'border-red-500' : ''}`}>
+                  <SelectValue placeholder="Selecione o tipo de contacto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lead">Lead</SelectItem>
+                  <SelectItem value="Contato">Contato</SelectItem>
+                  <SelectItem value="Email">Email</SelectItem>
+                  <SelectItem value="Instagram">Instagram</SelectItem>
+                  <SelectItem value="Facebook">Facebook</SelectItem>
+                </SelectContent>
+              </Select>
             )}
           />
+          {errors.tipo_contato && (
+            <p className="text-sm text-red-500">{errors.tipo_contato.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="como_conheceu" className="text-base">Como teve conhecimento <span className="text-red-500">*</span></Label>
+          <Controller
+            control={control}
+            name="como_conheceu"
+            rules={{ required: 'Como conheceu é obrigatório' }}
+            render={({ field }) => (
+              <Select 
+                onValueChange={field.onChange}
+                value={field.value}
+                defaultValue={defaultValues.como_conheceu || 'Anúncio'}
+              >
+                <SelectTrigger className={`h-11 text-base ${errors.como_conheceu ? 'border-red-500' : ''}`}>
+                  <SelectValue placeholder="Como conheceu a clínica?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Anúncio">Anúncio</SelectItem>
+                  <SelectItem value="Instagram">Instagram</SelectItem>
+                  <SelectItem value="Facebook">Facebook</SelectItem>
+                  <SelectItem value="Recomendação">Recomendação</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.como_conheceu && (
+            <p className="text-sm text-red-500">{errors.como_conheceu.message}</p>
+          )}
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="estado" className="text-base">Estado</Label>
+        <Label htmlFor="estado" className="text-base">Estado <span className="text-red-500">*</span></Label>
         <Controller
           control={control}
           name="estado"
+          rules={{ required: 'Estado é obrigatório' }}
           render={({ field }) => (
-        <Select 
+            <Select 
               onValueChange={(value: any) => {
                 field.onChange(value);
                 setStatusValue(value);
               }}
               value={field.value}
-          defaultValue={defaultValues.estado || 'On Going'}
-        >
-              <SelectTrigger className="h-11 text-base">
-            <SelectValue placeholder="Selecione o estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="On Going">On Going</SelectItem>
-            <SelectItem value="Thinking">Thinking</SelectItem>
-            <SelectItem value="No need">No Need</SelectItem>
-            <SelectItem value="Finished">Finished</SelectItem>
-            <SelectItem value="call">Call</SelectItem>
-          </SelectContent>
-        </Select>
+              defaultValue={defaultValues.estado || 'ongoing'}
+            >
+              <SelectTrigger className={`h-11 text-base ${errors.estado ? 'border-red-500' : ''}`}>
+                <SelectValue placeholder="Selecione o estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ongoing">On Going</SelectItem>
+                <SelectItem value="thinking">Thinking</SelectItem>
+                <SelectItem value="no-need">No Need</SelectItem>
+                <SelectItem value="finished">Finished</SelectItem>
+                <SelectItem value="call">Call</SelectItem>
+              </SelectContent>
+            </Select>
           )}
         />
+        {errors.estado && (
+          <p className="text-sm text-red-500">{errors.estado.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="notes" className="text-base">Notas/Observações</Label>
+        <Label htmlFor="notas" className="text-base">Notas/Observações</Label>
         <Textarea
-          id="notes"
-          {...register('notes')}
+          id="notas"
+          {...register('notas')}
           placeholder="Observações adicionais"
           className="min-h-[80px] sm:min-h-[100px] text-base pt-2 resize-none"
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="numeroSessoes" className="text-base">Pacote de Sessões</Label>
+          <Label htmlFor="numero_sessoes" className="text-base">Número de Sessões</Label>
           <Input
-            id="numeroSessoes"
+            id="numero_sessoes"
             type="number"
             min="0"
-            {...register('numeroSessoes', {
+            {...register('numero_sessoes', {
               valueAsNumber: true,
               validate: (value) => 
                 (value === undefined || value === null || isNaN(value) || value >= 0) || 
@@ -317,41 +336,38 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             placeholder="Número de sessões"
             className="h-11 text-base"
           />
-          {errors.numeroSessoes && (
-            <p className="text-sm text-red-500">{errors.numeroSessoes.message}</p>
+          {errors.numero_sessoes && (
+            <p className="text-sm text-red-500">{errors.numero_sessoes.message}</p>
           )}
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="valorPacote" className="text-base">Valor do Pacote (€)</Label>
-          <Input
-            id="valorPacote"
-            type="number"
-            step="0.01"
-            min="0"
-            inputMode="decimal"
-            {...register('valorPacote', {
-              valueAsNumber: true,
-              validate: (value) => 
-                (value === undefined || value === null || isNaN(value) || value >= 0) || 
-                'O valor deve ser positivo'
-            })}
-            placeholder="Valor (€)"
-            className="h-11 text-base"
-          />
-          {errors.valorPacote && (
-            <p className="text-sm text-red-500">{errors.valorPacote.message}</p>
-          )}
+          <Label htmlFor="payment_type" className="text-base">Tipo de Pagamento</Label>
+          <Select 
+            onValueChange={handlePaymentTypeChange}
+            defaultValue="none"
+          >
+            <SelectTrigger className="h-11 text-base">
+              <SelectValue placeholder="Selecione o tipo de pagamento" />
+            </SelectTrigger>
+            <SelectContent>
+              {paymentTypes.map((type) => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.label} {type.value > 0 ? `(€${type.value})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="mt-6 flex gap-4 flex-col sm:flex-row">
+      <div className="flex flex-col sm:flex-row gap-4">
         {isEditing ? (
           <>
             <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
               Atualizar Cliente
             </Button>
-      <Button 
+            <Button 
               type="button" 
               variant="outline" 
               className="w-full sm:w-auto h-11"
@@ -363,7 +379,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         ) : (
           <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
             Adicionar Cliente
-      </Button>
+          </Button>
         )}
       </div>
     </form>

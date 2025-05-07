@@ -1,20 +1,34 @@
-export interface ClientDetailData {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  sessionCount: number;
-  nextSession: string | null;
-  totalPaid: number;
-  address?: string;
-  notes?: string;
-  birthday?: string;
-  genero?: 'Homem' | 'Mulher' | 'Outro' | null;
-  maxSessions?: number;
-  status?: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
-  tipoContato?: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
-  comoConheceu?: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
-}
+import { Database } from '@/integrations/supabase/types';
+import { z } from 'zod';
+
+export type Client = Database['public']['Tables']['clientes']['Row'];
+export type NewClient = Database['public']['Tables']['clientes']['Insert'];
+export type UpdateClient = Database['public']['Tables']['clientes']['Update'];
+
+export const clientSchema = z.object({
+  id: z.number(),
+  nome: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  telefone: z.string().min(1, 'Phone number is required'),
+  data_nascimento: z.string().nullable(),
+  genero: z.enum(['Homem', 'Mulher', 'Outro']),
+  morada: z.string().min(1, 'Address is required'),
+  notas: z.string().optional(),
+  estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'call']),
+  tipo_contato: z.enum(['Lead', 'Contato', 'Email', 'Instagram', 'Facebook']),
+  como_conheceu: z.enum(['Anúncio', 'Instagram', 'Facebook', 'Recomendação']),
+  numero_sessoes: z.number().optional(),
+  total_pago: z.number().optional(),
+  max_sessoes: z.number().optional(),
+  proxima_sessao: z.string().nullable().optional(),
+  criado_em: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const newClientSchema = clientSchema.omit({ id: true, criado_em: true, updated_at: true });
+export const updateClientSchema = newClientSchema.partial();
+
+export interface ClientDetailData extends z.infer<typeof clientSchema> {}
 
 export interface Session {
   id: string;
@@ -37,12 +51,14 @@ export interface MonitorableSession extends Session {
 }
 
 export interface Payment {
-  id: string;
-  clientId: string;
-  date: string;
-  amount: number;
-  description: string;
-  method: string;
+  id: number;
+  id_cliente: number;
+  valor: number;
+  data: string;
+  tipo: string;
+  descricao: string;
+  criado_em: string;
+  updated_at: string;
 }
 
 export interface ClientFile {

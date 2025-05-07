@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,8 +13,8 @@ import { toast } from 'sonner';
 interface ClientPaymentsProps {
   payments: Payment[];
   clientId: string;
-  onAddPayment: (payment: Payment) => void;
-  onDeletePayment: (paymentId: string) => void;
+  onAddPayment: (payment: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => void;
+  onDeletePayment: (paymentId: number) => void;
 }
 
 // Tipos de pagamento e valores
@@ -29,14 +28,12 @@ const paymentTypes = [
 const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: ClientPaymentsProps) => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   
-  const paymentForm = useForm<Payment>({
+  const paymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>>({
     defaultValues: {
-      id: '',
-      clientId,
-      date: new Date().toISOString().split('T')[0],
-      amount: 85,
-      description: 'Avaliação Inicial',
-      method: 'Multibanco'
+      data: new Date().toISOString().split('T')[0],
+      valor: 85,
+      descricao: 'Avaliação Inicial',
+      tipo: 'Multibanco'
     }
   });
   
@@ -44,31 +41,25 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
   const handlePaymentTypeChange = (value: string) => {
     const selectedType = paymentTypes.find(type => type.id === value);
     if (selectedType) {
-      paymentForm.setValue('description', selectedType.label);
-      paymentForm.setValue('amount', selectedType.value);
+      paymentForm.setValue('descricao', selectedType.label);
+      paymentForm.setValue('valor', selectedType.value);
     }
   };
   
-  const onSubmit = (data: Payment) => {
-    onAddPayment({
-      ...data,
-      id: Date.now().toString(),
-      clientId
-    });
+  const onSubmit = (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
+    onAddPayment(data);
     setIsPaymentDialogOpen(false);
     paymentForm.reset({
-      id: '',
-      clientId,
-      date: new Date().toISOString().split('T')[0],
-      amount: 85,
-      description: 'Avaliação Inicial',
-      method: 'Multibanco'
+      data: new Date().toISOString().split('T')[0],
+      valor: 85,
+      descricao: 'Avaliação Inicial',
+      tipo: 'Multibanco'
     });
     toast.success('Pagamento registado com sucesso');
   };
 
   const calculateTotal = () => {
-    return payments.reduce((total, payment) => total + payment.amount, 0);
+    return payments.reduce((total, payment) => total + payment.valor, 0);
   };
 
   return (
@@ -86,13 +77,6 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="flex justify-end mb-4">
-          <div className="bg-[#c5cfce]/40 p-2 rounded-lg text-right">
-            <span className="text-sm text-gray-600">Total Pago</span>
-            <p className="text-xl font-bold">€{calculateTotal().toLocaleString()}</p>
-          </div>
-        </div>
-        
         {payments.length > 0 ? (
           <div className="space-y-4">
             {payments.map((payment) => (
@@ -108,11 +92,11 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
                 </Button>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-medium">{payment.description}</h3>
-                    <p className="text-sm text-gray-500">{new Date(payment.date).toLocaleDateString('pt-PT')}</p>
-                    <p className="text-sm text-gray-600 mt-1">{payment.method}</p>
+                    <h3 className="font-medium">{payment.descricao}</h3>
+                    <p className="text-sm text-gray-500">{new Date(payment.data).toLocaleDateString('pt-PT')}</p>
+                    <p className="text-sm text-gray-600 mt-1">{payment.tipo}</p>
                   </div>
-                  <div className="text-xl font-bold">€{payment.amount}</div>
+                  <div className="text-xl font-bold">€{payment.valor}</div>
                 </div>
               </div>
             ))}
@@ -133,7 +117,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
             <form onSubmit={paymentForm.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={paymentForm.control}
-                name="date"
+                name="data"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Data do Pagamento</FormLabel>
@@ -147,7 +131,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
               
               <FormField
                 control={paymentForm.control}
-                name="description"
+                name="descricao"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Pagamento</FormLabel>
@@ -177,7 +161,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
               
               <FormField
                 control={paymentForm.control}
-                name="amount"
+                name="valor"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Valor (€)</FormLabel>
@@ -195,7 +179,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment }: C
               
               <FormField
                 control={paymentForm.control}
-                name="method"
+                name="tipo"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Método de Pagamento</FormLabel>

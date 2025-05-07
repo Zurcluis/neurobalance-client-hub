@@ -10,91 +10,77 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useClients from '@/hooks/useClients';
 import { ClientDetailData } from '@/types/client';
+import { Database } from '@/integrations/supabase/types';
+
+type Client = Database['public']['Tables']['clientes']['Row'];
 
 const ClientsPage = () => {
   const { 
     clients, 
     isLoading, 
     addClient, 
-    removeClient, 
+    deleteClient, 
     searchClients 
   } = useClients();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
 
-  const filteredClients = searchClients(searchQuery);
+  const filteredClients = searchQuery ? searchClients(searchQuery) : clients;
 
   const clientsByStatus = {
-    ongoing: filteredClients.filter(client => client.status === 'ongoing' || !client.status),
-    thinking: filteredClients.filter(client => client.status === 'thinking'),
-    'no-need': filteredClients.filter(client => client.status === 'no-need'),
-    finished: filteredClients.filter(client => client.status === 'finished'),
-    call: filteredClients.filter(client => client.status === 'call'),
+    ongoing: filteredClients.filter(client => client.estado === 'ongoing' || !client.estado),
+    thinking: filteredClients.filter(client => client.estado === 'thinking'),
+    'no-need': filteredClients.filter(client => client.estado === 'no-need'),
+    finished: filteredClients.filter(client => client.estado === 'finished'),
+    call: filteredClients.filter(client => client.estado === 'call'),
   };
 
-  const handleAddClient = (data: ClientFormData) => {
-    // Map the form's estado value to the client's status
-    let clientStatus: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call' = 'ongoing';
-    
-    if (data.estado === 'On Going') clientStatus = 'ongoing';
-    else if (data.estado === 'Thinking') clientStatus = 'thinking';
-    else if (data.estado === 'No need') clientStatus = 'no-need';
-    else if (data.estado === 'Finished') clientStatus = 'finished';
-    else if (data.estado === 'call') clientStatus = 'call';
-    
-    const newClient: ClientDetailData = {
-      id: data.id || Date.now().toString(),
-      name: data.nome,
-      email: data.email || '',
-      phone: data.contato || '',
-      sessionCount: 0,
-      nextSession: null,
-      totalPaid: 0,
-      status: clientStatus,
-      birthday: data.dataNascimento ? data.dataNascimento.toISOString() : undefined,
-      genero: data.genero || null,
-      notes: data.problematica || '',
-      tipoContato: data.tipoContato || 'Lead',
-      comoConheceu: data.comoConheceu || 'Anúncio'
-    };
-    
-    // Save to Supabase if connected
-    if (typeof window !== 'undefined' && 'supabase' in window) {
-      try {
-        const { supabase } = window as any;
-        supabase.from('clientes').insert({
-          id: newClient.id,
-          nome: newClient.name,
-          email: newClient.email, 
-          telefone: newClient.phone,
-          data_nascimento: newClient.birthday,
-          genero: newClient.genero,
-          morada: '',
-          notas: newClient.notes,
-          estado: newClient.status,
-          tipo_contato: newClient.tipoContato,
-          como_conheceu: newClient.comoConheceu
-        }).then((result: any) => {
-          if (result.error) {
-            console.error('Erro ao salvar cliente no Supabase:', result.error);
-          }
-        });
-      } catch (error) {
-        console.error('Erro ao acessar Supabase:', error);
-      }
+  const handleAddClient = async (data: ClientFormData) => {
+    try {
+      await addClient({
+        nome: data.nome,
+        email: data.email,
+        telefone: data.telefone,
+        data_nascimento: data.data_nascimento ? data.data_nascimento.toISOString() : null,
+        genero: data.genero,
+        morada: data.morada,
+        notas: data.notas || '',
+        estado: data.estado,
+        tipo_contato: data.tipo_contato,
+        como_conheceu: data.como_conheceu,
+        numero_sessoes: data.numero_sessoes || 0,
+        total_pago: data.total_pago || 0,
+        max_sessoes: data.max_sessoes || 0,
+      });
+      setIsAddClientOpen(false);
+    } catch (error) {
+      console.error('Error adding client:', error);
+      toast.error('Failed to add client');
     }
-    
-    // Adiciona cliente usando o hook
-    addClient(newClient);
-    setDialogOpen(false);
-    toast.success('Cliente adicionado com sucesso');
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    removeClient(clientId);
-    toast.success('Cliente eliminado com sucesso');
+  const handleDeleteClient = async (id: number) => {
+    try {
+      await deleteClient(id);
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast.error('Failed to delete client');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <PageLayout>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-2">Loading clients...</h2>
+            <p className="text-gray-500">Please wait while we fetch your clients</p>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>
@@ -115,7 +101,7 @@ const ClientsPage = () => {
             />
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#3A726D] hover:bg-[#265255] w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
@@ -135,8 +121,9 @@ const ClientsPage = () => {
         </div>
       </div>
       
-      <Tabs defaultValue="ongoing" className="w-full">
-        <TabsList className="grid grid-cols-5 mb-6">
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="grid grid-cols-6 mb-6">
+          <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="ongoing">On Going</TabsTrigger>
           <TabsTrigger value="thinking">Thinking</TabsTrigger>
           <TabsTrigger value="no-need">No Need</TabsTrigger>
@@ -144,6 +131,33 @@ const ClientsPage = () => {
           <TabsTrigger value="call">Call</TabsTrigger>
         </TabsList>
         
+        <TabsContent value="all" className="mt-0">
+          {filteredClients.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredClients.map(client => (
+                <ClientCard 
+                  key={client.id} 
+                  client={client} 
+                  onDelete={() => handleDeleteClient(client.id)}
+                  statusClass={`client-${client.estado || 'ongoing'}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white dark:bg-[#1A1F2C] rounded-lg shadow-sm p-8">
+              <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">Adicione seu primeiro cliente para começar</p>
+              <Button 
+                className="bg-[#3A726D] hover:bg-[#265255]" 
+                onClick={() => setIsAddClientOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Novo Cliente
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
         {Object.entries(clientsByStatus).map(([status, clientList]) => (
           <TabsContent key={status} value={status} className="mt-0">
             {clientList.length > 0 ? (
@@ -152,7 +166,7 @@ const ClientsPage = () => {
                   <ClientCard 
                     key={client.id} 
                     client={client} 
-                    onDelete={handleDeleteClient}
+                    onDelete={() => handleDeleteClient(client.id)}
                     statusClass={`client-${status}`}
                   />
                 ))}
@@ -163,7 +177,7 @@ const ClientsPage = () => {
                 <p className="text-gray-600 dark:text-gray-300 mb-6">Adicione seu primeiro cliente para começar</p>
                 <Button 
                   className="bg-[#3A726D] hover:bg-[#265255]" 
-                  onClick={() => setDialogOpen(true)}
+                  onClick={() => setIsAddClientOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar Novo Cliente
