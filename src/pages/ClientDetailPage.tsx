@@ -13,7 +13,20 @@ import ClientPayments from '@/components/client-details/ClientPayments';
 import ClientFiles from '@/components/client-details/ClientFiles';
 import ClientReports from '@/components/client-details/ClientReports';
 import ClientMoodTracker from '@/components/client-details/ClientMoodTracker';
-import { parseISO, format, isSameDay, isBefore } from 'date-fns';
+import ClientMonitoringTab from '@/components/client-details/ClientMonitoringTab';
+import { parseISO, format, isSameDay, isBefore, compareDesc } from 'date-fns';
+
+// Interface para Appointments (pode ser movida para types)
+interface Appointment {
+  id: string;
+  title: string;
+  clientName: string;
+  clientId: string;
+  type: string; // Campo tipo é importante aqui
+  notes: string;
+  date: string;
+  confirmed: boolean;
+}
 
 // Função para carregar dados do localStorage
 const loadFromStorage = <T extends unknown>(key: string, defaultValue: T): T => {
@@ -35,64 +48,75 @@ const ClientDetailPage = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [files, setFiles] = useState<ClientFile[]>([]);
   const [moods, setMoods] = useState<ClientMood[]>([]);
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+  const [activeTab, setActiveTab] = useState('profile');
+  const [isLoading, setIsLoading] = useState(true);
 
   // Carregar dados
   useEffect(() => {
     const clients = loadFromStorage<ClientDetailData[]>('clients', []);
     const foundClient = clients.find(c => c.id === clientId);
     
-    if (foundClient) {
-      setClient(foundClient);
-    }
+    let clientToSet = foundClient || null;
     
+    if (foundClient) {
+      // Carregar sessões manuais
     const allSessions = loadFromStorage<Session[]>('sessions', []);
     const clientSessions = allSessions.filter(session => session.clientId === clientId);
     setSessions(clientSessions);
     
+      // Carregar pagamentos
     const allPayments = loadFromStorage<Payment[]>('payments', []);
     const clientPayments = allPayments.filter(payment => payment.clientId === clientId);
     setPayments(clientPayments);
     
+      // Carregar ficheiros
     const allFiles = loadFromStorage<ClientFile[]>('clientFiles', []);
     const clientFiles = allFiles.filter(file => file.clientId === clientId);
     setFiles(clientFiles);
     
+      // Carregar moods
     const allMoods = loadFromStorage<ClientMood[]>('clientMoods', []);
     const clientMoods = allMoods.filter(mood => mood.clientId === clientId);
     setMoods(clientMoods);
 
-    // Load appointments to get next session
-    const appointments = loadFromStorage('appointments', []);
-    const clientAppointments = appointments.filter((app: any) => app.clientId === clientId);
-    
-    // Find closest future appointment
+      // Carregar TODOS os agendamentos do cliente
+      const appointments = loadFromStorage<Appointment[]>('appointments', []);
+      const clientAppointments = appointments
+          .filter((app: Appointment) => app.clientId === clientId)
+          .sort((a, b) => compareDesc(parseISO(a.date), parseISO(b.date))); // Ordenar por data desc
+      setAllAppointments(clientAppointments);
+      
+      // Determinar próxima sessão (lógica existente)
     const now = new Date();
-    const futureAppointments = clientAppointments
-      .filter((app: any) => {
-        const appDate = parseISO(app.date);
-        return !isBefore(appDate, now);
-      })
-      .sort((a: any, b: any) => {
-        return parseISO(a.date).getTime() - parseISO(b.date).getTime();
-      });
+      const futureAppointments = clientAppointments.filter((app: Appointment) => !isBefore(parseISO(app.date), now))
+                                                .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()); // Sort asc for next
     
-    // Update client with next session info if available
-    if (foundClient && futureAppointments.length > 0) {
+      if (futureAppointments.length > 0) {
       const nextSession = futureAppointments[0];
       const appointmentDate = parseISO(nextSession.date);
       const formattedDate = format(appointmentDate, "dd/MM/yyyy 'às' HH:mm");
       
-      const updatedClient = {
-        ...foundClient,
-        nextSession: formattedDate
-      };
-      
-      // Update in state but don't save to localStorage yet to avoid circular updates
-      setClient(updatedClient);
+        // Atualiza o cliente que será setado no estado
+        clientToSet = { ...foundClient, nextSession: formattedDate };
+      } else {
+        clientToSet = { ...foundClient, nextSession: null }; // Garante que nextSession é null se não houver futuras
+      }
     }
+
+    setClient(clientToSet);
+    setIsLoading(false);
   }, [clientId]);
 
   // Se o cliente não for encontrado, mostrar erro
+  if (isLoading) {
+    return (
+      <PageLayout>
+        <div>Carregando...</div>
+      </PageLayout>
+    );
+  }
+
   if (!client) {
     return (
       <PageLayout>
@@ -111,45 +135,89 @@ const ClientDetailPage = () => {
   }
 
   // Handlers
-  const updateClient = (data: ClientDetailData) => {
+  const updateClient = (data: Partial<ClientDetailData>) => {
+    setClient(prevClient => {
+      if (!prevClient) return null;
+      const newClientData = { ...prevClient, ...data };
+      
+      // Atualizar a lista geral de clientes no localStorage
     const clients = loadFromStorage<ClientDetailData[]>('clients', []);
-    const updatedClients = clients.map(c => c.id === clientId ? {...c, ...data} : c);
+      const updatedClients = clients.map(c => 
+        c.id === clientId ? newClientData : c
+      );
     saveToStorage('clients', updatedClients);
     
-    // Update client in ClientsPage
-    const clientsPageClients = loadFromStorage<ClientDetailData[]>('clients', []);
-    const updatedClientsPageClients = clientsPageClients.map(c =>
-      c.id === clientId ? {...c, ...data} : c
-    );
-    saveToStorage('clients', updatedClientsPageClients);
-
-    setClient({...client, ...data});
-    toast.success('Informações do cliente atualizadas com sucesso');
+      toast.success("Dados do cliente atualizados.");
+      return newClientData;
+    });
   };
 
-  const addSession = (data: Session) => {
-    const newSession = {
+  const addSession = (data: Omit<Session, 'id' | 'clientId'>) => {
+    const newSession: Session = {
       ...data,
       id: Date.now().toString(),
       clientId: clientId as string,
+      arquivos: [],
     };
+
+    // Salva no Supabase primeiro
+    const supabase = (window as any).supabase;
+    if (supabase) {
+       supabase.from('sessoes').insert(newSession).then(({ error }: any) => {
+          if (error) {
+             toast.error(`Erro ao salvar sessão: ${error.message}`);
+             console.error("Erro Supabase insert session:", error);
+          } else {
+             // Se salvou no Supabase, atualiza localStorage e estado
     const allSessions = loadFromStorage<Session[]>('sessions', []);
     const updatedSessions = [...allSessions, newSession];
     saveToStorage('sessions', updatedSessions);
-    
-    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
-    const updatedClients = clients.map(c => 
-      c.id === clientId ? {...c, sessionCount: (c.sessionCount || 0) + 1} : c
-    );
-    saveToStorage('clients', updatedClients);
-    
-    setSessions(prev => [...prev, newSession]);
-    setClient(prev => prev ? {...prev, sessionCount: (prev.sessionCount || 0) + 1} : null);
-    toast.success('Sessão adicionada com sucesso');
+             setSessions(prev => [...prev, newSession]);
+             updateClient({ sessionCount: (client?.sessionCount || 0) + 1 });
+             toast.success('Sessão adicionada com sucesso');
+          }
+       });
+    } else {
+       toast.error("Supabase não conectado. Não foi possível salvar a sessão.");
+    }
   };
 
-  const addPayment = (data: Payment) => {
-    const newPayment = {
+  const handleUpdateSession = (updatedSession: Session) => {
+     setSessions(prevSessions => {
+        const sessionIndex = prevSessions.findIndex(s => s.id === updatedSession.id);
+        let updatedSessionList;
+        
+        if (sessionIndex > -1) {
+            // Atualiza sessão existente na lista local
+            updatedSessionList = [...prevSessions];
+            updatedSessionList[sessionIndex] = updatedSession;
+        } else {
+            // Adiciona nova sessão à lista local (caso de 1ª edição de agendamento)
+            updatedSessionList = [...prevSessions, updatedSession];
+        }
+
+        // Atualiza a lista geral de sessões no localStorage com os dados que vieram do Supabase
+        const allSessions = loadFromStorage<Session[]>('sessions', []);
+        const sessionExistsInAll = allSessions.some(s => s.id === updatedSession.id);
+        let allUpdatedSessions;
+        if (sessionExistsInAll) {
+             allUpdatedSessions = allSessions.map(s => s.id === updatedSession.id ? updatedSession : s);
+        } else {
+             allUpdatedSessions = [...allSessions, updatedSession];
+        }
+        saveToStorage('sessions', allUpdatedSessions);
+        
+        // Se foi uma adição (vindo do calendário), atualiza contagem no cliente
+        if (sessionIndex === -1) {
+             updateClient({ sessionCount: (client?.sessionCount || 0) + 1 });
+        }
+
+        return updatedSessionList; // Retorna a lista atualizada para o estado local
+     });
+  };
+
+  const addPayment = (data: Omit<Payment, 'id' | 'clientId'>) => {
+    const newPayment: Payment = {
       ...data,
       id: Date.now().toString(),
       clientId: clientId as string,
@@ -157,43 +225,19 @@ const ClientDetailPage = () => {
     const allPayments = loadFromStorage<Payment[]>('payments', []);
     const updatedPayments = [...allPayments, newPayment];
     saveToStorage('payments', updatedPayments);
-    
-    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
-    const updatedClients = clients.map(c => 
-      c.id === clientId ? {...c, totalPaid: (c.totalPaid || 0) + data.amount} : c
-    );
-    saveToStorage('clients', updatedClients);
-    
     setPayments(prev => [...prev, newPayment]);
-    setClient(prev => prev ? {...prev, totalPaid: (prev.totalPaid || 0) + data.amount} : null);
+    updateClient({ totalPaid: (client?.totalPaid || 0) + data.amount });
+    toast.success('Pagamento adicionado com sucesso');
   };
 
   const deletePayment = (paymentId: string) => {
     const paymentToDelete = payments.find(p => p.id === paymentId);
-    
     if (!paymentToDelete) return;
-    
-    // Update client's total paid amount
-    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
-    const updatedClients = clients.map(c => 
-      c.id === clientId 
-        ? {...c, totalPaid: Math.max(0, (c.totalPaid || 0) - paymentToDelete.amount)} 
-        : c
-    );
-    saveToStorage('clients', updatedClients);
-    
-    // Update payments in localStorage
+    updateClient({ totalPaid: Math.max(0, (client?.totalPaid || 0) - paymentToDelete.amount) });
     const allPayments = loadFromStorage<Payment[]>('payments', []);
     const updatedPayments = allPayments.filter(p => p.id !== paymentId);
     saveToStorage('payments', updatedPayments);
-    
-    // Update state
     setPayments(prev => prev.filter(p => p.id !== paymentId));
-    setClient(prev => prev 
-      ? {...prev, totalPaid: Math.max(0, (prev.totalPaid || 0) - paymentToDelete.amount)} 
-      : null
-    );
-    
     toast.success('Pagamento eliminado com sucesso');
   };
 
@@ -251,11 +295,47 @@ const ClientDetailPage = () => {
     toast.success('Ficheiro eliminado com sucesso');
   };
   
-  const handleAddMood = (mood: ClientMood) => {
+  const handleAddMood = (mood: Omit<ClientMood, 'id' | 'clientId'>) => {
+    const newMood = { ...mood, id: Date.now().toString(), clientId: clientId as string };
     const allMoods = loadFromStorage<ClientMood[]>('clientMoods', []);
-    const updatedMoods = [...allMoods, mood];
+    const updatedMoods = [...allMoods, newMood];
     saveToStorage('clientMoods', updatedMoods);
-    setMoods(prev => [...prev, mood]);
+    setMoods(prev => [...prev, newMood]);
+    toast.success("Registo de humor adicionado.");
+  };
+
+  // Renderização
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'profile':
+        return <ClientProfile client={client!} onUpdateClient={updateClient} />;
+      case 'sessions':
+        return <ClientSessions 
+                  sessions={sessions}
+                  clientId={clientId!} 
+                  onAddSession={addSession} 
+                  client={client!} 
+                  onUpdateClient={updateClient}
+                  onUpdateSession={handleUpdateSession}
+               />;
+      case 'payments':
+        return <ClientPayments payments={payments} clientId={clientId!} onAddPayment={addPayment} onDeletePayment={deletePayment}/>;
+      case 'files':
+        return <ClientFiles files={files} onUploadFile={handleFileUpload} onDeleteFile={deleteFile} />;
+      case 'reports':
+        return <ClientReports client={client!} sessions={sessions} payments={payments} />;
+      case 'mood':
+        return <ClientMoodTracker clientId={clientId!} onSubmitMood={handleAddMood} moods={moods} />;
+      case 'monitoring':
+        return <ClientMonitoringTab 
+                 client={client!} 
+                 manualSessions={sessions} 
+                 appointments={allAppointments}
+                 onUpdateSession={handleUpdateSession}
+              />;
+      default:
+        return <ClientProfile client={client!} onUpdateClient={updateClient} />;
+    }
   };
   
   return (
@@ -300,62 +380,18 @@ const ClientDetailPage = () => {
         </Card>
       </div>
       
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid grid-cols-6 mb-6">
+      <Tabs defaultValue="profile" onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 mb-6">
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
           <TabsTrigger value="payments">Pagamentos</TabsTrigger>
           <TabsTrigger value="files">Ficheiros</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
           <TabsTrigger value="mood">Estado Emocional</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitorização</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="profile" className="mt-0">
-          <ClientProfile client={client} onUpdateClient={updateClient} />
-        </TabsContent>
-        
-        <TabsContent value="sessions" className="mt-0">
-          <ClientSessions
-            sessions={sessions}
-            clientId={clientId as string}
-            onAddSession={addSession}
-            client={client}
-            onUpdateClient={updateClient}
-          />
-        </TabsContent>
-        
-        <TabsContent value="payments" className="mt-0">
-          <ClientPayments
-            payments={payments}
-            clientId={clientId as string}
-            onAddPayment={addPayment}
-            onDeletePayment={deletePayment}
-          />
-        </TabsContent>
-        
-        <TabsContent value="files" className="mt-0">
-          <ClientFiles
-            files={files}
-            onUploadFile={handleFileUpload}
-            onDeleteFile={deleteFile}
-          />
-        </TabsContent>
-
-        <TabsContent value="reports" className="mt-0">
-          <ClientReports
-            client={client}
-            sessions={sessions}
-            payments={payments}
-          />
-        </TabsContent>
-        
-        <TabsContent value="mood" className="mt-0">
-          <ClientMoodTracker 
-            clientId={clientId as string} 
-            onSubmitMood={handleAddMood}
-            moods={moods}
-          />
-        </TabsContent>
+        {renderContent()}
       </Tabs>
     </PageLayout>
   );

@@ -1,19 +1,64 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+// Definição dos breakpoints do Tailwind
+export const SCREEN_SIZES = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  '2xl': 1536
+}
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+/**
+ * Hook personalizado para detectar o tamanho da tela e a orientação
+ * @param breakpoint - Breakpoint a ser verificado (sm, md, lg, xl, 2xl)
+ * @returns Objeto com informações sobre o tamanho da tela
+ */
+export function useScreenSize(breakpoint = 'md') {
+  const size = SCREEN_SIZES[breakpoint as keyof typeof SCREEN_SIZES] || SCREEN_SIZES.md
+  
+  const [screenInfo, setScreenInfo] = React.useState({
+    isMobile: false,
+    isPortrait: true,
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0
+  })
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    const updateScreenInfo = () => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      
+      setScreenInfo({
+        isMobile: width < size,
+        isPortrait: height > width,
+        width,
+        height
+      })
     }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+    
+    // Inicializa com os valores corretos
+    updateScreenInfo()
+    
+    // Adiciona listener para mudanças de tamanho e orientação
+    window.addEventListener('resize', updateScreenInfo)
+    window.addEventListener('orientationchange', updateScreenInfo)
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', updateScreenInfo)
+      window.removeEventListener('orientationchange', updateScreenInfo)
+    }
+  }, [size])
 
-  return !!isMobile
+  return screenInfo
+}
+
+/**
+ * Hook simplificado para compatibilidade retroativa
+ * @returns boolean indicando se o dispositivo é mobile
+ */
+export function useIsMobile() {
+  const { isMobile } = useScreenSize('md')
+  return isMobile
 }

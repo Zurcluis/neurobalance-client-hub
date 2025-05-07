@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { parseISO, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
 
 interface Appointment {
   id: string;
@@ -22,6 +21,7 @@ interface UpcomingAppointmentsTableProps {
 
 const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTableProps) => {
   const isMobile = useIsMobile();
+  const { isPortrait } = useScreenSize();
   
   const getAppointmentTypeLabel = (type: string) => {
     switch (type) {
@@ -49,25 +49,80 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
     }
   };
   
+  // Renderização mobile adaptada
+  if (isMobile && isPortrait) {
+    return (
+      <div className="space-y-2">
+        {appointments.map((appointment) => {
+          const appointmentDate = parseISO(appointment.date);
+          const formattedStartTime = format(appointmentDate, 'HH:mm');
+          
+          // Estima o fim da sessão (45 minutos depois)
+          const endTime = new Date(appointmentDate);
+          endTime.setMinutes(endTime.getMinutes() + 45);
+          const formattedEndTime = format(endTime, 'HH:mm');
+          
+          return (
+            <div 
+              key={appointment.id} 
+              className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+            >
+              <div className="flex justify-between items-start mb-1.5">
+                <div className="flex-1">
+                  <div className="text-sm font-medium truncate">{appointment.title}</div>
+                  <Link to={`/clients/${appointment.clientId}`} className="text-xs text-[#265255] hover:underline">
+                    {appointment.clientName}
+                  </Link>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-medium text-gray-600">
+                    {formattedStartTime} - {formattedEndTime}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between mt-1">
+                <Badge className={`${getAppointmentTypeColor(appointment.type)} text-xs px-2 py-0.5`}>
+                  {getAppointmentTypeLabel(appointment.type)}
+                </Badge>
+                <Badge variant="outline" className={`text-xs ${appointment.confirmed ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
+                  {appointment.confirmed ? "Confirmado" : "Pendente"}
+                </Badge>
+              </div>
+            </div>
+          );
+        })}
+        
+        {appointments.length === 0 && (
+          <div className="text-center py-4 text-gray-500 text-sm">
+            Sem agendamentos
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Versão desktop ou mobile em landscape
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full bg-gradient-to-r from-blue-400/30 to-teal-400/30 rounded-lg overflow-hidden">
-        <thead className="bg-white/20 backdrop-blur-sm">
-          <tr>
-            <th className="py-3 px-4 text-left font-medium text-[#265255]">Horário</th>
-            <th className="py-3 px-4 text-left font-medium text-[#265255]">Cliente</th>
-            <th className="py-3 px-4 text-left font-medium text-[#265255]">Tipo</th>
-            <th className="py-3 px-4 text-left font-medium text-[#265255]">Status</th>
+    <div className="overflow-x-auto table-container">
+      <table className="w-full">
+        <thead>
+          <tr className="text-left text-xs uppercase tracking-wider text-[#265255] bg-[#E6ECEA]/40">
+            <th className="py-2 px-4 font-medium">Horário</th>
+            <th className="py-2 px-4 font-medium">Cliente</th>
+            <th className="py-2 px-4 font-medium">Tipo</th>
+            <th className="py-2 px-4 font-medium">Estado</th>
           </tr>
         </thead>
         <tbody>
           {appointments.map((appointment) => {
             const appointmentDate = parseISO(appointment.date);
-            const timeString = appointment.date.split('T')[1] || '09:00';
-            const [hours, minutes] = timeString.split(':');
-            const formattedStartTime = `${hours}:${minutes}`;
-            const endTimeHours = parseInt(hours) + 1;
-            const formattedEndTime = `${endTimeHours}:${minutes}`;
+            const formattedStartTime = format(appointmentDate, 'HH:mm');
+            
+            // Estima o fim da sessão (45 minutos depois)
+            const endTime = new Date(appointmentDate);
+            endTime.setMinutes(endTime.getMinutes() + 45);
+            const formattedEndTime = format(endTime, 'HH:mm');
             
             return (
               <tr key={appointment.id} className="border-t border-white/20 hover:bg-white/10">
@@ -95,6 +150,14 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
               </tr>
             );
           })}
+          
+          {appointments.length === 0 && (
+            <tr>
+              <td colSpan={4} className="text-center py-4 text-gray-500">
+                Sem agendamentos
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

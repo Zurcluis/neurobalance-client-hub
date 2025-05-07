@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, User, BarChart3, Plus } from 'lucide-react';
 import { ClientData } from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import UpcomingAppointmentsTable from '@/components/dashboard/UpcomingAppointmentsTable';
 
 interface Appointment {
@@ -18,6 +17,8 @@ interface Appointment {
 }
 
 const DashboardOverview = () => {
+  const navigate = useNavigate();
+  
   // Load clients from localStorage
   const loadClientsFromStorage = (): ClientData[] => {
     const storedClients = localStorage.getItem('clients');
@@ -33,9 +34,11 @@ const DashboardOverview = () => {
   const clients = loadClientsFromStorage();
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
   
   useEffect(() => {
     const appointments = loadAppointmentsFromStorage();
+    const now = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -55,13 +58,20 @@ const DashboardOverview = () => {
       return appointmentDate > today;
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
+    // Filter past appointments (dates before today)
+    const pastAppts = appointments.filter((appointment) => {
+      const appointmentDate = new Date(appointment.date);
+      return appointmentDate < now;
+    });
+    
     setTodayAppointments(todaysAppts);
     setUpcomingAppointments(futureAppts.slice(0, 4)); // Get only the next 4 appointments
+    setPastAppointments(pastAppts);
   }, []);
   
   // Calculate summary statistics if there are clients
   const totalClients = clients.length;
-  const totalSessions = clients.reduce((sum, client) => sum + client.sessionCount, 0);
+  const totalSessions = pastAppointments.length; // Apenas sessões realizadas
   const totalRevenue = clients.reduce((sum, client) => sum + (client.totalPaid || 0), 0);
   
   // If no clients exist, show welcome screen
@@ -103,7 +113,10 @@ const DashboardOverview = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="dashboard-card">
+        <Card 
+          className="dashboard-card hover:shadow-lg hover:translate-y-[-2px] transition-all cursor-pointer"
+          onClick={() => navigate('/clients')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Clientes</CardTitle>
             <User className="h-5 w-5 text-[#3A726D]" />
@@ -113,17 +126,24 @@ const DashboardOverview = () => {
           </CardContent>
         </Card>
         
-        <Card className="dashboard-card">
+        <Card 
+          className="dashboard-card hover:shadow-lg hover:translate-y-[-2px] transition-all cursor-pointer"
+          onClick={() => navigate('/calendar')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Sessões</CardTitle>
             <Calendar className="h-5 w-5 text-[#3A726D]" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalSessions}</p>
+            <p className="text-xs text-gray-500 mt-1">Sessões já realizadas</p>
           </CardContent>
         </Card>
         
-        <Card className="dashboard-card">
+        <Card 
+          className="dashboard-card hover:shadow-lg hover:translate-y-[-2px] transition-all cursor-pointer"
+          onClick={() => navigate('/finances')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             <BarChart3 className="h-5 w-5 text-[#3A726D]" />

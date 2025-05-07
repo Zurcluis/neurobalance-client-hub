@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +10,7 @@ import CalendarPage from "./pages/CalendarPage";
 import FinancesPage from "./pages/FinancesPage";
 import StatisticsPage from "./pages/StatisticsPage";
 import NotFound from "./pages/NotFound";
+import MonitoringPage from "./pages/MonitoringPage";
 import { ThemeProvider } from "./hooks/use-theme";
 import { LanguageProvider } from "./hooks/use-language";
 
@@ -29,6 +29,7 @@ const App = () => (
               <Route path="/clients" element={<ClientsPage />} />
               <Route path="/clients/:clientId" element={<ClientDetailPage />} />
               <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/monitoring" element={<MonitoringPage />} />
               <Route path="/finances" element={<FinancesPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
               <Route path="*" element={<NotFound />} />

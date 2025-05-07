@@ -1,6 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
-import { Calendar } from '../ui/calendar';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../ui/button';
 import {
   Dialog,
@@ -22,8 +20,16 @@ import { pt } from 'date-fns/locale';
 import { Card, CardContent } from '../ui/card';
 import { ClientDetailData } from '@/types/client';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Plus } from 'lucide-react';
+
+// Importações do FullCalendar
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 type AppointmentType = 'sessão' | 'avaliação' | 'consulta';
+type CalendarView = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
 
 interface Appointment {
   id: string;
@@ -51,7 +57,7 @@ const defaultAppointments: Appointment[] = [
   {
     id: '1',
     title: 'Sessão de Neurofeedback',
-    date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
+    date: format(addDays(new Date(), 1), 'yyyy-MM-dd') + 'T10:00:00',
     clientName: 'Maria Silva',
     clientId: 'CL001',
     type: 'sessão',
@@ -61,7 +67,7 @@ const defaultAppointments: Appointment[] = [
   {
     id: '2',
     title: 'Avaliação Inicial',
-    date: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
+    date: format(addDays(new Date(), 3), 'yyyy-MM-dd') + 'T09:00:00',
     clientName: 'Pedro Carvalho',
     clientId: 'CL002',
     type: 'avaliação',
@@ -71,7 +77,7 @@ const defaultAppointments: Appointment[] = [
   {
     id: '3',
     title: 'Consulta de Acompanhamento',
-    date: format(addDays(new Date(), 5), 'yyyy-MM-dd'),
+    date: format(addDays(new Date(), 5), 'yyyy-MM-dd') + 'T14:30:00',
     clientName: 'Ana Ferreira',
     clientId: 'CL003',
     type: 'consulta',
@@ -81,6 +87,7 @@ const defaultAppointments: Appointment[] = [
 ];
 
 const AppointmentCalendar = () => {
+  const calendarRef = useRef<FullCalendar>(null);
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
     const savedAppointments = localStorage.getItem('appointments');
     return savedAppointments ? JSON.parse(savedAppointments) : defaultAppointments;
@@ -89,7 +96,7 @@ const AppointmentCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentView, setCurrentView] = useState<CalendarView>('dayGridMonth');
   const [clients, setClients] = useState<ClientDetailData[]>([]);
   const isMobile = useIsMobile();
 
@@ -117,7 +124,7 @@ const AppointmentCalendar = () => {
   const onSubmit = (data: AppointmentFormValues) => {
     const combinedDateTime = `${data.date}T${data.time}`;
     
-    // If client was selected from dropdown, update client name
+    // Se um cliente for selecionado no dropdown, atualiza o nome do cliente
     if (data.clientId) {
       const selectedClient = clients.find(client => client.id === data.clientId);
       if (selectedClient) {
@@ -159,18 +166,24 @@ const AppointmentCalendar = () => {
     setSelectedAppointment(null);
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
+  const handleDateSelect = (info: any) => {
+    const selectedDate = info.start;
     
-    setSelectedDate(date);
-    form.setValue('date', format(date, 'yyyy-MM-dd'));
-    // Always open dialog when selecting a date to add a new appointment
-    // This allows scheduling multiple events on the same day
+    setSelectedDate(selectedDate);
+    form.setValue('date', format(selectedDate, 'yyyy-MM-dd'));
+    
+    // Determina hora com base na visualização
+    let defaultTime = '09:00';
+    if (currentView === 'timeGridWeek' || currentView === 'timeGridDay') {
+      defaultTime = format(selectedDate, 'HH:mm');
+    }
+    
+    // Sempre abre o diálogo ao selecionar uma data para adicionar um novo agendamento
     setSelectedAppointment(null);
     form.reset({
       title: '',
-      date: format(date, 'yyyy-MM-dd'),
-      time: '09:00',
+      date: format(selectedDate, 'yyyy-MM-dd'),
+      time: defaultTime,
       clientName: '',
       clientId: '',
       type: 'sessão',
@@ -180,14 +193,18 @@ const AppointmentCalendar = () => {
     setIsDialogOpen(true);
   };
 
-  const handleAppointmentSelect = (appointment: Appointment) => {
+  const handleEventClick = (info: any) => {
+    const appointmentId = info.event.id;
+    const appointment = appointments.find(app => app.id === appointmentId);
+    
+    if (appointment) {
     setSelectedAppointment(appointment);
     const [datePart, timePart] = appointment.date.split('T');
     
     form.reset({
       title: appointment.title,
       date: datePart,
-      time: timePart || '09:00',
+        time: timePart ? timePart.substring(0, 5) : '09:00',
       clientName: appointment.clientName,
       clientId: appointment.clientId || '',
       type: appointment.type,
@@ -196,6 +213,7 @@ const AppointmentCalendar = () => {
     });
     
     setIsDialogOpen(true);
+    }
   };
 
   const handleDeleteAppointment = () => {
@@ -243,142 +261,241 @@ const AppointmentCalendar = () => {
     }
   };
 
+  const getAppointmentBackgroundColor = (type: AppointmentType) => {
+    switch (type) {
+      case 'avaliação':
+        return 'rgba(158,80,179,0.2)';
+      case 'sessão':
+        return 'rgba(16,136,196,0.2)';
+      case 'consulta':
+        return 'rgba(236,194,73,0.2)';
+      default:
+        return 'rgba(128,128,128,0.2)';
+    }
+  };
+  
+  const getAppointmentBorderColor = (type: AppointmentType) => {
+    switch (type) {
+      case 'avaliação':
+        return '#9e50b3';
+      case 'sessão':
+        return '#1088c4';
+      case 'consulta':
+        return '#ecc249';
+      default:
+        return '#265255';
+    }
+  };
+  
+  const getAppointmentTextColor = (type: AppointmentType) => {
+    switch (type) {
+      case 'avaliação':
+        return '#9e50b3';
+      case 'sessão':
+        return '#1088c4';
+      case 'consulta':
+        return '#ecc249';
+      default:
+        return '#265255';
+    }
+  };
+
+  // Converter appointments para formato de eventos do FullCalendar
+  const calendarEvents = appointments.map(appointment => {
+    const appointmentType = appointment.type;
+    return {
+      id: appointment.id,
+      title: appointment.title,
+      start: appointment.date,
+      extendedProps: {
+        clientName: appointment.clientName,
+        clientId: appointment.clientId,
+        type: appointmentType,
+        notes: appointment.notes,
+        confirmed: appointment.confirmed
+      },
+      backgroundColor: getAppointmentBackgroundColor(appointmentType),
+      borderColor: getAppointmentBorderColor(appointmentType),
+      textColor: getAppointmentTextColor(appointmentType),
+      classNames: ['rounded-lg', 'py-1', 'px-2', 'border', 'border-white/20', 'backdrop-blur-sm'],
+    };
+  });
+
+  // Opções para personalizar o FullCalendar
+  const calendarOptions: any = {
+    plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+    initialView: isMobile ? 'timeGridDay' : currentView,
+    headerToolbar: {
+      left: isMobile ? 'prev,next' : 'prev,next today',
+      center: 'title',
+      right: isMobile ? 'dayGridMonth,timeGridDay' : 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    titleFormat: { 
+      month: 'long', 
+      year: 'numeric' 
+    },
+    buttonText: {
+      today: isMobile ? 'Hoje' : 'Hoje',
+      month: isMobile ? 'Mês' : 'Mês',
+      week: 'Semana',
+      day: isMobile ? 'Dia' : 'Dia'
+    },
+    dayHeaderFormat: { weekday: isMobile ? 'narrow' : 'short' },
+    locale: 'pt-br',
+    events: calendarEvents,
+    eventClick: handleEventClick,
+    selectable: true,
+    select: handleDateSelect,
+    eventTimeFormat: {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    },
+    slotLabelFormat: {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    },
+    allDaySlot: false,
+    height: 'auto',
+    aspectRatio: isMobile ? 1.2 : 1.8,
+    contentHeight: isMobile ? 500 : 800,
+    slotMinTime: '08:00',
+    slotMaxTime: '20:00',
+    slotDuration: isMobile ? '01:00:00' : '00:30:00',
+    slotLabelInterval: isMobile ? '01:00:00' : undefined,
+    nowIndicator: true,
+    eventOverlap: true,
+    stickyHeaderDates: true,
+    dayMaxEventRows: isMobile ? 3 : 6,
+    moreLinkClick: 'day',
+    expandRows: false,
+    fixedWeekCount: false,
+    handleWindowResize: true,
+    eventMaxStack: isMobile ? 3 : 6,
+    views: {
+      dayGridMonth: {
+        dayMaxEventRows: isMobile ? 2 : 6,
+        eventTimeFormat: {
+          hour: 'numeric',
+          minute: '2-digit',
+          omitZeroMinute: true
+        }
+      },
+      timeGridWeek: {
+        slotDuration: isMobile ? '01:00:00' : '00:30:00',
+        slotLabelInterval: isMobile ? '01:00:00' : undefined,
+      },
+      timeGridDay: {
+        slotDuration: '00:30:00',
+        nowIndicator: true,
+        dayHeaderFormat: { weekday: 'long', month: 'long', day: 'numeric' }
+      }
+    },
+    datesSet: (dateInfo: any) => {
+      if (calendarRef.current) {
+        const view = calendarRef.current.getApi().view;
+        setCurrentView(view.type as CalendarView);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-4xl font-bold text-[#265255] gradient-heading">Calendário</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-8">
+        <h2 className={`text-2xl sm:text-4xl font-bold text-[#265255] gradient-heading ${isMobile ? 'mb-2' : ''}`}>
+          Calendário
+        </h2>
         <Button 
-          className="bg-[#3f9094] hover:bg-[#265255]" 
+          className="bg-[#3f9094] hover:bg-[#265255] w-full sm:w-auto h-10 whitespace-nowrap" 
           onClick={() => {
             setSelectedAppointment(null);
             form.reset();
             setIsDialogOpen(true);
           }}
         >
+          <Plus className="h-4 w-4 mr-2" />
           Novo Agendamento
         </Button>
       </div>
       
       <div className={`grid grid-cols-1 gap-6 ${isMobile ? '' : 'lg:grid-cols-4'}`}>
-        <Card className={`glassmorphism ${isMobile ? '' : 'lg:col-span-3'} p-4 min-h-[800px]`}>
-          <CardContent className="p-0 h-full">
-            <Calendar 
-              mode="single"
-              className="rounded-xl w-full h-full"
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              locale={pt}
-              month={currentMonth}
-              onMonthChange={setCurrentMonth}
-              modifiers={{
-                hasAppointment: (date) => getDayAppointments(date).length > 0
-              }}
-              modifiersStyles={{
-                hasAppointment: {
-                  backgroundColor: 'rgba(63, 144, 148, 0.1)',
-                  border: '1px solid rgba(63, 144, 148, 0.3)',
-                  borderRadius: '0.5rem',
-                }
-              }}
-              classNames={{
-                day_selected: "bg-[#3f9094] text-white hover:bg-[#265255] hover:text-white focus:bg-[#3f9094] focus:text-white",
-                day_today: "bg-[#c5cfce]/30 text-[#265255] font-bold",
-                day: "h-16 w-16 lg:h-24 lg:w-24 p-0 font-normal aria-selected:opacity-100 rounded-lg relative",
-                months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                month: "space-y-8 w-full",
-                caption: "flex justify-center pt-2 pb-4 relative items-center text-[#265255]",
-                caption_label: "text-xl font-medium",
-                nav: "space-x-2 flex items-center",
-                nav_button: "h-9 w-9 bg-transparent p-0 opacity-70 hover:opacity-100 border border-[#3f9094]/30 rounded-full hover:bg-[#3f9094]/10",
-                nav_button_previous: "absolute left-1",
-                nav_button_next: "absolute right-1",
-                table: "w-full border-collapse space-y-2",
-                head_row: "flex w-full mb-2",
-                head_cell: "text-[#265255] font-semibold rounded-md w-16 lg:w-24 text-base",
-                row: "flex w-full mt-4",
-                cell: "h-16 w-16 lg:h-24 lg:w-24 text-center p-0 relative [&:has([aria-selected])]:bg-[#3f9094]/10 first:[&:has([aria-selected])]:rounded-l-lg last:[&:has([aria-selected])]:rounded-r-lg focus-within:relative focus-within:z-20",
-              }}
-              components={{
-                DayContent: (props) => {
-                  const dayAppointments = getDayAppointments(props.date);
-                  return (
-                    <div className="h-full w-full flex flex-col">
-                      <div className="text-center py-1">{props.date.getDate()}</div>
-                      <div className="flex-1 overflow-hidden">
-                        {dayAppointments.slice(0, 3).map((app, idx) => (
-                          <div 
-                            key={`${app.id}-${idx}`}
-                            className={`text-xs p-1 my-0.5 rounded-md truncate cursor-pointer ${getAppointmentTypeColor(app.type)} ${getAppointmentTypeBoxShadow(app.type)}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleAppointmentSelect(app);
-                            }}
-                          >
-                            <div className="truncate font-medium">{app.title}</div>
-                            <div className="truncate text-[10px]">{app.clientId}</div>
-                          </div>
-                        ))}
-                        {dayAppointments.length > 3 && (
-                          <div className="text-xs text-center text-[#265255]">
-                            +{dayAppointments.length - 3} mais
-                          </div>
-                        )}
-                      </div>
+        <Card className={`glassmorphism ${isMobile ? '' : 'lg:col-span-3'} p-2 sm:p-4 min-h-[500px] sm:min-h-[800px]`}>
+          <CardContent className="p-0 sm:p-1 h-full">
+            <div className="calendar-container">
+              <FullCalendar
+                ref={calendarRef}
+                {...calendarOptions}
+              />
                     </div>
-                  );
-                }
-              }}
-            />
           </CardContent>
         </Card>
 
-        <Card className="glassmorphism">
-          <CardContent className="p-4">
-            <h3 className="text-2xl font-medium mb-4 text-[#265255]">Eventos do dia</h3>
+        {/* Eventos do dia (Desktop e mobile) */}
+        <Card className={`glassmorphism ${isMobile ? 'mt-2' : ''}`}>
+          <CardContent className="p-3 sm:p-4">
+            <h3 className="text-xl font-medium mb-3 text-[#265255]">Eventos do dia</h3>
             {selectedDate ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {getDayAppointments(selectedDate).map((appointment) => (
                   <div 
                     key={appointment.id} 
-                    className={`p-4 rounded-lg cursor-pointer transition-all hover:translate-y-[-2px] ${getAppointmentTypeColor(appointment.type)} ${getAppointmentTypeBoxShadow(appointment.type)} backdrop-blur-sm border border-white/20`}
-                    onClick={() => handleAppointmentSelect(appointment)}
+                    className={`p-3 sm:p-4 rounded-lg cursor-pointer transition-all hover:translate-y-[-2px] ${getAppointmentTypeColor(appointment.type)} ${getAppointmentTypeBoxShadow(appointment.type)} backdrop-blur-sm border border-white/20`}
+                    onClick={() => {
+                      setSelectedAppointment(appointment);
+                      const [datePart, timePart] = appointment.date.split('T');
+                      
+                      form.reset({
+                        title: appointment.title,
+                        date: datePart,
+                        time: timePart ? timePart.substring(0, 5) : '09:00',
+                        clientName: appointment.clientName,
+                        clientId: appointment.clientId || '',
+                        type: appointment.type,
+                        notes: appointment.notes || '',
+                        confirmed: appointment.confirmed || false
+                      });
+                      
+                      setIsDialogOpen(true);
+                    }}
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <h4 className="font-medium">{appointment.title}</h4>
-                        <p className="text-sm">{appointment.clientName}</p>
+                        <h4 className="font-medium line-clamp-1">{appointment.title}</h4>
+                        <p className="text-sm line-clamp-1">{appointment.clientName}</p>
                         <p className="text-xs font-semibold">ID: {appointment.clientId}</p>
                       </div>
                       <div>
-                        <span className="text-xs px-3 py-1.5 rounded-full bg-white/30 backdrop-blur-sm">
-                          {appointment.date.split('T')[1] || '09:00'}
+                        <span className="text-xs px-2 py-1 rounded-full bg-white/30 backdrop-blur-sm">
+                          {appointment.date.split('T')[1] ? appointment.date.split('T')[1].substring(0, 5) : '09:00'}
                         </span>
                       </div>
                     </div>
                   </div>
                 ))}
                 {getDayAppointments(selectedDate).length === 0 && (
-                  <p className="text-center py-8 text-gray-500">Sem agendamentos para este dia</p>
+                  <p className="text-center py-6 text-gray-500">Sem agendamentos para este dia</p>
                 )}
               </div>
             ) : (
-              <p className="text-center py-8 text-gray-500">Selecione uma data para ver os agendamentos</p>
+              <p className="text-center py-6 text-gray-500">Selecione uma data para ver os agendamentos</p>
             )}
             
-            <div className="mt-8 space-y-2">
+            <div className="mt-4 sm:mt-8 space-y-2">
               <h4 className="font-medium text-[#265255]">Tipos de Eventos</h4>
+              <div className="flex flex-wrap gap-3">
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-[#9e50b3]/20"></div>
-                <span className="text-sm text-[#265255]">Avaliação Inicial</span>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#9e50b3]/20"></div>
+                  <span className="text-xs sm:text-sm text-[#265255]">Avaliação</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-[#1088c4]/20"></div>
-                <span className="text-sm text-[#265255]">Neurofeedback</span>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#1088c4]/20"></div>
+                  <span className="text-xs sm:text-sm text-[#265255]">Neurofeedback</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-[#ecc249]/20"></div>
-                <span className="text-sm text-[#265255]">Discussão de resultados</span>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#ecc249]/20"></div>
+                  <span className="text-xs sm:text-sm text-[#265255]">Discussão</span>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -386,7 +503,7 @@ const AppointmentCalendar = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedAppointment ? 'Editar Agendamento' : 'Novo Agendamento'}
@@ -414,7 +531,7 @@ const AppointmentCalendar = () => {
                 )}
               />
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="date"
@@ -422,7 +539,7 @@ const AppointmentCalendar = () => {
                     <FormItem>
                       <FormLabel>Data</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} required />
+                        <Input type="date" {...field} required className="mobile-date-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -436,7 +553,7 @@ const AppointmentCalendar = () => {
                     <FormItem>
                       <FormLabel>Hora</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} defaultValue="09:00" required />
+                        <Input type="time" {...field} defaultValue="09:00" required className="mobile-time-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -456,7 +573,7 @@ const AppointmentCalendar = () => {
                           onValueChange={field.onChange} 
                           value={field.value}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10">
                             <SelectValue placeholder="Selecione um cliente" />
                           </SelectTrigger>
                           <SelectContent>
@@ -500,7 +617,7 @@ const AppointmentCalendar = () => {
                       value={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10">
                           <SelectValue placeholder="Selecione o tipo de agendamento" />
                         </SelectTrigger>
                       </FormControl>
@@ -527,7 +644,7 @@ const AppointmentCalendar = () => {
                       value={String(field.value)}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10">
                           <SelectValue placeholder="Selecione o estado" />
                         </SelectTrigger>
                       </FormControl>
@@ -551,7 +668,7 @@ const AppointmentCalendar = () => {
                       <Textarea 
                         {...field} 
                         placeholder="Notas adicionais sobre o agendamento" 
-                        className="min-h-[100px]"
+                        className="min-h-[80px] sm:min-h-[100px]"
                       />
                     </FormControl>
                     <FormMessage />
@@ -559,21 +676,22 @@ const AppointmentCalendar = () => {
                 )}
               />
               
-              <DialogFooter className="flex justify-between">
+              <DialogFooter className={`flex ${isMobile ? 'flex-col space-y-2' : 'justify-between'}`}>
                 {selectedAppointment && (
                   <Button 
                     type="button" 
                     variant="destructive" 
                     onClick={handleDeleteAppointment}
+                    className="w-full sm:w-auto"
                   >
                     Eliminar
                   </Button>
                 )}
-                <div className="flex space-x-2">
+                <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'space-x-2'}`}>
                   <DialogClose asChild>
-                    <Button type="button" variant="outline">Cancelar</Button>
+                    <Button type="button" variant="outline" className="w-full sm:w-auto">Cancelar</Button>
                   </DialogClose>
-                  <Button type="submit" className="bg-[#3f9094] hover:bg-[#265255]">
+                  <Button type="submit" className="bg-[#3f9094] hover:bg-[#265255] w-full sm:w-auto">
                     {selectedAppointment ? 'Atualizar' : 'Adicionar'}
                   </Button>
                 </div>

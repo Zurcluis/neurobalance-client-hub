@@ -22,6 +22,18 @@ export interface Session {
   date: string;
   notes: string;
   paid: boolean;
+  terapeuta?: string;
+  arquivos?: string[];
+  type?: string;
+  status?: string;
+  duracao?: number;
+  endDate?: string;
+}
+
+export interface MonitorableSession extends Session {
+  source: 'calendar' | 'manual';
+  calendarTitle?: string;
+  type?: string;
 }
 
 export interface Payment {

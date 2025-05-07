@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
-import ClientCard, { ClientData } from '@/components/clients/ClientCard';
+import ClientCard from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
@@ -9,33 +8,22 @@ import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Função para carregar clientes do localStorage
-const loadClientsFromStorage = (): ClientData[] => {
-  const storedClients = localStorage.getItem('clients');
-  return storedClients ? JSON.parse(storedClients) : [];
-};
-
-// Função para salvar clientes no localStorage
-const saveClientsToStorage = (clients: ClientData[]) => {
-  localStorage.setItem('clients', JSON.stringify(clients));
-};
+import useClients from '@/hooks/useClients';
+import { ClientDetailData } from '@/types/client';
 
 const ClientsPage = () => {
-  const [clients, setClients] = useState<ClientData[]>(loadClientsFromStorage);
+  const { 
+    clients, 
+    isLoading, 
+    addClient, 
+    removeClient, 
+    searchClients 
+  } = useClients();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Salvar clientes no localStorage sempre que houver alterações
-  useEffect(() => {
-    saveClientsToStorage(clients);
-  }, [clients]);
-
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.phone.includes(searchQuery)
-  );
+  const filteredClients = searchClients(searchQuery);
 
   const clientsByStatus = {
     ongoing: filteredClients.filter(client => client.status === 'ongoing' || !client.status),
@@ -55,7 +43,7 @@ const ClientsPage = () => {
     else if (data.estado === 'Finished') clientStatus = 'finished';
     else if (data.estado === 'call') clientStatus = 'call';
     
-    const newClient: ClientData = {
+    const newClient: ClientDetailData = {
       id: data.id || Date.now().toString(),
       name: data.nome,
       email: data.email || '',
@@ -64,9 +52,9 @@ const ClientsPage = () => {
       nextSession: null,
       totalPaid: 0,
       status: clientStatus,
-      birthday: data.dataNascimento || null,
+      birthday: data.dataNascimento ? data.dataNascimento.toISOString() : undefined,
       genero: data.genero || null,
-      problemática: data.problematica || '',
+      notes: data.problematica || '',
       tipoContato: data.tipoContato || 'Lead',
       comoConheceu: data.comoConheceu || 'Anúncio'
     };
@@ -83,7 +71,7 @@ const ClientsPage = () => {
           data_nascimento: newClient.birthday,
           genero: newClient.genero,
           morada: '',
-          notas: newClient.problemática,
+          notas: newClient.notes,
           estado: newClient.status,
           tipo_contato: newClient.tipoContato,
           como_conheceu: newClient.comoConheceu
@@ -97,15 +85,14 @@ const ClientsPage = () => {
       }
     }
     
-    setClients(prev => [...prev, newClient]);
+    // Adiciona cliente usando o hook
+    addClient(newClient);
     setDialogOpen(false);
     toast.success('Cliente adicionado com sucesso');
   };
 
   const handleDeleteClient = (clientId: string) => {
-    const updatedClients = clients.filter(client => client.id !== clientId);
-    setClients(updatedClients);
-    saveClientsToStorage(updatedClients); // Ensure deletion persists to localStorage
+    removeClient(clientId);
     toast.success('Cliente eliminado com sucesso');
   };
 

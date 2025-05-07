@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,11 +12,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from "lucide-react";
 import { cn } from '@/lib/utils';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface ClientFormData {
   nome: string;
@@ -27,12 +27,14 @@ export interface ClientFormData {
   email: string;
   contato: string;
   localidade: string;
-  dataNascimento?: string;
+  dataNascimento?: Date | null;
   genero?: 'Homem' | 'Mulher' | 'Outro';
   tipoContato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
   comoConheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
   estado: 'On Going' | 'Thinking' | 'No need' | 'Finished' | 'call';
   notes?: string;
+  numeroSessoes?: number;
+  valorPacote?: number;
 }
 
 interface ClientFormProps {
@@ -42,27 +44,44 @@ interface ClientFormProps {
 }
 
 const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientFormProps) => {
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<ClientFormData>({
+  const { register, handleSubmit, formState: { errors }, control, setValue } = useForm<ClientFormData>({
     defaultValues: {
       tipoContato: 'Lead',
       comoConheceu: 'Anúncio',
       estado: 'On Going',
-      ...defaultValues
+      ...defaultValues,
+      dataNascimento: defaultValues.dataNascimento ? new Date(defaultValues.dataNascimento) : null,
     }
   });
+  const [birthDate, setBirthDate] = useState<Date | null>(
+    defaultValues.dataNascimento ? new Date(defaultValues.dataNascimento) : null
+  );
+  const [statusValue, setStatusValue] = useState<'On Going' | 'Thinking' | 'No need' | 'Finished' | 'call'>(
+    (defaultValues.estado as any) || 'On Going'
+  );
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const isMobile = useIsMobile();
 
-  const selectedDate = watch('dataNascimento');
+  const handleFormSubmit = (data: ClientFormData) => {
+    onSubmit({
+      ...data,
+      dataNascimento: data.dataNascimento instanceof Date ? data.dataNascimento : birthDate,
+    });
+  };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="nome">Nome</Label>
+          <Label htmlFor="nome" className="text-base">Nome <span className="text-red-500">*</span></Label>
           <Input
             id="nome"
-            {...register('nome', { required: 'Nome é obrigatório' })}
-            placeholder="Nome do cliente"
-            className={errors.nome ? 'border-red-500' : ''}
+            type="text"
+            {...register('nome', {
+              required: 'Nome é obrigatório'
+            })}
+            placeholder="Nome completo"
+            className={`h-11 text-base ${errors.nome ? 'border-red-500' : ''}`}
           />
           {errors.nome && (
             <p className="text-sm text-red-500">{errors.nome.message}</p>
@@ -70,12 +89,16 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="id">ID</Label>
+          <Label htmlFor="id" className="text-base">ID <span className="text-red-500">*</span></Label>
           <Input
             id="id"
-            {...register('id', { required: 'ID é obrigatório' })}
+            type="text"
+            {...register('id', {
+              required: 'ID é obrigatório'
+            })}
             placeholder="ID do cliente"
-            className={errors.id ? 'border-red-500' : ''}
+            disabled={isEditing}
+            className={`h-11 text-base ${errors.id ? 'border-red-500' : ''}`}
           />
           {errors.id && (
             <p className="text-sm text-red-500">{errors.id.message}</p>
@@ -85,39 +108,41 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="dataNascimento">Data de Nascimento</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !selectedDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(new Date(selectedDate), 'dd/MM/yyyy') : <span>Selecione uma data</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate ? new Date(selectedDate) : undefined}
-                onSelect={(date) => setValue('dataNascimento', date ? format(date, 'yyyy-MM-dd') : undefined)}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
+          <Label htmlFor="dataNascimento" className="text-base">Data de Nascimento</Label>
+          <Controller
+            control={control}
+            name="dataNascimento"
+            render={({ field }) => (
+              <DatePicker
+                selected={field.value}
+                onChange={(date: Date | null) => {
+                  field.onChange(date);
+                  setBirthDate(date);
+                }}
+                showMonthDropdown
+                showYearDropdown
+                dropdownMode="select"
+                dateFormat="dd/MM/yyyy"
+                placeholderText="Selecione a data"
+                wrapperClassName="w-full"
+                className="h-11 text-base w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
-            </PopoverContent>
-          </Popover>
+            )}
+          />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="genero">Género</Label>
+          <Label htmlFor="genero" className="text-base">Género</Label>
+          <Controller
+            control={control}
+            name="genero"
+            render={({ field }) => (
           <Select 
-            onValueChange={(value) => setValue('genero', value as 'Homem' | 'Mulher' | 'Outro')} 
+                onValueChange={field.onChange}
+                value={field.value}
             defaultValue={defaultValues.genero}
           >
-            <SelectTrigger>
+                <SelectTrigger className="h-11 text-base">
               <SelectValue placeholder="Selecione o género" />
             </SelectTrigger>
             <SelectContent>
@@ -126,12 +151,14 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
               <SelectItem value="Outro">Outro</SelectItem>
             </SelectContent>
           </Select>
+            )}
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" className="text-base">Email</Label>
           <Input
             id="email"
             type="email"
@@ -142,7 +169,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
               }
             })}
             placeholder="Email"
-            className={errors.email ? 'border-red-500' : ''}
+            className={`h-11 text-base ${errors.email ? 'border-red-500' : ''}`}
           />
           {errors.email && (
             <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -150,42 +177,51 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="contato">Contacto</Label>
+          <Label htmlFor="contato" className="text-base">Contacto</Label>
           <Input
             id="contato"
+            type="tel"
+            inputMode="tel"
             {...register('contato')}
             placeholder="Número de contacto"
+            className="h-11 text-base"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="localidade">Localidade</Label>
+        <Label htmlFor="localidade" className="text-base">Localidade</Label>
         <Input
           id="localidade"
           {...register('localidade')}
           placeholder="Localidade"
+          className="h-11 text-base"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="problematica">Problemática</Label>
+        <Label htmlFor="problematica" className="text-base">Problemática</Label>
         <Textarea
           id="problematica"
           {...register('problematica')}
           placeholder="Descreva a problemática do cliente"
-          className="min-h-[100px]"
+          className="min-h-[100px] sm:min-h-[120px] text-base pt-2 resize-none"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="tipoContato">Tipo de Contacto</Label>
+          <Label htmlFor="tipoContato" className="text-base">Tipo de Contacto</Label>
+          <Controller
+            control={control}
+            name="tipoContato"
+            render={({ field }) => (
           <Select 
-            onValueChange={(value) => setValue('tipoContato', value as 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook')} 
+                onValueChange={field.onChange}
+                value={field.value}
             defaultValue={defaultValues.tipoContato || 'Lead'}
           >
-            <SelectTrigger>
+                <SelectTrigger className="h-11 text-base">
               <SelectValue placeholder="Selecione o tipo de contacto" />
             </SelectTrigger>
             <SelectContent>
@@ -196,15 +232,22 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
               <SelectItem value="Facebook">Facebook</SelectItem>
             </SelectContent>
           </Select>
+            )}
+          />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="comoConheceu">Como teve conhecimento</Label>
+          <Label htmlFor="comoConheceu" className="text-base">Como teve conhecimento</Label>
+          <Controller
+            control={control}
+            name="comoConheceu"
+            render={({ field }) => (
           <Select 
-            onValueChange={(value) => setValue('comoConheceu', value as 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação')} 
+                onValueChange={field.onChange}
+                value={field.value}
             defaultValue={defaultValues.comoConheceu || 'Anúncio'}
           >
-            <SelectTrigger>
+                <SelectTrigger className="h-11 text-base">
               <SelectValue placeholder="Como conheceu a clínica?" />
             </SelectTrigger>
             <SelectContent>
@@ -214,16 +257,26 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
               <SelectItem value="Recomendação">Recomendação</SelectItem>
             </SelectContent>
           </Select>
+            )}
+          />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="estado">Estado</Label>
+        <Label htmlFor="estado" className="text-base">Estado</Label>
+        <Controller
+          control={control}
+          name="estado"
+          render={({ field }) => (
         <Select 
-          onValueChange={(value) => setValue('estado', value as 'On Going' | 'Thinking' | 'No need' | 'Finished' | 'call')} 
+              onValueChange={(value: any) => {
+                field.onChange(value);
+                setStatusValue(value);
+              }}
+              value={field.value}
           defaultValue={defaultValues.estado || 'On Going'}
         >
-          <SelectTrigger>
+              <SelectTrigger className="h-11 text-base">
             <SelectValue placeholder="Selecione o estado" />
           </SelectTrigger>
           <SelectContent>
@@ -234,14 +287,85 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             <SelectItem value="call">Call</SelectItem>
           </SelectContent>
         </Select>
+          )}
+        />
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="notes" className="text-base">Notas/Observações</Label>
+        <Textarea
+          id="notes"
+          {...register('notes')}
+          placeholder="Observações adicionais"
+          className="min-h-[80px] sm:min-h-[100px] text-base pt-2 resize-none"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <div className="space-y-2">
+          <Label htmlFor="numeroSessoes" className="text-base">Pacote de Sessões</Label>
+          <Input
+            id="numeroSessoes"
+            type="number"
+            min="0"
+            {...register('numeroSessoes', {
+              valueAsNumber: true,
+              validate: (value) => 
+                (value === undefined || value === null || isNaN(value) || value >= 0) || 
+                'O número deve ser positivo'
+            })}
+            placeholder="Número de sessões"
+            className="h-11 text-base"
+          />
+          {errors.numeroSessoes && (
+            <p className="text-sm text-red-500">{errors.numeroSessoes.message}</p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="valorPacote" className="text-base">Valor do Pacote (€)</Label>
+          <Input
+            id="valorPacote"
+            type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
+            {...register('valorPacote', {
+              valueAsNumber: true,
+              validate: (value) => 
+                (value === undefined || value === null || isNaN(value) || value >= 0) || 
+                'O valor deve ser positivo'
+            })}
+            placeholder="Valor (€)"
+            className="h-11 text-base"
+          />
+          {errors.valorPacote && (
+            <p className="text-sm text-red-500">{errors.valorPacote.message}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6 flex gap-4 flex-col sm:flex-row">
+        {isEditing ? (
+          <>
+            <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
+              Atualizar Cliente
+            </Button>
       <Button 
-        type="submit" 
-        className="bg-[#3A726D] hover:bg-[#265255] text-white w-full"
-      >
-        {isEditing ? 'Atualizar Cliente' : 'Adicionar Cliente'}
+              type="button" 
+              variant="outline" 
+              className="w-full sm:w-auto h-11"
+              onClick={() => setResetConfirmOpen(true)}
+            >
+              Cancelar
+            </Button>
+          </>
+        ) : (
+          <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
+            Adicionar Cliente
       </Button>
+        )}
+      </div>
     </form>
   );
 };
