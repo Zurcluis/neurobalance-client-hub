@@ -19,102 +19,63 @@ import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import useClients from '@/hooks/useClients';
 import useSessionMonitoring from '@/hooks/useSessionMonitoring';
+import useSessions from '@/hooks/useSessions';
 import SessionHistory from '@/components/monitoring/SessionHistory';
 import SessionMonitorInterface from '@/components/monitoring/SessionMonitorInterface';
+import { Database } from '@/integrations/supabase/types';
+
+type Client = Database['public']['Tables']['clientes']['Row'];
+type DBSession = Database['public']['Tables']['sessoes_ativas']['Row'];
 
 const MonitoringPage = () => {
-  // Usar o hook useClients para obter a lista de clientes
+  // Use hooks for data management
   const { clients, isLoading: isLoadingClients } = useClients();
-  
-  // Usar o hook de monitorização global
+  const { sessions, isLoading: isLoadingSessions, addSession } = useSessions();
   const { 
     activeSession,
     setActiveSession,
-    isLoading: isLoadingSession
+    isLoading: isLoadingSession,
+    startTimer,
+    pauseTimer,
+    saveSessionNotes,
+    finishSession
   } = useSessionMonitoring();
   
-  const [selectedClient, setSelectedClient] = useState<ClientDetailData | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isClientSelectorOpen, setIsClientSelectorOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Estado para o modal de nova sessão
+  // State for new session modal
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [sessionType, setSessionType] = useState<string>('');
-  
-  // Referência para a sessão recém-criada
   const [isNewSession, setIsNewSession] = useState(false);
 
-  const supabase = (window as any).supabase;
-
-  // Verificar se há uma sessão ativa no hook global e sincronizar
+  // Check if there's an active session in the global hook and sync
   useEffect(() => {
-    if (activeSession && (!selectedClient || selectedClient.id !== activeSession.clientId)) {
-      // Buscar cliente da sessão ativa
-      const clientFromSession = clients.find(c => c.id === activeSession.clientId);
+    if (activeSession && (!selectedClient || selectedClient.id.toString() !== activeSession.clientId)) {
+      const clientFromSession = clients.find(c => c.id.toString() === activeSession.clientId);
       if (clientFromSession) {
         setSelectedClient(clientFromSession);
       }
     }
   }, [activeSession, clients, selectedClient]);
 
-  // Filtrar clientes com base na pesquisa
+  // Filter clients based on search
   const filteredClients = searchQuery.trim() === '' 
     ? clients 
     : clients.filter(client => 
-        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.id.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  // Buscar sessões quando um cliente é selecionado
-  useEffect(() => {
-    const fetchSessions = async () => {
-      if (!selectedClient || !supabase) {
-        setSessions([]);
-        return;
-      }
-      setIsLoadingSessions(true);
-      setIsNewSession(false); // Reset do flag de nova sessão
-      try {
-        const { data, error } = await supabase
-          .from('sessoes') // Nome da tabela de sessões
-          .select('*') // Pega todos os dados da sessão
-          .eq('clientId', selectedClient.id)
-          .order('date', { ascending: false }); // Ordena pelas mais recentes
-          
-        if (error) throw error;
-        setSessions(data || []);
-        
-        // Se há uma sessão em andamento para este cliente, selecioná-la automaticamente
-        const activeSessionForClient = data?.find(s => s.status === 'em_andamento');
-        if (activeSessionForClient) {
-          handleSessionSelect(activeSessionForClient.id);
-        } else if (activeSession && activeSession.clientId === selectedClient.id) {
-          // Limpar a sessão ativa se o cliente selecionado não tem sessões em andamento
-          setActiveSession(null);
-        }
-      } catch (error: any) {
-        console.error("Erro ao buscar sessões:", error);
-        toast.error(`Erro ao buscar sessões: ${error.message}`);
-        setSessions([]);
-      } finally {
-        setIsLoadingSessions(false);
-      }
-    };
-    fetchSessions();
-  }, [selectedClient, supabase, setActiveSession, activeSession]);
+        client.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.id.toString().includes(searchQuery.toLowerCase()));
 
   const handleSessionSelect = (sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
-      // Converter para MonitorableSession
       const monitorableSession: MonitorableSession = {
         ...session,
         source: 'manual',
         calendarTitle: session.type || 'Sessão Manual'
       };
       
-      // Definir como sessão ativa no hook global
       setActiveSession(monitorableSession);
       setIsNewSession(false);
     }
@@ -130,43 +91,33 @@ const MonitoringPage = () => {
   };
 
   const createNewSession = async () => {
-    if (!selectedClient || !supabase || !sessionType) {
+    if (!selectedClient || !sessionType) {
       toast.error("Selecione um cliente e um tipo de sessão");
       return;
     }
 
     const now = new Date();
     const newSession = {
-      id: `session_${Date.now()}`,
-      clientId: selectedClient.id,
-      date: now.toISOString(),
-      notes: "",
-      paid: false,
-      terapeuta: "", // Poderia ser preenchido com o usuário atual se houvesse autenticação
-      type: sessionType,
-      status: "em_andamento",
-      duracao: 0
+      id_cliente: selectedClient.id,
+      inicio: now.toISOString(),
+      fim: null,
+      duracao: 0,
+      notas: "",
+      status: "em_andamento"
     };
 
     try {
-      const { error } = await supabase
-        .from('sessoes')
-        .insert(newSession);
-
-      if (error) throw error;
-
-      // Adiciona a nova sessão ao estado local
-      setSessions(prev => [newSession, ...prev]);
+      const session = await addSession(newSession);
       
-      // Converter para MonitorableSession e definir como ativa
+      // Convert to MonitorableSession and set as active
       const monitorableSession: MonitorableSession = {
-        ...newSession,
+        ...session,
         source: 'manual',
-        calendarTitle: newSession.type || 'Sessão Manual'
+        calendarTitle: sessionType
       };
       
       setActiveSession(monitorableSession);
-      setIsNewSession(true); // Marca essa sessão como recém-criada
+      setIsNewSession(true);
       setShowNewSessionModal(false);
       toast.success("Nova sessão iniciada");
     } catch (error: any) {
@@ -175,12 +126,26 @@ const MonitoringPage = () => {
     }
   };
 
+  // Convert MonitorableSession to DBSession for the interface
+  const convertToDBSession = (session: MonitorableSession): DBSession => {
+    return {
+      id: parseInt(session.id),
+      id_cliente: parseInt(session.clientId),
+      inicio: session.date,
+      fim: session.endDate || '',
+      duracao: session.duracao || 0,
+      notas: session.notes,
+      criado_em: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  };
+
   return (
     <PageLayout>
       <h1 className="text-3xl font-bold gradient-heading mb-4">Monitorização de Sessão</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-         {/* Coluna 1: Seleção Cliente/Sessão */}
+         {/* Column 1: Client/Session Selection */}
          <div className="md:col-span-1 space-y-4">
             <div>
                 <Label htmlFor="client-selector" className="text-base font-medium">Selecionar Cliente</Label>
@@ -194,18 +159,17 @@ const MonitoringPage = () => {
                             disabled={isLoadingClients}
                         >
                             {selectedClient
-                                ? selectedClient.name
+                                ? selectedClient.nome
                                 : isLoadingClients ? "Carregando..." : "Selecione um cliente..."}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-lg shadow-md border-[#E6ECEA]">
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                         <Command>
                             <CommandInput 
-                              placeholder="Procurar cliente..." 
-                              value={searchQuery}
-                              onValueChange={handleClientSearchInput}
-                              className="h-10"
+                                placeholder="Pesquisar cliente..." 
+                                value={searchQuery}
+                                onValueChange={handleClientSearchInput}
                             />
                             <CommandList>
                                 <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
@@ -213,10 +177,9 @@ const MonitoringPage = () => {
                                     {filteredClients.map((client) => (
                                         <CommandItem
                                             key={client.id}
-                                            value={client.id}
-                                            onSelect={(currentValue) => {
-                                                const clientObj = clients.find(c => c.id === currentValue);
-                                                setSelectedClient(clientObj || null);
+                                            value={client.nome}
+                                            onSelect={() => {
+                                                setSelectedClient(client);
                                                 setIsClientSelectorOpen(false);
                                             }}
                                         >
@@ -226,7 +189,7 @@ const MonitoringPage = () => {
                                                     selectedClient?.id === client.id ? "opacity-100" : "opacity-0"
                                                 )}
                                             />
-                                            {client.name}
+                                            {client.nome}
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
@@ -236,132 +199,81 @@ const MonitoringPage = () => {
                 </Popover>
             </div>
 
+            {/* Session History */}
             {selectedClient && (
-              <div className="space-y-4">
-                {!isLoadingSessions && (
-                  <div className="flex justify-between">
-                    <Button 
-                      variant="default" 
-                      className="w-full bg-[#3A726D] hover:bg-[#265255] text-white rounded-lg shadow-md transition-transform hover:scale-[1.02]"
-                      onClick={openNewSessionModal}
-                    >
-                      <Timer className="mr-2 h-5 w-5" />
-                      Nova Sessão
-                    </Button>
-                  </div>
-                )}
-
-                <SessionHistory 
-                  sessions={sessions} 
-                  selectedSessionId={activeSession?.id}
-                  onSelectSession={handleSessionSelect}
-                />
-              </div>
+                <div className="mt-4">
+                    <SessionHistory 
+                        sessions={sessions}
+                        selectedSessionId={activeSession?.id}
+                        onSelectSession={handleSessionSelect}
+                    />
+                </div>
             )}
          </div>
 
-         {/* Coluna 2 e 3: Interface de Monitorização */}
+         {/* Column 2: Session Monitor */}
          <div className="md:col-span-2">
-            {selectedClient && activeSession ? (
+            {activeSession && selectedClient ? (
                 <SessionMonitorInterface 
-                  session={activeSession}
-                  client={selectedClient}
-                  autoStart={isNewSession} 
+                    client={selectedClient}
+                    activeSession={convertToDBSession(activeSession)}
+                    startSession={async () => { await startTimer(); }}
+                    pauseSession={async () => { await pauseTimer(); }}
+                    resumeSession={async () => { await startTimer(); }}
+                    finishSession={async (notes: string) => { await finishSession(notes); }}
+                    saveSessionNotes={async (notes: string) => { await saveSessionNotes(notes); }}
+                    isLoading={isLoadingSession}
+                    autoStart={isNewSession}
                 />
             ) : (
-                <div className="p-8 border rounded-xl bg-white dark:bg-gray-800 shadow-md text-center h-full flex flex-col justify-center items-center">
-                    {isLoadingClients || isLoadingSession ? (
-                      <p className="text-gray-500">Carregando...</p>
-                    ) : !selectedClient ? (
-                      <div className="space-y-4">
-                        <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                          <ClipboardList className="h-8 w-8 text-[#3A726D]" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-semibold">Selecione um cliente</h3>
-                          <p className="text-gray-500 mt-1">Escolha um cliente para iniciar a monitorização</p>
-                        </div>
-                      </div>
-                    ) : isLoadingSessions ? (
-                      <p className="text-gray-500">Carregando sessões...</p>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                          <Timer className="h-8 w-8 text-[#3A726D]" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-semibold">Nenhuma sessão selecionada</h3>
-                          <p className="text-gray-500 mt-1">Selecione uma sessão ou crie uma nova para iniciar a monitorização</p>
-                        </div>
-                        <Button 
-                          variant="default" 
-                          className="bg-[#3A726D] hover:bg-[#265255] mt-4 shadow-md transition-transform hover:scale-105"
-                          onClick={openNewSessionModal}
-                        >
-                          <Timer className="mr-2 h-4 w-4" />
-                          Nova Sessão
+                <div className="flex flex-col items-center justify-center h-[400px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                    <Timer className="h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma sessão selecionada</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                        Selecione um cliente e uma sessão para começar a monitorização
+                    </p>
+                    {selectedClient && (
+                        <Button onClick={openNewSessionModal}>
+                            Iniciar Nova Sessão
                         </Button>
-                      </div>
                     )}
                 </div>
             )}
          </div>
       </div>
 
-      {/* Modal de seleção de tipo de sessão */}
+      {/* New Session Modal */}
       <Dialog open={showNewSessionModal} onOpenChange={setShowNewSessionModal}>
-        <DialogContent className="sm:max-w-[450px] rounded-xl bg-white border-[#E6ECEA] shadow-lg p-0 overflow-hidden">
-          <div className="bg-[#3A726D] p-6 text-white">
-            <DialogTitle className="text-xl font-semibold">Nova Sessão</DialogTitle>
-            <DialogDescription className="text-[#E6ECEA] mt-1">
-              Selecione o tipo de sessão para iniciar o monitoramento
-            </DialogDescription>
-          </div>
-          
-          <div className="p-6 space-y-5">
-            <div className="space-y-3">
-              <Label htmlFor="session-type" className="text-base font-medium">Tipo de Sessão</Label>
-              <Select value={sessionType} onValueChange={setSessionType}>
-                <SelectTrigger 
-                  id="session-type" 
-                  className="w-full border-[#E6ECEA] rounded-lg h-11"
-                >
-                  <SelectValue placeholder="Selecione o tipo de sessão" />
-                </SelectTrigger>
-                <SelectContent className="rounded-lg border-[#E6ECEA]">
-                  <SelectItem value="Avaliação Inicial" className="py-3 cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <Clipboard className="h-4 w-4 text-[#3A726D]" />
-                      <span>Avaliação Inicial</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="Sessão de Neurofeedback" className="py-3 cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <Timer className="h-4 w-4 text-[#3A726D]" />
-                      <span>Sessão de Neurofeedback</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Nova Sessão</DialogTitle>
+                <DialogDescription>
+                    Selecione o tipo de sessão para iniciar
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+                <div>
+                    <Label htmlFor="session-type">Tipo de Sessão</Label>
+                    <Select value={sessionType} onValueChange={setSessionType}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo de sessão" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="regular">Sessão Regular</SelectItem>
+                            <SelectItem value="avaliacao">Avaliação</SelectItem>
+                            <SelectItem value="retorno">Retorno</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setShowNewSessionModal(false)}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={createNewSession} disabled={!sessionType}>
+                        Iniciar Sessão
+                    </Button>
+                </div>
             </div>
-            
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowNewSessionModal(false)}
-                className="rounded-lg border-[#E6ECEA]"
-              >
-                Cancelar
-              </Button>
-              <Button 
-                className="bg-[#3A726D] hover:bg-[#265255] rounded-lg shadow-md transition-transform hover:scale-105" 
-                onClick={createNewSession} 
-                disabled={!sessionType}
-              >
-                Iniciar Sessão
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </PageLayout>
