@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { ClientMood } from '@/types/client';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertTriangle, Edit, Smile, Trash2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   AlertDialog, 
   AlertDialogContent, 
@@ -41,6 +41,7 @@ const ClientMoodTracker = ({ clientId, moods, onSubmitMood }: ClientMoodTrackerP
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<ClientMood | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<MoodFormValues>({
     defaultValues: {
@@ -78,62 +79,184 @@ const ClientMoodTracker = ({ clientId, moods, onSubmitMood }: ClientMoodTrackerP
     setIsDeleteDialogOpen(true);
   };
 
-  const handleSubmit = (data: MoodFormValues) => {
-    const newMood: ClientMood = {
-      id: Date.now().toString(),
-      clientId,
-      ...data,
-      date: `${data.date}T00:00:00.000Z`
-    };
-    
-    onSubmitMood(newMood);
-    setIsDialogOpen(false);
-    form.reset();
-    toast.success('Estado emocional registrado com sucesso');
-  };
-
-  const handleEditSubmit = (data: MoodFormValues & { id: string }) => {
-    // Get all moods from localStorage
-    const allMoods = JSON.parse(localStorage.getItem('clientMoods') || '[]');
-    
-    // Update the specific mood
-    const updatedMoods = allMoods.map((mood: ClientMood) => 
-      mood.id === data.id ? {
-        ...mood,
+  const handleSubmit = async (data: MoodFormValues) => {
+    try {
+      setIsSubmitting(true);
+      
+      // Preparar o objeto para salvar no Supabase
+      const supabasePayload = {
+        id_cliente: parseInt(clientId),
+        humor: data.mood,
+        qualidade_sono: data.sleepQuality || 'good',
+        notas: data.notes || '',
+        data: `${data.date}T00:00:00.000Z`,
+        criado_em: new Date().toISOString()
+      };
+      
+      // Salvar no Supabase
+      const { data: supabaseData, error } = await supabase
+        .from('humor_cliente')
+        .insert(supabasePayload)
+        .select();
+      
+      if (error) {
+        console.error('Erro ao salvar humor no Supabase:', error);
+        toast.error('Erro ao salvar estado emocional no servidor');
+        // Ainda tentamos salvar localmente se falhar no servidor
+        const fallbackMood: ClientMood = {
+          id: Date.now().toString(),
+          clientId,
+          ...data,
+          date: `${data.date}T00:00:00.000Z`
+        };
+        onSubmitMood(fallbackMood);
+        return;
+      }
+      
+      // Criar o objeto com o ID do Supabase para uso no front-end
+      const newMood: ClientMood = {
+        id: supabaseData && supabaseData[0] ? supabaseData[0].id.toString() : Date.now().toString(),
+        clientId,
         mood: data.mood,
-        sleepQuality: data.sleepQuality,
-        notes: data.notes,
+        sleepQuality: data.sleepQuality || 'good',
+        notes: data.notes || '',
         date: `${data.date}T00:00:00.000Z`
-      } : mood
-    );
-    
-    // Save back to localStorage
-    localStorage.setItem('clientMoods', JSON.stringify(updatedMoods));
-    
-    setIsEditDialogOpen(false);
-    toast.success('Estado emocional atualizado com sucesso');
-    
-    // Reload page to reflect changes
-    window.location.reload();
+      };
+      
+      // Atualizar o estado local via callback
+      onSubmitMood(newMood);
+      
+      setIsDialogOpen(false);
+      form.reset();
+      toast.success('Estado emocional registrado com sucesso');
+    } catch (error: any) {
+      console.error('Erro ao registrar estado emocional:', error);
+      toast.error(`Falha ao registrar estado emocional: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteMood = () => {
+  const handleEditSubmit = async (data: MoodFormValues & { id: string }) => {
+    try {
+      setIsSubmitting(true);
+      
+      // Primeiro verificar se o registro existe no Supabase
+      const supabaseId = parseInt(data.id);
+      const isNumericId = !isNaN(supabaseId);
+      
+      if (isNumericId) {
+        // Atualizar no Supabase
+        const { error } = await supabase
+          .from('humor_cliente')
+          .update({
+            humor: data.mood,
+            qualidade_sono: data.sleepQuality || 'good',
+            notas: data.notes || '',
+            data: `${data.date}T00:00:00.000Z`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', supabaseId);
+          
+        if (error) {
+          console.error('Erro ao atualizar humor no Supabase:', error);
+          toast.error('Erro ao atualizar estado emocional no servidor');
+          return;
+        }
+      } else {
+        // Tenta inserir como novo registro no Supabase já que não existe lá
+        const { error } = await supabase
+          .from('humor_cliente')
+          .insert({
+            id_cliente: parseInt(clientId),
+            humor: data.mood,
+            qualidade_sono: data.sleepQuality || 'good',
+            notas: data.notes || '',
+            data: `${data.date}T00:00:00.000Z`,
+            criado_em: new Date().toISOString()
+          });
+          
+        if (error) {
+          console.error('Erro ao inserir humor no Supabase:', error);
+          toast.error('Erro ao salvar estado emocional no servidor');
+          return;
+        }
+      }
+      
+      // Get all moods from localStorage
+      const allMoods = JSON.parse(localStorage.getItem('clientMoods') || '[]');
+      
+      // Update the specific mood
+      const updatedMoods = allMoods.map((mood: ClientMood) => 
+        mood.id === data.id ? {
+          ...mood,
+          mood: data.mood,
+          sleepQuality: data.sleepQuality,
+          notes: data.notes,
+          date: `${data.date}T00:00:00.000Z`
+        } : mood
+      );
+      
+      // Save back to localStorage
+      localStorage.setItem('clientMoods', JSON.stringify(updatedMoods));
+      
+      setIsEditDialogOpen(false);
+      toast.success('Estado emocional atualizado com sucesso');
+      
+      // Reload page to reflect changes
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Erro ao atualizar estado emocional:', error);
+      toast.error(`Falha ao atualizar estado emocional: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteMood = async () => {
     if (!selectedMood) return;
     
-    // Get all moods from localStorage
-    const allMoods = JSON.parse(localStorage.getItem('clientMoods') || '[]');
-    
-    // Filter out the mood to delete
-    const updatedMoods = allMoods.filter((mood: ClientMood) => mood.id !== selectedMood.id);
-    
-    // Save back to localStorage
-    localStorage.setItem('clientMoods', JSON.stringify(updatedMoods));
-    
-    setIsDeleteDialogOpen(false);
-    toast.success('Estado emocional excluído com sucesso');
-    
-    // Reload page to reflect changes
-    window.location.reload();
+    try {
+      setIsSubmitting(true);
+      
+      // Verificar se o registro existe no Supabase (IDs do Supabase são numéricos)
+      const supabaseId = parseInt(selectedMood.id);
+      const isNumericId = !isNaN(supabaseId);
+      
+      if (isNumericId) {
+        // Excluir do Supabase
+        const { error } = await supabase
+          .from('humor_cliente')
+          .delete()
+          .eq('id', supabaseId);
+          
+        if (error) {
+          console.error('Erro ao excluir humor do Supabase:', error);
+          toast.error('Erro ao excluir estado emocional do servidor');
+          return;
+        }
+      }
+      
+      // Get all moods from localStorage
+      const allMoods = JSON.parse(localStorage.getItem('clientMoods') || '[]');
+      
+      // Filter out the mood to delete
+      const updatedMoods = allMoods.filter((mood: ClientMood) => mood.id !== selectedMood.id);
+      
+      // Save back to localStorage
+      localStorage.setItem('clientMoods', JSON.stringify(updatedMoods));
+      
+      setIsDeleteDialogOpen(false);
+      toast.success('Estado emocional excluído com sucesso');
+      
+      // Reload page to reflect changes
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Erro ao excluir estado emocional:', error);
+      toast.error(`Falha ao excluir estado emocional: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getMoodIcon = (mood: string) => {

@@ -55,65 +55,83 @@ export function useAppointments() {
   }, []);
 
   // Add new appointment
-  const addAppointment = useCallback(async (appointment: NewAppointment) => {
+  const addAppointment = useCallback(async (appointment: {
+    titulo: string;
+    data: string;
+    hora: string;
+    id_cliente: number;
+    tipo: string;
+    notas?: string;
+    estado: string;
+    terapeuta?: string;
+  }) => {
     try {
-      const { data, error: insertError } = await supabase
+      const { data, error } = await supabase
         .from('agendamentos')
-        .insert([appointment])
-        .select(`
-          *,
-          clientes (
-            nome,
-            email,
-            telefone
-          )
-        `)
+        .insert([
+          {
+            titulo: appointment.titulo,
+            data: appointment.data,
+            hora: appointment.hora,
+            id_cliente: appointment.id_cliente,
+            tipo: appointment.tipo,
+            notas: appointment.notas,
+            estado: appointment.estado,
+            terapeuta: appointment.terapeuta
+          }
+        ])
+        .select()
         .single();
 
-      if (insertError) {
-        throw insertError;
-      }
-
+      if (error) throw error;
       setAppointments(prev => [...prev, data as Appointment]);
       toast.success('Appointment added successfully');
       return data;
-    } catch (err) {
-      console.error('Error adding appointment:', err);
+    } catch (error) {
+      console.error('Erro ao adicionar agendamento:', error);
       toast.error('Failed to add appointment');
-      throw err;
+      throw error;
     }
   }, []);
 
   // Update appointment
-  const updateAppointment = useCallback(async (id: number, updates: UpdateAppointment) => {
+  const updateAppointment = useCallback(async (id: number, appointment: {
+    titulo?: string;
+    data?: string;
+    hora?: string;
+    id_cliente?: number;
+    tipo?: string;
+    notas?: string;
+    estado?: string;
+    terapeuta?: string;
+  }) => {
     try {
-      const { data, error: updateError } = await supabase
+      const { data, error } = await supabase
         .from('agendamentos')
-        .update(updates)
+        .update({
+          titulo: appointment.titulo,
+          data: appointment.data,
+          hora: appointment.hora,
+          id_cliente: appointment.id_cliente,
+          tipo: appointment.tipo,
+          notas: appointment.notas,
+          estado: appointment.estado,
+          terapeuta: appointment.terapeuta
+        })
         .eq('id', id)
-        .select(`
-          *,
-          clientes (
-            nome,
-            email,
-            telefone
-          )
-        `)
+        .select()
         .single();
 
-      if (updateError) {
-        throw updateError;
-      }
-
+      if (error) throw error;
       setAppointments(prev => prev.map(appointment => 
         appointment.id === id ? data as Appointment : appointment
       ));
       toast.success('Appointment updated successfully');
       return data;
-    } catch (err) {
-      console.error('Error updating appointment:', err);
+    } catch (error) {
+      console.error('Erro ao atualizar agendamento:', error);
       toast.error('Failed to update appointment');
-      throw err;
+      throw error;
     }
   }, []);
 

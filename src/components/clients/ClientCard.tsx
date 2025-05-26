@@ -23,7 +23,10 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
   return (
     <Card className={`relative overflow-hidden ${statusClass}`}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-xl font-bold truncate">{client.nome}</CardTitle>
+        <CardTitle className="text-xl font-bold truncate">
+          {client.nome}
+          {client.id_manual ? ` (ID: ${client.id_manual})` : ''}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">

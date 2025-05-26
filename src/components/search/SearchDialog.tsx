@@ -1,11 +1,12 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ClientDetailData } from '@/types/client';
+import { useClients } from '@/hooks/useClients';
+import { useAppointments } from '@/hooks/useAppointments';
 
 interface SearchResult {
   id: string;
@@ -24,6 +25,8 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const navigate = useNavigate();
+  const { clients } = useClients();
+  const { appointments } = useAppointments();
   
   React.useEffect(() => {
     if (open && searchQuery) {
@@ -31,7 +34,7 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
     } else {
       setResults([]);
     }
-  }, [searchQuery, open]);
+  }, [searchQuery, open, clients, appointments]);
 
   const performSearch = (query: string) => {
     if (!query.trim()) {
@@ -42,45 +45,45 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
     const q = query.toLowerCase();
     const searchResults: SearchResult[] = [];
     
-    // Search clients
-    const clients = JSON.parse(localStorage.getItem('clients') || '[]') as ClientDetailData[];
-    
+    // Buscar em clientes do hook useClients
+    if (clients && clients.length > 0) {
     clients.forEach(client => {
       if (
-        client.name.toLowerCase().includes(q) || 
-        client.email.toLowerCase().includes(q) ||
-        client.phone.toLowerCase().includes(q)
+          client.nome?.toLowerCase().includes(q) || 
+          client.email?.toLowerCase().includes(q) ||
+          client.telefone?.toLowerCase().includes(q)
       ) {
         searchResults.push({
-          id: client.id,
-          title: client.name,
+            id: client.id.toString(),
+            title: client.nome,
           subtitle: client.email,
           type: 'client',
           path: `/clients/${client.id}`
         });
       }
     });
+    }
     
-    // Search appointments
-    const appointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-    
-    appointments.forEach((appointment: any) => {
+    // Buscar em agendamentos do hook useAppointments
+    if (appointments && appointments.length > 0) {
+      appointments.forEach(appointment => {
       if (
-        appointment.title?.toLowerCase().includes(q) ||
-        appointment.description?.toLowerCase().includes(q)
+          appointment.titulo?.toLowerCase().includes(q) ||
+          appointment.notas?.toLowerCase().includes(q)
       ) {
-        // Find client name
-        const client = clients.find(c => c.id === appointment.clientId);
+          // Buscar nome do cliente
+          const client = clients?.find(c => c.id === appointment.id_cliente);
         
         searchResults.push({
-          id: appointment.id,
-          title: appointment.title || 'Consulta',
-          subtitle: client ? `Cliente: ${client.name}` : undefined,
+            id: appointment.id.toString(),
+            title: appointment.titulo || 'Consulta',
+            subtitle: client ? `Cliente: ${client.nome}` : undefined,
           type: 'appointment',
           path: '/calendar'
         });
       }
     });
+    }
     
     setResults(searchResults);
   };

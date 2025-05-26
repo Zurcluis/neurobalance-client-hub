@@ -7,12 +7,12 @@ export type UpdateClient = Database['public']['Tables']['clientes']['Update'];
 
 export const clientSchema = z.object({
   id: z.number(),
-  nome: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  telefone: z.string().min(1, 'Phone number is required'),
+  nome: z.string().min(1, 'Nome é obrigatório'),
+  email: z.string().email('Email inválido').optional(),
+  telefone: z.string().min(1, 'Telefone é obrigatório'),
   data_nascimento: z.string().nullable(),
   genero: z.enum(['Homem', 'Mulher', 'Outro']),
-  morada: z.string().min(1, 'Address is required'),
+  morada: z.string().min(1, 'Morada é obrigatória'),
   notas: z.string().optional(),
   estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'call']),
   tipo_contato: z.enum(['Lead', 'Contato', 'Email', 'Instagram', 'Facebook']),
@@ -21,14 +21,27 @@ export const clientSchema = z.object({
   total_pago: z.number().optional(),
   max_sessoes: z.number().optional(),
   proxima_sessao: z.string().nullable().optional(),
+  proxima_sessao_titulo: z.string().nullable().optional(),
+  proxima_sessao_tipo: z.string().nullable().optional(),
+  proxima_sessao_estado: z.string().nullable().optional(),
   criado_em: z.string().optional(),
   updated_at: z.string().optional(),
+  responsavel: z.string().nullable().optional(),
+  motivo: z.string().nullable().optional(),
+  id_manual: z.string().nullable().optional(),
 });
 
 export const newClientSchema = clientSchema.omit({ id: true, criado_em: true, updated_at: true });
 export const updateClientSchema = newClientSchema.partial();
 
-export interface ClientDetailData extends z.infer<typeof clientSchema> {}
+export interface ClientDetailData extends z.infer<typeof clientSchema> {
+  proxima_sessao_titulo?: string | null;
+  proxima_sessao_tipo?: string | null;
+  proxima_sessao_estado?: string | null;
+  responsavel?: string | null;
+  motivo?: string | null;
+  id_manual?: string | null;
+}
 
 export interface Session {
   id: string;

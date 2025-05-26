@@ -21,7 +21,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface ClientFormData {
   nome: string;
-  email: string;
+  email?: string;
   telefone: string;
   data_nascimento: Date | null;
   genero: 'Homem' | 'Mulher' | 'Outro';
@@ -33,6 +33,9 @@ export interface ClientFormData {
   numero_sessoes?: number;
   total_pago?: number;
   max_sessoes?: number;
+  responsavel?: string;
+  motivo?: string;
+  id_manual?: string;
 }
 
 interface ClientFormProps {
@@ -104,23 +107,14 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-base">Email <span className="text-red-500">*</span></Label>
+          <Label htmlFor="id_manual" className="text-base">ID Manual</Label>
           <Input
-            id="email"
-            type="email"
-            {...register('email', {
-              required: 'Email é obrigatório',
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'Email inválido'
-              }
-            })}
-            placeholder="Email"
-            className={`h-11 text-base ${errors.email ? 'border-red-500' : ''}`}
+            id="id_manual"
+            type="text"
+            {...register('id_manual')}
+            placeholder="ID personalizado (opcional)"
+            className="h-11 text-base"
           />
-          {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
-          )}
         </div>
       </div>
 
@@ -141,6 +135,27 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
           )}
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-base">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            {...register('email', {
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: 'Email inválido'
+              }
+            })}
+            placeholder="Email (opcional)"
+            className={`h-11 text-base ${errors.email ? 'border-red-500' : ''}`}
+          />
+          {errors.email && (
+            <p className="text-sm text-red-500">{errors.email.message}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="data_nascimento" className="text-base">Data de Nascimento <span className="text-red-500">*</span></Label>
           <Controller
@@ -248,7 +263,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="como_conheceu" className="text-base">Como teve conhecimento <span className="text-red-500">*</span></Label>
+          <Label htmlFor="como_conheceu" className="text-base">Como Conheceu <span className="text-red-500">*</span></Label>
           <Controller
             control={control}
             name="como_conheceu"
@@ -260,13 +275,14 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
                 defaultValue={defaultValues.como_conheceu || 'Anúncio'}
               >
                 <SelectTrigger className={`h-11 text-base ${errors.como_conheceu ? 'border-red-500' : ''}`}>
-                  <SelectValue placeholder="Como conheceu a clínica?" />
+                  <SelectValue placeholder="Selecione como conheceu" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Anúncio">Anúncio</SelectItem>
                   <SelectItem value="Instagram">Instagram</SelectItem>
                   <SelectItem value="Facebook">Facebook</SelectItem>
                   <SelectItem value="Recomendação">Recomendação</SelectItem>
+                  <SelectItem value="Flyer">Flyer</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -358,6 +374,69 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
               ))}
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="responsavel" className="text-base">Responsável</Label>
+          <Controller
+            control={control}
+            name="responsavel"
+            render={({ field }) => (
+              <Select 
+                onValueChange={field.onChange}
+                value={field.value || ""}
+                defaultValue={defaultValues.responsavel || ""}
+              >
+                <SelectTrigger className="h-11 text-base">
+                  <SelectValue placeholder="Selecione o responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pai">Pai</SelectItem>
+                  <SelectItem value="Mãe">Mãe</SelectItem>
+                  <SelectItem value="Tio">Tio</SelectItem>
+                  <SelectItem value="Tia">Tia</SelectItem>
+                  <SelectItem value="Avô">Avô</SelectItem>
+                  <SelectItem value="Avó">Avó</SelectItem>
+                  <SelectItem value="Madrinha">Madrinha</SelectItem>
+                  <SelectItem value="Padrinho">Padrinho</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="motivo" className="text-base">Motivo</Label>
+          <Controller
+            control={control}
+            name="motivo"
+            render={({ field }) => (
+              <Select 
+                onValueChange={field.onChange}
+                value={field.value || ""}
+                defaultValue={defaultValues.motivo || ""}
+              >
+                <SelectTrigger className="h-11 text-base">
+                  <SelectValue placeholder="Selecione o motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PHDA">PHDA</SelectItem>
+                  <SelectItem value="PEA">PEA</SelectItem>
+                  <SelectItem value="Insónias">Insónias</SelectItem>
+                  <SelectItem value="Ansiedade">Ansiedade</SelectItem>
+                  <SelectItem value="Problemas de Memória">Problemas de Memória</SelectItem>
+                  <SelectItem value="Depressão">Depressão</SelectItem>
+                  <SelectItem value="Alzheimer">Alzheimer</SelectItem>
+                  <SelectItem value="Sobredotado">Sobredotado</SelectItem>
+                  <SelectItem value="Atraso no Desenvolvimento">Atraso no Desenvolvimento</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
       </div>
 

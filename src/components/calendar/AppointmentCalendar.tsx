@@ -15,15 +15,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { addDays, format, isSameDay, parseISO } from 'date-fns';
+import { addDays, format, isSameDay, parseISO, getYear, startOfWeek, endOfWeek, startOfYear, endOfYear } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Card, CardContent } from '../ui/card';
 import { ClientDetailData } from '@/types/client';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Plus } from 'lucide-react';
+import { Plus, Search, Calendar } from 'lucide-react';
 import useAppointments from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
 import { Database } from '@/integrations/supabase/types';
+import { getAllHolidaysUntil2040 } from '@/data/portugueseHolidays';
 
 // Importações do FullCalendar
 import FullCalendar from '@fullcalendar/react';
@@ -32,6 +33,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
 type AppointmentType = 'sessão' | 'avaliação' | 'consulta';
+type AppointmentStatus = 'confirmado' | 'pendente';
 type CalendarView = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
 
 type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
@@ -50,6 +52,7 @@ interface AppointmentFormValues {
   tipo: AppointmentType;
   notas: string;
   estado: string;
+  terapeuta: string;
 }
 
 interface AppointmentData {
@@ -60,6 +63,7 @@ interface AppointmentData {
   tipo: string;
   notas: string;
   estado: string;
+  terapeuta?: string;
 }
 
 const AppointmentCalendar = () => {
@@ -67,47 +71,84 @@ const AppointmentCalendar = () => {
   const { appointments, isLoading: isLoadingAppointments, addAppointment, updateAppointment, deleteAppointment } = useAppointments();
   const { clients, isLoading: isLoadingClients } = useClients();
   
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentView, setCurrentView] = useState<CalendarView>('dayGridMonth');
   const isMobile = useIsMobile();
+  const [searchDate, setSearchDate] = useState<string>('');
+  const [searchType, setSearchType] = useState<'day' | 'week' | 'year'>('day');
+
+  // Obter feriados para todos os anos até 2040
+  const holidays = getAllHolidaysUntil2040();
+
+  // Converter feriados para o formato do FullCalendar
+  const holidayEvents = holidays.map(holiday => ({
+    id: `holiday-${holiday.date}`,
+    title: holiday.name,
+    start: holiday.date,
+    allDay: true,
+    display: 'background',
+    classNames: [
+      holiday.type === 'feriado' ? 'holiday-bg' : 'important-day-bg',
+      'holiday-event'
+    ],
+    extendedProps: {
+      type: holiday.type,
+      isHoliday: true
+    }
+  }));
 
   const form = useForm<AppointmentFormValues>({
     defaultValues: {
       titulo: '',
       data: '',
-      hora: '',
+      hora: '09:00',
       id_cliente: 0,
       tipo: 'sessão',
       notas: '',
-      estado: 'agendado'
+      estado: 'pendente',
+      terapeuta: ''
     },
   });
 
-  const handleDateSelect = (info: any) => {
-    const selectedDate = info.start;
-    setSelectedDate(selectedDate);
+  const openNewAppointmentDialog = (date?: Date) => {
+    setSelectedAppointment(null);
+    const today = date || new Date();
+    
+    form.reset({
+      titulo: '',
+      data: format(today, 'yyyy-MM-dd'),
+      hora: '09:00',
+      id_cliente: 0,
+      tipo: 'sessão',
+      notas: '',
+      estado: 'pendente',
+      terapeuta: ''
+    });
+    
+    setIsDialogOpen(true);
+  };
+
+  const handleDateClick = (info: any) => {
+    const clickedDate = new Date(info.date);
+    setSelectedDate(clickedDate);
   };
 
   const handleEventClick = (info: any) => {
-    const appointmentId = parseInt(info.event.id);
-    const appointment = appointments.find(app => app.id === appointmentId);
-    
+    const appointment = appointments.find(apt => apt.id.toString() === info.event.id);
     if (appointment) {
       setSelectedAppointment(appointment);
-      const [datePart, timePart] = appointment.data.split('T');
-      
       form.reset({
         titulo: appointment.titulo,
-        data: datePart,
-        hora: timePart ? timePart.substring(0, 5) : '09:00',
+        data: format(parseISO(appointment.data), 'yyyy-MM-dd'),
+        hora: appointment.hora,
         id_cliente: appointment.id_cliente,
-        tipo: appointment.tipo as AppointmentType,
+        tipo: (appointment.tipo || 'sessão') as AppointmentType,
         notas: appointment.notas || '',
-        estado: appointment.estado
+        estado: appointment.estado,
+        terapeuta: appointment.terapeuta || ''
       });
-      
       setIsDialogOpen(true);
     }
   };
@@ -127,14 +168,15 @@ const AppointmentCalendar = () => {
 
   const onSubmit = async (data: AppointmentFormValues) => {
     try {
-      const appointmentData: AppointmentData = {
+      const appointmentData = {
         titulo: data.titulo,
         data: `${data.data}T${data.hora}:00`,
         hora: data.hora,
         id_cliente: data.id_cliente,
         tipo: data.tipo,
         notas: data.notas,
-        estado: data.estado
+        estado: data.estado,
+        terapeuta: data.terapeuta
       };
 
       if (selectedAppointment) {
@@ -152,6 +194,8 @@ const AppointmentCalendar = () => {
   };
 
   const getDayAppointments = (day: Date) => {
+    if (!day) return [];
+    
     return appointments.filter(appointment => {
       const appointmentDate = parseISO(appointment.data);
       return isSameDay(appointmentDate, day);
@@ -161,11 +205,11 @@ const AppointmentCalendar = () => {
   const getAppointmentTypeColor = (type: AppointmentType) => {
     switch (type) {
       case 'avaliação':
-        return 'bg-[#9e50b3]/20 text-[#9e50b3]';
+        return 'bg-[#9e50b3] text-white';
       case 'sessão':
-        return 'bg-[#1088c4]/20 text-[#1088c4]';
+        return 'bg-[#1088c4] text-white';
       case 'consulta':
-        return 'bg-[#ecc249]/20 text-[#ecc249]';
+        return 'bg-[#ecc249] text-[#3A2B00]';
       default:
         return 'bg-gray-200 text-[#265255]';
     }
@@ -174,11 +218,11 @@ const AppointmentCalendar = () => {
   const getAppointmentTypeBoxShadow = (type: AppointmentType) => {
     switch (type) {
       case 'avaliação':
-        return 'shadow-[0_0_15px_rgba(158,80,179,0.3)]';
+        return 'shadow-[0_4px_12px_rgba(158,80,179,0.25)]';
       case 'sessão':
-        return 'shadow-[0_0_15px_rgba(16,136,196,0.3)]';
+        return 'shadow-[0_4px_12px_rgba(16,136,196,0.25)]';
       case 'consulta':
-        return 'shadow-[0_0_15px_rgba(236,194,73,0.3)]';
+        return 'shadow-[0_4px_12px_rgba(236,194,73,0.25)]';
       default:
         return 'shadow-md';
     }
@@ -187,65 +231,122 @@ const AppointmentCalendar = () => {
   const getAppointmentBackgroundColor = (type: AppointmentType) => {
     switch (type) {
       case 'avaliação':
-        return 'rgba(158,80,179,0.2)';
+        return '#9e50b3';
       case 'sessão':
-        return 'rgba(16,136,196,0.2)';
+        return '#1088c4';
       case 'consulta':
-        return 'rgba(236,194,73,0.2)';
+        return '#ecc249';
       default:
-        return 'rgba(128,128,128,0.2)';
+        return '#3f9094';
     }
   };
   
   const getAppointmentBorderColor = (type: AppointmentType) => {
     switch (type) {
       case 'avaliação':
-        return '#9e50b3';
+        return '#7a3e8c';
       case 'sessão':
-        return '#1088c4';
+        return '#0a6999';
       case 'consulta':
-        return '#ecc249';
+        return '#c9a53a';
       default:
-        return '#265255';
+        return '#2a6366';
     }
   };
   
   const getAppointmentTextColor = (type: AppointmentType) => {
-    switch (type) {
-      case 'avaliação':
-        return '#9e50b3';
-      case 'sessão':
-        return '#1088c4';
-      case 'consulta':
-        return '#ecc249';
+    if (type === 'consulta') return '#3A2B00';
+    return '#ffffff';
+  };
+
+  // Função para obter a classe CSS baseada no status do evento
+  const getAppointmentStatusClass = (status: string) => {
+    switch (status) {
+      case 'confirmado':
+        return 'sidebar-status-confirmado';
+      case 'pendente':
+        return 'sidebar-status-pendente';
       default:
-        return '#265255';
+        return 'sidebar-status-pendente';
     }
   };
 
-  // Converter appointments para formato de eventos do FullCalendar
-  const calendarEvents = appointments.map(appointment => {
-    const appointmentType = appointment.tipo as AppointmentType;
-    return {
-      id: appointment.id.toString(),
-      title: appointment.titulo,
-      start: appointment.data,
-      extendedProps: {
-        clientName: appointment.clientes.nome,
-        clientId: appointment.id_cliente.toString(),
-        type: appointmentType,
-        notes: appointment.notas,
-        estado: appointment.estado
-      },
-      backgroundColor: getAppointmentBackgroundColor(appointmentType),
-      borderColor: getAppointmentBorderColor(appointmentType),
-      textColor: getAppointmentTextColor(appointmentType),
-      classNames: ['rounded-lg', 'py-1', 'px-2', 'border', 'border-white/20', 'backdrop-blur-sm'],
-    };
-  });
+  // Função para renderizar o indicador de status
+  const renderStatusIndicator = (status: string) => {
+    return <span className={`status-indicator status-indicator-${status}`}></span>;
+  };
+
+  const eventContent = (eventInfo: any) => {
+    const type = eventInfo.event.extendedProps.type;
+    const time = eventInfo.timeText;
+    const title = eventInfo.event.title;
+    const clientName = eventInfo.event.extendedProps.clientName;
+    const status = eventInfo.event.extendedProps.estado || 'pendente';
+    const isSmallEvent = eventInfo.view.type === 'dayGridMonth';
+    
+    if (isSmallEvent) {
+      return (
+        <div className="px-0 py-0 overflow-hidden w-full text-ellipsis">
+          <div className="font-medium truncate text-xs flex items-center">
+            {renderStatusIndicator(status)}
+            {title}
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="px-1 py-0.5 overflow-hidden">
+        {time && <div className="text-xs font-semibold mb-0.5">{time}</div>}
+        <div className="font-medium truncate flex items-center">
+          {renderStatusIndicator(status)}
+          {title}
+        </div>
+        {clientName && (
+          <div className="text-xs truncate opacity-80 flex items-center">
+            <span className="text-xs mr-1">•</span>
+            {clientName}
+          </div>
+        )}
+        <div className="text-xs opacity-70 flex items-center mt-0.5">
+          <span className="text-[0.65rem] capitalize">{type}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const calendarEvents = [
+    ...appointments.map(appointment => {
+      const appointmentType = appointment.tipo as AppointmentType;
+      const appointmentStatus = appointment.estado || 'pendente';
+      
+      return {
+        id: appointment.id.toString(),
+        title: appointment.titulo,
+        start: appointment.data,
+        extendedProps: {
+          clientName: appointment.clientes?.nome || 'Cliente não definido',
+          clientId: appointment.id_cliente.toString(),
+          type: appointmentType,
+          notes: appointment.notas,
+          estado: appointmentStatus
+        },
+        classNames: [
+          'rounded-lg', 
+          'py-1', 
+          'px-2', 
+          'border', 
+          'border-white/20', 
+          `event-${appointmentType}`,
+          `status-${appointmentStatus}`
+        ],
+      };
+    }),
+    ...holidayEvents
+  ];
 
   // Opções para personalizar o FullCalendar
-  const calendarOptions: any = {
+  const calendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     initialView: isMobile ? 'timeGridDay' : currentView,
     headerToolbar: {
@@ -253,36 +354,48 @@ const AppointmentCalendar = () => {
       center: 'title',
       right: isMobile ? 'dayGridMonth,timeGridDay' : 'dayGridMonth,timeGridWeek,timeGridDay'
     },
-    titleFormat: { 
-      month: 'long', 
-      year: 'numeric' 
+    titleFormat: {
+      month: 'long' as 'long',
+      year: 'numeric' as 'numeric',
     },
     buttonText: {
-      today: isMobile ? 'Hoje' : 'Hoje',
+      today: 'Hoje',
       month: isMobile ? 'Mês' : 'Mês',
       week: 'Semana',
       day: isMobile ? 'Dia' : 'Dia'
     },
-    dayHeaderFormat: { weekday: isMobile ? 'narrow' : 'short' },
+    dayHeaderFormat: { weekday: isMobile ? 'narrow' : 'short' as 'narrow' | 'short' },
     locale: 'pt-br',
     events: calendarEvents,
     eventClick: handleEventClick,
-    selectable: true,
-    select: handleDateSelect,
+    dateClick: handleDateClick,
+    eventContent: eventContent,
     eventTimeFormat: {
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: '2-digit' as '2-digit',
+      minute: '2-digit' as '2-digit',
       hour12: false
     },
     slotLabelFormat: {
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: '2-digit' as '2-digit',
+      minute: '2-digit' as '2-digit',
       hour12: false
+    },
+    customButtons: {
+      today: {
+        text: 'Hoje',
+        click: function() {
+          if (calendarRef.current) {
+            const calendarApi = calendarRef.current.getApi();
+            calendarApi.today();
+            setSelectedDate(new Date());
+          }
+        }
+      }
     },
     allDaySlot: false,
     height: 'auto',
-    aspectRatio: isMobile ? 1.2 : 1.8,
-    contentHeight: isMobile ? 500 : 800,
+    aspectRatio: isMobile ? 1.2 : 1.5,
+    contentHeight: isMobile ? 450 : 800,
     slotMinTime: '08:00',
     slotMaxTime: '20:00',
     slotDuration: isMobile ? '01:00:00' : '00:30:00',
@@ -290,18 +403,20 @@ const AppointmentCalendar = () => {
     nowIndicator: true,
     eventOverlap: true,
     stickyHeaderDates: true,
-    dayMaxEventRows: isMobile ? 3 : 6,
-    moreLinkClick: 'day',
-    expandRows: false,
+    dayMaxEventRows: isMobile ? 3 : 8,
+    moreLinkClick: 'popover',
+    moreLinkClassNames: 'text-xs bg-[#3f9094] text-white rounded px-1 py-0.5',
+    eventMaxStack: isMobile ? 3 : 10,
+    expandRows: true,
     fixedWeekCount: false,
     handleWindowResize: true,
-    eventMaxStack: isMobile ? 3 : 6,
+    themeSystem: 'standard',
     views: {
       dayGridMonth: {
-        dayMaxEventRows: isMobile ? 2 : 6,
+        dayMaxEventRows: isMobile ? 3 : 8,
         eventTimeFormat: {
-          hour: 'numeric',
-          minute: '2-digit',
+          hour: '2-digit' as '2-digit',
+          minute: '2-digit' as '2-digit',
           omitZeroMinute: true
         }
       },
@@ -310,18 +425,208 @@ const AppointmentCalendar = () => {
         slotLabelInterval: isMobile ? '01:00:00' : undefined,
       },
       timeGridDay: {
-        slotDuration: '00:30:00',
+        slotDuration: isMobile ? '01:00:00' : '00:30:00',
         nowIndicator: true,
-        dayHeaderFormat: { weekday: 'long', month: 'long', day: 'numeric' }
+        dayHeaderFormat: { weekday: 'long' as 'long', month: 'long' as 'long', day: 'numeric' as 'numeric' }
+      },
+      listDay: {
+        displayEventTime: true,
+        displayEventEnd: true,
+      },
+      listWeek: {
+        displayEventTime: true,
+        displayEventEnd: true,
       }
     },
     datesSet: (dateInfo: any) => {
       if (calendarRef.current) {
         const view = calendarRef.current.getApi().view;
         setCurrentView(view.type as CalendarView);
+        setSelectedDate(dateInfo.start);
+      }
+    },
+    windowResize: (arg: any) => {
+      // Adaptação dinâmica baseada na largura da tela
+      if (arg.view.calendar) {
+        const width = window.innerWidth;
+        if (width < 768 && currentView !== 'timeGridDay') {
+          arg.view.calendar.changeView('timeGridDay');
+        }
       }
     }
   };
+
+  const DayEventsPanel = () => {
+    const todayEvents = getDayAppointments(selectedDate || new Date());
+
+    return (
+      <Card className={`glassmorphism ${isMobile ? 'mt-2' : ''}`}>
+        <CardContent className="p-3 sm:p-4">
+          <h3 className="text-xl font-medium mb-3 text-[#265255]">
+            Eventos do dia {selectedDate ? format(selectedDate, 'd MMM', { locale: pt }) : ''}
+          </h3>
+          {selectedDate ? (
+            <div className="space-y-2 sm:space-y-3">
+              {todayEvents.length > 0 ? (
+                todayEvents.map(appointment => {
+                  const appointmentType = appointment.tipo as AppointmentType;
+                  const status = appointment.estado || 'pendente';
+                  
+                  return (
+                    <div 
+                      key={appointment.id} 
+                      className={`p-3 sm:p-4 rounded-lg cursor-pointer transition-all hover:translate-y-[-2px] ${getAppointmentTypeColor(appointmentType)} shadow-sm hover:shadow-md`}
+                      style={{ borderRight: status === 'confirmado' ? '3px solid #28a745' : '3px solid #dc3545' }}
+                      onClick={() => {
+                        setSelectedAppointment(appointment);
+                        const [datePart, timePart] = appointment.data.split('T');
+                        
+                        form.reset({
+                          titulo: appointment.titulo,
+                          data: datePart,
+                          hora: timePart ? timePart.substring(0, 5) : '09:00',
+                          id_cliente: appointment.id_cliente,
+                          tipo: appointment.tipo as AppointmentType,
+                          notas: appointment.notas || '',
+                          estado: status
+                        });
+                        
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="font-medium line-clamp-1 flex items-center">
+                            {renderStatusIndicator(status)}
+                            {appointment.titulo}
+                          </h4>
+                          <p className="text-sm line-clamp-1 opacity-80">{appointment.clientes?.nome || 'Cliente não definido'}</p>
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs capitalize px-2 py-0.5 rounded-full bg-white/30">
+                              {appointmentType}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20">
+                              {appointment.data.split('T')[1] ? appointment.data.split('T')[1].substring(0, 5) : '09:00'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-center py-6 text-gray-500">Sem agendamentos para este dia</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-center py-6 text-gray-500">Selecione uma data para ver os agendamentos</p>
+          )}
+          
+          <div className="mt-4 sm:mt-8 space-y-2">
+            <h4 className="font-medium text-[#265255]">Tipos de Eventos</h4>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-[#9e50b3]"></div>
+                <span className="text-xs sm:text-sm text-[#265255]">Avaliação</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-[#1088c4]"></div>
+                <span className="text-xs sm:text-sm text-[#265255]">Neurofeedback</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-[#ecc249]"></div>
+                <span className="text-xs sm:text-sm text-[#265255]">Discussão</span>
+              </div>
+            </div>
+            
+            <h4 className="font-medium text-[#265255] mt-4">Status de Eventos</h4>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#28a745]"></div>
+                <span className="text-xs sm:text-sm text-[#265255]">Confirmado</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#dc3545]"></div>
+                <span className="text-xs sm:text-sm text-[#265255]">Pendente</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const handleSearch = () => {
+    if (!searchDate) return;
+
+    try {
+      const date = new Date(searchDate);
+      const calendarApi = calendarRef.current?.getApi();
+      
+      if (!calendarApi) return;
+
+      switch (searchType) {
+        case 'day':
+          calendarApi.gotoDate(date);
+          calendarApi.changeView('timeGridDay');
+          break;
+        case 'week':
+          calendarApi.gotoDate(date);
+          calendarApi.changeView('timeGridWeek');
+          break;
+        case 'year':
+          calendarApi.gotoDate(date);
+          calendarApi.changeView('dayGridMonth');
+          break;
+      }
+
+      setSelectedDate(date);
+    } catch (error) {
+      toast.error('Data inválida. Por favor, use o formato YYYY-MM-DD');
+    }
+  };
+
+  const SearchPanel = () => (
+    <Card className="glassmorphism mb-4">
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1">
+            <label className="text-sm font-medium text-[#265255] mb-2 block">
+              Pesquisar por Data
+            </label>
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+                className="flex-1"
+              />
+              <Select
+                value={searchType}
+                onValueChange={(value: 'day' | 'week' | 'year') => setSearchType(value)}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">Dia</SelectItem>
+                  <SelectItem value="week">Semana</SelectItem>
+                  <SelectItem value="year">Ano</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={handleSearch}
+                className="bg-[#3f9094] hover:bg-[#265255]"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Pesquisar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   if (isLoadingAppointments || isLoadingClients) {
     return (
@@ -335,28 +640,26 @@ const AppointmentCalendar = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-8">
-        <h2 className={`text-2xl sm:text-4xl font-bold text-[#265255] gradient-heading ${isMobile ? 'mb-2' : ''}`}>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-2 sm:mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold gradient-heading mb-2 sm:mb-0">
           Calendário
         </h2>
         <Button 
           className="bg-[#3f9094] hover:bg-[#265255] w-full sm:w-auto h-10 whitespace-nowrap" 
-          onClick={() => {
-            setSelectedAppointment(null);
-            form.reset();
-            setIsDialogOpen(true);
-          }}
+          onClick={() => openNewAppointmentDialog()}
         >
           <Plus className="h-4 w-4 mr-2" />
           Novo Agendamento
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <Card className={`glassmorphism ${isMobile ? '' : 'lg:col-span-3'} p-2 sm:p-4 min-h-[500px] sm:min-h-[800px]`}>
+      <SearchPanel />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card className={`glassmorphism ${isMobile ? '' : 'lg:col-span-3'} p-1 sm:p-4 min-h-[400px] sm:min-h-[800px] overflow-hidden`}>
           <CardContent className="p-0 sm:p-1 h-full">
-            <div className="calendar-container">
+            <div className="calendar-container -mx-2 sm:mx-0">
               <FullCalendar
                 ref={calendarRef}
                 {...calendarOptions}
@@ -365,74 +668,7 @@ const AppointmentCalendar = () => {
           </CardContent>
         </Card>
 
-        {/* Eventos do dia */}
-        <Card className={`glassmorphism ${isMobile ? 'mt-2' : ''}`}>
-          <CardContent className="p-3 sm:p-4">
-            <h3 className="text-xl font-medium mb-3 text-[#265255]">Eventos do dia</h3>
-            {selectedDate ? (
-              <div className="space-y-2 sm:space-y-3">
-                {getDayAppointments(selectedDate).map(appointment => (
-                  <div 
-                    key={appointment.id} 
-                    className={`p-3 sm:p-4 rounded-lg cursor-pointer transition-all hover:translate-y-[-2px] ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentTypeBoxShadow(appointment.tipo as AppointmentType)} backdrop-blur-sm border border-white/20`}
-                    onClick={() => {
-                      setSelectedAppointment(appointment);
-                      const [datePart, timePart] = appointment.data.split('T');
-                      
-                      form.reset({
-                        titulo: appointment.titulo,
-                        data: datePart,
-                        hora: timePart ? timePart.substring(0, 5) : '09:00',
-                        id_cliente: appointment.id_cliente,
-                        tipo: appointment.tipo as AppointmentType,
-                        notas: appointment.notas || '',
-                        estado: appointment.estado
-                      });
-                      
-                      setIsDialogOpen(true);
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-medium line-clamp-1">{appointment.titulo}</h4>
-                        <p className="text-sm line-clamp-1">{appointment.clientes.nome}</p>
-                        <p className="text-xs font-semibold">ID: {appointment.id_cliente}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-white/30 backdrop-blur-sm">
-                          {appointment.data.split('T')[1] ? appointment.data.split('T')[1].substring(0, 5) : '09:00'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {getDayAppointments(selectedDate).length === 0 && (
-                  <p className="text-center py-6 text-gray-500">Sem agendamentos para este dia</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-center py-6 text-gray-500">Selecione uma data para ver os agendamentos</p>
-            )}
-            
-            <div className="mt-4 sm:mt-8 space-y-2">
-              <h4 className="font-medium text-[#265255]">Tipos de Eventos</h4>
-              <div className="flex flex-wrap gap-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#9e50b3]/20"></div>
-                  <span className="text-xs sm:text-sm text-[#265255]">Avaliação</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#1088c4]/20"></div>
-                  <span className="text-xs sm:text-sm text-[#265255]">Neurofeedback</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#ecc249]/20"></div>
-                  <span className="text-xs sm:text-sm text-[#265255]">Discussão</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <DayEventsPanel />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -486,7 +722,7 @@ const AppointmentCalendar = () => {
                     <FormItem>
                       <FormLabel>Hora</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} defaultValue="09:00" required className="mobile-time-input" />
+                        <Input type="time" {...field} required className="mobile-time-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -512,6 +748,7 @@ const AppointmentCalendar = () => {
                           {clients.map((client) => (
                             <SelectItem key={client.id} value={client.id.toString()}>
                               {client.nome}
+                              {client.id_manual ? ` (ID: ${client.id_manual})` : ''}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -540,6 +777,47 @@ const AppointmentCalendar = () => {
                           <SelectItem value="sessão">Sessão</SelectItem>
                           <SelectItem value="avaliação">Avaliação</SelectItem>
                           <SelectItem value="consulta">Consulta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="terapeuta"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Terapeuta</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Nome do terapeuta" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="estado"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado</FormLabel>
+                    <FormControl>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendente">Pendente</SelectItem>
+                          <SelectItem value="confirmado">Confirmado</SelectItem>
+                          <SelectItem value="cancelado">Cancelado</SelectItem>
+                          <SelectItem value="realizado">Realizado</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>

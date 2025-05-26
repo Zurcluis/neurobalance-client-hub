@@ -6,60 +6,80 @@
 
 @layer base {
   :root {
-    --background: 180 20% 95%;
-    --foreground: 240 10% 3.9%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 175 35% 35%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 172 8% 91%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 162 32% 34%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 164 42% 29%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 162 35% 90%;
+    --accent-foreground: 165 27% 19%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 175 35% 35%;
-    --radius: 0.75rem;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 162 32% 34%;
+    --radius: 0.5rem;
     
     --neuro-teal: 175 35% 35%;
     --neuro-light-teal: 175 30% 50%;
     --neuro-dark-teal: 175 35% 25%;
     --neuro-gray: 174 8% 91%;
     --neuro-background: 180 20% 95%;
+
+    /* Sidebar variables */
+    --sidebar-background: 165 25% 25%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 165 25% 25%;
+    --sidebar-accent: 162 35% 90%;
+    --sidebar-accent-foreground: 165 27% 19%;
+    --sidebar-border: 165 20% 35%;
+    --sidebar-ring: 165 27% 19%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 175 35% 45%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 162 32% 34%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 164 42% 29%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 175 35% 45%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
     
     --neuro-teal: 175 35% 55%;
     --neuro-light-teal: 175 30% 65%;
     --neuro-dark-teal: 175 35% 45%;
     --neuro-gray: 174 8% 71%;
     --neuro-background: 240 10% 10%;
+
+    /* Sidebar variables */
+    --sidebar-background: 165 25% 25%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 165 25% 25%;
+    --sidebar-accent: 162 35% 90%;
+    --sidebar-accent-foreground: 165 27% 19%;
+    --sidebar-border: 165 20% 35%;
+    --sidebar-ring: 165 27% 19%;
   }
 }
 
@@ -220,46 +240,201 @@
   --fc-button-hover-border-color: #265255;
   --fc-button-active-bg-color: #265255;
   --fc-button-active-border-color: #1d4143;
-  --fc-event-border-color: rgba(255, 255, 255, 0.2);
+  --fc-event-border-color: transparent;
   --fc-today-bg-color: rgba(197, 207, 206, 0.15);
   --fc-now-indicator-color: #3f9094;
   --fc-highlight-color: rgba(63, 144, 148, 0.1);
   --fc-non-business-color: rgba(235, 235, 235, 0.3);
+  background-color: #ffffff;
+  color: #333333;
 }
 
-/* Estilizando os botões no estilo NeuroBalance */
-.calendar-container .fc .fc-button-primary {
-  border-radius: 0.5rem;
-  text-transform: capitalize;
-  font-weight: 500;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
+/* Estilizar a visão do mês para ter um fundo claro */
+.calendar-container .fc-view {
+  background-color: #ffffff;
 }
 
-.calendar-container .fc .fc-toolbar-title {
-  font-weight: 600;
+.calendar-container .fc th {
+  background-color: #ffffff;
   color: #265255;
-  font-size: 1.5rem;
 }
 
-/* Estilizando os eventos para corresponder ao design NeuroBalance */
+.calendar-container .fc-day {
+  background-color: #ffffff;
+}
+
+.calendar-container .fc-daygrid-day-number {
+  color: #333333;
+}
+
+/* Estilizando os eventos para corresponder ao design da imagem mas com fundo claro */
 .calendar-container .fc-event {
-  border-radius: 0.5rem !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 0.25rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
   overflow: hidden;
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  padding: 2px 6px !important;
-  font-size: 0.875rem;
+  border-width: 0 !important;
+  padding: 1px 3px !important;
+  font-size: 0.75rem !important;
   font-weight: 500;
-  transition: transform 0.15s ease;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  min-height: 0.95rem;
+  margin-bottom: 1px !important;
 }
 
 .calendar-container .fc-event:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  z-index: 10 !important;
+}
+
+/* Ajustar o tamanho máximo dos eventos para caber mais na célula */
+.calendar-container .fc-daygrid-event {
+  font-size: 0.7rem !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  padding: 1px 2px !important;
+}
+
+/* Garantir que eventos curtos tenham largura completa */
+.calendar-container .fc-daygrid-block-event {
+  width: calc(100% - 2px) !important;
+  margin: 1px 1px !important;
+}
+
+/* Remover truncamento excessivo no título do evento */
+.calendar-container .fc-daygrid-event .fc-event-title {
+  padding: 0 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  font-weight: 500 !important;
+  font-size: 0.7rem !important;
+}
+
+/* Garantir que a célula de dia tenha altura mínima */
+.calendar-container .fc-daygrid-day {
+  min-height: 80px;
+}
+
+/* Garantir que os dias com muitos eventos mostrem o link "mais" */
+.calendar-container .fc-daygrid-day-bottom {
+  padding: 0px 2px !important;
+}
+
+.calendar-container .fc-daygrid-more-link {
+  font-size: 0.65rem !important;
+  padding: 0 2px !important;
+  margin-top: 0px !important;
+  color: #3f9094 !important;
+  background-color: rgba(63, 144, 148, 0.1) !important;
+  border-radius: 0.25rem !important;
+}
+
+/* Corrigir o layout no popup que mostra mais eventos */
+.calendar-container .fc-popover {
+  max-width: 250px !important;
+  width: auto !important;
+  border-radius: 0.25rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(63, 144, 148, 0.2) !important;
+  background-color: #ffffff !important;
+  color: #333333 !important;
+}
+
+.calendar-container .fc-popover-header {
+  background-color: rgba(63, 144, 148, 0.1) !important;
+  padding: 4px 6px !important;
+  color: #265255 !important;
+}
+
+.calendar-container .fc-popover-body {
+  padding: 3px !important;
+}
+
+.calendar-container .fc-popover-body .fc-daygrid-event {
+  margin: 1px 0 !important;
+}
+
+/* Estilos personalizados para tipos de eventos */
+.calendar-container .event-avaliação {
+  background-color: #9e50b3 !important;
+  color: white !important;
+}
+
+.calendar-container .event-sessão {
+  background-color: #1088c4 !important;
+  color: white !important;
+}
+
+.calendar-container .event-consulta {
+  background-color: #ecc249 !important;
+  color: #3A2B00 !important;
+}
+
+/* Indicadores de status como bordas */
+.calendar-container .status-confirmado {
+  border-right: 3px solid #28a745 !important;
+}
+
+.calendar-container .status-pendente {
+  border-right: 3px solid #dc3545 !important; /* Vermelho */
+}
+
+/* Estilos para status de eventos no painel lateral */
+.sidebar-status-confirmado {
+  border-right: 3px solid #28a745 !important;
+}
+
+.sidebar-status-pendente {
+  border-right: 3px solid #dc3545 !important; /* Vermelho */
+}
+
+/* Indicador de status como um pequeno círculo */
+.status-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.status-indicator-confirmado {
+  background-color: #28a745;
+  box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+}
+
+.status-indicator-pendente {
+  background-color: #dc3545;
+  box-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+}
+
+/* Hover em células do calendário */
+.calendar-container .fc-daygrid-day:hover {
+  background-color: rgba(63, 144, 148, 0.05);
+  cursor: pointer;
+}
+
+.calendar-container .fc-timegrid-slot:hover {
+  background-color: rgba(63, 144, 148, 0.05);
+}
+
+/* Melhorar o visual dos eventos com texto legível */
+.calendar-container .fc-event .fc-event-title,
+.calendar-container .fc-event .fc-event-time {
+  font-weight: 500 !important;
+  padding: 0 !important;
+  line-height: 1.1 !important;
+}
+
+/* Ajustes adicionais para visualização de dia e semana */
+.calendar-container .fc-timegrid-event {
+  border-radius: 4px !important;
+  margin: 1px 1px 0 !important;
+}
+
+.calendar-container .fc-daygrid-event {
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
 }
 
 /* Estilizando os cabeçalhos */
@@ -342,6 +517,26 @@
   .calendar-container .fc .fc-daygrid-day-number {
     font-size: 0.75rem;
   }
+  
+  /* Otimiza calendário para visualização móvel */
+  .calendar-container .fc-header-toolbar {
+    padding: 0.5rem;
+  }
+  
+  .calendar-container .fc-view-harness {
+    min-height: 400px !important;
+  }
+  
+  .calendar-container .fc-list-event-title {
+    font-size: 0.875rem;
+  }
+  
+  /* Melhora a experiência de toque no calendário */
+  .calendar-container .fc-event {
+    padding: 4px 8px;
+    margin: 1px 0;
+    border-radius: 4px;
+  }
 }
 
 /* Responsividade Global para Mobile */
@@ -356,6 +551,22 @@
   
   .gradient-heading {
     @apply text-xl font-bold !important;
+  }
+  
+  /* Espaçamento adequado para conteúdo em celulares */
+  .card-content {
+    padding: 1rem !important;
+  }
+  
+  /* Ajuste para telas pequenas */
+  .grid {
+    grid-gap: 0.75rem !important;
+  }
+  
+  /* Evitar texto truncado */
+  p, span, div {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
   }
 }
 
@@ -374,7 +585,7 @@
   input, 
   select, 
   textarea {
-    @apply text-base;
+    @apply text-base min-h-[44px] px-3;
   }
   
   /* Ajustes para formulários */
@@ -397,11 +608,45 @@
   input[type="datetime-local"] {
     @apply appearance-none;
   }
+  
+  /* Ajustes para gráficos em dispositivos móveis */
+  .recharts-responsive-container {
+    @apply max-h-[250px] !important;
+  }
+  
+  /* Ajuste para labels em inputs */
+  label {
+    @apply block mb-1 text-sm font-medium;
+  }
+  
+  /* Ajuste para botões em formulários */
+  form button {
+    @apply w-full;
+  }
+  
+  /* Ajustes para tabs em mobile */
+  .tabs-list {
+    @apply flex flex-wrap overflow-x-auto whitespace-nowrap pb-2;
+  }
+  
+  /* Melhoria para dialogs/modais */
+  .dialog-content {
+    @apply p-4 w-[calc(100%-32px)] max-h-[80vh];
+  }
 }
 
 /* Scroll horizontal para tabelas em telas pequenas */
 .table-container {
-  @apply w-full overflow-x-auto;
+  @apply w-full overflow-x-auto -mx-4 px-4;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Impede tabelas de quebrarem o layout */
+.table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Otimizações para orientação paisagem (landscape) */
@@ -412,6 +657,11 @@
   
   .fc-toolbar-title {
     @apply w-full text-center mt-2 mb-2;
+  }
+  
+  /* Ajuste altura do conteúdo principal para evitar scroll desnecessário */
+  main {
+    @apply pb-20;
   }
 }
 
@@ -432,6 +682,16 @@
   
   .dialog-footer button {
     @apply w-full mb-2;
+  }
+  
+  /* Garante que modais/diálogos não fiquem cortados */
+  [role="dialog"] {
+    @apply max-w-[95vw];
+  }
+  
+  /* Botões dentro de diálogos devem ocupar largura total em mobile */
+  [role="dialog"] button {
+    @apply w-full justify-center;
   }
 }
 
@@ -455,4 +715,118 @@
 
 .pr-safe {
   padding-right: env(safe-area-inset-right);
+}
+
+/* Adapta altura da barra de navegação para notch devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .ios-nav-header {
+    padding-top: env(safe-area-inset-top);
+    height: calc(env(safe-area-inset-top) + 44px);
+  }
+  
+  .ios-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Status indicators for appointment events */
+.status-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.status-indicator-confirmado {
+  background-color: #28a745;
+  box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+}
+
+.status-indicator-pendente {
+  background-color: #dc3545;
+  box-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+}
+
+/* Event type colors for calendar */
+.event-sessão {
+  background-color: #1088c4 !important;
+  border-color: #0a6999 !important;
+}
+
+.event-avaliação {
+  background-color: #9e50b3 !important;
+  border-color: #7a3e8c !important;
+}
+
+.event-consulta {
+  background-color: #ecc249 !important;
+  border-color: #c9a53a !important;
+  color: #3A2B00 !important;
+}
+
+/* Event status indicators for calendar */
+.status-confirmado {
+  border-right: 3px solid #28a745 !important;
+}
+
+.status-pendente {
+  border-right: 3px solid #dc3545 !important;
+}
+
+/* Sidebar appointment status classes */
+.sidebar-status-confirmado {
+  border-right: 3px solid #28a745;
+}
+
+.sidebar-status-pendente {
+  border-right: 3px solid #dc3545;
+}
+
+/* Card styles for client profile */
+.client-profile-card {
+  transition: all 0.3s ease;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.client-profile-card:hover {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.card-header-gradient {
+  background-image: linear-gradient(to right, rgba(58, 114, 109, 0.1), rgba(38, 82, 85, 0.05));
+}
+
+/* Scrollbar estilizada para componentes com scrollbar-thin */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--neurobalance-tertiary, #E6ECEA);
+    border-radius: 3px;
+  }
+  
+  /* Classe para esconder completamente a scrollbar */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
 }

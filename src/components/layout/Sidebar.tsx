@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, Activity } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
 import { 
@@ -40,9 +40,8 @@ const Sidebar = () => {
     { name: t('dashboard'), icon: <Home className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/' },
     { name: t('clients'), icon: <User className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clients' },
     { name: t('calendar'), icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/calendar' },
-    { name: t('finances'), icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
+    { name: 'Finanças', icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
     { name: 'Estatísticas', icon: <PieChart className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/statistics' },
-    { name: 'Monitorização', icon: <Activity className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/monitoring' },
   ];
   
   const communicationItems = [

@@ -21,6 +21,7 @@ export interface Database {
           notas: string
           criado_em: string
           updated_at: string
+          terapeuta: string | null
         }
         Insert: {
           id?: number
@@ -33,6 +34,7 @@ export interface Database {
           notas?: string
           criado_em?: string
           updated_at?: string
+          terapeuta?: string | null
         }
         Update: {
           id?: number
@@ -45,6 +47,7 @@ export interface Database {
           notas?: string
           criado_em?: string
           updated_at?: string
+          terapeuta?: string | null
         }
         Relationships: [
           {
@@ -74,11 +77,14 @@ export interface Database {
           proxima_sessao: string
           criado_em: string
           updated_at: string
+          responsavel: string | null
+          motivo: string | null
+          id_manual: string | null
         }
         Insert: {
           id?: number
           nome: string
-          email: string
+          email?: string
           telefone: string
           data_nascimento: string
           genero: string
@@ -93,6 +99,9 @@ export interface Database {
           proxima_sessao?: string
           criado_em?: string
           updated_at?: string
+          responsavel?: string | null
+          motivo?: string | null
+          id_manual?: string | null
         }
         Update: {
           id?: number
@@ -112,6 +121,9 @@ export interface Database {
           proxima_sessao?: string
           criado_em?: string
           updated_at?: string
+          responsavel?: string | null
+          motivo?: string | null
+          id_manual?: string | null
         }
         Relationships: []
       }
@@ -154,6 +166,36 @@ export interface Database {
             referencedColumns: ["id"]
           }
         ]
+      }
+      despesas: {
+        Row: {
+          id: number
+          tipo: string
+          categoria: string
+          data: string
+          valor: number
+          notas: string
+          criado_em: string
+        }
+        Insert: {
+          id?: number
+          tipo: string
+          categoria: string
+          data: string
+          valor: number
+          notas?: string
+          criado_em?: string
+        }
+        Update: {
+          id?: number
+          tipo?: string
+          categoria?: string
+          data?: string
+          valor?: number
+          notas?: string
+          criado_em?: string
+        }
+        Relationships: []
       }
       humor_cliente: {
         Row: {
@@ -243,6 +285,7 @@ export interface Database {
           fim: string
           duracao: number
           notas: string
+          status: string
           criado_em: string
           updated_at: string
         }
@@ -253,6 +296,7 @@ export interface Database {
           fim?: string
           duracao?: number
           notas?: string
+          status?: string
           criado_em?: string
           updated_at?: string
         }
@@ -263,6 +307,7 @@ export interface Database {
           fim?: string
           duracao?: number
           notas?: string
+          status?: string
           criado_em?: string
           updated_at?: string
         }
@@ -280,7 +325,10 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_despesas_table: {
+        Args: Record<string, never>;
+        Returns: string;
+      }
     }
     Enums: {
       [_ in never]: never

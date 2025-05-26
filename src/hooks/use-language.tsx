@@ -70,6 +70,21 @@ const translations = {
     edit: 'Edit',
     delete: 'Delete',
     
+    // Finances
+    finances: 'Finances',
+    financialReports: 'Financial Reports',
+    totalRevenue: 'Total Revenue',
+    averagePayment: 'Average Payment',
+    paymentMethod: 'Payment Method',
+    recentPayments: 'Recent Payments',
+    paymentHistory: 'Payment History',
+    export: 'Export',
+    refresh: 'Refresh',
+    monthlyRevenue: 'Monthly Revenue',
+    paymentMethods: 'Payment Methods',
+    topClients: 'Top Clients by Revenue',
+    noPayments: 'No payments found',
+    
     // Other
     settings: 'Settings',
     logout: 'Logout',
@@ -136,6 +151,21 @@ const translations = {
     resultsDiscussion: 'Discussão de resultados',
     edit: 'Editar',
     delete: 'Apagar',
+
+    // Finances
+    finances: 'Finanças',
+    financialReports: 'Relatórios Financeiros',
+    totalRevenue: 'Receita Total',
+    averagePayment: 'Pagamento Médio',
+    paymentMethod: 'Método de Pagamento',
+    recentPayments: 'Pagamentos Recentes',
+    paymentHistory: 'Histórico de Pagamentos',
+    export: 'Exportar',
+    refresh: 'Atualizar',
+    monthlyRevenue: 'Receita Mensal',
+    paymentMethods: 'Métodos de Pagamento',
+    topClients: 'Maiores Clientes por Receita',
+    noPayments: 'Nenhum pagamento encontrado',
     
     // Other
     settings: 'Definições',

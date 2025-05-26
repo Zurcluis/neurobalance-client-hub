@@ -36,6 +36,7 @@ interface ClientStats {
   tipo_contato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
   como_conheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
   notas?: string;
+  motivo?: string;
 }
 
 const StatisticsPage = () => {
@@ -59,7 +60,8 @@ const StatisticsPage = () => {
         genero: client.genero,
         tipo_contato: (client.tipo_contato || 'Lead') as 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook',
         como_conheceu: (client.como_conheceu || 'Anúncio') as 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação',
-        notas: client.notas
+        notas: client.notas,
+        motivo: client.motivo
       }));
       setClientStats(stats);
       setIsLoading(false);
@@ -171,6 +173,93 @@ const StatisticsPage = () => {
     senary: { color: '#265255' },
   };
 
+  // Funções para calcular distribuições de dados
+  const calculateAgeDistribution = () => {
+    const ageDistribution: Record<string, number> = {
+      "0-18": 0,
+      "19-30": 0,
+      "31-40": 0,
+      "41-50": 0,
+      "51-60": 0,
+      "61+": 0,
+      "Não especificado": 0
+    };
+    
+    clientStats.forEach(client => {
+      if (!client.data_nascimento) {
+        ageDistribution["Não especificado"]++;
+        return;
+      }
+      
+      try {
+        const age = differenceInYears(new Date(), new Date(client.data_nascimento));
+        if (age <= 18) ageDistribution["0-18"]++;
+        else if (age <= 30) ageDistribution["19-30"]++;
+        else if (age <= 40) ageDistribution["31-40"]++;
+        else if (age <= 50) ageDistribution["41-50"]++;
+        else if (age <= 60) ageDistribution["51-60"]++;
+        else ageDistribution["61+"]++;
+      } catch (e) {
+        ageDistribution["Não especificado"]++;
+      }
+    });
+    
+    return ageDistribution;
+  };
+
+  const calculateGenderDistribution = () => {
+    const genderDistribution: Record<string, number> = {};
+    
+    clientStats.forEach(client => {
+      const gender = client.genero || 'Não especificado';
+      genderDistribution[gender] = (genderDistribution[gender] || 0) + 1;
+    });
+    
+    return genderDistribution;
+  };
+
+  const calculateContactTypeDistribution = () => {
+    const contactTypeDistribution: Record<string, number> = {};
+    
+    clientStats.forEach(client => {
+      const contactType = client.tipo_contato || 'Não especificado';
+      contactTypeDistribution[contactType] = (contactTypeDistribution[contactType] || 0) + 1;
+    });
+    
+    return contactTypeDistribution;
+  };
+
+  const calculateSourceDistribution = () => {
+    const sourceDistribution: Record<string, number> = {};
+    
+    clientStats.forEach(client => {
+      const source = client.como_conheceu || 'Não especificado';
+      sourceDistribution[source] = (sourceDistribution[source] || 0) + 1;
+    });
+    
+    return sourceDistribution;
+  };
+
+  const calculateStatusDistribution = () => {
+    const statusDistribution: Record<string, number> = {};
+    
+    clientStats.forEach(client => {
+      const status = client.status || 'Não especificado';
+      statusDistribution[status] = (statusDistribution[status] || 0) + 1;
+    });
+    
+    return statusDistribution;
+  };
+
+  const calculateReasonDistribution = () => {
+    const reasonDistribution: Record<string, number> = {};
+    clientStats.forEach(client => {
+      const motivo = client.motivo || 'Não especificado';
+      reasonDistribution[motivo] = (reasonDistribution[motivo] || 0) + 1;
+    });
+    return reasonDistribution;
+  };
+
   const renderNoData = () => (
     <div className="flex items-center justify-center h-48">
       <p className="text-gray-500">Dados insuficientes para análise</p>
@@ -185,6 +274,7 @@ const StatisticsPage = () => {
   const contactTypeDistribution = calculateContactTypeDistribution();
   const sourceDistribution = calculateSourceDistribution();
   const statusDistribution = calculateStatusDistribution();
+  const reasonDistribution = calculateReasonDistribution();
 
   return (
     <PageLayout>
@@ -194,12 +284,13 @@ const StatisticsPage = () => {
       </div>
 
       <Tabs defaultValue="age" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="age">Idade</TabsTrigger>
           <TabsTrigger value="gender">Género</TabsTrigger>
           <TabsTrigger value="contact">Tipo de Contacto</TabsTrigger>
           <TabsTrigger value="source">Origem</TabsTrigger>
           <TabsTrigger value="status">Estado</TabsTrigger>
+          <TabsTrigger value="reason">Motivo</TabsTrigger>
         </TabsList>
 
         <TabsContent value="age">
@@ -285,6 +376,24 @@ const StatisticsPage = () => {
                   <div key={status} className="flex items-center justify-between">
                     <span>{status}</span>
                     <span>{count as number} clientes</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reason">
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribuição por Motivo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(reasonDistribution).map(([reason, count]) => (
+                  <div key={reason} className="flex items-center justify-between">
+                    <span>{reason}</span>
+                    <span>{count} clientes</span>
                   </div>
                 ))}
               </div>

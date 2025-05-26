@@ -15,19 +15,19 @@ export function usePayments(clientId?: number) {
   // Load payments from Supabase
   useEffect(() => {
     const loadPayments = async () => {
-      if (!clientId) {
-        setPayments([]);
-        setIsLoading(false);
-        return;
-      }
-
       try {
         setIsLoading(true);
-        const { data, error: supabaseError } = await supabase
+        let query = supabase
           .from('pagamentos')
           .select('*')
-          .eq('id_cliente', clientId)
           .order('data', { ascending: false });
+          
+        // Se um clientId for fornecido, filtrar por esse cliente
+        if (clientId) {
+          query = query.eq('id_cliente', clientId);
+        }
+        
+        const { data, error: supabaseError } = await query;
 
         if (supabaseError) {
           throw supabaseError;
@@ -112,13 +112,19 @@ export function usePayments(clientId?: number) {
     }
   }, []);
 
+  // Calcular receita total
+  const getTotalRevenue = useCallback(() => {
+    return payments.reduce((total, payment) => total + (payment.valor || 0), 0);
+  }, [payments]);
+
   return {
     payments,
     isLoading,
     error,
     addPayment,
     updatePayment,
-    deletePayment
+    deletePayment,
+    getTotalRevenue
   };
 }
 
