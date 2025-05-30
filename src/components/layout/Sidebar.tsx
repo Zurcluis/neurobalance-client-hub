@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
@@ -17,6 +17,7 @@ import { useLanguage } from '@/hooks/use-language';
 import SearchDialog from '@/components/search/SearchDialog';
 import GoogleCalendarSync from '@/components/calendar/GoogleCalendarSync';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -24,9 +25,11 @@ const Sidebar = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showCalendarSync, setShowCalendarSync] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isPortrait } = useScreenSize();
   const { t } = useLanguage();
+  const { logout } = useAuth();
   
   // Get communication type from localStorage if exists
   useEffect(() => {
@@ -49,6 +52,11 @@ const Sidebar = () => {
     { name: t('email'), icon: <Mail className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'email' },
     { name: t('call'), icon: <Phone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'call' },
   ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const renderSidebarContent = () => (
     <div className={`p-4 flex flex-col h-full ${isMobile ? 'pt-safe mobile-menu-content' : ''}`}>
@@ -183,6 +191,17 @@ const Sidebar = () => {
             <Calendar className="h-5 w-5" />
           </button>
         </div>
+        
+        <button
+          onClick={handleLogout}
+          className={cn(
+            "w-full mt-4 flex items-center justify-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 rounded-lg transition",
+            isCollapsed && !isMobile ? "justify-center" : "justify-start"
+          )}
+        >
+          <LogOut className="h-5 w-5" />
+          {(!isCollapsed || isMobile) && <span>{t('logout')}</span>}
+        </button>
         
         {(!isCollapsed || isMobile) && (
           <div className="text-xs text-center text-gray-600 dark:text-gray-400 mt-4">

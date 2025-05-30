@@ -8,4 +8,40 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); 
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: {
+      getItem: (key) => {
+        const value = localStorage.getItem(key);
+        if (!value) return null;
+        
+        try {
+          const parsed = JSON.parse(value);
+          if (parsed.expires_at && parsed.expires_at < Date.now()) {
+            localStorage.removeItem(key);
+            return null;
+          }
+          return value;
+        } catch {
+          return null;
+        }
+      },
+      setItem: (key, value) => {
+        try {
+          const parsed = JSON.parse(value);
+          if (parsed.expires_at) {
+            // Set expiration to 7 days from now
+            parsed.expires_at = Date.now() + 7 * 24 * 60 * 60 * 1000;
+          }
+          localStorage.setItem(key, JSON.stringify(parsed));
+        } catch {
+          localStorage.setItem(key, value);
+        }
+      },
+      removeItem: (key) => localStorage.removeItem(key)
+    }
+  }
+}); 
