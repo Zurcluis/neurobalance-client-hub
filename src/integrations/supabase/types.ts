@@ -320,6 +320,39 @@ export interface Database {
           }
         ]
       }
+      usuarios: {
+        Row: {
+          id: number
+          email: string
+          nome: string
+          role: string
+          ativo: boolean
+          ultimo_login: string | null
+          criado_em: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          email: string
+          nome: string
+          role: string
+          ativo?: boolean
+          ultimo_login?: string | null
+          criado_em?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          email?: string
+          nome?: string
+          role?: string
+          ativo?: boolean
+          ultimo_login?: string | null
+          criado_em?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -328,6 +361,18 @@ export interface Database {
       create_despesas_table: {
         Args: Record<string, never>;
         Returns: string;
+      }
+      verificar_credenciais: {
+        Args: {
+          email_input: string
+          senha_input: string
+        }
+        Returns: {
+          id: number
+          email: string
+          nome: string
+          role: string
+        }[]
       }
     }
     Enums: {
