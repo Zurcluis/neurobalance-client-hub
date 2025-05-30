@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
@@ -17,6 +17,8 @@ import { useLanguage } from '@/hooks/use-language';
 import SearchDialog from '@/components/search/SearchDialog';
 import GoogleCalendarSync from '@/components/calendar/GoogleCalendarSync';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -24,9 +26,11 @@ const Sidebar = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showCalendarSync, setShowCalendarSync] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isPortrait } = useScreenSize();
   const { t } = useLanguage();
+  const { signOut } = useAuth();
   
   // Get communication type from localStorage if exists
   useEffect(() => {
@@ -35,6 +39,17 @@ const Sidebar = () => {
       localStorage.removeItem('communicationType');
     }
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Successfully logged out');
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Failed to log out');
+    }
+  };
 
   const menuItems = [
     { name: t('dashboard'), icon: <Home className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/' },
@@ -172,7 +187,7 @@ const Sidebar = () => {
         </div>
       </nav>
 
-      <div className="pt-4 mt-auto">
+      <div className="mt-auto">
         <div className="flex justify-between items-center px-2">
           <ThemeToggle />
           <LanguageSwitch />
@@ -185,10 +200,21 @@ const Sidebar = () => {
         </div>
         
         {(!isCollapsed || isMobile) && (
-          <div className="text-xs text-center text-gray-600 dark:text-gray-400 mt-4">
-            <p>NeuroBalance Clinic</p>
-            <p className="mt-1">{t('system')} v1.0.0</p>
-          </div>
+          <>
+            <div className="text-xs text-center text-gray-600 dark:text-gray-400 mt-4">
+              <p>NeuroBalance Clinic</p>
+              <p className="mt-1">{t('system')} v1.0.0</p>
+            </div>
+            
+            <Button
+              variant="ghost"
+              className="w-full mt-4 flex items-center justify-center text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5 mr-2" />
+              {t('logout')}
+            </Button>
+          </>
         )}
       </div>
 
