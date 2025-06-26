@@ -92,6 +92,12 @@ const translations = {
     lightMode: 'Light Mode',
     search: 'Search',
     noResults: 'No results found',
+    
+    // Communications
+    messages: 'Messages',
+    email: 'Email',
+    communications: 'Communications',
+    system: 'System',
   },
   pt: {
     // Dashboard
@@ -174,6 +180,12 @@ const translations = {
     lightMode: 'Modo Claro',
     search: 'Pesquisar',
     noResults: 'Nenhum resultado encontrado',
+    
+    // Communications
+    messages: 'Mensagens',
+    email: 'Email',
+    communications: 'Comunicações',
+    system: 'Sistema',
   }
 };
 
