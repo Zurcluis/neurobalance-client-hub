@@ -10,8 +10,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { session, loading } = useAuth();
   const location = useLocation();
 
-  console.log('ProtectedRoute:', { session, loading, path: location.pathname });
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

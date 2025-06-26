@@ -12,8 +12,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // Check if we're in development mode and should skip authentication
   const isDevMode = import.meta.env.DEV || import.meta.env.VITE_SKIP_AUTH === 'true';
   
-  console.log('ProtectedRoute:', { session, loading, path: location.pathname, isDevMode });
-
   // In dev mode, skip authentication entirely
   if (isDevMode) {
     console.log('Dev mode detected, skipping authentication');

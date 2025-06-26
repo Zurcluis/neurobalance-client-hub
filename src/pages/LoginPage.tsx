@@ -14,8 +14,6 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log('LoginPage:', { session, location });
-
   // If user is already logged in, redirect to the attempted page or home
   useEffect(() => {
     if (session) {
@@ -37,8 +35,6 @@ const LoginPage = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('LoginPage: Initiating Google login');
-      console.log('VITE_SUPABASE_REDIRECT_URL:', import.meta.env.VITE_SUPABASE_REDIRECT_URL);
       const redirectTo = import.meta.env.VITE_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
