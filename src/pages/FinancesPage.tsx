@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { DollarSign } from 'lucide-react';
+import { useExpenses } from '@/hooks/useExpenses';
+import { usePayments } from '@/hooks/usePayments';
 
 const FinancesPage = () => {
   const { t } = useLanguage();
@@ -18,6 +20,39 @@ const FinancesPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('income');
   const [totalProfit, setTotalProfit] = useState(0);
+  const { expenses, getTotalExpenses, isLoading: isLoadingExpenses } = useExpenses();
+  const { payments: paymentsData, isLoading: isLoadingPayments } = usePayments();
+
+  // Estado para mês e ano selecionados
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Função para filtrar pagamentos por mês/ano
+  const filteredPayments = paymentsData.filter(payment => {
+    const date = new Date(payment.data);
+    return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+  });
+
+  // Função para filtrar despesas por mês/ano
+  const filteredExpenses = expenses.filter(expense => {
+    const date = new Date(expense.data);
+    return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+  });
+
+  // Calcular totais filtrados
+  const totalRevenueMonth = filteredPayments.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+  const totalExpensesMonth = filteredExpenses.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+  const totalProfitMonth = totalRevenueMonth - totalExpensesMonth;
+
+  // Gerar opções de meses
+  const monthOptions = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  // Gerar opções de anos (últimos 5 anos)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   // Função para buscar pagamentos
   const fetchPayments = async () => {
@@ -107,8 +142,76 @@ const FinancesPage = () => {
         <h1 className="text-3xl font-bold gradient-heading">{t('financialReports')}</h1>
         <p className="text-neuro-gray mt-2">Acompanhe receitas, despesas e pagamentos dos clientes</p>
       </div>
-      
-      {/* Indicador de Lucro Total */}
+      {/* Seletor de mês e ano */}
+      <div className="flex gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Mês</label>
+          <select
+            className="border rounded px-2 py-1"
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(Number(e.target.value))}
+          >
+            {monthOptions.map((month, idx) => (
+              <option key={month} value={idx + 1}>{month}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Ano</label>
+          <select
+            className="border rounded px-2 py-1"
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+          >
+            {yearOptions.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {/* Indicadores financeiros do mês */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="glassmorphism">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ArrowDownCircle className="h-4 w-4 text-green-600" />
+              Receitas do mês
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {isLoadingPayments ? 'Carregando...' : `€${totalRevenueMonth.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="glassmorphism">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ArrowUpCircle className="h-4 w-4 text-red-600" />
+              Despesas do mês
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {isLoadingExpenses ? 'Carregando...' : `€${totalExpensesMonth.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="glassmorphism">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-[#3f9094]" />
+              Lucro do mês
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${totalProfitMonth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{
+              isLoadingPayments || isLoadingExpenses ? 'Carregando...' : `€${totalProfitMonth.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            }</div>
+          </CardContent>
+        </Card>
+      </div>
+      {/* Indicador de Lucro Total (anual ou geral) */}
       <Card className="glassmorphism mb-6">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -125,7 +228,6 @@ const FinancesPage = () => {
           </p>
         </CardContent>
       </Card>
-      
       <Tabs defaultValue="income" value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList className="mb-4 grid grid-cols-2 max-w-md">
           <TabsTrigger value="income" className="gap-2">
@@ -137,7 +239,6 @@ const FinancesPage = () => {
             Despesas
           </TabsTrigger>
         </TabsList>
-        
         <TabsContent value="income">
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
@@ -161,8 +262,13 @@ const FinancesPage = () => {
             <FinancialReport initialPayments={payments} />
           )}
         </TabsContent>
-        
         <TabsContent value="expenses">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-[#3f9094] mb-2">Total de Despesas</h2>
+            <div className="text-2xl font-bold">
+              {isLoadingExpenses ? 'Carregando...' : `€${getTotalExpenses().toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </div>
+          </div>
           <ExpenseManager />
         </TabsContent>
       </Tabs>
