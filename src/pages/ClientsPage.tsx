@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 
@@ -48,6 +49,8 @@ const ClientsPage = () => {
     to: undefined 
   });
   const [showPeriodSelector, setShowPeriodSelector] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
   // Primeiro filtramos por texto
   const textFilteredClients = searchQuery ? searchClients(searchQuery) : clients;
@@ -215,6 +218,19 @@ const ClientsPage = () => {
     setActiveDialog('import');
     setIsImportDialogOpen(true);
     setIsAddClientOpen(false);
+  };
+
+  const handleRequestDeleteClient = (client: Client) => {
+    setClientToDelete(client);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDeleteClient = async () => {
+    if (clientToDelete) {
+      await handleDeleteClient(clientToDelete.id);
+      setDeleteDialogOpen(false);
+      setClientToDelete(null);
+    }
   };
 
   if (isLoading) {
@@ -390,6 +406,21 @@ const ClientsPage = () => {
         </div>
       </div>
       
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja eliminar o cliente <b>{clientToDelete?.nome}</b>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteClient} autoFocus>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-6">
           <TabsTrigger value="all">Todos ({filteredClients.length})</TabsTrigger>
@@ -407,7 +438,7 @@ const ClientsPage = () => {
                 <ClientCard 
                   key={client.id} 
                   client={client} 
-                  onDelete={() => handleDeleteClient(client.id)}
+                  onDelete={() => handleRequestDeleteClient(client)}
                   statusClass={`client-${client.estado || 'ongoing'}`}
                 />
               ))}
@@ -448,7 +479,7 @@ const ClientsPage = () => {
                   <ClientCard 
                     key={client.id} 
                     client={client} 
-                    onDelete={() => handleDeleteClient(client.id)}
+                    onDelete={() => handleRequestDeleteClient(client)}
                     statusClass={`client-${status}`}
                   />
                 ))}
