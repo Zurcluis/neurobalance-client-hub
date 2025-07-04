@@ -18,6 +18,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
+import DOMPurify from 'dompurify';
 
 export interface ClientFormData {
   nome: string;
@@ -81,8 +82,18 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
   };
 
   const handleFormSubmit = (data: ClientFormData) => {
-    onSubmit({
+    // Sanitização dos campos de texto
+    const sanitizedData = {
       ...data,
+      nome: DOMPurify.sanitize(data.nome).slice(0, 100),
+      email: data.email ? DOMPurify.sanitize(data.email).slice(0, 100) : '',
+      telefone: DOMPurify.sanitize(data.telefone).slice(0, 20),
+      morada: DOMPurify.sanitize(data.morada).slice(0, 200),
+      notas: data.notas ? DOMPurify.sanitize(data.notas).slice(0, 500) : '',
+      id_manual: data.id_manual ? DOMPurify.sanitize(data.id_manual).slice(0, 50) : '',
+    };
+    onSubmit({
+      ...sanitizedData,
       data_nascimento: data.data_nascimento instanceof Date ? data.data_nascimento : birthDate,
     });
   };

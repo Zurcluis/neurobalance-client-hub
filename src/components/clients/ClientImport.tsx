@@ -51,6 +51,9 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropAreaRef = useRef<HTMLDivElement>(null);
 
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+  const ALLOWED_TYPES = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/pdf', 'image/png', 'image/jpeg'];
+
   // Mapear campos dos arquivos para os campos do formulário
   const fieldMappings = {
     // Mapeamentos para nomes comuns em português
@@ -131,10 +134,20 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      handleFiles(Array.from(e.target.files));
-    }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast.error(`Tipo de arquivo não permitido: ${file.name}`);
+        return false;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`Arquivo muito grande: ${file.name}`);
+        return false;
+      }
+      return true;
+    });
+    setFiles(prevFiles => [...prevFiles, ...validFiles]);
   };
 
   const removeFile = (index: number) => {
@@ -502,7 +515,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
                 className="hidden"
                 multiple
                 accept=".png,.pdf,.txt,.xlsx,.csv"
-                onChange={handleInputChange}
+                onChange={handleFileChange}
               />
               <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <p className="text-sm text-gray-600 mb-2">
