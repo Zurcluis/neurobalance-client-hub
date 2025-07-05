@@ -99,8 +99,9 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit(handleFormSubmit)}
+      className="space-y-4 max-h-[80vh] overflow-y-auto w-full max-w-full sm:max-w-lg md:max-w-xl mx-auto px-2 py-4 sm:px-6 sm:py-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <Label htmlFor="nome" className="text-base">Nome <span className="text-red-500">*</span></Label>
           <Input
@@ -129,7 +130,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <Label htmlFor="telefone" className="text-base">Telefone <span className="text-red-500">*</span></Label>
           <Input
@@ -166,7 +167,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <Label htmlFor="data_nascimento" className="text-base">Data de Nascimento <span className="text-red-500">*</span></Label>
           <Controller
@@ -196,7 +197,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <Label htmlFor="genero" className="text-base">Género <span className="text-red-500">*</span></Label>
           <Controller
@@ -242,7 +243,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <Label htmlFor="tipo_contato" className="text-base">Tipo de Contacto <span className="text-red-500">*</span></Label>
           <Controller
@@ -347,7 +348,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <Label htmlFor="numero_sessoes" className="text-base">Número de Sessões</Label>
           <Input
@@ -388,7 +389,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <Label htmlFor="responsavel" className="text-base">Responsável</Label>
           <Controller
@@ -451,7 +452,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 mt-6 sticky bottom-0 bg-white/90 dark:bg-[#18181b]/90 z-10 p-2 sm:p-0">
         {isEditing ? (
           <>
             <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
