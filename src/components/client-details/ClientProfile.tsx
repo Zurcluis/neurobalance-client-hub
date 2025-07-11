@@ -167,8 +167,8 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                   Editar Perfil
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
-                <DialogHeader>
+              <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+                <DialogHeader className="pb-4">
                   <DialogTitle>Editar Perfil do Cliente</DialogTitle>
                   <DialogDescription>
                     Edite as informações do cliente nos campos abaixo.
@@ -176,13 +176,13 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                 </DialogHeader>
                 
                 <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(handleSaveChanges)} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <form onSubmit={profileForm.handleSubmit(handleSaveChanges)} className="space-y-4 pb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="nome"
                         render={({ field }) => (
-                          <FormItem className="flex-1">
+                          <FormItem>
                             <FormLabel>Nome</FormLabel>
                             <FormControl>
                               <Input {...field} />
@@ -195,7 +195,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                         control={profileForm.control}
                         name="id_manual"
                         render={({ field }) => (
-                          <FormItem className="flex-1">
+                          <FormItem>
                             <FormLabel>ID Manual</FormLabel>
                             <FormControl>
                               <Input {...field} value={field.value || ''} />
@@ -205,7 +205,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="email"
@@ -233,7 +233,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="responsavel"
@@ -307,7 +307,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       )}
                     />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="data_nascimento"
@@ -367,7 +367,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="tipo_contato"
@@ -447,7 +447,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       )}
                     />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="numero_sessoes"
@@ -499,20 +499,23 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       )}
                     />
                     
-                    <DialogFooter className="pt-4">
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={() => setIsProfileDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button 
-                        type="submit" 
-                        className="bg-[#3A726D] hover:bg-[#265255]"
-                      >
-                        Guardar Alterações
-                      </Button>
+                    <DialogFooter className="pt-6 mt-6 border-t sticky bottom-0 bg-white">
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
+                        <Button 
+                          type="button" 
+                          variant="outline"
+                          onClick={() => setIsProfileDialogOpen(false)}
+                          className="w-full sm:w-auto"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button 
+                          type="submit" 
+                          className="bg-[#3A726D] hover:bg-[#265255] w-full sm:w-auto"
+                        >
+                          Guardar Alterações
+                        </Button>
+                      </div>
                     </DialogFooter>
                   </form>
                 </Form>

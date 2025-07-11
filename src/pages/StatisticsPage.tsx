@@ -1,128 +1,257 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
-import { ClientData } from '@/components/clients/ClientCard';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   PieChart,
   Pie,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   Cell,
   ResponsiveContainer,
-  Legend
+  Legend,
+  Area,
+  AreaChart,
+  ComposedChart
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent, ChartLegendContent } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
-import { differenceInYears } from 'date-fns';
+import { 
+  differenceInYears, 
+  format, 
+  subMonths, 
+  subDays, 
+  isAfter, 
+  isBefore, 
+  parseISO,
+  startOfMonth,
+  endOfMonth,
+  eachMonthOfInterval,
+  eachDayOfInterval,
+  startOfDay,
+  endOfDay
+} from 'date-fns';
+import { pt } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClients } from '@/hooks/useClients';
+import { useAppointments } from '@/hooks/useAppointments';
+import { usePayments } from '@/hooks/usePayments';
 import { Database } from '@/integrations/supabase/types';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Users, 
+  Calendar, 
+  Euro, 
+  Clock,
+  Target,
+  Activity,
+  Download,
+  Filter,
+  BarChart3,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 // Cores para os gráficos
-const COLORS = ['#3A726D', '#5DA399', '#8AC1BB', '#B1D4CF', '#D8E6E3', '#265255'];
+const COLORS = ['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#D8E6E3', '#265255'];
 
 type Client = Database['public']['Tables']['clientes']['Row'];
+type Appointment = Database['public']['Tables']['agendamentos']['Row'];
 
-interface ClientStats {
-  id: number;
-  name: string;
-  status: string;
-  data_nascimento: string | null;
-  genero: string;
-  tipo_contato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
-  como_conheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
-  notas?: string;
-  motivo?: string;
+interface KPICardProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: React.ReactNode;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+  color?: string;
 }
+
+const KPICard: React.FC<KPICardProps> = ({ title, value, subtitle, icon, trend, color = '#3f9094' }) => (
+  <Card className="hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 rounded-lg" style={{ backgroundColor: `${color}20` }}>
+            <div style={{ color }}>{icon}</div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+          </div>
+        </div>
+        {trend && (
+          <div className={`flex items-center space-x-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+            {trend.isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+            <span className="text-sm font-medium">{Math.abs(trend.value)}%</span>
+          </div>
+        )}
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const StatisticsPage = () => {
   const { clients } = useClients();
-  const [clientStats, setClientStats] = useState<ClientStats[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [contactTypeData, setContactTypeData] = useState<any[]>([]);
-  const [referralSourceData, setReferralSourceData] = useState<any[]>([]);
-  const [genderData, setGenderData] = useState<any[]>([]);
-  const [ageGroupData, setAgeGroupData] = useState<any[]>([]);
-  const [problemKeywords, setProblemKeywords] = useState<{text: string, value: number}[]>([]);
+  const { appointments } = useAppointments();
+  const { payments } = usePayments();
+  
+  const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
+  const [selectedView, setSelectedView] = useState<'overview' | 'clients' | 'appointments' | 'financial'>('overview');
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (clients) {
-      const stats = clients.map(client => ({
-        id: client.id,
-        name: client.nome,
-        status: client.estado || 'ongoing',
-        data_nascimento: client.data_nascimento,
-        genero: client.genero,
-        tipo_contato: (client.tipo_contato || 'Lead') as 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook',
-        como_conheceu: (client.como_conheceu || 'Anúncio') as 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação',
-        notas: client.notas,
-        motivo: client.motivo
-      }));
-      setClientStats(stats);
-      setIsLoading(false);
+  // Função para filtrar dados por período
+  const filterByPeriod = (data: any[], dateField: string) => {
+    if (selectedPeriod === 'all') return data;
+    
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (selectedPeriod) {
+      case '7d':
+        startDate = subDays(now, 7);
+        break;
+      case '30d':
+        startDate = subDays(now, 30);
+        break;
+      case '90d':
+        startDate = subDays(now, 90);
+        break;
+      case '1y':
+        startDate = subDays(now, 365);
+        break;
+      default:
+        return data;
     }
+    
+    return data.filter(item => {
+      const itemDate = new Date(item[dateField]);
+      return isAfter(itemDate, startDate);
+    });
+  };
+
+  // Dados filtrados
+  const filteredClients = useMemo(() => filterByPeriod(clients || [], 'criado_em'), [clients, selectedPeriod]);
+  const filteredAppointments = useMemo(() => filterByPeriod(appointments || [], 'criado_em'), [appointments, selectedPeriod]);
+  const filteredPayments = useMemo(() => filterByPeriod(payments || [], 'data'), [payments, selectedPeriod]);
+
+  // Cálculos de KPIs
+  const kpis = useMemo(() => {
+    const totalClients = clients?.length || 0;
+    const totalAppointments = appointments?.length || 0;
+    const totalRevenue = payments?.reduce((sum, payment) => sum + (payment.valor || 0), 0) || 0;
+    const avgRevenuePerClient = totalClients > 0 ? totalRevenue / totalClients : 0;
+    
+    // Agendamentos por estado
+    const appointmentsByStatus = appointments?.reduce((acc, appointment) => {
+      const status = appointment.estado || 'pendente';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>) || {};
+    
+    const completedAppointments = appointmentsByStatus['concluido'] || 0;
+    const completionRate = totalAppointments > 0 ? (completedAppointments / totalAppointments) * 100 : 0;
+    
+    // Clientes por estado
+    const clientsByStatus = clients?.reduce((acc, client) => {
+      const status = client.estado || 'ongoing';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>) || {};
+    
+    const activeClients = clientsByStatus['ongoing'] || 0;
+    const conversionRate = totalClients > 0 ? (activeClients / totalClients) * 100 : 0;
+    
+    return {
+      totalClients,
+      totalAppointments,
+      totalRevenue,
+      avgRevenuePerClient,
+      completionRate,
+      conversionRate,
+      activeClients,
+      appointmentsByStatus,
+      clientsByStatus
+    };
+  }, [clients, appointments, payments]);
+
+  // Dados para gráficos temporais
+  const timelineData = useMemo(() => {
+    if (!clients || !appointments || !payments) return [];
+    
+    const now = new Date();
+    const startDate = subMonths(now, 6);
+    const months = eachMonthOfInterval({ start: startDate, end: now });
+    
+    return months.map(month => {
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      
+      const monthClients = clients.filter(client => {
+        const clientDate = new Date(client.criado_em);
+        return clientDate >= monthStart && clientDate <= monthEnd;
+      }).length;
+      
+      const monthAppointments = appointments.filter(appointment => {
+        const appointmentDate = new Date(appointment.criado_em);
+        return appointmentDate >= monthStart && appointmentDate <= monthEnd;
+      }).length;
+      
+      const monthRevenue = payments.filter(payment => {
+        const paymentDate = new Date(payment.data);
+        return paymentDate >= monthStart && paymentDate <= monthEnd;
+      }).reduce((sum, payment) => sum + (payment.valor || 0), 0);
+      
+      return {
+        month: format(month, 'MMM yyyy', { locale: pt }),
+        clients: monthClients,
+        appointments: monthAppointments,
+        revenue: monthRevenue
+      };
+    });
+  }, [clients, appointments, payments]);
+
+  // Dados para análise de géneros
+  const genderData = useMemo(() => {
+    if (!clients) return [];
+    
+    const genderCounts = clients.reduce((acc, client) => {
+      const gender = client.genero || 'Não especificado';
+      acc[gender] = (acc[gender] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(genderCounts).map(([name, value]) => ({ name, value }));
   }, [clients]);
 
-  useEffect(() => {
-    if (clientStats.length > 0) {
-      processStatistics();
-    }
-  }, [clientStats]);
-
-  const processStatistics = () => {
-    // 1. Contagem por tipo de contato
-    const contactTypes: Record<string, number> = {};
-    clientStats.forEach(client => {
-      const type = client.tipo_contato || 'Não especificado';
-      contactTypes[type] = (contactTypes[type] || 0) + 1;
-    });
+  // Dados para análise de idades
+  const ageData = useMemo(() => {
+    if (!clients) return [];
     
-    const contactTypeArr = Object.entries(contactTypes).map(([name, value]) => ({ name, value }));
-    setContactTypeData(contactTypeArr);
-
-    // 2. Contagem por fonte de referência
-    const referralSources: Record<string, number> = {};
-    clientStats.forEach(client => {
-      const source = client.como_conheceu || 'Não especificado';
-      referralSources[source] = (referralSources[source] || 0) + 1;
-    });
-    
-    const referralSourceArr = Object.entries(referralSources).map(([name, value]) => ({ name, value }));
-    setReferralSourceData(referralSourceArr);
-    
-    // 3. Contagem por género
-    const genders: Record<string, number> = {};
-    clientStats.forEach(client => {
-      const gender = client.genero || 'Não especificado';
-      genders[gender] = (genders[gender] || 0) + 1;
-    });
-    
-    const genderArr = Object.entries(genders).map(([name, value]) => ({ name, value }));
-    setGenderData(genderArr);
-    
-    // 4. Contagem por faixa etária
-    const ageGroups: Record<string, number> = {
+    const ageGroups = {
       "0-18": 0,
       "19-30": 0,
       "31-40": 0,
       "41-50": 0,
       "51-60": 0,
-      "61+": 0,
-      "Não especificado": 0
+      "61+": 0
     };
     
-    clientStats.forEach(client => {
-      if (!client.data_nascimento) {
-        ageGroups["Não especificado"]++;
-        return;
-      }
-      
-      try {
+    clients.forEach(client => {
+      if (client.data_nascimento) {
         const age = differenceInYears(new Date(), new Date(client.data_nascimento));
         if (age <= 18) ageGroups["0-18"]++;
         else if (age <= 30) ageGroups["19-30"]++;
@@ -130,442 +259,420 @@ const StatisticsPage = () => {
         else if (age <= 50) ageGroups["41-50"]++;
         else if (age <= 60) ageGroups["51-60"]++;
         else ageGroups["61+"]++;
-      } catch (e) {
-        ageGroups["Não especificado"]++;
       }
     });
     
-    const ageGroupArr = Object.entries(ageGroups)
-      .filter(([_, value]) => value > 0) // Remover faixas etárias vazias
+    return Object.entries(ageGroups)
+      .filter(([_, value]) => value > 0)
       .map(([name, value]) => ({ name, value }));
-    setAgeGroupData(ageGroupArr);
+  }, [clients]);
 
-    // 5. Análise de palavras-chave nas problemáticas
-    const problems = clientStats.map(client => client.notas || '').join(' ').toLowerCase();
-    const words = problems.split(/\s+/);
-    const stopWords = ['de', 'a', 'o', 'que', 'e', 'do', 'da', 'em', 'um', 'para', 'é', 'com', 'não', 'uma', 'os', 'no', 'se', 'na', 'por', 'mais', 'as', 'dos', 'como', 'mas', 'foi', 'ao', 'ele', 'das', 'tem', 'à', 'seu', 'sua', 'ou', 'ser', 'quando', 'muito', 'há', 'nos', 'já', 'está', 'eu', 'também', 'só', 'pelo', 'pela', 'até', 'isso', 'ela', 'entre', 'era', 'depois', 'sem', 'mesmo', 'aos', 'ter', 'seus', 'quem', 'nas', 'me', 'esse', 'eles', 'estão', 'você', 'tinha', 'foram', 'essa', 'num', 'nem', 'suas', 'meu', 'às', 'minha', 'têm', 'numa', 'pelos', 'elas', 'havia', 'seja', 'qual', 'será', 'nós', 'tenho', 'lhe', 'deles', 'essas', 'esses', 'pelas', 'este', 'fosse', 'dele', 'tu', 'te', 'vocês', 'vos', 'lhes', 'meus', 'minhas', 'teu', 'tua', 'teus', 'tuas', 'nosso', 'nossa', 'nossos', 'nossas', 'dela', 'delas', 'esta', 'estes', 'estas', 'aquele', 'aquela', 'aqueles', 'aquelas', 'isto', 'aquilo', 'estou', 'está', 'estamos', 'estão', 'estive', 'esteve', 'estivemos', 'estiveram', 'estava', 'estávamos', 'estavam', 'estivera', 'estivéramos', 'esteja', 'estejamos', 'estejam', 'estivesse', 'estivéssemos', 'estivessem', 'estiver', 'estivermos', 'estiverem', 'hei', 'há', 'havemos', 'hão', 'houve', 'houvemos', 'houveram', 'houvera', 'houvéramos', 'haja', 'hajamos', 'hajam', 'houvesse', 'houvéssemos', 'houvessem', 'houver', 'houvermos', 'houverem', 'houverei', 'houverá', 'houveremos', 'houverão', 'houveria', 'houveríamos', 'houveriam', 'sou', 'somos', 'são', 'era', 'éramos', 'eram', 'fui', 'foi', 'fomos', 'foram', 'fora', 'fôramos', 'seja', 'sejamos', 'sejam', 'fosse', 'fôssemos', 'fossem', 'for', 'formos', 'forem', 'serei', 'será', 'seremos', 'serão', 'seria', 'seríamos', 'seriam'];
+  // Dados para análise de tipos de agendamento
+  const appointmentTypeData = useMemo(() => {
+    if (!appointments) return [];
     
-    // Contagem de palavras (excluindo stop words e palavras muito curtas)
-    const wordCount: Record<string, number> = {};
-    words.forEach(word => {
-      word = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
-      if (word && word.length > 3 && !stopWords.includes(word)) {
-        wordCount[word] = (wordCount[word] || 0) + 1;
-      }
-    });
+    const typeCounts = appointments.reduce((acc, appointment) => {
+      const type = appointment.tipo || 'Não especificado';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
     
-    // Converter para o formato adequado para a nuvem de palavras
-    const keywordData = Object.entries(wordCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([text, value]) => ({ text, value }));
-    
-    setProblemKeywords(keywordData);
-  };
+    return Object.entries(typeCounts).map(([name, value]) => ({ name, value }));
+  }, [appointments]);
 
-  // Criar configurações para os gráficos
-  const chartConfig = {
-    primary: { color: '#3A726D' },
-    secondary: { color: '#5DA399' },
-    terciary: { color: '#8AC1BB' },
-    quaternary: { color: '#B1D4CF' },
-    quinary: { color: '#D8E6E3' },
-    senary: { color: '#265255' },
-  };
+  // Dados para análise de métodos de pagamento
+  const paymentMethodData = useMemo(() => {
+    if (!payments) return [];
+    
+    const methodCounts = payments.reduce((acc, payment) => {
+      const method = payment.tipo || 'Não especificado';
+      acc[method] = (acc[method] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(methodCounts).map(([name, value]) => ({ name, value }));
+  }, [payments]);
 
-  // Funções para calcular distribuições de dados
-  const calculateAgeDistribution = () => {
-    const ageDistribution: Record<string, number> = {
-      "0-18": 0,
-      "19-30": 0,
-      "31-40": 0,
-      "41-50": 0,
-      "51-60": 0,
-      "61+": 0,
-      "Não especificado": 0
+  // Função para exportar dados
+  const exportData = () => {
+    const data = {
+      kpis,
+      timelineData,
+      genderData,
+      ageData,
+      appointmentTypeData,
+      paymentMethodData,
+      exportDate: new Date().toISOString()
     };
     
-    clientStats.forEach(client => {
-      if (!client.data_nascimento) {
-        ageDistribution["Não especificado"]++;
-        return;
-      }
-      
-      try {
-        const age = differenceInYears(new Date(), new Date(client.data_nascimento));
-        if (age <= 18) ageDistribution["0-18"]++;
-        else if (age <= 30) ageDistribution["19-30"]++;
-        else if (age <= 40) ageDistribution["31-40"]++;
-        else if (age <= 50) ageDistribution["41-50"]++;
-        else if (age <= 60) ageDistribution["51-60"]++;
-        else ageDistribution["61+"]++;
-      } catch (e) {
-        ageDistribution["Não especificado"]++;
-      }
-    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `estatisticas-${format(new Date(), 'yyyy-MM-dd')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
     
-    return ageDistribution;
+    toast.success('Dados exportados com sucesso!');
   };
 
-  const calculateGenderDistribution = () => {
-    const genderDistribution: Record<string, number> = {};
-    
-    clientStats.forEach(client => {
-      const gender = client.genero || 'Não especificado';
-      genderDistribution[gender] = (genderDistribution[gender] || 0) + 1;
-    });
-    
-    return genderDistribution;
+  const chartConfig = {
+    primary: { color: '#3f9094' },
+    secondary: { color: '#5DA399' },
+    tertiary: { color: '#8AC1BB' },
+    quaternary: { color: '#B1D4CF' },
   };
-
-  const calculateContactTypeDistribution = () => {
-    const contactTypeDistribution: Record<string, number> = {};
-    
-    clientStats.forEach(client => {
-      const contactType = client.tipo_contato || 'Não especificado';
-      contactTypeDistribution[contactType] = (contactTypeDistribution[contactType] || 0) + 1;
-    });
-    
-    return contactTypeDistribution;
-  };
-
-  const calculateSourceDistribution = () => {
-    const sourceDistribution: Record<string, number> = {};
-    
-    clientStats.forEach(client => {
-      const source = client.como_conheceu || 'Não especificado';
-      sourceDistribution[source] = (sourceDistribution[source] || 0) + 1;
-    });
-    
-    return sourceDistribution;
-  };
-
-  const calculateStatusDistribution = () => {
-    const statusDistribution: Record<string, number> = {};
-    
-    clientStats.forEach(client => {
-      const status = client.status || 'Não especificado';
-      statusDistribution[status] = (statusDistribution[status] || 0) + 1;
-    });
-    
-    return statusDistribution;
-  };
-
-  const calculateReasonDistribution = () => {
-    const reasonDistribution: Record<string, number> = {};
-    clientStats.forEach(client => {
-      const motivo = client.motivo || 'Não especificado';
-      reasonDistribution[motivo] = (reasonDistribution[motivo] || 0) + 1;
-    });
-    return reasonDistribution;
-  };
-
-  const renderNoData = () => (
-    <div className="flex items-center justify-center h-48">
-      <p className="text-gray-500">Dados insuficientes para análise</p>
-    </div>
-  );
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  const ageDistribution = calculateAgeDistribution();
-  const genderDistribution = calculateGenderDistribution();
-  const contactTypeDistribution = calculateContactTypeDistribution();
-  const sourceDistribution = calculateSourceDistribution();
-  const statusDistribution = calculateStatusDistribution();
-  const reasonDistribution = calculateReasonDistribution();
 
   return (
     <PageLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-heading">Estatísticas</h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-2">Análise de dados dos clientes</p>
-      </div>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Estatísticas</h1>
+            <p className="text-gray-600">Análise completa do desempenho da clínica</p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
+              <SelectTrigger className="w-48">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                <SelectItem value="90d">Últimos 90 dias</SelectItem>
+                <SelectItem value="1y">Último ano</SelectItem>
+                <SelectItem value="all">Todos os dados</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Button onClick={exportData} variant="outline" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
+          </div>
+        </div>
 
-      <Tabs defaultValue="age" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="age">Idade</TabsTrigger>
-          <TabsTrigger value="gender">Género</TabsTrigger>
-          <TabsTrigger value="contact">Tipo de Contacto</TabsTrigger>
-          <TabsTrigger value="source">Origem</TabsTrigger>
-          <TabsTrigger value="status">Estado</TabsTrigger>
-          <TabsTrigger value="reason">Motivo</TabsTrigger>
-        </TabsList>
+        {/* KPIs Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <KPICard
+            title="Total de Clientes"
+            value={kpis.totalClients}
+            subtitle={`${kpis.activeClients} ativos`}
+            icon={<Users className="h-6 w-6" />}
+            color="#3f9094"
+          />
+          
+          <KPICard
+            title="Agendamentos"
+            value={kpis.totalAppointments}
+            subtitle={`${kpis.completionRate.toFixed(1)}% concluídos`}
+            icon={<Calendar className="h-6 w-6" />}
+            color="#5DA399"
+          />
+          
+          <KPICard
+            title="Receita Total"
+            value={`€${kpis.totalRevenue.toFixed(2)}`}
+            subtitle={`€${kpis.avgRevenuePerClient.toFixed(2)} por cliente`}
+            icon={<Euro className="h-6 w-6" />}
+            color="#8AC1BB"
+          />
+          
+          <KPICard
+            title="Taxa de Conversão"
+            value={`${kpis.conversionRate.toFixed(1)}%`}
+            subtitle="Clientes ativos"
+            icon={<Target className="h-6 w-6" />}
+            color="#B1D4CF"
+          />
+        </div>
 
-        <TabsContent value="age">
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição por Idade</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(ageDistribution).map(([ageGroup, count]) => (
-                  <div key={ageGroup} className="flex items-center justify-between">
-                    <span>{ageGroup} anos</span>
-                    <span>{count as number} clientes</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Navigation Tabs */}
+        <Tabs value={selectedView} onValueChange={(value: any) => setSelectedView(value)}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Visão Geral
+            </TabsTrigger>
+            <TabsTrigger value="clients" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Clientes
+            </TabsTrigger>
+            <TabsTrigger value="appointments" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Agendamentos
+            </TabsTrigger>
+            <TabsTrigger value="financial" className="flex items-center gap-2">
+              <Euro className="h-4 w-4" />
+              Financeiro
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="gender">
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição por Género</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(genderDistribution).map(([gender, count]) => (
-                  <div key={gender} className="flex items-center justify-between">
-                    <span>{gender}</span>
-                    <span>{count as number} clientes</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Timeline Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <LineChartIcon className="h-5 w-5" />
+                    Evolução Temporal
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-80" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={timelineData}>
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Legend />
+                        <Bar dataKey="clients" fill="#3f9094" name="Novos Clientes" />
+                        <Line 
+                          type="monotone" 
+                          dataKey="appointments" 
+                          stroke="#5DA399" 
+                          strokeWidth={3}
+                          name="Agendamentos"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
 
-        <TabsContent value="contact">
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição por Tipo de Contacto</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(contactTypeDistribution).map(([type, count]) => (
-                  <div key={type} className="flex items-center justify-between">
-                    <span>{type}</span>
-                    <span>{count as number} clientes</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="source">
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição por Origem</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(sourceDistribution).map(([source, count]) => (
-                  <div key={source} className="flex items-center justify-between">
-                    <span>{source}</span>
-                    <span>{count as number} clientes</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="status">
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição por Estado</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(statusDistribution).map(([status, count]) => (
-                  <div key={status} className="flex items-center justify-between">
-                    <span>{status}</span>
-                    <span>{count as number} clientes</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reason">
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição por Motivo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(reasonDistribution).map(([reason, count]) => (
-                  <div key={reason} className="flex items-center justify-between">
-                    <span>{reason}</span>
-                    <span>{count} clientes</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Gráfico de barras: Tipos de Contato */}
-        <Card className="glassmorphism">
-          <CardHeader>
-            <CardTitle className="text-xl">Clientes por Tipo de Contacto</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {contactTypeData.length > 0 ? (
-              <ChartContainer className="h-full" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={contactTypeData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
-                    <YAxis />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Legend content={<ChartLegendContent />} />
-                    <Bar dataKey="value" fill={chartConfig.primary.color} name="Clientes">
-                      {contactTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              renderNoData()
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Gráfico de pizza: Como Conheceu */}
-        <Card className="glassmorphism">
-          <CardHeader>
-            <CardTitle className="text-xl">Como teve conhecimento da clínica</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {referralSourceData.length > 0 ? (
-              <ChartContainer className="h-full" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={referralSourceData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {referralSourceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Legend content={<ChartLegendContent />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              renderNoData()
-            )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Gráfico de pizza: Distribuição por Género */}
-        <Card className="glassmorphism">
-          <CardHeader>
-            <CardTitle className="text-xl">Distribuição por Género</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {genderData.length > 0 ? (
-              <ChartContainer className="h-full" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={genderData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {genderData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Legend content={<ChartLegendContent />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              renderNoData()
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Gráfico de barras: Distribuição por Idade */}
-        <Card className="glassmorphism">
-          <CardHeader>
-            <CardTitle className="text-xl">Distribuição por Faixa Etária</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {ageGroupData.length > 0 ? (
-              <ChartContainer className="h-full" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ageGroupData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
-                    <YAxis />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Legend content={<ChartLegendContent />} />
-                    <Bar dataKey="value" fill={chartConfig.primary.color} name="Clientes">
-                      {ageGroupData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              renderNoData()
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Palavras frequentes */}
-      <Card className="glassmorphism">
-        <CardHeader>
-          <CardTitle className="text-xl">Termos Frequentes na Problemática</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {problemKeywords.length > 0 ? (
-            <div className="flex flex-wrap gap-2 py-4">
-              {problemKeywords.map((keyword, index) => (
-                <div 
-                  key={index} 
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-white", 
-                    index % 6 === 0 && "bg-[#3A726D]",
-                    index % 6 === 1 && "bg-[#5DA399]",
-                    index % 6 === 2 && "bg-[#8AC1BB]",
-                    index % 6 === 3 && "bg-[#B1D4CF] text-gray-800",
-                    index % 6 === 4 && "bg-[#D8E6E3] text-gray-800",
-                    index % 6 === 5 && "bg-[#265255]",
-                  )}
-                  style={{ 
-                    fontSize: `${Math.max(0.8, Math.min(2, 0.8 + keyword.value / 5))}rem`,
-                  }}
-                >
-                  {keyword.text}
-                  <span className="ml-1 text-xs opacity-80">({keyword.value})</span>
-                </div>
-              ))}
+              {/* Revenue Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Receita Mensal
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-80" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={timelineData}>
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="revenue" 
+                          stroke="#3f9094" 
+                          fill="#3f9094" 
+                          fillOpacity={0.6}
+                          name="Receita (€)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            renderNoData()
-          )}
-        </CardContent>
-      </Card>
+          </TabsContent>
+
+          {/* Clients Tab */}
+          <TabsContent value="clients" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Gender Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="h-5 w-5" />
+                    Distribuição por Género
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-80" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={genderData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {genderData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Age Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Distribuição por Idade
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-80" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={ageData}>
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="value" fill="#3f9094" name="Clientes">
+                          {ageData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Client Status Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Estado dos Clientes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(kpis.clientsByStatus).map(([status, count]) => (
+                    <div key={status} className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-gray-900">{count}</div>
+                      <div className="text-sm text-gray-600 capitalize">{status}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Appointments Tab */}
+          <TabsContent value="appointments" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Appointment Types */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="h-5 w-5" />
+                    Tipos de Agendamento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-80" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={appointmentTypeData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {appointmentTypeData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Appointment Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Estado dos Agendamentos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {Object.entries(kpis.appointmentsByStatus).map(([status, count]) => (
+                      <div key={status} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="capitalize font-medium">{status}</span>
+                        <Badge variant="secondary">{count} agendamentos</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Financial Tab */}
+          <TabsContent value="financial" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Payment Methods */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="h-5 w-5" />
+                    Métodos de Pagamento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-80" config={chartConfig}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={paymentMethodData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {paymentMethodData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Financial Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resumo Financeiro</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium">Receita Total</span>
+                      <span className="text-lg font-bold text-green-600">€{kpis.totalRevenue.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium">Receita por Cliente</span>
+                      <span className="text-lg font-bold">€{kpis.avgRevenuePerClient.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium">Total de Pagamentos</span>
+                      <span className="text-lg font-bold">{payments?.length || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </PageLayout>
   );
 };
