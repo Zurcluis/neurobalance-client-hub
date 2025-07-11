@@ -85,6 +85,9 @@
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.44.2"
+  },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
