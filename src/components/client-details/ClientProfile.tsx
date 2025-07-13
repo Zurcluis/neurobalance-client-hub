@@ -501,20 +501,20 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                     
                     <DialogFooter className="pt-6 mt-6 border-t sticky bottom-0 bg-white">
                       <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
-                        <Button 
-                          type="button" 
-                          variant="outline"
-                          onClick={() => setIsProfileDialogOpen(false)}
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => setIsProfileDialogOpen(false)}
                           className="w-full sm:w-auto"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button 
-                          type="submit" 
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        type="submit" 
                           className="bg-[#3A726D] hover:bg-[#265255] w-full sm:w-auto"
-                        >
-                          Guardar Alterações
-                        </Button>
+                      >
+                        Guardar Alterações
+                      </Button>
                       </div>
                     </DialogFooter>
                   </form>

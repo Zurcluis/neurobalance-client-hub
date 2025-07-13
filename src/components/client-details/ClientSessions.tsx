@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client'; // Importar diretamente
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Check, Edit, FileText, Trash2, Upload, Filter, Clock, SortAsc, SortDesc, FileType, Clipboard, RefreshCw, Link2Off } from 'lucide-react';
@@ -110,8 +111,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   const [searchText, setSearchText] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   
-  // Obter dados de agendamentos diretamente do hook
-  const { appointments, isLoading: isLoadingAppointments } = useAppointments();
+  // Obter dados de agendamentos e a função refetch do hook
+  const { appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useAppointments();
 
   const sessionForm = useForm<Session>();
   const maxSessionsForm = useForm<{ maxSessions: number }>({
@@ -124,9 +125,11 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   const [completedSessionsPercentage, setCompletedSessionsPercentage] = useState(0);
   const [totalRealizedCount, setTotalRealizedCount] = useState(0);
   const [totalUpcomingCount, setTotalUpcomingCount] = useState(0);
-  const [sessionNotes, setSessionNotes] = useState<{ [key: string]: string }>({});
+  // Remover estado de notas de sessão, pois virá direto dos agendamentos
+  // const [sessionNotes, setSessionNotes] = useState<{ [key: string]: string }>({});
 
-  const supabase = (window as any).supabase;
+  // Remover a inicialização a partir do window
+  // const supabase = (window as any).supabase;
 
   const loadFromStorage = <T extends unknown>(key: string, defaultValue: T): T => {
     const storedData = localStorage.getItem(key);
@@ -137,10 +140,10 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     localStorage.setItem(key, JSON.stringify(data));
   };
 
-  // Função para forçar a atualização dos dados
+  // Função para forçar a atualização dos dados, agora buscando do servidor
   const refreshData = () => {
-    setRefreshTrigger(prev => prev + 1);
-    toast.success("Dados atualizados");
+    refetchAppointments();
+    toast.success("Dados atualizados a partir do servidor");
   };
 
   useEffect(() => {
@@ -180,7 +183,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     }
   }, [appointments, isLoadingAppointments, client.id, refreshTrigger]);
 
-  // Carregar notas de sessão
+  // Remover a função que carregava notas da tabela 'sessoes'
+  /*
   useEffect(() => {
     const loadSessionNotes = async () => {
       if (!supabase || !client.id) return;
@@ -208,6 +212,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     
     loadSessionNotes();
   }, [supabase, client.id, refreshTrigger]);
+  */
 
   // Processar arquivos de sessão para novo formato
   const processSessionFiles = (files: any[]): SessionFile[] => {
@@ -236,7 +241,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
 
     const pastCalendarSessionsView: RealizedSessionView[] = pastCalendarAppointments.map(app => {
       const existingManualSession = sessions.find(s => s.id === app.id.toString());
-      const sessionNote = sessionNotes[app.id.toString()] || app.notas || '';
+      // Usar 'app.notas' diretamente, em vez de 'sessionNotes'
+      const sessionNote = existingManualSession?.notes || app.notas || '';
       
       // Formatar a hora do agendamento para garantir consistência
       const appDate = parseISO(app.data);
@@ -308,7 +314,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
       return sortOrder === 'desc' ? compareDesc(dateA, dateB) : compareDesc(dateB, dateA);
     });
 
-  }, [sessions, pastCalendarAppointments, sessionNotes, sortOrder, refreshTrigger]);
+  }, [sessions, pastCalendarAppointments, refreshTrigger]);
 
   // Aplicar filtros à lista de sessões
   const filteredSessions = useMemo(() => {
@@ -345,7 +351,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
 
   // Função para sincronizar manualmente
   const syncSessionCount = () => {
-    const realizedCount = allRealizedSessions.filter(s => s.status === 'confirmado').length;
+    const realizedCount = allRealizedSessions.filter(s => s.status === 'realizado').length;
     if (client.numero_sessoes !== realizedCount) {
       onUpdateClient({
         ...client,
@@ -359,8 +365,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   };
 
   useEffect(() => {
-    // Conta apenas sessões com status 'confirmado'
-    const realizedCount = allRealizedSessions.filter(s => s.status === 'confirmado').length;
+    // Corrigir o status para 'realizado' em vez de 'confirmado'
+    const realizedCount = allRealizedSessions.filter(s => s.status === 'realizado').length;
     setTotalRealizedCount(realizedCount);
 
     const maxSessions = client.max_sessoes || 0;
@@ -446,102 +452,101 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   };
 
   const handleSaveEdit = async (data: EditSessionFormData) => {
-      if (!sessionToEdit || !supabase) {
-          toast.error("Erro: Sessão não encontrada ou Supabase não conectado.");
-          return;
+    if (!sessionToEdit || !supabase) {
+      toast.error("Erro: A sessão a editar não foi encontrada ou a ligação ao servidor falhou.");
+      return;
+    }
+  
+    setIsUploading(true);
+    let uploadedFilePaths: SessionFile[] = [];
+  
+    // 1. Upload de ficheiros (se existirem)
+    if (data.filesToUpload && data.filesToUpload.length > 0) {
+      const files = Array.from(data.filesToUpload);
+      const uploadPromises = files.map(async (file) => {
+        const filePath = `sessoes/${sessionToEdit.id}/${file.name}`;
+        const { data: uploadData, error } = await supabase.storage
+          .from('ficheiros')
+          .upload(filePath, file, { upsert: true });
+  
+        if (error) {
+          console.error('Erro no upload:', error);
+          toast.error(`Erro ao carregar ${file.name}: ${error.message}`);
+          return null;
+        } else if (uploadData) {
+          return {
+            name: file.name,
+            path: uploadData.path,
+            uploadedAt: new Date().toISOString(),
+          };
+        }
+        return null;
+      });
+      const results = await Promise.all(uploadPromises);
+      uploadedFilePaths = results.filter((r): r is SessionFile => r !== null);
+    }
+  
+    const updatedSessionFiles = [...(sessionToEdit.arquivos || []), ...uploadedFilePaths];
+  
+    try {
+      // 2. Unificar a atualização para sempre usar a tabela 'agendamentos'
+      // A lista de "sessões" é na verdade uma vista dos agendamentos.
+      const sessionId = parseInt(sessionToEdit.id);
+      if (isNaN(sessionId)) {
+        toast.error("ID da sessão inválido.");
+        setIsUploading(false);
+        return;
       }
 
-      setIsUploading(true);
-      let uploadedFilePaths: SessionFile[] = [];
-
-      if (data.filesToUpload && data.filesToUpload.length > 0) {
-          const files = Array.from(data.filesToUpload);
-          const uploadPromises = files.map(async (file) => {
-              const filePath = `sessoes/${sessionToEdit.id}/${file.name}`;
-              const { data: uploadData, error } = await supabase.storage
-                  .from('ficheiros').upload(filePath, file, { upsert: true });
-              if (error) {
-                  console.error('Erro no upload:', error);
-                  toast.error(`Erro ao carregar ${file.name}: ${error.message}`);
-                  return null;
-              } else if (uploadData) {
-                  return {
-                    name: file.name,
-                    path: uploadData.path,
-                    uploadedAt: new Date().toISOString()
-                  };
-              }
-              return null;
-          });
-          const results = await Promise.all(uploadPromises);
-          uploadedFilePaths = results.filter(Boolean) as SessionFile[];
+      const { error: updateError } = await supabase
+        .from('agendamentos')
+        .update({
+          titulo: data.titulo,
+          tipo: data.tipo,
+          estado: data.estado,
+          notas: data.notes,
+          terapeuta: data.terapeuta,
+          // Embora 'arquivos' não seja uma coluna padrão em 'agendamentos',
+          // se a sua lógica de visualização os lê de 'sessoes' ou de outro lugar,
+          // esta estrutura pode precisar de ajuste. Por agora, vamos focar nos campos principais.
+        })
+        .eq('id', sessionId);
+  
+      if (updateError) {
+        throw updateError;
       }
 
-      const updatedSessionFiles = [
-          ...(sessionToEdit.arquivos || []),
-          ...uploadedFilePaths
-      ];
-
-      // First, update in the database
-      const sessionId = sessionToEdit.id;
-      try {
-          // Se a sessão for originada no calendário, atualizamos o agendamento correspondente
-          if (sessionToEdit.isFromCalendar) {
-              const { error: calendarError } = await supabase
-                  .from('agendamentos')
-                  .update({
-                      titulo: data.titulo,
-                      tipo: data.tipo,
-                      estado: data.estado,
-                      notas: data.notes,
-                      terapeuta: data.terapeuta // Garantir que o terapeuta seja salvo
-                  })
-                  .eq('id', parseInt(sessionId));
-              
-              if (calendarError) {
-                  console.error('Erro ao atualizar agendamento:', calendarError);
-                  toast.error(`Erro ao atualizar agendamento: ${calendarError.message}`);
-              }
-          }
-
-          // Depois atualizamos a sessão na tabela de sessões
-          const { error } = await supabase
-              .from('sessoes')
-              .update({
-                  notes: data.notes,
-                  terapeuta: data.terapeuta,
-                  duracao: data.duration,
-                  arquivos: updatedSessionFiles,
-                  type: data.tipo
-              })
-              .eq('id', sessionId);
-
-          if (error) throw error;
-
-          // Then update in the local state
-          const updatedSession: Session = {
-              id: sessionToEdit.id,
-              clientId: sessionToEdit.clientId,
-              date: sessionToEdit.date,
+      // Remover a sincronização com a tabela 'sessoes' que não existe
+      /*
+      const { error: sessionTableError } = await supabase
+          .from('sessoes')
+          .update({
               notes: data.notes,
               terapeuta: data.terapeuta,
-              paid: sessionToEdit.paid,
-              arquivos: updatedSessionFiles.map(file => typeof file === 'string' ? file : file.path),
-              type: data.tipo || sessionToEdit.sessionType,
-              duracao: data.duration
-          };
+              duracao: data.duration,
+              arquivos: updatedSessionFiles,
+              type: data.tipo
+          })
+          .eq('id', sessionToEdit.id); // Usa o ID de sessão (pode ser string ou int)
 
-          onUpdateSession(updatedSession);
-          refreshData();
-          setSessionToEdit(null);
-          setIsEditModalOpen(false);
-          toast.success("Sessão atualizada com sucesso!");
-      } catch (error) {
-          console.error("Erro ao atualizar sessão:", error);
-          toast.error("Falha ao atualizar sessão. Tente novamente.");
-      } finally {
-          setIsUploading(false);
+      if (sessionTableError) {
+          // Não bloquear se a atualização em 'sessoes' falhar, apenas registar
+          console.warn("Aviso: Falha ao sincronizar com a tabela 'sessoes'.", sessionTableError);
       }
+      */
+
+
+      toast.success("Sessão atualizada com sucesso!");
+      refreshData();
+      setSessionToEdit(null);
+      setIsEditModalOpen(false);
+  
+    } catch (error: any) {
+      console.error("Erro ao atualizar sessão:", error);
+      toast.error(`Falha ao atualizar sessão: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const getSessionTypeLabel = (type: string | undefined) => {
@@ -606,16 +611,34 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   <strong>{totalRealizedCount}</strong> de <strong>{client.max_sessoes}</strong> sessões realizadas
                 </span>
               </div>
-              <Progress 
-                value={completedSessionsPercentage} 
-                className={`h-3 ${
-                  completedSessionsPercentage >= 100 ? 'bg-green-100' : 
-                  completedSessionsPercentage >= 75 ? 'bg-emerald-100' :
-                  completedSessionsPercentage >= 50 ? 'bg-amber-100' :
-                  completedSessionsPercentage >= 25 ? 'bg-orange-100' :
-                  'bg-red-100'
-                }`}
-              />
+              <div className="relative w-full">
+                <Progress 
+                  value={completedSessionsPercentage} 
+                  className={`h-3 ${
+                    completedSessionsPercentage >= 100 ? 'bg-green-100' : 
+                    completedSessionsPercentage >= 75 ? 'bg-emerald-100' :
+                    completedSessionsPercentage >= 50 ? 'bg-amber-100' :
+                    completedSessionsPercentage >= 25 ? 'bg-orange-100' :
+                    'bg-red-100'
+                  }`}
+                />
+                {/* Marcadores de Metas */}
+                {Array.from({ length: Math.floor(client.max_sessoes / 5) }).map((_, i) => {
+                  const milestone = (i + 1) * 5;
+                  if (milestone < client.max_sessoes) {
+                    const leftPosition = (milestone / client.max_sessoes) * 100;
+                    return (
+                      <div
+                        key={milestone}
+                        className="absolute top-0 h-full w-0.5 bg-gray-400"
+                        style={{ left: `${leftPosition}%` }}
+                        title={`Meta de ${milestone} sessões`}
+                      />
+                    );
+                  }
+                  return null;
+                })}
+              </div>
               <div className="flex justify-between items-center text-xs text-gray-500">
                 <span>{Math.round(completedSessionsPercentage)}% concluído</span>
                 <span>{client.max_sessoes - totalRealizedCount} sessões restantes</span>

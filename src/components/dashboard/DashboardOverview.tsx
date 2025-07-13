@@ -45,9 +45,9 @@ const RecentClientsTable = ({ clients, appointments, payments }: { clients: Clie
               <div className="w-10 h-10 bg-gradient-to-br from-[#3f9094] to-[#5DA399] rounded-full flex items-center justify-center text-white font-medium">
                 {client.nome.charAt(0).toUpperCase()}
               </div>
-              <div>
+            <div>
                 <p className="font-medium text-gray-800">{client.nome}</p>
-                <p className="text-sm text-gray-600">{client.email || 'Sem email'}</p>
+              <p className="text-sm text-gray-600">{client.email || 'Sem email'}</p>
               </div>
             </div>
             <div className="text-right">
@@ -244,7 +244,7 @@ const DashboardOverview = () => {
         const appointmentDate = parseISO(appointment.data);
         return appointmentDate < today && appointment.estado === 'realizado';
       }).length;
-      
+
       const total = appointments.length;
       
       setTodayAppointments(todaysAppts);
@@ -267,7 +267,7 @@ const DashboardOverview = () => {
       setRecentClients(sortedClients);
     }
   }, [clients, isClientsLoading]);
-  
+    
   const formatAppointmentsForTable = (appointments) => {
     return appointments.map(appointment => ({
       id: appointment.id.toString(),
@@ -363,33 +363,28 @@ const DashboardOverview = () => {
   
   return (
     <div className="space-y-6">
-      {/* Cabeçalho com filtros */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#3f9094]">Dashboard Analytics</h1>
-          <p className="text-gray-600">Visão geral completa do seu negócio</p>
-        </div>
-        <div className="flex gap-3">
-          <Select value={periodFilter} onValueChange={(value: any) => setPeriodFilter(value)}>
-            <SelectTrigger className="w-48">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Selecionar período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="90d">Últimos 90 dias</SelectItem>
-              <SelectItem value="1y">Último ano</SelectItem>
-              <SelectItem value="all">Todos os dados</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleExportData} variant="outline" className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Exportar
+      {/* Próximos Agendamentos */}
+      <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/30 border-l-4 border-l-[#5DA399]">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-lg font-bold text-[#3f9094] flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Próximos Agendamentos
+          </CardTitle>
+          <Button asChild variant="outline" className="text-[#3f9094] border-[#3f9094]">
+            <Link to="/calendar">Ver Calendário</Link>
           </Button>
-        </div>
-      </div>
-      
+        </CardHeader>
+        <CardContent>
+          {upcomingAppointments.length > 0 ? (
+            <UpcomingAppointmentsTable appointments={formatAppointmentsForTable(upcomingAppointments)} />
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-gray-500">Nenhum agendamento futuro encontrado.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* KPIs Principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/30 border-l-4 border-l-[#3f9094] hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => navigate('/clients')}>
@@ -454,7 +449,7 @@ const DashboardOverview = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/30 border-l-4 border-l-[#B1D4CF] hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => navigate('/finances')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Lucro Líquido</CardTitle>
@@ -525,8 +520,8 @@ const DashboardOverview = () => {
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
                   Evolução Financeira
-                </CardTitle>
-              </CardHeader>
+            </CardTitle>
+          </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -549,7 +544,7 @@ const DashboardOverview = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
+              </div>
         </TabsContent>
         
         <TabsContent value="clientes" className="space-y-6">
@@ -582,22 +577,22 @@ const DashboardOverview = () => {
                       <Tooltip formatter={(value: any) => [value, 'Clientes']} />
                     </PieChart>
                   </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            
+              </div>
+          </CardContent>
+        </Card>
+        
             <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
                   Clientes Recentes
-                </CardTitle>
-              </CardHeader>
+            </CardTitle>
+          </CardHeader>
               <CardContent>
                 <RecentClientsTable clients={recentClients} appointments={appointments} payments={payments} />
-              </CardContent>
-            </Card>
-          </div>
+          </CardContent>
+        </Card>
+      </div>
         </TabsContent>
         
         <TabsContent value="financeiro" className="space-y-6">
@@ -607,29 +602,29 @@ const DashboardOverview = () => {
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5" />
                   Receita vs Despesas
-                </CardTitle>
-              </CardHeader>
+            </CardTitle>
+          </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={temporalData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                       <XAxis dataKey="month" fontSize={12} />
                       <YAxis tickFormatter={(value) => `€${value}`} fontSize={12} />
-                      <Tooltip 
+                  <Tooltip 
                         formatter={(value: any, name: string) => [
                           `€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 
                           name === 'receita' ? 'Receita' : 'Despesas'
                         ]}
-                      />
+                  />
                       <Legend />
                       <Bar dataKey="receita" name="Receita" fill="#3f9094" />
                       <Bar dataKey="despesas" name="Despesas" fill="#ff6b6b" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
             
             <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
               <CardHeader>
@@ -724,10 +719,10 @@ const DashboardOverview = () => {
                       <span className="text-xs text-gray-500">{getPeriodLabel(periodFilter)}</span>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
         </TabsContent>
       </Tabs>
     </div>

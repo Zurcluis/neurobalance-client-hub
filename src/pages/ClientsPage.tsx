@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import ClientImport from '@/components/clients/ClientImport';
-import { Plus, Search, Upload, X, Calendar, Filter, ChevronDown, Download, Users, TrendingUp, BarChart3, Target, PieChart, User } from 'lucide-react';
+import { Plus, Search, Upload, X, Calendar, Filter, ChevronDown, Download, Users, TrendingUp, BarChart3, Target, PieChart, User, Key, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useClients from '@/hooks/useClients';
@@ -24,6 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import useAppointments from '@/hooks/useAppointments';
 import usePayments from '@/hooks/usePayments';
+import ClientTokenManager from '@/components/admin/ClientTokenManager';
+import AdminChatPanel from '@/components/admin/AdminChatPanel';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 
@@ -61,7 +63,7 @@ const ClientsPage = () => {
   const [selectedGender, setSelectedGender] = useState<string>('all');
   const [ageRange, setAgeRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name');
-  const [viewMode, setViewMode] = useState<'grid' | 'analytics'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'analytics' | 'tokens' | 'chat'>('grid');
 
   // Filtros avançados
   const filteredAndSortedClients = useMemo(() => {
@@ -74,37 +76,37 @@ const ClientsPage = () => {
     
     // Filtro por período
     if (datePeriod !== 'all') {
-      let fromDate: Date | undefined;
-      let toDate: Date = new Date();
+    let fromDate: Date | undefined;
+    let toDate: Date = new Date();
 
-      switch (datePeriod) {
-        case 'month':
-          fromDate = subMonths(new Date(), 1);
-          break;
-        case 'quarter':
-          fromDate = subMonths(new Date(), 3);
-          break;
-        case 'halfyear':
-          fromDate = subMonths(new Date(), 6);
-          break;
-        case 'year':
-          fromDate = subMonths(new Date(), 12);
-          break;
-        case 'custom':
-          fromDate = dateRange.from;
-          toDate = dateRange.to || new Date();
-          break;
-      }
+    switch (datePeriod) {
+      case 'month':
+        fromDate = subMonths(new Date(), 1);
+        break;
+      case 'quarter':
+        fromDate = subMonths(new Date(), 3);
+        break;
+      case 'halfyear':
+        fromDate = subMonths(new Date(), 6);
+        break;
+      case 'year':
+        fromDate = subMonths(new Date(), 12);
+        break;
+      case 'custom':
+        fromDate = dateRange.from;
+        toDate = dateRange.to || new Date();
+        break;
+    }
 
       filtered = filtered.filter(client => {
-        const clientDate = client.criado_em ? parseISO(client.criado_em) : null;
+      const clientDate = client.criado_em ? parseISO(client.criado_em) : null;
         if (!clientDate) return true;
-        
-        const isAfterFrom = fromDate ? isAfter(clientDate, fromDate) : true;
-        const isBeforeTo = isValid(toDate) ? isBefore(clientDate, toDate) : true;
-        
-        return isAfterFrom && isBeforeTo;
-      });
+      
+      const isAfterFrom = fromDate ? isAfter(clientDate, fromDate) : true;
+      const isBeforeTo = isValid(toDate) ? isBefore(clientDate, toDate) : true;
+      
+      return isAfterFrom && isBeforeTo;
+    });
     }
     
     // Filtro por status
@@ -416,7 +418,7 @@ const ClientsPage = () => {
       <div className="space-y-6">
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
+        <div>
             <h1 className="text-3xl font-bold text-[#3f9094]">Gestão de Clientes</h1>
             <p className="text-gray-600 mt-2">Gerir informações e analytics dos clientes</p>
           </div>
@@ -437,6 +439,22 @@ const ClientsPage = () => {
             >
               <BarChart3 className="h-4 w-4" />
               Analytics
+            </Button>
+            <Button
+              variant={viewMode === 'tokens' ? 'default' : 'outline'}
+              onClick={() => setViewMode('tokens')}
+              className="flex items-center gap-2"
+            >
+              <Key className="h-4 w-4" />
+              Tokens
+            </Button>
+            <Button
+              variant={viewMode === 'chat' ? 'default' : 'outline'}
+              onClick={() => setViewMode('chat')}
+              className="flex items-center gap-2"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Chat
             </Button>
           </div>
         </div>
@@ -498,7 +516,7 @@ const ClientsPage = () => {
             </CardContent>
           </Card>
         </div>
-
+        
         {/* Filtros e Ações */}
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div className="flex flex-col md:flex-row gap-3 flex-1">
@@ -511,7 +529,7 @@ const ClientsPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            
+
             <div className="flex gap-2">
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger className="w-40">
@@ -564,7 +582,7 @@ const ClientsPage = () => {
                   <SelectItem value="revenue">Receita</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+                </div>
           </div>
           
           <div className="flex gap-2">
@@ -585,19 +603,27 @@ const ClientsPage = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
-                  <DialogTitle>Adicionar Novo Cliente</DialogTitle>
+                    <DialogTitle>Adicionar Novo Cliente</DialogTitle>
                   <DialogDescription>
                     Preencha os dados abaixo para adicionar um novo cliente.
                   </DialogDescription>
                 </DialogHeader>
-                <ClientForm onSubmit={handleAddClient} />
+                  <ClientForm onSubmit={handleAddClient} />
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
         {/* Conteúdo Principal */}
-        {viewMode === 'analytics' ? (
+        {viewMode === 'chat' ? (
+          <div className="space-y-6">
+            <AdminChatPanel />
+          </div>
+        ) : viewMode === 'tokens' ? (
+          <div className="space-y-6">
+            <ClientTokenManager />
+          </div>
+        ) : viewMode === 'analytics' ? (
           <div className="space-y-6">
             {/* Gráficos Analytics */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -698,8 +724,8 @@ const ClientsPage = () => {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-            
+      </div>
+      
             {/* Top Clientes */}
             <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
               <CardHeader>
@@ -720,14 +746,14 @@ const ClientsPage = () => {
                           <p className="font-medium">{client.nome}</p>
                           <p className="text-sm text-gray-600">{client.sessions} sessões</p>
                         </div>
-                      </div>
+        </div>
                       <div className="text-right">
                         <p className="font-bold text-[#3f9094]">€{client.revenue.toFixed(2)}</p>
                         <p className="text-xs text-gray-500">
                           €{client.sessions > 0 ? (client.revenue / client.sessions).toFixed(2) : '0.00'}/sessão
                         </p>
-                      </div>
-                    </div>
+        </div>
+      </div>
                   ))}
                 </div>
               </CardContent>
@@ -735,91 +761,91 @@ const ClientsPage = () => {
           </div>
         ) : (
           <div>
-            <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-6">
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-6">
                 <TabsTrigger value="all">Todos ({filteredAndSortedClients.length})</TabsTrigger>
                 <TabsTrigger value="ongoing">Em Andamento ({clientsByStatus.ongoing.length})</TabsTrigger>
                 <TabsTrigger value="thinking">Pensando ({clientsByStatus.thinking.length})</TabsTrigger>
                 <TabsTrigger value="no-need">Sem Necessidade ({clientsByStatus['no-need'].length})</TabsTrigger>
                 <TabsTrigger value="finished">Finalizado ({clientsByStatus.finished.length})</TabsTrigger>
                 <TabsTrigger value="call">Ligar ({clientsByStatus.call.length})</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="all" className="mt-0">
+        </TabsList>
+        
+        <TabsContent value="all" className="mt-0">
                 {filteredAndSortedClients.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredAndSortedClients.map(client => (
-                      <ClientCard 
-                        key={client.id} 
-                        client={client} 
-                        onDelete={() => handleRequestDeleteClient(client)}
-                        statusClass={`client-${client.estado || 'ongoing'}`}
-                      />
-                    ))}
-                  </div>
-                ) : (
+                <ClientCard 
+                  key={client.id} 
+                  client={client} 
+                  onDelete={() => handleRequestDeleteClient(client)}
+                  statusClass={`client-${client.estado || 'ongoing'}`}
+                />
+              ))}
+            </div>
+          ) : (
                   <div className="text-center py-12 bg-gradient-to-br from-white to-[#E6ECEA]/30 rounded-lg shadow-sm p-8">
                     <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
+              <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
                     <p className="text-gray-600 mb-6">
                       {searchQuery || selectedStatus !== 'all' || selectedGender !== 'all' || ageRange !== 'all' ? 
-                        'Tente ajustar seus filtros de pesquisa' : 
-                        'Adicione seu primeiro cliente para começar'}
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                      <Button 
+                  'Tente ajustar seus filtros de pesquisa' : 
+                  'Adicione seu primeiro cliente para começar'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
                         className="bg-[#3f9094] hover:bg-[#2A5854]" 
                         onClick={() => setIsAddClientOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Novo Cliente
-                      </Button>
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Novo Cliente
+                </Button>
                       {(searchQuery || selectedStatus !== 'all' || selectedGender !== 'all' || ageRange !== 'all') && (
-                        <Button 
-                          variant="outline" 
+                <Button 
+                  variant="outline" 
                           onClick={clearFilters}
-                        >
+                >
                           <X className="h-4 w-4 mr-2" />
                           Limpar Filtros
-                        </Button>
+                </Button>
                       )}
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
+              </div>
+            </div>
+          )}
+        </TabsContent>
 
-              {Object.entries(clientsByStatus).map(([status, clientList]) => (
-                <TabsContent key={status} value={status} className="mt-0">
-                  {clientList.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {clientList.map(client => (
-                        <ClientCard 
-                          key={client.id} 
-                          client={client} 
-                          onDelete={() => handleRequestDeleteClient(client)}
-                          statusClass={`client-${status}`}
-                        />
-                      ))}
-                    </div>
-                  ) : (
+        {Object.entries(clientsByStatus).map(([status, clientList]) => (
+          <TabsContent key={status} value={status} className="mt-0">
+            {clientList.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {clientList.map(client => (
+                  <ClientCard 
+                    key={client.id} 
+                    client={client} 
+                    onDelete={() => handleRequestDeleteClient(client)}
+                    statusClass={`client-${status}`}
+                  />
+                ))}
+              </div>
+            ) : (
                     <div className="text-center py-12 bg-gradient-to-br from-white to-[#E6ECEA]/30 rounded-lg shadow-sm p-8">
                       <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
+                <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
                       <p className="text-gray-600 mb-6">
                         Não há clientes com este status no momento
                       </p>
-                      <Button 
+                  <Button 
                         className="bg-[#3f9094] hover:bg-[#2A5854]" 
                         onClick={() => setIsAddClientOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Novo Cliente
-                      </Button>
-                    </div>
-                  )}
-                </TabsContent>
-              ))}
-            </Tabs>
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Novo Cliente
+                  </Button>
+              </div>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
           </div>
         )}
       </div>

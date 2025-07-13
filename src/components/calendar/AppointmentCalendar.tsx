@@ -214,7 +214,7 @@ const AppointmentCalendar = () => {
         return 'bg-blue-500 text-white';
     }
   };
-
+  
   const getAppointmentStatusColor = (status: string) => {
     switch (status) {
       case 'confirmado':
@@ -223,7 +223,7 @@ const AppointmentCalendar = () => {
         return 'border-l-4 border-red-500';
       case 'cancelado':
         return 'border-l-4 border-gray-500';
-      case 'concluido':
+              case 'realizado':
         return 'border-l-4 border-blue-500';
       default:
         return 'border-l-4 border-red-500';
@@ -259,9 +259,9 @@ const AppointmentCalendar = () => {
       end: calendarEnd
     });
 
-    const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-    return (
+      return (
       <div className="p-4 bg-white rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-medium text-[#265255]">
@@ -288,8 +288,8 @@ const AppointmentCalendar = () => {
         </div>
         
         <div className="grid grid-cols-7 gap-1 text-xs">
-          {weekDays.map(day => (
-            <div key={day} className="text-center text-gray-500 font-medium py-1">
+          {weekDays.map((day, index) => (
+            <div key={`${day}-${index}`} className="text-center text-gray-500 font-medium py-1">
               {day}
             </div>
           ))}
@@ -301,7 +301,7 @@ const AppointmentCalendar = () => {
             
       return (
               <button
-                key={day.toISOString()}
+                key={format(day, 'yyyy-MM-dd')}
                 onClick={() => setSelectedDate(day)}
                 className={`
                   h-6 w-6 text-xs rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors relative
@@ -354,13 +354,13 @@ const AppointmentCalendar = () => {
               {dayHoliday.description && (
                 <p className="text-xs opacity-75 mt-1">{dayHoliday.description}</p>
               )}
-            </div>
-          )}
+          </div>
+        )}
           
           {dayEvents.length > 0 ? (
-            dayEvents.map(appointment => (
+            dayEvents.map((appointment, index) => (
               <div
-                key={appointment.id}
+                key={`day-panel-${appointment.id}-${index}`}
                 onClick={() => handleEventClick(appointment)}
                 className={`p-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
               >
@@ -415,14 +415,14 @@ const AppointmentCalendar = () => {
                   
                   return (
                     <div 
-                  key={day.toISOString()}
+                  key={format(day, 'yyyy-MM-dd')}
                   className={`
                     p-2 border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-gray-50 relative
                     ${!isCurrentMonth ? 'bg-gray-50' : ''}
                     ${isDayToday ? 'bg-blue-50' : ''}
                     ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50' : ''}
                   `}
-                  onClick={() => handleDateClick(day)}
+                  onClick={() => openNewAppointmentDialog(day)}
                 >
                   <div className={`
                     text-sm font-medium mb-1 text-right relative
@@ -443,17 +443,17 @@ const AppointmentCalendar = () => {
                       </div>
                     )}
                     
-                    {dayAppointments.slice(0, dayHoliday ? 1 : 2).map(appointment => (
+                    {dayAppointments.slice(0, dayHoliday ? 1 : 2).map((appointment, index) => (
                       <div
-                        key={appointment.id}
+                        key={`main-${appointment.id}-${index}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEventClick(appointment);
                         }}
                         className={`text-xs px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
                       >
-                         {appointment.titulo}
-                      </div>
+                            {appointment.titulo}
+                          </div>
                     ))}
                     {dayAppointments.length > (dayHoliday ? 1 : 2) && (
                       <div className="text-xs text-gray-500 px-2">
@@ -490,15 +490,15 @@ const AppointmentCalendar = () => {
                 <p className="text-sm opacity-90 capitalize mb-1">{dayHoliday.type.replace('_', ' ')}</p>
                 {dayHoliday.description && (
                   <p className="text-sm opacity-75">{dayHoliday.description}</p>
-                )}
-              </div>
+              )}
+            </div>
             )}
 
             {dayAppointments.length > 0 ? (
               <ul className="space-y-3">
-                {dayAppointments.map(appointment => (
+                {dayAppointments.map((appointment, index) => (
                   <li
-                    key={appointment.id}
+                    key={`day-${appointment.id}-${index}`}
                     onClick={() => handleEventClick(appointment)}
                     className={`flex items-center space-x-4 p-3 rounded-lg cursor-pointer transition-shadow hover:shadow-md ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
                   >
@@ -506,7 +506,7 @@ const AppointmentCalendar = () => {
                     <div>
                       <p className="font-semibold">{appointment.titulo}</p>
                       <p className="text-sm opacity-90">{appointment.clientes?.nome || 'Cliente não associado'}</p>
-                    </div>
+              </div>
                   </li>
                 ))}
               </ul>
@@ -516,7 +516,7 @@ const AppointmentCalendar = () => {
                 <p className="mt-2">Nenhum agendamento para este dia.</p>
               </div>
             ) : null}
-          </div>
+              </div>
         </CardContent>
       </Card>
     );
@@ -537,7 +537,7 @@ const AppointmentCalendar = () => {
           const dayHoliday = getDayHoliday(day);
           
           return (
-            <Card key={day.toISOString()} className="bg-white">
+            <Card key={format(day, 'yyyy-MM-dd')} className="bg-white">
               <CardHeader className={`p-3 border-b ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50' : 'bg-gray-50'}`}>
                 <CardTitle className={`text-md font-medium ${dayHoliday && dayHoliday.type === 'feriado' ? 'text-red-600' : 'text-[#265255]'}`}>
                   {format(day, "eeee, dd/MM", { locale: pt })}
@@ -554,14 +554,14 @@ const AppointmentCalendar = () => {
                     <div className={`p-2 rounded text-xs border ${getHolidayColor(dayHoliday.type)}`}>
                       <p className="font-semibold">{dayHoliday.name}</p>
                       <p className="opacity-75 capitalize">{dayHoliday.type.replace('_', ' ')}</p>
-                    </div>
+            </div>
                   )}
                   
                   {dayAppointments.length > 0 ? (
                     <ul className="space-y-2">
-                      {dayAppointments.map(appointment => (
+                      {dayAppointments.map((appointment, index) => (
                         <li
-                          key={appointment.id}
+                          key={`week-${appointment.id}-${index}`}
                           onClick={() => handleEventClick(appointment)}
                           className={`flex items-center space-x-3 p-2 rounded cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
                         >
@@ -573,12 +573,12 @@ const AppointmentCalendar = () => {
                   ) : !dayHoliday ? (
                     <p className="text-xs text-gray-400 py-2">Sem eventos agendados.</p>
                   ) : null}
-                </div>
+              </div>
               </CardContent>
             </Card>
           );
         })}
-      </div>
+              </div>
     );
   };
   
@@ -605,18 +605,18 @@ const AppointmentCalendar = () => {
                     {upcomingAppointments.map((appointment, index) => {
                         const showDateHeader = index === 0 || !isSameDay(parseISO(appointment.data), parseISO(upcomingAppointments[index - 1].data));
                         return (
-                            <React.Fragment key={appointment.id}>
+                            <React.Fragment key={`${appointment.id}-${index}`}>
                                 {showDateHeader && (
                                     <h3 className="text-lg font-semibold pt-4 text-[#265255] border-t mt-4 first:mt-0 first:border-t-0">
                                         {format(appointment.day, "eeee, dd/MM/yyyy", { locale: pt })}
                                     </h3>
                                 )}
-                                                                 <li onClick={() => handleEventClick(appointment)} className={`flex items-center space-x-4 p-3 rounded-lg cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}>
+                                <li onClick={() => handleEventClick(appointment)} className={`flex items-center space-x-4 p-3 rounded-lg cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}>
                                      <div className="font-bold">{format(parseISO(appointment.data), 'HH:mm')}</div>
                                      <div>
                                          <p className="font-semibold">{appointment.titulo}</p>
                                          <p className="text-sm opacity-90">{appointment.clientes?.nome || 'Cliente não associado'}</p>
-                                     </div>
+            </div>
                                  </li>
                             </React.Fragment>
                         )
@@ -628,16 +628,16 @@ const AppointmentCalendar = () => {
                 <p className="mt-2">Nenhum agendamento para os próximos 7 dias.</p>
           </div>
             )}
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
   };
 
   const renderCurrentView = () => {
     switch (currentView) {
-      case 'day':
+        case 'day':
         return renderDayView();
-      case 'week':
+        case 'week':
         return renderWeekView();
       case 'agenda':
         return renderAgendaView();
@@ -673,11 +673,11 @@ const AppointmentCalendar = () => {
               <h1 className="text-xl font-medium text-[#265255]">Calendário</h1>
             </div>
                         <div className="hidden md:flex items-center space-x-4 pl-4">
-                <Button
-                onClick={() => openNewAppointmentDialog()}
+        <Button 
+          onClick={() => openNewAppointmentDialog()}
                 className="bg-[#3f9094] hover:bg-[#265255] text-white"
-                >
-                <Plus className="h-4 w-4 mr-2" />
+        >
+          <Plus className="h-4 w-4 mr-2" />
                 Criar
                 </Button>
                 
@@ -749,7 +749,7 @@ const AppointmentCalendar = () => {
                 {/* Sidebar */}
         <aside className="w-64 bg-gray-50 border-r border-gray-200 p-4 space-y-4 overflow-y-auto hidden md:block">
           {renderMiniCalendar()}
-          <DayEventsPanel />
+        <DayEventsPanel />
           
           {/* Legenda de Cores */}
           <div className="p-4 bg-white rounded-lg border border-gray-200">
@@ -767,8 +767,8 @@ const AppointmentCalendar = () => {
                 <div className="w-4 h-4 bg-yellow-500 rounded"></div>
                 <span className="text-xs text-gray-700">Discussão</span>
               </div>
-            </div>
-            
+      </div>
+
             <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Status de Eventos</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
@@ -778,6 +778,14 @@ const AppointmentCalendar = () => {
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-2 bg-red-500 rounded"></div>
                 <span className="text-xs text-gray-700">Pendente</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-2 bg-blue-500 rounded"></div>
+                <span className="text-xs text-gray-700">Realizado</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-2 bg-gray-500 rounded"></div>
+                <span className="text-xs text-gray-700">Cancelado</span>
               </div>
             </div>
 
@@ -941,7 +949,7 @@ const AppointmentCalendar = () => {
                         <SelectItem value="pendente">Pendente</SelectItem>
                         <SelectItem value="confirmado">Confirmado</SelectItem>
                         <SelectItem value="cancelado">Cancelado</SelectItem>
-                        <SelectItem value="concluido">Concluído</SelectItem>
+                        <SelectItem value="realizado">Realizado</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

@@ -19,6 +19,7 @@ import GoogleCalendarSync from '@/components/calendar/GoogleCalendarSync';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { NotificationBar } from '@/components/notifications/NotificationBar';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -188,7 +189,14 @@ const Sidebar = () => {
       </nav>
 
       <div className="mt-auto">
-        <div className="flex justify-between items-center px-2">
+        <div className={cn(
+          "flex items-center px-2",
+          isCollapsed && !isMobile ? "flex-col gap-2" : "justify-between"
+        )}>
+          <div className={cn(
+            "flex items-center",
+            isCollapsed && !isMobile ? "flex-col gap-2" : "gap-1"
+          )}>
           <ThemeToggle />
           <LanguageSwitch />
           <button 
@@ -197,6 +205,12 @@ const Sidebar = () => {
           >
             <Calendar className="h-5 w-5" />
           </button>
+          </div>
+          <div className={cn(
+            isCollapsed && !isMobile ? "mt-2" : ""
+          )}>
+            <NotificationBar />
+          </div>
         </div>
         
         {(!isCollapsed || isMobile) && (
@@ -263,7 +277,8 @@ const Sidebar = () => {
           className="h-8 w-auto app-logo" // Added app-logo class for dark mode fix
         />
         
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          <NotificationBar />
           <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 flex items-center justify-center" onClick={() => setShowSearch(true)}>
             <Search className="h-5 w-5" />
         </Button>

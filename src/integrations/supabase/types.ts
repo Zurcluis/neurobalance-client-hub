@@ -58,6 +58,172 @@ export interface Database {
           }
         ]
       }
+      appointment_confirmations: {
+        Row: {
+          id: number
+          id_agendamento: number
+          id_cliente: number
+          status: string
+          confirmed_at: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          id_agendamento: number
+          id_cliente: number
+          status?: string
+          confirmed_at?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          id_agendamento?: number
+          id_cliente?: number
+          status?: string
+          confirmed_at?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_confirmations_id_agendamento_fkey"
+            columns: ["id_agendamento"]
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_confirmations_id_cliente_fkey"
+            columns: ["id_cliente"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      client_access_tokens: {
+        Row: {
+          id: number
+          id_cliente: number
+          token: string
+          expires_at: string
+          is_active: boolean
+          created_at: string
+          last_used_at: string | null
+          user_agent: string | null
+          ip_address: string | null
+        }
+        Insert: {
+          id?: number
+          id_cliente: number
+          token: string
+          expires_at: string
+          is_active?: boolean
+          created_at?: string
+          last_used_at?: string | null
+          user_agent?: string | null
+          ip_address?: string | null
+        }
+        Update: {
+          id?: number
+          id_cliente?: number
+          token?: string
+          expires_at?: string
+          is_active?: boolean
+          created_at?: string
+          last_used_at?: string | null
+          user_agent?: string | null
+          ip_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_access_tokens_id_cliente_fkey"
+            columns: ["id_cliente"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      client_messages: {
+        Row: {
+          id: number
+          id_cliente: number
+          sender_type: string
+          message: string
+          is_read: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          id_cliente: number
+          sender_type: string
+          message: string
+          is_read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          id_cliente?: number
+          sender_type?: string
+          message?: string
+          is_read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_messages_id_cliente_fkey"
+            columns: ["id_cliente"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      client_notifications: {
+        Row: {
+          id: number
+          id_cliente: number
+          title: string
+          message: string
+          type: string
+          is_read: boolean
+          created_at: string
+          expires_at: string | null
+        }
+        Insert: {
+          id?: number
+          id_cliente: number
+          title: string
+          message: string
+          type?: string
+          is_read?: boolean
+          created_at?: string
+          expires_at?: string | null
+        }
+        Update: {
+          id?: number
+          id_cliente?: number
+          title?: string
+          message?: string
+          type?: string
+          is_read?: boolean
+          created_at?: string
+          expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notifications_id_cliente_fkey"
+            columns: ["id_cliente"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       clientes: {
         Row: {
           id: number

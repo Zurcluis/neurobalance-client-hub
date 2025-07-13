@@ -28,7 +28,7 @@ const FinancesPage = () => {
   const [periodFilter, setPeriodFilter] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  
+
   const { expenses, getTotalExpenses, isLoading: isLoadingExpenses } = useExpenses();
   const { payments: paymentsData, isLoading: isLoadingPayments } = usePayments();
   const { clients } = useClients();
@@ -155,8 +155,8 @@ const FinancesPage = () => {
     }, {} as Record<string, number>);
     return Object.entries(methods).map(([method, value]) => ({
       name: method,
-      value: value,
-      count: paymentsData.filter(p => (p.metodo || 'Não especificado') === method).length
+      value,
+      count: paymentsData.filter(p => ((p as any).metodo || 'Não especificado') === method).length
     }));
   }, [paymentsData]);
 
@@ -177,19 +177,19 @@ const FinancesPage = () => {
 
   // Dados para o mês específico selecionado
   const monthlyData = useMemo(() => {
-    const filteredPayments = paymentsData.filter(payment => {
-      const date = new Date(payment.data);
-      return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
-    });
+  const filteredPayments = paymentsData.filter(payment => {
+    const date = new Date(payment.data);
+    return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+  });
 
-    const filteredExpenses = expenses.filter(expense => {
-      const date = new Date(expense.data);
-      return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
-    });
+  const filteredExpenses = expenses.filter(expense => {
+    const date = new Date(expense.data);
+    return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+  });
 
-    const totalRevenueMonth = filteredPayments.reduce((acc, curr) => acc + (curr.valor || 0), 0);
-    const totalExpensesMonth = filteredExpenses.reduce((acc, curr) => acc + (curr.valor || 0), 0);
-    const totalProfitMonth = totalRevenueMonth - totalExpensesMonth;
+  const totalRevenueMonth = filteredPayments.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+  const totalExpensesMonth = filteredExpenses.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+  const totalProfitMonth = totalRevenueMonth - totalExpensesMonth;
 
     return {
       totalRevenueMonth,
@@ -613,137 +613,137 @@ const FinancesPage = () => {
                       </div>
                     </div>
                   ))}
-                </div>
+      </div>
               </CardContent>
             </Card>
           </TabsContent>
           
           <TabsContent value="mensal" className="space-y-6">
-            {/* Seletor de mês e ano */}
-            <div className="flex gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium mb-1">Mês</label>
-                <select
+      {/* Seletor de mês e ano */}
+      <div className="flex gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Mês</label>
+          <select
                   className="border rounded px-3 py-2 bg-white"
-                  value={selectedMonth}
-                  onChange={e => setSelectedMonth(Number(e.target.value))}
-                >
-                  {monthOptions.map((month, idx) => (
-                    <option key={month} value={idx + 1}>{month}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Ano</label>
-                <select
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(Number(e.target.value))}
+          >
+            {monthOptions.map((month, idx) => (
+              <option key={month} value={idx + 1}>{month}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Ano</label>
+          <select
                   className="border rounded px-3 py-2 bg-white"
-                  value={selectedYear}
-                  onChange={e => setSelectedYear(Number(e.target.value))}
-                >
-                  {yearOptions.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+          >
+            {yearOptions.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+      </div>
             
             {/* KPIs do mês */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <ArrowDownCircle className="h-4 w-4 text-green-600" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ArrowDownCircle className="h-4 w-4 text-green-600" />
                     Receitas do Mês
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
                     €{monthlyData.totalRevenueMonth.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                  </div>
+            </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {monthlyData.paymentsCount} pagamentos
                   </p>
-                </CardContent>
-              </Card>
+          </CardContent>
+        </Card>
               
               <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <ArrowUpCircle className="h-4 w-4 text-red-600" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ArrowUpCircle className="h-4 w-4 text-red-600" />
                     Despesas do Mês
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-600">
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
                     €{monthlyData.totalExpensesMonth.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                  </div>
+            </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {monthlyData.expensesCount} despesas
                   </p>
-                </CardContent>
-              </Card>
+          </CardContent>
+        </Card>
               
               <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-[#3f9094]" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-[#3f9094]" />
                     Lucro do Mês
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
                   <div className={`text-2xl font-bold ${monthlyData.totalProfitMonth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     €{monthlyData.totalProfitMonth.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                  </div>
+      </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Margem: {monthlyData.totalRevenueMonth > 0 ? ((monthlyData.totalProfitMonth / monthlyData.totalRevenueMonth) * 100).toFixed(1) : 0}%
-                  </p>
-                </CardContent>
-              </Card>
+          </p>
+        </CardContent>
+      </Card>
             </div>
           </TabsContent>
         </Tabs>
 
         {/* Seção de Gestão */}
         <Tabs defaultValue="income" className="w-full">
-          <TabsList className="mb-4 grid grid-cols-2 max-w-md">
-            <TabsTrigger value="income" className="gap-2">
-              <ArrowDownCircle className="h-4 w-4" />
-              Receitas
-            </TabsTrigger>
-            <TabsTrigger value="expenses" className="gap-2">
-              <ArrowUpCircle className="h-4 w-4" />
-              Despesas
-            </TabsTrigger>
-          </TabsList>
+        <TabsList className="mb-4 grid grid-cols-2 max-w-md">
+          <TabsTrigger value="income" className="gap-2">
+            <ArrowDownCircle className="h-4 w-4" />
+            Receitas
+          </TabsTrigger>
+          <TabsTrigger value="expenses" className="gap-2">
+            <ArrowUpCircle className="h-4 w-4" />
+            Despesas
+          </TabsTrigger>
+        </TabsList>
           
-          <TabsContent value="income">
-            {isLoading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3f9094]"></div>
-                <span className="ml-2">Carregando dados financeiros...</span>
-              </div>
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <p className="text-red-500 font-medium mb-2">Erro ao carregar dados financeiros</p>
-                <p className="text-gray-600 mb-4">{error}</p>
-                <button 
-                  onClick={fetchPayments}
+        <TabsContent value="income">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3f9094]"></div>
+              <span className="ml-2">Carregando dados financeiros...</span>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <p className="text-red-500 font-medium mb-2">Erro ao carregar dados financeiros</p>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button 
+                onClick={fetchPayments}
                   className="px-4 py-2 bg-[#3f9094] text-white rounded-md hover:bg-[#2A5854]"
-                >
-                  Tentar Novamente
-                </button>
-              </div>
-            ) : payments.length === 0 ? (
-              <EmptyFinanceState />
-            ) : (
-              <FinancialReport initialPayments={payments} />
-            )}
-          </TabsContent>
+              >
+                Tentar Novamente
+              </button>
+            </div>
+          ) : payments.length === 0 ? (
+            <EmptyFinanceState />
+          ) : (
+            <FinancialReport initialPayments={payments} />
+          )}
+        </TabsContent>
           
-          <TabsContent value="expenses">
-            <ExpenseManager />
-          </TabsContent>
-        </Tabs>
+        <TabsContent value="expenses">
+          <ExpenseManager />
+        </TabsContent>
+      </Tabs>
       </div>
     </PageLayout>
   );

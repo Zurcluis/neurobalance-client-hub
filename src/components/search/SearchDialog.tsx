@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -97,6 +97,12 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] p-0">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle>Pesquisar</DialogTitle>
+          <DialogDescription>
+            Pesquise por clientes, agendamentos e outras informações
+          </DialogDescription>
+        </DialogHeader>
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
             <Input
@@ -119,7 +125,7 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
           {results.length > 0 ? (
             <ul className="space-y-1">
               {results.map((result) => (
-                <li key={result.id}>
+                <li key={`${result.type}-${result.id}`}>
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-left h-auto py-2"

@@ -19,9 +19,7 @@ export function useAppointments() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load appointments from Supabase
-  useEffect(() => {
-    const loadAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
       try {
         setIsLoading(true);
         const { data, error: supabaseError } = await supabase
@@ -49,10 +47,12 @@ export function useAppointments() {
       } finally {
         setIsLoading(false);
       }
-    };
-
-    loadAppointments();
   }, []);
+
+  // Load appointments from Supabase
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   // Add new appointment
   const addAppointment = useCallback(async (appointment: {
@@ -162,7 +162,8 @@ export function useAppointments() {
     error,
     addAppointment,
     updateAppointment,
-    deleteAppointment
+    deleteAppointment,
+    refetch: fetchAppointments,
   };
 }
 

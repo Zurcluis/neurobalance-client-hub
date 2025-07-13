@@ -175,7 +175,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
       'sem necessidade': 'no-need',
       'finished': 'finished',
       'concluído': 'finished',
-      'concluido': 'finished',
+      'realizado': 'finished',
       'finalizado': 'finished',
       'call': 'call',
       'ligar': 'call',

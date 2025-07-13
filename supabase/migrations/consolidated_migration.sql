@@ -421,3 +421,111 @@ BEGIN
     END IF;
 END;
 $$; 
+
+-- =================================================================================
+-- Notifications Table
+-- =================================================================================
+
+DO $$
+BEGIN
+    IF NOT table_exists('notifications') THEN
+        CREATE TABLE public.notifications (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid(),
+            client_id INTEGER REFERENCES public.clientes(id),
+            type VARCHAR(50) NOT NULL, -- e.g., 'session_milestone', 'appointment_reminder'
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            is_read BOOLEAN DEFAULT FALSE,
+            milestone_level INTEGER, -- For session milestones
+            metadata JSONB, -- For other notification types
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        -- Enable RLS
+        ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+        -- Create Policies
+        IF NOT policy_exists('Users can view their own notifications', 'notifications') THEN
+            CREATE POLICY "Users can view their own notifications"
+            ON public.notifications FOR SELECT
+            USING (user_id = auth.uid());
+        END IF;
+
+        IF NOT policy_exists('Users can update their own notifications', 'notifications') THEN
+            CREATE POLICY "Users can update their own notifications"
+            ON public.notifications FOR UPDATE
+            USING (user_id = auth.uid());
+        END IF;
+
+        -- Allow system to insert notifications (for triggers and automated processes)
+        IF NOT policy_exists('System can insert notifications', 'notifications') THEN
+            CREATE POLICY "System can insert notifications"
+            ON public.notifications FOR INSERT
+            WITH CHECK (true);
+        END IF;
+    END IF;
+END $$;
+
+
+-- =================================================================================
+-- Session Milestone Notifications
+-- =================================================================================
+
+-- 1. Create the function to check for milestones and create notifications
+CREATE OR REPLACE FUNCTION public.check_session_milestones()
+RETURNS TRIGGER 
+SECURITY DEFINER -- This allows the function to bypass RLS
+SET search_path = public
+AS $$
+DECLARE
+    realized_sessions_count INTEGER;
+    client_name TEXT;
+    last_milestone INTEGER;
+BEGIN
+    -- Only run the trigger if the 'estado' column is updated to 'realizado'
+    IF NEW.estado = 'realizado' AND OLD.estado <> 'realizado' THEN
+        -- Count the number of "realizado" sessions for the client
+        SELECT count(*)
+        INTO realized_sessions_count
+        FROM public.agendamentos
+        WHERE id_cliente = NEW.id_cliente AND estado = 'realizado';
+
+        -- Check if the count is a multiple of 5
+        IF realized_sessions_count > 0 AND realized_sessions_count % 5 = 0 THEN
+            -- Get client name
+            SELECT nome INTO client_name FROM public.clientes WHERE id = NEW.id_cliente;
+
+            -- Check if a notification for this milestone already exists to avoid duplicates
+            SELECT max(milestone_level)
+            INTO last_milestone
+            FROM public.notifications
+            WHERE client_id = NEW.id_cliente AND type = 'session_milestone';
+
+            IF last_milestone IS NULL OR realized_sessions_count > last_milestone THEN
+                -- Insert a notification for the milestone
+                INSERT INTO public.notifications (user_id, client_id, type, title, message, milestone_level)
+                VALUES (
+                    NULL, -- System-generated notification, no specific user
+                    NEW.id_cliente,
+                    'session_milestone',
+                    'Marco de Sessão Atingido!',
+                    client_name || ' completou ' || realized_sessions_count || ' sessões.',
+                    realized_sessions_count
+                );
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Create the trigger on the 'agendamentos' table
+-- Drop the trigger if it already exists to avoid errors on re-run
+DROP TRIGGER IF EXISTS trg_after_session_completed ON public.agendamentos;
+
+CREATE TRIGGER trg_after_session_completed
+AFTER UPDATE ON public.agendamentos
+FOR EACH ROW
+EXECUTE FUNCTION public.check_session_milestones(); 
