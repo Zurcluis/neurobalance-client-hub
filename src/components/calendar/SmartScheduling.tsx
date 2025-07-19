@@ -46,7 +46,7 @@ const SmartScheduling: React.FC = () => {
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 
   const { clients } = useClients();
-  const { addAppointment, refetch } = useAppointments();
+  const { addAppointment } = useAppointments();
 
   const getDefaultColorForType = (type: string): string => {
     switch (type.toLowerCase()) {
@@ -483,10 +483,6 @@ const SmartScheduling: React.FC = () => {
 
       if (successCount > 0) {
         toast.success(`${successCount} agendamentos criados com sucesso!`);
-        // Forçar atualização do calendário
-        setTimeout(() => {
-          refetch();
-        }, 500);
       }
       
       if (errorCount > 0) {

@@ -82,11 +82,22 @@ export function useAppointments() {
             cor: appointment.cor
           }
         ])
-        .select()
+        .select(`
+          *,
+          clientes (
+            nome,
+            email,
+            telefone
+          )
+        `)
         .single();
 
       if (error) throw error;
-      setAppointments(prev => [...prev, data as Appointment]);
+      
+      // Adicionar o novo agendamento ao estado local com os dados do cliente
+      const newAppointment = data as Appointment;
+      setAppointments(prev => [...prev, newAppointment]);
+      
       toast.success('Appointment added successfully');
       return data;
     } catch (error) {
@@ -121,13 +132,24 @@ export function useAppointments() {
           terapeuta: appointment.terapeuta
         })
         .eq('id', id)
-        .select()
+        .select(`
+          *,
+          clientes (
+            nome,
+            email,
+            telefone
+          )
+        `)
         .single();
 
       if (error) throw error;
-      setAppointments(prev => prev.map(appointment => 
-        appointment.id === id ? data as Appointment : appointment
+      
+      // Atualizar o agendamento no estado local com os dados do cliente
+      const updatedAppointment = data as Appointment;
+      setAppointments(prev => prev.map(app => 
+        app.id === id ? updatedAppointment : app
       ));
+      
       toast.success('Appointment updated successfully');
       return data;
     } catch (error) {
