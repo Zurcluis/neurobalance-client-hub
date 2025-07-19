@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
-import { Mic, MicOff, Calendar, Clock, User, MapPin, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Calendar, Clock, User, MapPin, Loader2, CheckCircle, AlertCircle, Edit, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../ui/badge';
 import { format, parse, eachDayOfInterval, startOfMonth, endOfMonth, addDays, isBefore, isAfter, addWeeks, startOfDay, parseISO, isValid, nextSaturday, nextSunday, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday } from 'date-fns';
@@ -11,6 +11,7 @@ import { pt } from 'date-fns/locale';
 import useClients from '@/hooks/useClients';
 import useAppointments from '@/hooks/useAppointments';
 import { smartSchedulingExamples, tips } from '@/data/smartSchedulingExamples';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface ParsedSchedule {
   clientName?: string;
@@ -26,11 +27,13 @@ interface ParsedSchedule {
 }
 
 interface SchedulePreview {
+  id: string;
   date: string;
   time: string;
   clientName: string;
   type: string;
   dayOfWeek: string;
+  isEditing?: boolean;
 }
 
 const SmartScheduling: React.FC = () => {
@@ -43,7 +46,7 @@ const SmartScheduling: React.FC = () => {
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 
   const { clients } = useClients();
-  const { addAppointment } = useAppointments();
+  const { addAppointment, refetch } = useAppointments();
 
   const getDefaultColorForType = (type: string): string => {
     switch (type.toLowerCase()) {
@@ -351,6 +354,7 @@ const SmartScheduling: React.FC = () => {
       const dayName = dayNames[schedule.specificDate.getDay()];
       
       preview.push({
+        id: `preview-${Date.now()}-${Math.random()}`, // ID único para pré-visualização
         date: format(schedule.specificDate, 'yyyy-MM-dd'),
         time: schedule.time,
         clientName: schedule.clientName || 'Cliente não especificado',
@@ -370,12 +374,13 @@ const SmartScheduling: React.FC = () => {
       // Gerar todas as datas no intervalo
       const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-      allDays.forEach(day => {
+      allDays.forEach((day, index) => {
         const dayOfWeek = day.getDay();
         const dayName = Object.keys(dayMap).find(key => dayMap[key] === dayOfWeek);
         
         if (dayName && schedule.days.includes(dayName)) {
           preview.push({
+            id: `preview-${Date.now()}-${index}-${Math.random()}`, // ID único para pré-visualização
             date: format(day, 'yyyy-MM-dd'),
             time: schedule.time,
             clientName: schedule.clientName || 'Cliente não especificado',
@@ -447,16 +452,25 @@ const SmartScheduling: React.FC = () => {
     try {
       for (const appointment of schedulePreview) {
         try {
+          // Encontrar cliente pelo nome se não tiver ID
+          let clientId = parsedSchedule.clientId ? parseInt(parsedSchedule.clientId) : null;
+          if (!clientId && appointment.clientName !== 'Cliente não especificado') {
+            const foundClient = findClientByNameOrId(appointment.clientName);
+            if (foundClient) {
+              clientId = foundClient.id;
+            }
+          }
+
           const appointmentData = {
-            titulo: `${parsedSchedule.appointmentType} - ${appointment.clientName}`,
+            titulo: `${appointment.type} - ${appointment.clientName}`,
             data: `${appointment.date}T${appointment.time}:00`,
             hora: appointment.time,
-            id_cliente: parsedSchedule.clientId ? parseInt(parsedSchedule.clientId) : null,
-            tipo: parsedSchedule.appointmentType,
+            id_cliente: clientId,
+            tipo: appointment.type,
             notas: `Agendamento automático criado por comando: "${textInput}"`,
             estado: 'pendente',
             terapeuta: '',
-            cor: getDefaultColorForType(parsedSchedule.appointmentType)
+            cor: getDefaultColorForType(appointment.type)
           };
 
           await addAppointment(appointmentData);
@@ -469,6 +483,10 @@ const SmartScheduling: React.FC = () => {
 
       if (successCount > 0) {
         toast.success(`${successCount} agendamentos criados com sucesso!`);
+        // Forçar atualização do calendário
+        setTimeout(() => {
+          refetch();
+        }, 500);
       }
       
       if (errorCount > 0) {
@@ -501,6 +519,34 @@ const SmartScheduling: React.FC = () => {
       case 'workshop': return 'bg-pink-100 text-pink-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleEditAppointment = (id: string) => {
+    setSchedulePreview(prev => prev.map(app => 
+      app.id === id ? { ...app, isEditing: true } : app
+    ));
+  };
+
+  const handleSaveEdit = (id: string, updatedData: Partial<SchedulePreview>) => {
+    setSchedulePreview(prev => prev.map(app => 
+      app.id === id ? { ...app, ...updatedData, isEditing: false } : app
+    ));
+    toast.success('Agendamento atualizado na pré-visualização');
+  };
+
+  const handleCancelEdit = (id: string) => {
+    setSchedulePreview(prev => prev.map(app => 
+      app.id === id ? { ...app, isEditing: false } : app
+    ));
+  };
+
+  const handleDeleteAppointment = (id: string) => {
+    if (!window.confirm('Tem certeza que deseja remover este agendamento da pré-visualização?')) {
+      return;
+    }
+
+    setSchedulePreview(prev => prev.filter(app => app.id !== id));
+    toast.success('Agendamento removido da pré-visualização');
   };
 
   return (
@@ -612,19 +658,111 @@ const SmartScheduling: React.FC = () => {
               <CardContent>
                 <div className="space-y-3 max-h-60 overflow-y-auto">
                   {schedulePreview.slice(0, 10).map((appointment, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col">
-                          <span className="font-medium">{format(new Date(appointment.date), 'dd/MM/yyyy (eeee)', { locale: pt })}</span>
-                          <span className="text-sm text-gray-600">{appointment.time}</span>
+                    <div key={appointment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      {appointment.isEditing ? (
+                        <div className="flex-1 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs font-medium text-gray-600">Data</label>
+                              <Input
+                                type="date"
+                                value={appointment.date}
+                                onChange={(e) => handleSaveEdit(appointment.id, { date: e.target.value })}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-gray-600">Hora</label>
+                              <Input
+                                type="time"
+                                value={appointment.time}
+                                onChange={(e) => handleSaveEdit(appointment.id, { time: e.target.value })}
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs font-medium text-gray-600">Cliente</label>
+                              <Input
+                                value={appointment.clientName}
+                                onChange={(e) => handleSaveEdit(appointment.id, { clientName: e.target.value })}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-gray-600">Tipo</label>
+                              <Select
+                                value={appointment.type}
+                                onValueChange={(value) => handleSaveEdit(appointment.id, { type: value })}
+                              >
+                                <SelectTrigger className="text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="sessão">Sessão</SelectItem>
+                                  <SelectItem value="avaliação">Avaliação</SelectItem>
+                                  <SelectItem value="consulta">Consulta</SelectItem>
+                                  <SelectItem value="reunião">Reunião</SelectItem>
+                                  <SelectItem value="pagamento">Pagamento</SelectItem>
+                                  <SelectItem value="follow-up">Follow-up</SelectItem>
+                                  <SelectItem value="terapia">Terapia</SelectItem>
+                                  <SelectItem value="workshop">Workshop</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveEdit(appointment.id, {})}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Salvar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCancelEdit(appointment.id)}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{appointment.clientName}</span>
-                          <Badge className={`text-xs ${getTypeColor(appointment.type)}`}>
-                            {appointment.type}
-                          </Badge>
-                        </div>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{format(new Date(appointment.date), 'dd/MM/yyyy (eeee)', { locale: pt })}</span>
+                              <span className="text-sm text-gray-600">{appointment.time}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{appointment.clientName}</span>
+                              <Badge className={`text-xs ${getTypeColor(appointment.type)}`}>
+                                {appointment.type}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditAppointment(appointment.id)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteAppointment(appointment.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                   {schedulePreview.length > 10 && (
