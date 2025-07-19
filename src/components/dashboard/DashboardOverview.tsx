@@ -503,12 +503,12 @@ const DashboardOverview = () => {
                       <Tooltip 
                         formatter={(value: any, name: string) => [
                           typeof value === 'number' ? value.toLocaleString() : value, 
-                          name === 'clientes' ? 'Novos Clientes' : 'Agendamentos'
+                          name
                         ]}
                       />
                       <Legend />
                       <Bar yAxisId="left" dataKey="clientes" name="Novos Clientes" fill="#3f9094" />
-                      <Line yAxisId="right" type="monotone" dataKey="agendamentos" name="Agendamentos" stroke="#5DA399" strokeWidth={3} />
+                      <Line yAxisId="right" type="monotone" dataKey="agendamentos" name="Total Agendamentos" stroke="#5DA399" strokeWidth={3} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -532,13 +532,13 @@ const DashboardOverview = () => {
                       <Tooltip 
                         formatter={(value: any, name: string) => [
                           `€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 
-                          name === 'receita' ? 'Receita' : name === 'despesas' ? 'Despesas' : 'Lucro'
+                          name
                         ]}
                       />
                       <Legend />
-                      <Area type="monotone" dataKey="receita" stackId="1" name="Receita" stroke="#3f9094" fill="#3f9094" fillOpacity={0.6} />
-                      <Area type="monotone" dataKey="despesas" stackId="2" name="Despesas" stroke="#ff6b6b" fill="#ff6b6b" fillOpacity={0.6} />
-                      <Line type="monotone" dataKey="lucro" name="Lucro" stroke="#00c851" strokeWidth={3} />
+                      <Area type="monotone" dataKey="receita" stackId="1" name="Receita Mensal" stroke="#3f9094" fill="#3f9094" fillOpacity={0.6} />
+                      <Area type="monotone" dataKey="despesas" stackId="2" name="Despesas Mensais" stroke="#ff6b6b" fill="#ff6b6b" fillOpacity={0.6} />
+                      <Line type="monotone" dataKey="lucro" name="Lucro Líquido" stroke="#00c851" strokeWidth={3} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -614,12 +614,12 @@ const DashboardOverview = () => {
                   <Tooltip 
                         formatter={(value: any, name: string) => [
                           `€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 
-                          name === 'receita' ? 'Receita' : 'Despesas'
+                          name
                         ]}
                   />
                       <Legend />
-                      <Bar dataKey="receita" name="Receita" fill="#3f9094" />
-                      <Bar dataKey="despesas" name="Despesas" fill="#ff6b6b" />
+                      <Bar dataKey="receita" name="Receita Total" fill="#3f9094" />
+                      <Bar dataKey="despesas" name="Despesas Totais" fill="#ff6b6b" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

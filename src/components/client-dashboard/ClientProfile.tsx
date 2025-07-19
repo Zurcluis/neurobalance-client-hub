@@ -193,7 +193,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ clientData }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div className="flex items-center gap-2 text-gray-600">
               <TrendingUp className="h-4 w-4" />
-              <span>Total Investido: €{clientData.total_pago || 0}</span>
+              <span>Total Pago: €{clientData.total_pago || 0}</span>
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Clock className="h-4 w-4" />
@@ -270,7 +270,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ clientData }) => {
             </div>
             <div className="flex items-start gap-2">
               <Shield className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <p>Apenas você e a equipa médica têm acesso às suas informações</p>
+              <p>Apenas você e a equipa da NeuroBalance têm acesso às suas informações</p>
             </div>
             <div className="flex items-start gap-2">
               <Shield className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />

@@ -124,50 +124,50 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
     <div className="space-y-6">
       {/* Cabeçalho com informações principais e ações */}
       <Card className="client-profile-card shadow-md hover:shadow-lg transition-shadow duration-300">
-        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between pb-2 gap-4">
-          <div className="space-y-3">
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between pb-2 gap-3 sm:gap-4">
+          <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-2xl font-bold">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold truncate">
                 {client.nome}
                 {client.id_manual ? ` (ID: ${client.id_manual})` : ''}
               </CardTitle>
-              <Badge className={`${getStatusColor(client.estado)} px-2 py-1`}>
+              <Badge className={`${getStatusColor(client.estado)} px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm`}>
                 {getStatusLabel(client.estado)}
               </Badge>
             </div>
             
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center text-sm text-gray-600">
-                <Mail className="h-4 w-4 mr-1.5" />
-                <span>{client.email}</span>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
+              <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                <Mail className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
+                <span className="truncate">{client.email}</span>
               </div>
-              <div className="flex items-center text-sm text-gray-600">
-                <Phone className="h-4 w-4 mr-1.5" />
-                <span>{client.telefone}</span>
+              <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                <Phone className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
+                <span className="truncate">{client.telefone}</span>
               </div>
               {client.data_nascimento && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <User className="h-4 w-4 mr-1.5" />
+                <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
                   <span>{calculateAge(client.data_nascimento)} anos</span>
                 </div>
               )}
-              <div className="flex items-center text-sm text-gray-600">
-                <HashIcon className="h-4 w-4 mr-1.5" />
+              <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                <HashIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
                 <span>ID: {client.id}</span>
               </div>
             </div>
           </div>
           
-          <div className="flex gap-2 mt-2 md:mt-0">
+          <div className="flex flex-col sm:flex-row gap-2 mt-2 md:mt-0">
             <ClientPdfExport client={client} />
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" onClick={handleOpenEditModal}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar Perfil
+                <Button variant="outline" onClick={handleOpenEditModal} className="text-xs sm:text-sm">
+                  <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Editar Perfil</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+              <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
                 <DialogHeader className="pb-4">
                   <DialogTitle>Editar Perfil do Cliente</DialogTitle>
                   <DialogDescription>
@@ -176,8 +176,8 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                 </DialogHeader>
                 
                 <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(handleSaveChanges)} className="space-y-4 pb-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <form onSubmit={profileForm.handleSubmit(handleSaveChanges)} className="space-y-3 sm:space-y-4 pb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <FormField
                         control={profileForm.control}
                         name="nome"

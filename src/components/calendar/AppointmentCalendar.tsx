@@ -34,8 +34,9 @@ import {
   DropdownMenuSeparator 
 } from '../ui/dropdown-menu';
 import SmartScheduling from './SmartScheduling';
+import TimeGridView from './TimeGridView';
 
-type AppointmentType = 'sessão' | 'avaliação' | 'consulta';
+type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'consulta inicial';
 type AppointmentStatus = 'confirmado' | 'pendente';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
@@ -44,18 +45,20 @@ type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
     nome: string;
     email: string;
     telefone: string;
-  };
+  } | null;
+  cor?: string | null;
 };
 
 interface AppointmentFormValues {
   titulo: string;
   data: string;
   hora: string;
-  id_cliente: number;
+  id_cliente: number | null;
   tipo: AppointmentType;
   notas: string;
   estado: string;
   terapeuta: string;
+  cor: string;
 }
 
 interface CalendarData {
@@ -81,11 +84,12 @@ const AppointmentCalendar = () => {
       titulo: '',
       data: '',
       hora: '09:00',
-      id_cliente: 0,
+      id_cliente: null,
       tipo: 'sessão',
       notas: '',
       estado: 'pendente',
-      terapeuta: ''
+      terapeuta: '',
+      cor: '#3B82F6'
     },
   });
 
@@ -96,12 +100,13 @@ const AppointmentCalendar = () => {
     form.reset({
       titulo: '',
       data: format(today, 'yyyy-MM-dd'),
-      hora: '09:00',
-      id_cliente: 0,
+      hora: date ? format(date, 'HH:mm') : '09:00',
+      id_cliente: null,
       tipo: 'sessão',
       notas: '',
       estado: 'pendente',
-      terapeuta: ''
+      terapeuta: '',
+      cor: '#3B82F6'
     });
     
     setIsDialogOpen(true);
@@ -124,7 +129,8 @@ const AppointmentCalendar = () => {
         tipo: (appointment.tipo || 'sessão') as AppointmentType,
         notas: appointment.notas || '',
         estado: appointment.estado,
-        terapeuta: appointment.terapeuta || ''
+        terapeuta: appointment.terapeuta || '',
+        cor: appointment.cor || '#3B82F6'
       });
       setIsDialogOpen(true);
   };
@@ -152,7 +158,8 @@ const AppointmentCalendar = () => {
         tipo: data.tipo,
         notas: data.notas,
         estado: data.estado,
-        terapeuta: data.terapeuta
+        terapeuta: data.terapeuta,
+        cor: data.cor
       };
 
       if (selectedAppointment) {
@@ -194,7 +201,7 @@ const AppointmentCalendar = () => {
       case 'tradicao':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'cultural':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-[#e6f2f3] text-[#3f9094] border-[#3f9094]';
       case 'dia_importante':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default:
@@ -202,16 +209,22 @@ const AppointmentCalendar = () => {
     }
   };
 
-  const getAppointmentTypeColor = (type: AppointmentType) => {
+  const getAppointmentTypeColor = (type: AppointmentType, customColor?: string | null) => {
+    if (customColor) {
+      return `text-white border-none`;
+    }
+    
     switch (type) {
       case 'avaliação':
         return 'bg-purple-500 text-white';
       case 'sessão':
-        return 'bg-blue-500 text-white';
+        return 'bg-[#3f9094] text-white';
       case 'consulta':
         return 'bg-yellow-500 text-white';
+      case 'consulta inicial':
+        return 'bg-[#3f9094] text-white';
       default:
-        return 'bg-blue-500 text-white';
+        return 'bg-[#3f9094] text-white';
     }
   };
   
@@ -224,7 +237,7 @@ const AppointmentCalendar = () => {
       case 'cancelado':
         return 'border-l-4 border-gray-500';
               case 'realizado':
-        return 'border-l-4 border-blue-500';
+        return 'border-l-4 border-[#3f9094]';
       default:
         return 'border-l-4 border-red-500';
     }
@@ -259,12 +272,12 @@ const AppointmentCalendar = () => {
       end: calendarEnd
     });
 
-    const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
       return (
-      <div className="p-4 bg-white rounded-lg border border-gray-200">
+      <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-[#265255]">
+          <h3 className="text-sm font-medium text-gray-900">
             {format(currentDate, 'MMMM yyyy', { locale: pt })}
           </h3>
           <div className="flex gap-1">
@@ -272,27 +285,30 @@ const AppointmentCalendar = () => {
               variant="ghost"
               size="sm"
               onClick={() => navigateMonth('prev')}
-              className="h-6 w-6 p-0 hover:bg-gray-100"
+              className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
             >
-              <ChevronLeft className="h-3 w-3" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigateMonth('next')}
-              className="h-6 w-6 p-0 hover:bg-gray-100"
+              className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
             >
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
         
-        <div className="grid grid-cols-7 gap-1 text-xs">
+        <div className="grid grid-cols-7 gap-1 text-xs mb-2">
           {weekDays.map((day, index) => (
-            <div key={`${day}-${index}`} className="text-center text-gray-500 font-medium py-1">
+            <div key={`${day}-${index}`} className="text-center text-gray-500 font-medium py-2">
               {day}
             </div>
           ))}
+        </div>
+        
+        <div className="grid grid-cols-7 gap-1 text-xs">
           {days.map(day => {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isDayToday = isToday(day);
@@ -304,10 +320,10 @@ const AppointmentCalendar = () => {
                 key={format(day, 'yyyy-MM-dd')}
                 onClick={() => setSelectedDate(day)}
                 className={`
-                  h-6 w-6 text-xs rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors relative
+                  h-8 w-8 text-xs rounded-full flex items-center justify-center hover:bg-[#e6f2f3] transition-colors relative font-medium
                   ${!isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}
-                  ${isDayToday ? 'bg-[#3f9094] text-white hover:bg-[#265255]' : ''}
-                  ${isSelected && !isDayToday ? 'bg-[#c5cfce] text-[#265255]' : ''}
+                  ${isDayToday ? 'bg-[#3f9094] text-white hover:bg-[#2d7a7e]' : ''}
+                  ${isSelected && !isDayToday ? 'bg-[#e6f2f3] text-[#3f9094]' : ''}
                   ${dayHoliday && !isDayToday && !isSelected ? 'bg-red-50 text-red-600 font-semibold' : ''}
                 `}
                 title={dayHoliday ? `${dayHoliday.name} (${dayHoliday.type})` : ''}
@@ -348,21 +364,22 @@ const AppointmentCalendar = () => {
         </h3>
         <div className="space-y-2">
           {dayHoliday && (
-            <div className={`p-2 rounded-lg border ${getHolidayColor(dayHoliday.type)}`}>
-              <p className="font-semibold text-sm">{dayHoliday.name}</p>
-              <p className="text-xs opacity-90 capitalize">{dayHoliday.type.replace('_', ' ')}</p>
+            <div className={`p-2 rounded-lg border ${getHolidayColor(dayHoliday.type)} opacity-60`}>
+              <p className="font-semibold text-sm opacity-70">{dayHoliday.name}</p>
+              <p className="text-xs opacity-50 capitalize">{dayHoliday.type.replace('_', ' ')}</p>
               {dayHoliday.description && (
-                <p className="text-xs opacity-75 mt-1">{dayHoliday.description}</p>
+                <p className="text-xs opacity-40 mt-1">{dayHoliday.description}</p>
               )}
-          </div>
-        )}
+            </div>
+          )}
           
           {dayEvents.length > 0 ? (
             dayEvents.map((appointment, index) => (
               <div
                 key={`day-panel-${appointment.id}-${index}`}
                 onClick={() => handleEventClick(appointment)}
-                className={`p-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
+                className={`p-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${getAppointmentStatusColor(appointment.estado)}`}
+                style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
               >
                 <p className="font-semibold text-sm">{appointment.titulo}</p>
                 <p className="text-xs opacity-90">{format(parseISO(appointment.data), 'HH:mm')}</p>
@@ -413,13 +430,13 @@ const AppointmentCalendar = () => {
               const isDayToday = isToday(day);
               const dayHoliday = getDayHoliday(day);
                   
-                  return (
-                    <div 
+              return (
+                <div 
                   key={format(day, 'yyyy-MM-dd')}
                   className={`
                     p-2 border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-gray-50 relative
                     ${!isCurrentMonth ? 'bg-gray-50' : ''}
-                    ${isDayToday ? 'bg-blue-50' : ''}
+                    ${isDayToday ? 'bg-[#e6f2f3]' : ''}
                     ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50' : ''}
                   `}
                   onClick={() => openNewAppointmentDialog(day)}
@@ -438,8 +455,8 @@ const AppointmentCalendar = () => {
                   
                   <div className="space-y-1">
                     {dayHoliday && (
-                      <div className={`text-xs px-1 py-0.5 rounded truncate border ${getHolidayColor(dayHoliday.type)}`}>
-                        {dayHoliday.name}
+                      <div className={`text-xs px-1 py-0.5 rounded truncate border ${getHolidayColor(dayHoliday.type)} opacity-50`}>
+                        <span className="opacity-70">{dayHoliday.name}</span>
                       </div>
                     )}
                     
@@ -450,135 +467,59 @@ const AppointmentCalendar = () => {
                           e.stopPropagation();
                           handleEventClick(appointment);
                         }}
-                        className={`text-xs px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
+                        className={`text-xs px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${getAppointmentStatusColor(appointment.estado)}`}
+                        style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
                       >
-                            {appointment.titulo}
-                          </div>
+                        {appointment.titulo}
+                      </div>
                     ))}
                     {dayAppointments.length > (dayHoliday ? 1 : 2) && (
                       <div className="text-xs text-gray-500 px-2">
                         +{dayAppointments.length - (dayHoliday ? 1 : 2)} mais
-                        </div>
-                    )}
                       </div>
-                    </div>
-                  );
+                    )}
+                  </div>
+                </div>
+              );
             })}
-            </div>
+          </div>
         ))}
-              </div>
+      </div>
     );
   };
   
   const renderDayView = () => {
     if (!selectedDate) return null;
+    
     const dayAppointments = getDayAppointments(selectedDate).sort((a, b) =>
       compareAsc(parseISO(a.data), parseISO(b.data))
     );
     const dayHoliday = getDayHoliday(selectedDate);
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl text-[#265255]">{format(selectedDate, "eeee, dd 'de' MMMM", { locale: pt })}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="space-y-4">
-            {dayHoliday && (
-              <div className={`p-4 rounded-lg border ${getHolidayColor(dayHoliday.type)}`}>
-                <h3 className="font-bold text-lg mb-2">{dayHoliday.name}</h3>
-                <p className="text-sm opacity-90 capitalize mb-1">{dayHoliday.type.replace('_', ' ')}</p>
-                {dayHoliday.description && (
-                  <p className="text-sm opacity-75">{dayHoliday.description}</p>
-              )}
-            </div>
-            )}
-
-            {dayAppointments.length > 0 ? (
-              <ul className="space-y-3">
-                {dayAppointments.map((appointment, index) => (
-                  <li
-                    key={`day-${appointment.id}-${index}`}
-                    onClick={() => handleEventClick(appointment)}
-                    className={`flex items-center space-x-4 p-3 rounded-lg cursor-pointer transition-shadow hover:shadow-md ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
-                  >
-                    <div className="font-bold text-lg">{format(parseISO(appointment.data), 'HH:mm')}</div>
-                    <div>
-                      <p className="font-semibold">{appointment.titulo}</p>
-                      <p className="text-sm opacity-90">{appointment.clientes?.nome || 'Cliente não associado'}</p>
-              </div>
-                  </li>
-                ))}
-              </ul>
-            ) : !dayHoliday ? (
-              <div className="text-center text-gray-500 py-8">
-                <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2">Nenhum agendamento para este dia.</p>
-              </div>
-            ) : null}
-              </div>
-        </CardContent>
-      </Card>
+      <TimeGridView
+        days={[selectedDate]}
+        appointments={appointments}
+        onTimeSlotClick={openNewAppointmentDialog}
+        onEventClick={handleEventClick}
+        onDateChange={(newDate) => setSelectedDate(newDate)}
+        isDailyView={true}
+      />
     );
   };
 
-  const renderWeekView = () => {
-    if (!selectedDate) return null;
+    const renderWeekView = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
     return (
-      <div className="space-y-4">
-        {weekDays.map(day => {
-          const dayAppointments = getDayAppointments(day).sort((a, b) =>
-            compareAsc(parseISO(a.data), parseISO(b.data))
-          );
-          const dayHoliday = getDayHoliday(day);
-          
-          return (
-            <Card key={format(day, 'yyyy-MM-dd')} className="bg-white">
-              <CardHeader className={`p-3 border-b ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50' : 'bg-gray-50'}`}>
-                <CardTitle className={`text-md font-medium ${dayHoliday && dayHoliday.type === 'feriado' ? 'text-red-600' : 'text-[#265255]'}`}>
-                  {format(day, "eeee, dd/MM", { locale: pt })}
-                  {dayHoliday && dayHoliday.type === 'feriado' && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      Feriado
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3">
-                <div className="space-y-2">
-                  {dayHoliday && (
-                    <div className={`p-2 rounded text-xs border ${getHolidayColor(dayHoliday.type)}`}>
-                      <p className="font-semibold">{dayHoliday.name}</p>
-                      <p className="opacity-75 capitalize">{dayHoliday.type.replace('_', ' ')}</p>
-            </div>
-                  )}
-                  
-                  {dayAppointments.length > 0 ? (
-                    <ul className="space-y-2">
-                      {dayAppointments.map((appointment, index) => (
-                        <li
-                          key={`week-${appointment.id}-${index}`}
-                          onClick={() => handleEventClick(appointment)}
-                          className={`flex items-center space-x-3 p-2 rounded cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}
-                        >
-                          <div className="font-semibold text-xs">{format(parseISO(appointment.data), 'HH:mm')}</div>
-                          <div className="text-sm truncate">{appointment.titulo}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : !dayHoliday ? (
-                    <p className="text-xs text-gray-400 py-2">Sem eventos agendados.</p>
-                  ) : null}
-              </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-              </div>
+      <TimeGridView
+        days={weekDays}
+        appointments={appointments}
+        onTimeSlotClick={openNewAppointmentDialog}
+        onEventClick={handleEventClick}
+      />
     );
   };
   
@@ -675,7 +616,7 @@ const AppointmentCalendar = () => {
                         <div className="hidden md:flex items-center space-x-4 pl-4">
         <Button 
           onClick={() => openNewAppointmentDialog()}
-                className="bg-[#3f9094] hover:bg-[#265255] text-white"
+                className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white rounded-full px-6 py-2 font-medium shadow-sm"
         >
           <Plus className="h-4 w-4 mr-2" />
                 Criar
@@ -686,21 +627,21 @@ const AppointmentCalendar = () => {
                 <Button
                 variant="outline"
                 onClick={goToToday}
-                className="border-gray-300"
+                className="border-gray-300 font-medium"
                 >
                 Hoje
                 </Button>
                 
                 <div className="flex items-center space-x-1">
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')} className="h-8 w-8 hover:bg-gray-100">
-                    <ChevronLeft className="h-4 w-4" />
+                <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')} className="h-9 w-9 hover:bg-gray-100 rounded-full">
+                    <ChevronLeft className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} className="h-8 w-8 hover:bg-gray-100">
-                    <ChevronRight className="h-4 w-4" />
+                <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} className="h-9 w-9 hover:bg-gray-100 rounded-full">
+                    <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
       
-                <h2 className="text-xl font-medium text-gray-600">
+                <h2 className="text-2xl font-normal text-gray-700 min-w-[200px]">
                 {format(currentDate, 'MMMM yyyy', { locale: pt })}
                 </h2>
             </div>
@@ -760,7 +701,7 @@ const AppointmentCalendar = () => {
                 <span className="text-xs text-gray-700">Avaliação</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                <div className="w-4 h-4 bg-[#3f9094] rounded"></div>
                 <span className="text-xs text-gray-700">Neurofeedback</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -780,7 +721,7 @@ const AppointmentCalendar = () => {
                 <span className="text-xs text-gray-700">Pendente</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-2 bg-blue-500 rounded"></div>
+                <div className="w-4 h-2 bg-[#3f9094] rounded"></div>
                 <span className="text-xs text-gray-700">Realizado</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -808,7 +749,7 @@ const AppointmentCalendar = () => {
                 <span className="text-xs text-gray-700">Tradição</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-blue-100 border border-blue-200 rounded"></div>
+                <div className="w-4 h-4 bg-[#e6f2f3] border border-[#3f9094] rounded"></div>
                 <span className="text-xs text-gray-700">Cultural</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -889,14 +830,15 @@ const AppointmentCalendar = () => {
                 name="id_cliente"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                    <FormLabel>Cliente (Opcional)</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))} value={field.value?.toString() || "null"}>
                     <FormControl>
                           <SelectTrigger>
-                          <SelectValue placeholder="Selecione um cliente" />
+                          <SelectValue placeholder="Selecione um cliente (opcional)" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="null">Sem cliente</SelectItem>
                           {clients.map(client => (
                             <SelectItem key={client.id} value={client.id.toString()}>
                               {client.nome}
@@ -925,6 +867,7 @@ const AppointmentCalendar = () => {
                           <SelectItem value="sessão">Sessão</SelectItem>
                           <SelectItem value="avaliação">Avaliação</SelectItem>
                           <SelectItem value="consulta">Consulta</SelectItem>
+                          <SelectItem value="consulta inicial">Consulta Inicial</SelectItem>
                         </SelectContent>
                       </Select>
                     <FormMessage />
@@ -965,6 +908,55 @@ const AppointmentCalendar = () => {
                     <FormLabel>Terapeuta</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder="Nome do terapeuta" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cor</FormLabel>
+                    <FormControl>
+                      <div className="space-y-3">
+                        {/* Paleta de cores predefinidas */}
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            '#D50000', '#E67C73', '#F4511E', '#F6BF26', '#33B679', 
+                            '#0B8043', '#039BE5', '#3F51B5', '#7986CB', '#8E24AA', '#616161'
+                          ].map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${
+                                field.value === color ? 'border-gray-800' : 'border-gray-300'
+                              }`}
+                              style={{ backgroundColor: color }}
+                              onClick={() => field.onChange(color)}
+                            />
+                          ))}
+                        </div>
+                        
+                        {/* Campo de cor personalizada */}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="color"
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            className="w-12 h-8 p-0 border-0"
+                          />
+                          <Input
+                            type="text"
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            placeholder="#3B82F6"
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

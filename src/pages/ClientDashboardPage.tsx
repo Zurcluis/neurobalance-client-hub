@@ -91,7 +91,7 @@ const ClientDashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 touch-manipulation">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -100,27 +100,27 @@ const ClientDashboardPage = () => {
               <img 
                 src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
                 alt="NeuroBalance Logo" 
-                className="h-8 w-auto mr-3"
+                className="h-12 w-auto mr-2 sm:h-16 sm:mr-3 lg:h-24"
               />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg font-semibold text-gray-900 truncate sm:text-xl">
                   {getGreeting()}, {clientData.nome.split(' ')[0]}
                 </h1>
-                <p className="text-sm text-gray-600">Portal do Cliente</p>
+                <p className="text-xs text-gray-600 sm:text-sm">Portal do Cliente</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Notificações */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative"
+                className="relative p-2 h-9 w-9 sm:h-10 sm:w-10"
                 onClick={() => setActiveTab('notifications')}
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
                 {unreadNotifications > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center bg-red-500 text-white text-xs sm:h-5 sm:w-5">
                     {unreadNotifications}
                   </Badge>
                 )}
@@ -130,21 +130,21 @@ const ClientDashboardPage = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative"
+                className="relative p-2 h-9 w-9 sm:h-10 sm:w-10"
                 onClick={() => setActiveTab('chat')}
               >
-                <MessageSquare className="h-5 w-5" />
+                <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
                 {unreadMessages > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center bg-red-500 text-white text-xs sm:h-5 sm:w-5">
                     {unreadMessages}
                   </Badge>
                 )}
               </Button>
 
               {/* Avatar e Logout */}
-              <div className="flex items-center space-x-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-[#3f9094] text-white">
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
+                  <AvatarFallback className="bg-[#3f9094] text-white text-xs sm:text-sm">
                     {getInitials(clientData.nome)}
                   </AvatarFallback>
                 </Avatar>
@@ -152,9 +152,9 @@ const ClientDashboardPage = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="text-gray-600 hover:text-gray-900"
+                  className="text-gray-600 hover:text-gray-900 p-2 h-9 w-9 sm:h-10 sm:w-10"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </div>
             </div>
@@ -163,39 +163,39 @@ const ClientDashboardPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           {/* Navigation Tabs */}
-          <TabsList className="grid w-full grid-cols-6 lg:grid-cols-6 bg-white rounded-lg shadow-sm">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              <span className="hidden sm:inline">Visão Geral</span>
+          <TabsList className="grid w-full grid-cols-6 bg-white rounded-lg shadow-sm overflow-x-auto">
+            <TabsTrigger value="overview" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Visão Geral</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span className="hidden sm:inline">Perfil</span>
+            <TabsTrigger value="profile" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
+              <User className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Perfil</span>
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Agendamentos</span>
+            <TabsTrigger value="appointments" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Agendamentos</span>
             </TabsTrigger>
-            <TabsTrigger value="payments" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Pagamentos</span>
+            <TabsTrigger value="payments" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
+              <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Pagamentos</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Relatórios</span>
+            <TabsTrigger value="reports" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Relatórios</span>
             </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Chat</span>
+            <TabsTrigger value="chat" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
+              <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Chat</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {/* Estatísticas Rápidas */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -267,7 +267,7 @@ const ClientDashboardPage = () => {
             </div>
 
             {/* Resumo Rápido */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

@@ -1,3 +1,48 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* Mobile-first responsive improvements */
+@layer utilities {
+  /* Safe area for mobile devices */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Mobile touch improvements */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Prevent zoom on input focus on iOS */
+  input, textarea, select {
+    font-size: 16px;
+  }
+  
+  /* Mobile scrollbar styling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Mobile tap highlight */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+} 

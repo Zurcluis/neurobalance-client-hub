@@ -59,11 +59,12 @@ export function useAppointments() {
     titulo: string;
     data: string;
     hora: string;
-    id_cliente: number;
+    id_cliente: number | null;
     tipo: string;
     notas?: string;
     estado: string;
     terapeuta?: string;
+    cor?: string;
   }) => {
     try {
       const { data, error } = await supabase
@@ -77,7 +78,8 @@ export function useAppointments() {
             tipo: appointment.tipo,
             notas: appointment.notas,
             estado: appointment.estado,
-            terapeuta: appointment.terapeuta
+            terapeuta: appointment.terapeuta,
+            cor: appointment.cor
           }
         ])
         .select()

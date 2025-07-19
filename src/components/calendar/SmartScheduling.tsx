@@ -43,6 +43,21 @@ const SmartScheduling: React.FC = () => {
   const { clients } = useClients();
   const { addAppointment } = useAppointments();
 
+  const getDefaultColorForType = (type: string): string => {
+    switch (type) {
+      case 'avaliação':
+        return '#8B5CF6';
+      case 'sessão':
+        return '#3B82F6';
+      case 'consulta':
+        return '#EAB308';
+      case 'consulta inicial':
+        return '#3f9094';
+      default:
+        return '#3B82F6';
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
       const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
@@ -301,11 +316,12 @@ const SmartScheduling: React.FC = () => {
             titulo: `${parsedSchedule.appointmentType} - ${appointment.clientName}`,
             data: `${appointment.date}T${appointment.time}:00`,
             hora: appointment.time,
-            id_cliente: parsedSchedule.clientId ? parseInt(parsedSchedule.clientId) : 0,
+            id_cliente: parsedSchedule.clientId ? parseInt(parsedSchedule.clientId) : null,
             tipo: parsedSchedule.appointmentType,
             notas: `Agendamento automático criado por comando: "${textInput}"`,
             estado: 'pendente',
-            terapeuta: ''
+            terapeuta: '',
+            cor: getDefaultColorForType(parsedSchedule.appointmentType)
           };
 
           await addAppointment(appointmentData);
@@ -341,7 +357,7 @@ const SmartScheduling: React.FC = () => {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'avaliação': return 'bg-purple-100 text-purple-800';
-      case 'sessão': return 'bg-blue-100 text-blue-800';
+      case 'sessão': return 'bg-[#e6f2f3] text-[#3f9094]';
       case 'consulta': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }

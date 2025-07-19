@@ -411,12 +411,12 @@ const FinancesPage = () => {
                         <Tooltip 
                           formatter={(value: any, name: string) => [
                             `€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 
-                            name === 'receita' ? 'Receita' : 'Despesas'
+                            name
                           ]}
                         />
                         <Legend />
-                        <Bar dataKey="receita" name="Receita" fill="#10b981" />
-                        <Bar dataKey="despesas" name="Despesas" fill="#ef4444" />
+                        <Bar dataKey="receita" name="Receita Total" fill="#10b981" />
+                        <Bar dataKey="despesas" name="Despesas Totais" fill="#ef4444" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -477,13 +477,13 @@ const FinancesPage = () => {
                         <Tooltip 
                           formatter={(value: any, name: string) => [
                             `€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 
-                            name === 'receita' ? 'Receita' : name === 'despesas' ? 'Despesas' : 'Lucro'
+                            name
                           ]}
                         />
                         <Legend />
-                        <Area type="monotone" dataKey="receita" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
-                        <Area type="monotone" dataKey="despesas" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
-                        <Line type="monotone" dataKey="lucro" stroke="#3f9094" strokeWidth={3} />
+                        <Area type="monotone" dataKey="receita" stackId="1" name="Receita Mensal" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                        <Area type="monotone" dataKey="despesas" stackId="2" name="Despesas Mensais" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
+                        <Line type="monotone" dataKey="lucro" name="Lucro Líquido" stroke="#3f9094" strokeWidth={3} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -505,9 +505,9 @@ const FinancesPage = () => {
                         <XAxis dataKey="monthShort" fontSize={12} />
                         <YAxis fontSize={12} />
                         <Tooltip 
-                          formatter={(value: any) => [value, 'Transações']}
+                          formatter={(value: any, name: string) => [value, name]}
                         />
-                        <Bar dataKey="transacoes" name="Transações" fill="#8AC1BB" />
+                        <Bar dataKey="transacoes" name="Nº Transações" fill="#8AC1BB" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

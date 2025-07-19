@@ -662,60 +662,60 @@ const ClientDetailPage = () => {
   
   return (
     <PageLayout>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-8 gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-6 gap-2">
         <div className="flex items-center">
           <Link to="/clients">
-            <Button variant="outline" size="sm" className="mr-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar
+            <Button variant="outline" size="sm" className="mr-2 sm:mr-4">
+              <ArrowLeft className="mr-1 sm:mr-2 h-4 w-4" />
+              <span className="hidden xs:inline">Voltar</span>
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold gradient-heading">{client.nome}</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base overflow-hidden text-ellipsis">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold gradient-heading truncate">{client.nome}</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1 text-xs sm:text-sm lg:text-base overflow-hidden text-ellipsis">
               {client.email} • {client.telefone}
             </p>
           </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6">
         <Card className="glassmorphism client-profile-card">
-          <CardContent className="pt-4 sm:pt-6">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Total de Sessões</p>
-            <p className="text-xl sm:text-2xl font-bold">{client.numero_sessoes || 0}</p>
+          <CardContent className="pt-3 sm:pt-4 lg:pt-6">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total de Sessões</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold">{client.numero_sessoes || 0}</p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism client-profile-card">
-          <CardContent className="pt-4 sm:pt-6">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Total Pago</p>
-            <p className="text-xl sm:text-2xl font-bold">€{client.total_pago?.toLocaleString() || '0.00'}</p>
+          <CardContent className="pt-3 sm:pt-4 lg:pt-6">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total Pago</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold">€{client.total_pago?.toLocaleString() || '0.00'}</p>
           </CardContent>
         </Card>
         
         <Card className="glassmorphism client-profile-card sm:col-span-2">
-          <CardContent className="pt-4 sm:pt-6">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Próxima Sessão</p>
+          <CardContent className="pt-3 sm:pt-4 lg:pt-6">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Próxima Sessão</p>
             {client.proxima_sessao ? (
               <div className="space-y-1">
                 <div className="flex items-center">
-                  <p className="text-lg sm:text-xl font-medium">{client.proxima_sessao}</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-medium truncate">{client.proxima_sessao}</p>
                   {client.proxima_sessao_estado && (
-                    <span className={`status-indicator status-indicator-${client.proxima_sessao_estado} ml-2`}></span>
+                    <span className={`status-indicator status-indicator-${client.proxima_sessao_estado} ml-2 flex-shrink-0`}></span>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 gap-1">
-                  <span>{client.proxima_sessao_titulo}</span>
+                <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 gap-1">
+                  <span className="truncate">{client.proxima_sessao_titulo}</span>
                   {client.proxima_sessao_tipo && (
-                    <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs">
+                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs flex-shrink-0">
                       {client.proxima_sessao_tipo}
                     </span>
                   )}
                 </div>
               </div>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400">Sem sessões agendadas</p>
+              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Sem sessões agendadas</p>
             )}
           </CardContent>
         </Card>
