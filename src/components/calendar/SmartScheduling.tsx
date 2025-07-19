@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Mic, MicOff, Calendar, Clock, User, MapPin, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../ui/badge';
-import { format, parse, eachDayOfInterval, startOfMonth, endOfMonth, addDays, isBefore, isAfter } from 'date-fns';
+import { format, parse, eachDayOfInterval, startOfMonth, endOfMonth, addDays, isBefore, isAfter, addWeeks, startOfDay, parseISO, isValid, nextSaturday, nextSunday, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import useClients from '@/hooks/useClients';
 import useAppointments from '@/hooks/useAppointments';
@@ -15,12 +15,14 @@ import { smartSchedulingExamples, tips } from '@/data/smartSchedulingExamples';
 interface ParsedSchedule {
   clientName?: string;
   clientId?: string;
-  appointmentType: 'sessão' | 'avaliação' | 'consulta';
+  appointmentType: string;
   days: string[];
   time: string;
   startDate: Date;
   endDate: Date;
   recurring: boolean;
+  specificDate?: Date;
+  isRelativeDate?: boolean;
 }
 
 interface SchedulePreview {
@@ -44,15 +46,28 @@ const SmartScheduling: React.FC = () => {
   const { addAppointment } = useAppointments();
 
   const getDefaultColorForType = (type: string): string => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case 'avaliação':
+      case 'avaliação inicial':
         return '#8B5CF6';
       case 'sessão':
+      case 'neurofeedback':
         return '#3B82F6';
       case 'consulta':
-        return '#EAB308';
       case 'consulta inicial':
-        return '#3f9094';
+        return '#EAB308';
+      case 'reunião':
+      case 'reuniao':
+        return '#EF4444';
+      case 'pagamento':
+        return '#10B981';
+      case 'follow-up':
+      case 'seguimento':
+        return '#F59E0B';
+      case 'terapia':
+        return '#6366F1';
+      case 'workshop':
+        return '#EC4899';
       default:
         return '#3B82F6';
     }
@@ -122,81 +137,173 @@ const SmartScheduling: React.FC = () => {
     return byName;
   };
 
+  const parseRelativeDate = (command: string): Date | null => {
+    const today = new Date();
+    const normalizedCommand = command.toLowerCase();
+
+    // Amanhã
+    if (normalizedCommand.includes('amanhã') || normalizedCommand.includes('amanha')) {
+      return addDays(today, 1);
+    }
+
+    // Hoje
+    if (normalizedCommand.includes('hoje')) {
+      return today;
+    }
+
+    // Próximo + dia da semana
+    if (normalizedCommand.includes('próximo') || normalizedCommand.includes('proximo')) {
+      if (normalizedCommand.includes('segunda')) return nextMonday(today);
+      if (normalizedCommand.includes('terça') || normalizedCommand.includes('terca')) return nextTuesday(today);
+      if (normalizedCommand.includes('quarta')) return nextWednesday(today);
+      if (normalizedCommand.includes('quinta')) return nextThursday(today);
+      if (normalizedCommand.includes('sexta')) return nextFriday(today);
+      if (normalizedCommand.includes('sábado') || normalizedCommand.includes('sabado')) return nextSaturday(today);
+      if (normalizedCommand.includes('domingo')) return nextSunday(today);
+    }
+
+    // Dia específico do mês (ex: dia 15, no dia 20)
+    const dayMatch = normalizedCommand.match(/(?:dia|no dia)\s+(\d{1,2})/i);
+    if (dayMatch) {
+      const day = parseInt(dayMatch[1]);
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      const targetDate = new Date(currentYear, currentMonth, day);
+      
+      // Se a data já passou neste mês, usar o próximo mês
+      if (targetDate < today) {
+        return new Date(currentYear, currentMonth + 1, day);
+      }
+      return targetDate;
+    }
+
+    // Esta semana + dia
+    if (normalizedCommand.includes('esta semana')) {
+      const startOfWeek = today;
+      if (normalizedCommand.includes('segunda')) return addDays(startOfWeek, 1 - today.getDay());
+      if (normalizedCommand.includes('terça') || normalizedCommand.includes('terca')) return addDays(startOfWeek, 2 - today.getDay());
+      if (normalizedCommand.includes('quarta')) return addDays(startOfWeek, 3 - today.getDay());
+      if (normalizedCommand.includes('quinta')) return addDays(startOfWeek, 4 - today.getDay());
+      if (normalizedCommand.includes('sexta')) return addDays(startOfWeek, 5 - today.getDay());
+      if (normalizedCommand.includes('sábado') || normalizedCommand.includes('sabado')) return addDays(startOfWeek, 6 - today.getDay());
+      if (normalizedCommand.includes('domingo')) return addDays(startOfWeek, 7 - today.getDay());
+    }
+
+    return null;
+  };
+
   const parseScheduleCommand = (command: string): ParsedSchedule | null => {
     const normalizedCommand = command.toLowerCase().trim();
     
-    // Padrões de regex para extrair informações
+    // Padrões de regex expandidos para extrair informações
     const patterns = {
-      // Tipos de agendamento
-      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta|consultas|neurofeedback)/i,
+      // Tipos de agendamento expandidos
+      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta|consultas|neurofeedback|reunião|reuniao|pagamento|follow-up|seguimento|terapia|workshop)/i,
       
       // Dias da semana
-      days: /(segunda|terça|quarta|quinta|sexta|sábado|domingo|seg|ter|qua|qui|sex|sab|dom)/gi,
+      days: /(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo|seg|ter|qua|qui|sex|sab|dom)/gi,
       
-      // Horário
-      time: /(\d{1,2}):?(\d{2})?(?:h|hrs|horas)?/i,
+      // Horário expandido
+      time: /(?:às|as|na|no)\s*(\d{1,2}):?(\d{2})?(?:h|hrs|horas)?(?:\s*(?:da|de)\s*(manhã|manha|tarde|noite))?/i,
       
       // Período
-      period: /(até|ao|fim|final)\s+(?:do\s+)?(?:mês\s+)?(?:de\s+)?(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)/i,
+      period: /(até|ao|fim|final)\s+(?:do\s+)?(?:mês\s+)?(?:de\s+)?(janeiro|fevereiro|março|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)/i,
       
       // Cliente (nome ou ID)
-      client: /(?:para|do|da|de)\s+(?:o\s+|a\s+)?([^,\s]+(?:\s+[^,\s]+)*?)(?:\s+as|\s+às|\s+na|\s+no|$)/i
+      client: /(?:para|do|da|de|com)\s+(?:o\s+|a\s+)?([^,\s]+(?:\s+[^,\s]+)*?)(?:\s+as|\s+às|\s+na|\s+no|\s+hoje|\s+amanhã|\s+dia|$)/i,
+      
+      // Datas relativas
+      relativeDate: /(hoje|amanhã|amanha|próximo|proximo|esta semana|dia \d{1,2}|no dia \d{1,2})/i
     };
 
     try {
+      // Verificar se é um agendamento específico (não recorrente)
+      const relativeDateMatch = normalizedCommand.match(patterns.relativeDate);
+      const isRelativeDate = !!relativeDateMatch;
+      
       // Extrair tipo de agendamento
       const typeMatch = normalizedCommand.match(patterns.appointmentType);
-      let appointmentType: 'sessão' | 'avaliação' | 'consulta' = 'sessão';
+      let appointmentType = 'sessão';
       
       if (typeMatch) {
-        const type = typeMatch[1];
-        if (type.includes('avaliação')) appointmentType = 'avaliação';
-        else if (type.includes('consulta')) appointmentType = 'consulta';
-        else appointmentType = 'sessão';
+        appointmentType = typeMatch[1];
       }
 
-      // Extrair dias da semana
-      const dayMatches = normalizedCommand.match(patterns.days);
-      const days: string[] = [];
-      
-      if (dayMatches) {
-        dayMatches.forEach(day => {
-          const dayLower = day.toLowerCase();
-          if (dayLower.includes('seg') || dayLower.includes('segunda')) days.push('segunda');
-          if (dayLower.includes('ter') || dayLower.includes('terça')) days.push('terça');
-          if (dayLower.includes('qua') || dayLower.includes('quarta')) days.push('quarta');
-          if (dayLower.includes('qui') || dayLower.includes('quinta')) days.push('quinta');
-          if (dayLower.includes('sex') || dayLower.includes('sexta')) days.push('sexta');
-          if (dayLower.includes('sab') || dayLower.includes('sábado')) days.push('sábado');
-          if (dayLower.includes('dom') || dayLower.includes('domingo')) days.push('domingo');
-        });
-      }
-
-      // Extrair horário
+      // Extrair horário com contexto de período do dia
       const timeMatch = normalizedCommand.match(patterns.time);
       let time = '18:00';
       
       if (timeMatch) {
-        const hours = timeMatch[1];
+        let hours = parseInt(timeMatch[1]);
         const minutes = timeMatch[2] || '00';
-        time = `${hours.padStart(2, '0')}:${minutes}`;
+        const period = timeMatch[3]?.toLowerCase();
+        
+        // Ajustar horário baseado no período do dia
+        if (period === 'manhã' || period === 'manha') {
+          if (hours >= 1 && hours <= 12) {
+            // Manhã: 6:00 - 12:00
+            if (hours < 6) hours += 6;
+          }
+        } else if (period === 'tarde') {
+          if (hours >= 1 && hours <= 12) {
+            // Tarde: 12:00 - 18:00
+            if (hours < 12) hours += 12;
+          }
+        } else if (period === 'noite') {
+          if (hours >= 1 && hours <= 12) {
+            // Noite: 18:00 - 23:59
+            if (hours < 18) hours += 18;
+          }
+        }
+        
+        time = `${hours.toString().padStart(2, '0')}:${minutes}`;
       }
 
-      // Extrair período
-      const periodMatch = normalizedCommand.match(patterns.period);
+      let specificDate: Date | null = null;
+      let days: string[] = [];
+
+      if (isRelativeDate) {
+        // Para agendamentos específicos, usar data relativa
+        specificDate = parseRelativeDate(normalizedCommand);
+        if (!specificDate) {
+          throw new Error('Não foi possível interpretar a data especificada');
+        }
+      } else {
+        // Para agendamentos recorrentes, extrair dias da semana
+        const dayMatches = normalizedCommand.match(patterns.days);
+        
+        if (dayMatches) {
+          dayMatches.forEach(day => {
+            const dayLower = day.toLowerCase();
+            if (dayLower.includes('seg') || dayLower.includes('segunda')) days.push('segunda');
+            if (dayLower.includes('ter') || dayLower.includes('terça') || dayLower.includes('terca')) days.push('terça');
+            if (dayLower.includes('qua') || dayLower.includes('quarta')) days.push('quarta');
+            if (dayLower.includes('qui') || dayLower.includes('quinta')) days.push('quinta');
+            if (dayLower.includes('sex') || dayLower.includes('sexta')) days.push('sexta');
+            if (dayLower.includes('sab') || dayLower.includes('sábado') || dayLower.includes('sabado')) days.push('sábado');
+            if (dayLower.includes('dom') || dayLower.includes('domingo')) days.push('domingo');
+          });
+        }
+      }
+
+      // Extrair período (só para agendamentos recorrentes)
       let endDate = endOfMonth(new Date());
       
-      if (periodMatch) {
-        const month = periodMatch[2];
-        const currentYear = new Date().getFullYear();
-        const monthMap: { [key: string]: number } = {
-          'janeiro': 0, 'fevereiro': 1, 'março': 2, 'abril': 3,
-          'maio': 4, 'junho': 5, 'julho': 6, 'agosto': 7,
-          'setembro': 8, 'outubro': 9, 'novembro': 10, 'dezembro': 11
-        };
+      if (!isRelativeDate) {
+        const periodMatch = normalizedCommand.match(patterns.period);
         
-        if (monthMap[month] !== undefined) {
-          endDate = endOfMonth(new Date(currentYear, monthMap[month]));
+        if (periodMatch) {
+          const month = periodMatch[2];
+          const currentYear = new Date().getFullYear();
+          const monthMap: { [key: string]: number } = {
+            'janeiro': 0, 'fevereiro': 1, 'março': 2, 'abril': 3,
+            'maio': 4, 'junho': 5, 'julho': 6, 'agosto': 7,
+            'setembro': 8, 'outubro': 9, 'novembro': 10, 'dezembro': 11
+          };
+          
+          if (monthMap[month] !== undefined) {
+            endDate = endOfMonth(new Date(currentYear, monthMap[month]));
+          }
         }
       }
 
@@ -225,7 +332,9 @@ const SmartScheduling: React.FC = () => {
         time,
         startDate: new Date(),
         endDate,
-        recurring: true
+        recurring: !isRelativeDate,
+        specificDate,
+        isRelativeDate
       };
     } catch (error) {
       console.error('Erro ao processar comando:', error);
@@ -235,36 +344,52 @@ const SmartScheduling: React.FC = () => {
 
   const generateSchedulePreview = (schedule: ParsedSchedule): SchedulePreview[] => {
     const preview: SchedulePreview[] = [];
-    const dayMap: { [key: string]: number } = {
-      'domingo': 0, 'segunda': 1, 'terça': 2, 'quarta': 3,
-      'quinta': 4, 'sexta': 5, 'sábado': 6
-    };
 
-    const startDate = new Date();
-    const endDate = schedule.endDate;
-
-    // Gerar todas as datas no intervalo
-    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-
-    allDays.forEach(day => {
-      const dayOfWeek = day.getDay();
-      const dayName = Object.keys(dayMap).find(key => dayMap[key] === dayOfWeek);
+    if (schedule.isRelativeDate && schedule.specificDate) {
+      // Agendamento específico
+      const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+      const dayName = dayNames[schedule.specificDate.getDay()];
       
-      if (dayName && schedule.days.includes(dayName)) {
-        preview.push({
-          date: format(day, 'yyyy-MM-dd'),
-          time: schedule.time,
-          clientName: schedule.clientName || 'Cliente não especificado',
-          type: schedule.appointmentType,
-          dayOfWeek: dayName
-        });
-      }
-    });
+      preview.push({
+        date: format(schedule.specificDate, 'yyyy-MM-dd'),
+        time: schedule.time,
+        clientName: schedule.clientName || 'Cliente não especificado',
+        type: schedule.appointmentType,
+        dayOfWeek: dayName
+      });
+    } else {
+      // Agendamento recorrente
+      const dayMap: { [key: string]: number } = {
+        'domingo': 0, 'segunda': 1, 'terça': 2, 'quarta': 3,
+        'quinta': 4, 'sexta': 5, 'sábado': 6
+      };
+
+      const startDate = new Date();
+      const endDate = schedule.endDate;
+
+      // Gerar todas as datas no intervalo
+      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+      allDays.forEach(day => {
+        const dayOfWeek = day.getDay();
+        const dayName = Object.keys(dayMap).find(key => dayMap[key] === dayOfWeek);
+        
+        if (dayName && schedule.days.includes(dayName)) {
+          preview.push({
+            date: format(day, 'yyyy-MM-dd'),
+            time: schedule.time,
+            clientName: schedule.clientName || 'Cliente não especificado',
+            type: schedule.appointmentType,
+            dayOfWeek: dayName
+          });
+        }
+      });
+    }
 
     return preview.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
-  const processCommand = async () => {
+    const processCommand = async () => {
     if (!textInput.trim()) {
       toast.error('Digite ou fale um comando para processar.');
       return;
@@ -281,7 +406,7 @@ const SmartScheduling: React.FC = () => {
         return;
       }
 
-      if (schedule.days.length === 0) {
+      if (schedule.days.length === 0 && !schedule.isRelativeDate) {
         toast.error('Nenhum dia da semana foi especificado.');
         setIsProcessing(false);
         return;
@@ -289,11 +414,21 @@ const SmartScheduling: React.FC = () => {
 
       const preview = generateSchedulePreview(schedule);
       
+      if (preview.length === 0) {
+        toast.error('Nenhum agendamento foi gerado. Verifique o comando.');
+        setIsProcessing(false);
+        return;
+      }
+      
       setParsedSchedule(schedule);
       setSchedulePreview(preview);
       setIsProcessing(false);
       
-      toast.success(`${preview.length} agendamentos foram preparados para criação.`);
+      if (schedule.isRelativeDate) {
+        toast.success(`Agendamento específico preparado para ${format(schedule.specificDate!, 'dd/MM/yyyy', { locale: pt })}.`);
+      } else {
+        toast.success(`${preview.length} agendamentos recorrentes foram preparados para criação.`);
+      }
       
     } catch (error) {
       console.error('Erro ao processar comando:', error);
@@ -355,10 +490,15 @@ const SmartScheduling: React.FC = () => {
   };
 
   const getTypeColor = (type: string) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case 'avaliação': return 'bg-purple-100 text-purple-800';
       case 'sessão': return 'bg-[#e6f2f3] text-[#3f9094]';
       case 'consulta': return 'bg-yellow-100 text-yellow-800';
+      case 'reunião': return 'bg-red-100 text-red-800';
+      case 'pagamento': return 'bg-green-100 text-green-800';
+      case 'follow-up': return 'bg-orange-100 text-orange-800';
+      case 'terapia': return 'bg-blue-100 text-blue-800';
+      case 'workshop': return 'bg-pink-100 text-pink-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -389,7 +529,7 @@ const SmartScheduling: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: Marcar sessões de neurofeedback para o João as terças e quintas às 18:00h até ao fim de setembro"
+                  placeholder="Ex: Reunião amanhã às 10:00 da manhã com o João, ou Pagamento no próximo sábado às 15:00"
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
                   className="flex-1"
