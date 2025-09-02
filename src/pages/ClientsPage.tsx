@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
+import { useAdminContext } from '@/contexts/AdminContext';
 import ClientCard from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ interface DateRange {
 }
 
 const ClientsPage = () => {
+  const { isAdminContext } = useAdminContext();
   const { 
     clients, 
     isLoading, 
@@ -400,22 +402,25 @@ const ClientsPage = () => {
   };
 
   if (isLoading) {
-    return (
-      <PageLayout>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3f9094] mx-auto mb-4"></div>
-            <h2 className="text-xl font-semibold mb-2">Carregando clientes...</h2>
-            <p className="text-gray-500">Aguarde enquanto buscamos seus clientes</p>
-          </div>
+    const loadingContent = (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3f9094] mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold mb-2">Carregando clientes...</h2>
+          <p className="text-gray-500">Aguarde enquanto buscamos seus clientes</p>
         </div>
+      </div>
+    );
+
+    return isAdminContext ? loadingContent : (
+      <PageLayout>
+        {loadingContent}
       </PageLayout>
     );
   }
 
-  return (
-    <PageLayout>
-      <div className="space-y-6">
+  const pageContent = (
+    <div className="space-y-6">
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -848,7 +853,6 @@ const ClientsPage = () => {
       </Tabs>
           </div>
         )}
-      </div>
       
       {/* Dialogs */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -865,6 +869,12 @@ const ClientsPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+
+  return isAdminContext ? pageContent : (
+    <PageLayout>
+      {pageContent}
     </PageLayout>
   );
 };

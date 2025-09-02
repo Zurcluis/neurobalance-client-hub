@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
 import { 
@@ -57,7 +57,11 @@ const Sidebar = () => {
     { name: t('clients'), icon: <User className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clients' },
     { name: t('calendar'), icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/calendar' },
     { name: 'Finanças', icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
+    { name: 'Investimentos', icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
+    { name: 'Marketing', icon: <Megaphone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/marketing-reports' },
+    { name: 'Lead Compra', icon: <Target className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/lead-compra' },
     { name: 'Estatísticas', icon: <PieChart className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/statistics' },
+    { name: 'Administrativas', icon: <UserCog className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin-management' },
   ];
   
   const communicationItems = [
@@ -89,8 +93,8 @@ const Sidebar = () => {
             src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
             alt="NeuroBalance Logo" 
             className={cn(
-              "app-logo mb-4 transition-all duration-300",
-              isCollapsed ? "w-10" : "w-28" 
+              "app-logo mb-4 transition-all duration-300 object-contain",
+              isCollapsed ? "w-12 h-12" : "w-32 h-32" 
             )} 
           />
           {!isCollapsed && (
@@ -274,7 +278,7 @@ const Sidebar = () => {
         <img 
           src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
           alt="NeuroBalance Logo" 
-          className="h-8 w-auto app-logo" // Added app-logo class for dark mode fix
+          className="h-10 w-auto app-logo object-contain" 
         />
         
         <div className="flex items-center gap-2">

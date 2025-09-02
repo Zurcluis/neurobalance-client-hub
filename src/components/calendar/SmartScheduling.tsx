@@ -320,8 +320,8 @@ const SmartScheduling: React.FC = () => {
         const foundClient = findClientByNameOrId(clientInput);
         
         if (foundClient) {
-          clientName = foundClient.nome;
-          clientId = foundClient.id.toString();
+          clientName = foundClient.nome || '';
+          clientId = foundClient.id?.toString() || '';
         } else {
           clientName = clientInput;
         }

@@ -270,12 +270,12 @@ const DashboardOverview = () => {
     
   const formatAppointmentsForTable = (appointments) => {
     return appointments.map(appointment => ({
-      id: appointment.id.toString(),
-      title: appointment.titulo,
-      date: appointment.data,
+      id: appointment.id?.toString() || '',
+      title: appointment.titulo || '',
+      date: appointment.data || '',
       clientName: appointment.clientes?.nome || 'Cliente não definido',
-      clientId: appointment.id_cliente.toString(),
-      type: appointment.tipo,
+      clientId: appointment.id_cliente?.toString() || '',
+      type: appointment.tipo || '',
       confirmed: appointment.estado === 'confirmado' || appointment.estado === 'realizado'
     }));
   };

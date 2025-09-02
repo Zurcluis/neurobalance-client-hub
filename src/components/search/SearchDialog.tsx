@@ -54,9 +54,9 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
           client.telefone?.toLowerCase().includes(q)
       ) {
         searchResults.push({
-            id: client.id.toString(),
-            title: client.nome,
-          subtitle: client.email,
+            id: client.id?.toString() || '',
+            title: client.nome || '',
+          subtitle: client.email || '',
           type: 'client',
           path: `/clients/${client.id}`
         });
@@ -75,9 +75,9 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
           const client = clients?.find(c => c.id === appointment.id_cliente);
         
         searchResults.push({
-            id: appointment.id.toString(),
+            id: appointment.id?.toString() || '',
             title: appointment.titulo || 'Consulta',
-            subtitle: client ? `Cliente: ${client.nome}` : undefined,
+            subtitle: client ? `Cliente: ${client.nome || ''}` : undefined,
           type: 'appointment',
           path: '/calendar'
         });

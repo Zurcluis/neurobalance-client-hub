@@ -117,7 +117,7 @@ const ClientMoodTracker = ({ clientId, moods, onSubmitMood }: ClientMoodTrackerP
       
       // Criar o objeto com o ID do Supabase para uso no front-end
       const newMood: ClientMood = {
-        id: supabaseData && supabaseData[0] ? supabaseData[0].id.toString() : Date.now().toString(),
+        id: supabaseData && supabaseData[0] ? supabaseData[0].id?.toString() || Date.now().toString() : Date.now().toString(),
         clientId,
         mood: data.mood,
         sleepQuality: data.sleepQuality || 'good',

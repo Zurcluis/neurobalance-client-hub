@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Edit, Phone, Mail, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Database } from '@/integrations/supabase/types';
+import { useAdminContext } from '@/contexts/AdminContext';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 
@@ -15,9 +16,10 @@ interface ClientCardProps {
 
 const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass = '' }) => {
   const navigate = useNavigate();
+  const { isAdminContext } = useAdminContext();
 
   const handleEdit = () => {
-    navigate(`/clients/${client.id}`);
+    navigate(isAdminContext ? `/admin/clients/${client.id}` : `/clients/${client.id}`);
   };
 
   return (

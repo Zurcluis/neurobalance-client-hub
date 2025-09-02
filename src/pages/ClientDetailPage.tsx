@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
+import { useAdminContext } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,6 +62,7 @@ const saveToStorage = <T extends unknown>(key: string, data: T): void => {
 };
 
 const ClientDetailPage = () => {
+  const { isAdminContext } = useAdminContext();
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { clients, isLoading: isLoadingClients, updateClient: updateClientInDb, deleteClient: deleteClientFromDb } = useClients();
@@ -83,7 +85,7 @@ const ClientDetailPage = () => {
     
     const now = new Date();
     const clientAppointments = appointments.filter(app => 
-      app.id_cliente.toString() === clientId && 
+      app.id_cliente?.toString() === clientId && 
       isAfter(parseISO(app.data), now)
     );
     
@@ -117,7 +119,7 @@ const ClientDetailPage = () => {
   // Carregar dados
   useEffect(() => {
     if (!isLoadingClients && clientId) {
-      const foundClient = clients.find(c => c.id.toString() === clientId);
+      const foundClient = clients.find(c => c.id?.toString() === clientId);
       
       if (foundClient) {
         const clientToSet: ClientDetailData = {
@@ -237,26 +239,32 @@ const ClientDetailPage = () => {
 
   // Se o cliente não for encontrado, mostrar erro
   if (isLoading || isLoadingClients) {
-    return (
+    const loadingContent = <div>Carregando...</div>;
+    
+    return isAdminContext ? loadingContent : (
       <PageLayout>
-        <div>Carregando...</div>
+        {loadingContent}
       </PageLayout>
     );
   }
 
   if (!client) {
-    return (
-      <PageLayout>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-red-500">Cliente Não Encontrado</h2>
-          <p className="mt-2 mb-6">O cliente que procura não existe ou foi removido.</p>
-          <Link to="/clients">
+    const errorContent = (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-red-500">Cliente Não Encontrado</h2>
+        <p className="mt-2 mb-6">O cliente que procura não existe ou foi removido.</p>
+        <Link to={isAdminContext ? "/admin/clients" : "/clients"}>
             <Button>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para Clientes
             </Button>
           </Link>
         </div>
+    );
+
+    return isAdminContext ? errorContent : (
+      <PageLayout>
+        {errorContent}
       </PageLayout>
     );
   }
@@ -660,11 +668,11 @@ const ClientDetailPage = () => {
     { id: 'mood', label: 'Estado Emocional', content: null }
   ];
   
-  return (
-    <PageLayout>
+  const pageContent = (
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-6 gap-2">
         <div className="flex items-center">
-          <Link to="/clients">
+          <Link to={isAdminContext ? "/admin/clients" : "/clients"}>
             <Button variant="outline" size="sm" className="mr-2 sm:mr-4">
               <ArrowLeft className="mr-1 sm:mr-2 h-4 w-4" />
               <span className="hidden xs:inline">Voltar</span>
@@ -729,6 +737,12 @@ const ClientDetailPage = () => {
           content: tab.id === activeTab ? renderTabContent() : null
         }))}
       />
+    </div>
+  );
+
+  return isAdminContext ? pageContent : (
+    <PageLayout>
+      {pageContent}
     </PageLayout>
   );
 };

@@ -36,16 +36,16 @@ export function useSessions(clientId?: number) {
 
         // Transform database rows to Session type
         const transformedSessions: Session[] = data.map(row => ({
-          id: row.id.toString(),
-          clientId: row.id_cliente.toString(),
-          date: row.inicio,
+          id: row.id?.toString() || '',
+          clientId: row.id_cliente?.toString() || '',
+          date: row.inicio || '',
           notes: row.notas || '',
           paid: false,
           terapeuta: '',
           type: '',
           status: '',
-          duracao: row.duracao,
-          endDate: row.fim
+          duracao: row.duracao || 0,
+          endDate: row.fim || ''
         }));
 
         setSessions(transformedSessions);
@@ -77,16 +77,16 @@ export function useSessions(clientId?: number) {
 
       // Transform database row to Session type
       const transformedSession: Session = {
-        id: data.id.toString(),
-        clientId: data.id_cliente.toString(),
-        date: data.inicio,
+        id: data.id?.toString() || '',
+        clientId: data.id_cliente?.toString() || '',
+        date: data.inicio || '',
         notes: data.notas || '',
         paid: false,
         terapeuta: '',
         type: '',
         status: '',
-        duracao: data.duracao,
-        endDate: data.fim
+        duracao: data.duracao || 0,
+        endDate: data.fim || ''
       };
 
       setSessions(prev => [...prev, transformedSession]);
@@ -115,16 +115,16 @@ export function useSessions(clientId?: number) {
 
       // Transform database row to Session type
       const transformedSession: Session = {
-        id: data.id.toString(),
-        clientId: data.id_cliente.toString(),
-        date: data.inicio,
+        id: data.id?.toString() || '',
+        clientId: data.id_cliente?.toString() || '',
+        date: data.inicio || '',
         notes: data.notas || '',
         paid: false,
         terapeuta: '',
         type: '',
         status: '',
-        duracao: data.duracao,
-        endDate: data.fim
+        duracao: data.duracao || 0,
+        endDate: data.fim || ''
       };
 
       setSessions(prev => prev.map(session => 

@@ -49,7 +49,7 @@ const ClientPdfExport: React.FC<ClientPdfExportProps> = ({ client, sessions = []
         if (storedSessions) {
           const allSessions = JSON.parse(storedSessions);
           clientSessions = allSessions.filter((session: Session) => 
-            session.clientId === client.id.toString()
+            session.clientId === client.id?.toString()
           );
         }
       }

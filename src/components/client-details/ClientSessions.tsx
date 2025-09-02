@@ -262,17 +262,17 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
         };
       } else {
         return {
-          id: app.id.toString(),
-          clientId: app.id_cliente.toString(),
-          date: app.data,
+          id: app.id?.toString() || '',
+          clientId: app.id_cliente?.toString() || '',
+          date: app.data || '',
           notes: sessionNote,
           paid: false,
           terapeuta: app.terapeuta ?? '',
           arquivos: [],
           isFromCalendar: true,
-          calendarTitle: app.titulo,
-          status: app.estado,
-          sessionType: app.tipo,
+          calendarTitle: app.titulo || '',
+          status: app.estado || '',
+          sessionType: app.tipo || '',
           time: formattedTime // Adicionar o campo time para garantir consistência
         };
       }
