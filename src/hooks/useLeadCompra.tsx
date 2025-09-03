@@ -34,40 +34,40 @@ export const useLeadCompra = () => {
 				.select('*');
 
 			// Aplicar filtros
-			if (filters ? .tipo && filters.tipo !== 'Todos') {
+			if (filters?.tipo && filters.tipo !== 'Todos') {
 				query = query.eq('tipo', filters.tipo);
 			}
 
-			if (filters ? .genero) {
+			if (filters?.genero) {
 				query = query.eq('genero', filters.genero);
 			}
 
-			if (filters ? .cidade) {
+			if (filters?.cidade) {
 				query = query.eq('cidade', filters.cidade);
 			}
 
-			if (filters ? .valorMinimo !== undefined) {
+			if (filters?.valorMinimo !== undefined) {
 				query = query.gte('valor_pago', filters.valorMinimo);
 			}
 
-			if (filters ? .valorMaximo !== undefined) {
+			if (filters?.valorMaximo !== undefined) {
 				query = query.lte('valor_pago', filters.valorMaximo);
 			}
 
-			if (filters ? .dataInicio) {
+			if (filters?.dataInicio) {
 				query = query.gte('data_evento', filters.dataInicio);
 			}
 
-			if (filters ? .dataFim) {
+			if (filters?.dataFim) {
 				query = query.lte('data_evento', filters.dataFim);
 			}
 
-			if (filters ? .origemCampanha) {
+			if (filters?.origemCampanha) {
 				query = query.eq('origem_campanha', filters.origemCampanha);
 			}
 
 			// Ordenação
-			if (filters ? .ordenarPor) {
+			if (filters?.ordenarPor) {
 				const ordem = filters.ordem || 'desc';
 				query = query.order(filters.ordenarPor, {
 					ascending: ordem === 'asc'
