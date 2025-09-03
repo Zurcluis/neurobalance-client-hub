@@ -22,7 +22,7 @@ export const useMarketingCampaigns = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState < string | null > (null);
 
-	const fetchCampaigns = useCallback(async (filters ? : CampaignFilters) => {
+	const fetchCampaigns = useCallback(async (filters?: CampaignFilters) => {
 		setIsLoading(true);
 		setError(null);
 
@@ -31,27 +31,27 @@ export const useMarketingCampaigns = () => {
 				.from('marketing_campaigns')
 				.select('*');
 
-			if (filters ? .origem) {
+			if (filters?.origem) {
 				query = query.eq('origem', filters.origem);
 			}
 
-			if (filters ? .anoInicio) {
+			if (filters?.anoInicio) {
 				query = query.gte('ano', filters.anoInicio);
 			}
 
-			if (filters ? .anoFim) {
+			if (filters?.anoFim) {
 				query = query.lte('ano', filters.anoFim);
 			}
 
-			if (filters ? .mesInicio && filters ? .anoInicio) {
+			if (filters?.mesInicio && filters?.anoInicio) {
 				query = query.or(`ano.gt.${filters.anoInicio},and(ano.eq.${filters.anoInicio},mes.gte.${filters.mesInicio})`);
 			}
 
-			if (filters ? .mesFim && filters ? .anoFim) {
+			if (filters?.mesFim && filters?.anoFim) {
 				query = query.or(`ano.lt.${filters.anoFim},and(ano.eq.${filters.anoFim},mes.lte.${filters.mesFim})`);
 			}
 
-			if (filters ? .ordenarPor) {
+			if (filters?.ordenarPor) {
 				const ordem = filters.ordem || 'desc';
 				query = query.order(filters.ordenarPor, {
 					ascending: ordem === 'asc'
