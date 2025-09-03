@@ -9,6 +9,7 @@ export interface LeadCompra {
   valor_pago: number;
   data_evento: string;
   tipo: 'Compra' | 'Lead';
+  status: 'Iniciou Neurofeedback' | 'Não vai avançar' | 'Vão marcar consulta mais à frente' | 'Vai iniciar NFB mas ainda não marcou primeira consulta' | 'Continuam Neurofeedback' | 'Falta resultados da avaliação' | 'Marcaram avaliação' | 'Começa mais tarde';
   origem_campanha?: string;
   observacoes?: string;
   created_at: string;
@@ -73,6 +74,17 @@ export interface ImportResult {
 
 export const GENEROS = ['Masculino', 'Feminino', 'Outro'] as const;
 export const TIPOS = ['Compra', 'Lead'] as const;
+
+export const STATUS_OPTIONS = [
+  'Iniciou Neurofeedback',
+  'Não vai avançar', 
+  'Vão marcar consulta mais à frente',
+  'Vai iniciar NFB mas ainda não marcou primeira consulta',
+  'Continuam Neurofeedback',
+  'Falta resultados da avaliação',
+  'Marcaram avaliação',
+  'Começa mais tarde'
+] as const;
 
 export const CIDADES_PORTUGAL = [
   'Lisboa',

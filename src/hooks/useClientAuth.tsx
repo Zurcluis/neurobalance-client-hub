@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { ClientSession, ClientAuthRequest, ClientAuthResponse } from '@/types/client-dashboard';
 
@@ -24,6 +24,7 @@ export const useClientAuth = () => {
 };
 
 export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const supabase = useSupabaseClient();
   const [session, setSession] = useState<ClientSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
       }
     }
     setLoading(false);
-  }, []);
+  }, [supabase]);
 
   // Validar token no servidor
   const validateToken = useCallback(async (token: string) => {
@@ -165,7 +166,7 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   // Função de logout
   const logout = useCallback(() => {
@@ -173,7 +174,7 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
     localStorage.removeItem('client_session');
     setError(null);
     toast.success('Logout realizado com sucesso');
-  }, []);
+  }, [supabase]);
 
   // Função para atualizar sessão
   const refreshSession = useCallback(async (): Promise<boolean> => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Notification {
@@ -21,6 +21,7 @@ export interface Notification {
 }
 
 export const useNotifications = () => {
+  const supabase = useSupabaseClient();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

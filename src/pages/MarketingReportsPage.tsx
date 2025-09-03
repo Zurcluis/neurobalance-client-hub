@@ -1,16 +1,26 @@
 import React, { useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
+import { useMarketingContext } from '@/contexts/MarketingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
+import { useLeadCompra } from '@/hooks/useLeadCompra';
 import { MarketingCampaign, CampaignFilters } from '@/types/marketing';
+import { LeadCompra, LeadCompraFilters } from '@/types/lead-compra';
 import CampaignForm from '@/components/marketing/CampaignForm';
 import CampaignCard from '@/components/marketing/CampaignCard';
 import CampaignFiltersComponent from '@/components/marketing/CampaignFilters';
 import MarketingDashboard from '@/components/marketing/MarketingDashboard';
 import ExportManager from '@/components/marketing/ExportManager';
+import LeadCompraForm from '@/components/lead-compra/LeadCompraForm';
+import LeadCompraDashboard from '@/components/lead-compra/LeadCompraDashboard';
+import ImportManager from '@/components/lead-compra/ImportManager';
 import FileImporter from '@/components/shared/FileImporter';
 import { 
   Plus, 
@@ -20,15 +30,26 @@ import {
   Download,
   Filter,
   X,
-  Upload
+  Upload,
+  Edit,
+  Trash2,
+  Users,
+  Target,
+  Euro,
+  Mail,
+  Phone,
+  MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MarketingReportsPage = () => {
+  const { isMarketingContext } = useMarketingContext();
+  
+  // Marketing Campaigns hooks
   const {
     campaigns,
-    isLoading,
-    error,
+    isLoading: campaignsLoading,
+    error: campaignsError,
     fetchCampaigns,
     addCampaign,
     updateCampaign,
@@ -36,6 +57,20 @@ const MarketingReportsPage = () => {
     calculateMetrics
   } = useMarketingCampaigns();
 
+  // Lead Compra hooks
+  const {
+    leads,
+    statistics,
+    isLoading: leadsLoading,
+    error: leadsError,
+    fetchLeads,
+    addLead,
+    updateLead,
+    deleteLead,
+    importLeads
+  } = useLeadCompra();
+
+  // Marketing Campaigns states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<MarketingCampaign | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,15 +78,25 @@ const MarketingReportsPage = () => {
   const [filters, setFilters] = useState<CampaignFilters>({});
   const [showImporter, setShowImporter] = useState(false);
 
+  // Lead Compra states
+  const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<LeadCompra | null>(null);
+  const [leadSearchTerm, setLeadSearchTerm] = useState('');
+  const [showLeadFilters, setShowLeadFilters] = useState(false);
+  const [leadFilters, setLeadFilters] = useState<LeadCompraFilters>({
+    tipo: 'Todos'
+  });
+  const [showLeadImporter, setShowLeadImporter] = useState(false);
+
   // Filtrar campanhas baseado na busca e filtros
   const filteredCampaigns = useMemo(() => {
-    let filtered = campaigns;
+    let filtered = campaigns || [];
 
     // Aplicar busca por texto
     if (searchTerm) {
       filtered = filtered.filter(campaign =>
-        campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        campaign.origem.toLowerCase().includes(searchTerm.toLowerCase())
+        campaign.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.origem?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -127,6 +172,48 @@ const MarketingReportsPage = () => {
     return filtered;
   }, [campaigns, searchTerm, filters]);
 
+  // Filtrar leads baseado na busca e filtros
+  const filteredLeads = useMemo(() => {
+    let filtered = leads || [];
+
+    // Aplicar busca por texto
+    if (leadSearchTerm) {
+      filtered = filtered.filter(lead => 
+        lead.nome?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
+        lead.email?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
+        lead.cidade?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
+        lead.origem_campanha?.toLowerCase().includes(leadSearchTerm.toLowerCase())
+      );
+    }
+
+    // Aplicar filtros
+    if (leadFilters.tipo && leadFilters.tipo !== 'Todos') {
+      filtered = filtered.filter(lead => lead.tipo === leadFilters.tipo);
+    }
+
+    if (leadFilters.cidade) {
+      filtered = filtered.filter(lead => lead.cidade === leadFilters.cidade);
+    }
+
+    if (leadFilters.genero) {
+      filtered = filtered.filter(lead => lead.genero === leadFilters.genero);
+    }
+
+    if (leadFilters.dataInicio) {
+      filtered = filtered.filter(lead => 
+        new Date(lead.data_evento) >= new Date(leadFilters.dataInicio!)
+      );
+    }
+
+    if (leadFilters.dataFim) {
+      filtered = filtered.filter(lead => 
+        new Date(lead.data_evento) <= new Date(leadFilters.dataFim!)
+      );
+    }
+
+    return filtered;
+  }, [leads, leadSearchTerm, leadFilters]);
+
   const metrics = useMemo(() => {
     return calculateMetrics(filteredCampaigns);
   }, [filteredCampaigns, calculateMetrics]);
@@ -173,74 +260,175 @@ const MarketingReportsPage = () => {
     setSearchTerm('');
   };
 
-  const handleDataImported = async (data: any[], type: 'marketing' | 'lead-compra') => {
-    if (type !== 'marketing') {
-      toast.error('Dados importados não são do tipo Marketing');
-      return;
-    }
-
-    let successCount = 0;
-    for (const item of data) {
-      try {
-        await addCampaign(item);
-        successCount++;
-      } catch (error) {
-        console.error('Erro ao importar campanha:', error);
+  // Funções para Lead Compra
+  const handleSubmitLead = async (data: Omit<LeadCompra, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      if (editingLead) {
+        await updateLead(editingLead.id, data);
+        toast.success('Lead atualizado com sucesso!');
+      } else {
+        await addLead(data);
+        toast.success('Lead adicionado com sucesso!');
       }
+      setIsLeadFormOpen(false);
+      setEditingLead(null);
+    } catch (error) {
+      console.error('Erro ao salvar lead:', error);
     }
-
-    toast.success(`${successCount} campanhas importadas com sucesso!`);
   };
 
-  if (error) {
+  const handleEditLead = (lead: LeadCompra) => {
+    setEditingLead(lead);
+    setIsLeadFormOpen(true);
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este lead?')) {
+      try {
+        await deleteLead(id);
+        toast.success('Lead removido com sucesso!');
+      } catch (error) {
+        console.error('Erro ao remover lead:', error);
+      }
+    }
+  };
+
+  const handleCancelLeadForm = () => {
+    setIsLeadFormOpen(false);
+    setEditingLead(null);
+  };
+
+  const handleClearLeadFilters = () => {
+    setLeadFilters({
+      tipo: 'Todos'
+    });
+    setLeadSearchTerm('');
+  };
+
+  const handleDataImported = async (data: any[], type: 'marketing' | 'lead-compra') => {
+    let successCount = 0;
+    let errorCount = 0;
+
+    if (type === 'marketing') {
+      for (const item of data) {
+        try {
+          await addCampaign(item);
+          successCount++;
+        } catch (error) {
+          console.error('Erro ao importar campanha:', error);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} campanhas importadas com sucesso!`);
+      }
+      
+      if (errorCount > 0) {
+        toast.error(`${errorCount} campanhas falharam ao importar.`);
+      }
+
+      setShowImporter(false);
+    } else if (type === 'lead-compra') {
+      for (const item of data) {
+        try {
+          await addLead(item);
+          successCount++;
+        } catch (error) {
+          console.error('Erro ao importar lead:', error);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} leads importados com sucesso!`);
+      }
+      
+      if (errorCount > 0) {
+        toast.error(`${errorCount} leads falharam ao importar.`);
+      }
+
+      setShowLeadImporter(false);
+    }
+  };
+
+  if (campaignsError || leadsError) {
     return (
       <PageLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <p className="text-red-600 mb-4">Erro ao carregar campanhas: {error}</p>
-            <Button onClick={() => fetchCampaigns()}>Tentar Novamente</Button>
+            <p className="text-red-600 mb-4">
+              Erro ao carregar dados: {campaignsError || leadsError}
+            </p>
+            <div className="space-x-2">
+              <Button onClick={() => fetchCampaigns()}>Recarregar Campanhas</Button>
+              <Button onClick={() => fetchLeads()}>Recarregar Leads</Button>
+            </div>
           </div>
         </div>
       </PageLayout>
     );
   }
 
-  return (
-    <PageLayout>
-      <div className="space-y-6">
+  const content = (
+    <div className="space-y-6">
         {/* Cabeçalho */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Relatórios de Marketing</h1>
-            <p className="text-gray-600">Gerencie e analise suas campanhas de marketing</p>
+            <h1 className="text-3xl font-bold text-gray-900">Marketing</h1>
+            <p className="text-gray-600">Gerencie campanhas, leads e análises de marketing</p>
           </div>
           
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Campanha
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
-                </DialogTitle>
-              </DialogHeader>
-              <CampaignForm
-                campaign={editingCampaign || undefined}
-                onSubmit={handleSubmitCampaign}
-                onCancel={handleCancelForm}
-                isLoading={isLoading}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Campanha
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
+                  </DialogTitle>
+                </DialogHeader>
+                <CampaignForm
+                  campaign={editingCampaign || undefined}
+                  onSubmit={handleSubmitCampaign}
+                  onCancel={handleCancelForm}
+                  isLoading={campaignsLoading || false}
+                />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isLeadFormOpen} onOpenChange={setIsLeadFormOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Lead
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingLead ? 'Editar Lead' : 'Novo Lead'}
+                  </DialogTitle>
+                </DialogHeader>
+                <LeadCompraForm
+                  leadCompra={editingLead || undefined}
+                  onSubmit={handleSubmitLead}
+                  onCancel={handleCancelLeadForm}
+                  isLoading={leadsLoading || false}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
@@ -248,6 +436,14 @@ const MarketingReportsPage = () => {
             <TabsTrigger value="campaigns" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Campanhas
+            </TabsTrigger>
+            <TabsTrigger value="leads" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Leads
+            </TabsTrigger>
+            <TabsTrigger value="lead-dashboard" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Lead Analytics
             </TabsTrigger>
             <TabsTrigger value="import" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
@@ -265,7 +461,21 @@ const MarketingReportsPage = () => {
 
           {/* Dashboard */}
           <TabsContent value="dashboard" className="space-y-6">
-            <MarketingDashboard campaigns={filteredCampaigns} metrics={metrics} />
+            <MarketingDashboard 
+              campaigns={filteredCampaigns} 
+              metrics={metrics || {
+                totalInvestimento: 0,
+                totalLeads: 0,
+                totalReunioes: 0,
+                totalVendas: 0,
+                totalReceita: 0,
+                cplMedio: 0,
+                cacMedio: 0,
+                taxaConversaoMedia: 0,
+                roi: 0,
+                roas: 0
+              }} 
+            />
           </TabsContent>
 
           {/* Lista de Campanhas */}
@@ -315,7 +525,7 @@ const MarketingReportsPage = () => {
             </div>
 
             {/* Lista de Campanhas */}
-            {isLoading ? (
+            {campaignsLoading ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
@@ -352,14 +562,45 @@ const MarketingReportsPage = () => {
             )}
           </TabsContent>
 
+          {/* Lead Analytics Dashboard */}
+          <TabsContent value="lead-dashboard" className="space-y-6">
+            <LeadCompraDashboard 
+              statistics={statistics || {
+                totalRegistos: 0,
+                comprasRegistadas: 0,
+                leadsRegistados: 0,
+                valorTotalRegistado: 0,
+                estatisticasValores: {
+                  registosComValor: 0,
+                  media: 0,
+                  minimo: 0,
+                  mediana: 0,
+                  maximo: 0
+                },
+                distribuicaoPorGenero: { masculino: 0, feminino: 0, outro: 0 },
+                distribuicaoPorCidade: {},
+                distribuicaoPorMes: {},
+                conversaoLeadParaCompra: 0
+              }} 
+            />
+          </TabsContent>
+
           {/* Importação */}
           <TabsContent value="import" className="space-y-6">
-            <FileImporter
-              onDataImported={handleDataImported}
-              expectedType="marketing"
-              title="Importar Campanhas de Marketing"
-              description="Importe campanhas de marketing de arquivos Excel, Word ou PDF"
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <FileImporter
+                onDataImported={handleDataImported}
+                expectedType="marketing"
+                title="Importar Campanhas de Marketing"
+                description="Importe campanhas de marketing de arquivos Excel, Word ou PDF"
+              />
+              <FileImporter
+                onDataImported={handleDataImported}
+                expectedType="lead-compra"
+                title="Importar Leads e Compras"
+                description="Importe dados de leads e compras de arquivos Excel, Word ou PDF"
+              />
+            </div>
           </TabsContent>
 
           {/* Filtros Dedicados */}
@@ -375,8 +616,190 @@ const MarketingReportsPage = () => {
           <TabsContent value="export" className="space-y-6">
             <ExportManager campaigns={filteredCampaigns} />
           </TabsContent>
+
+          {/* Leads */}
+          <TabsContent value="leads" className="space-y-6">
+            {/* Barra de busca e filtros para leads */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar leads..."
+                    value={leadSearchTerm}
+                    onChange={(e) => setLeadSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowLeadFilters(!showLeadFilters)}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Filtros
+                {showLeadFilters && <X className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            {/* Filtros de leads (quando visível) */}
+            {showLeadFilters && (
+              <Card className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label>Tipo</Label>
+                    <Select
+                      value={leadFilters.tipo || 'Todos'}
+                      onValueChange={(value) => setLeadFilters({ ...leadFilters, tipo: value as 'Compra' | 'Lead' | 'Todos' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Todos">Todos</SelectItem>
+                        <SelectItem value="Lead">Lead</SelectItem>
+                        <SelectItem value="Compra">Compra</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Cidade</Label>
+                    <Input
+                      placeholder="Filtrar por cidade"
+                      value={leadFilters.cidade || ''}
+                      onChange={(e) => setLeadFilters({ ...leadFilters, cidade: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Gênero</Label>
+                    <Select
+                      value={leadFilters.genero || 'todos'}
+                      onValueChange={(value) => setLeadFilters({ ...leadFilters, genero: value === 'todos' ? undefined : value as 'Masculino' | 'Feminino' | 'Outro' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos os gêneros" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="Masculino">Masculino</SelectItem>
+                        <SelectItem value="Feminino">Feminino</SelectItem>
+                        <SelectItem value="Outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button variant="outline" onClick={handleClearLeadFilters} className="w-full">
+                      Limpar Filtros
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Lista de leads */}
+            {leadsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-gray-500">Carregando leads...</div>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {filteredLeads.map((lead) => (
+                  <Card key={lead.id} className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-lg">{lead.nome}</h3>
+                          <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>
+                            {lead.tipo}
+                          </Badge>
+                          {lead.genero && (
+                            <Badge variant="outline">
+                              {lead.genero}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                          {lead.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              {lead.email}
+                            </div>
+                          )}
+                          {lead.telefone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              {lead.telefone}
+                            </div>
+                          )}
+                          {lead.cidade && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              {lead.cidade}
+                            </div>
+                          )}
+                          {lead.idade && (
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              {lead.idade} anos
+                            </div>
+                          )}
+                          {lead.valor_pago && lead.valor_pago > 0 && (
+                            <div className="flex items-center gap-2">
+                              <Euro className="h-4 w-4" />
+                              €{lead.valor_pago}
+                            </div>
+                          )}
+                          {lead.data_evento && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              {new Date(lead.data_evento).toLocaleDateString('pt-PT')}
+                            </div>
+                          )}
+                        </div>
+                        {lead.origem_campanha && (
+                          <p className="mt-2 text-sm text-gray-700">
+                            <strong>Campanha:</strong> {lead.origem_campanha}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditLead(lead)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteLead(lead.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
         </Tabs>
       </div>
+  );
+
+  // Se estamos no contexto de marketing (área protegida), não usar PageLayout
+  if (isMarketingContext) {
+    return content;
+  }
+
+  // Caso contrário, usar PageLayout (acesso normal via menu principal)
+  return (
+    <PageLayout>
+      {content}
     </PageLayout>
   );
 };

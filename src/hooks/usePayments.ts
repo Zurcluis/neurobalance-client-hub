@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 
 type Payment = {
@@ -19,7 +19,7 @@ type PaymentWithClient = Payment & {
 };
 
 // Função para criar a tabela de pagamentos se não existir
-const ensurePaymentsTable = async () => {
+const ensurePaymentsTable = async (supabase: any) => {
   try {
     // Tentar verificar se a tabela existe
     const { error: checkError } = await supabase
@@ -58,10 +58,10 @@ const ensurePaymentsTable = async () => {
 };
 
 // Função global para criar pagamento de teste
-export const createSamplePayment = async () => {
+export const createSamplePayment = async (supabase: any) => {
   try {
     // Primeiro garantir que a tabela existe
-    const tableExists = await ensurePaymentsTable();
+    const tableExists = await ensurePaymentsTable(supabase);
     if (!tableExists) {
       return null;
     }
@@ -119,6 +119,7 @@ export const createSamplePayment = async () => {
 };
 
 export function usePayments() {
+  const supabase = useSupabaseClient();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -130,7 +131,7 @@ export function usePayments() {
       setError(null);
       
       // Garantir que a tabela existe
-      const tableExists = await ensurePaymentsTable();
+      const tableExists = await ensurePaymentsTable(supabase);
       if (!tableExists) {
         throw new Error('Falha ao acessar tabela de pagamentos');
       }
@@ -173,7 +174,7 @@ export function usePayments() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     fetchPayments();
@@ -201,7 +202,7 @@ export function usePayments() {
       console.log('Adicionando novo pagamento:', newPayment);
       
       // Garantir que a tabela existe
-      const tableExists = await ensurePaymentsTable();
+      const tableExists = await ensurePaymentsTable(supabase);
       if (!tableExists) {
         throw new Error('Falha ao acessar tabela de pagamentos');
       }

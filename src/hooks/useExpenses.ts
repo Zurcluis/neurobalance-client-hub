@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -9,6 +9,7 @@ type NewExpense = Omit<Database['public']['Tables']['despesas']['Insert'], 'id' 
 type UpdateExpense = Partial<NewExpense>;
 
 export function useExpenses() {
+  const supabase = useSupabaseClient();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +98,7 @@ export function useExpenses() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   // Carregar despesas ao inicializar
   useEffect(() => {
@@ -146,7 +147,7 @@ export function useExpenses() {
       toast.error('Falha ao adicionar despesa');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   // Atualizar despesa
   const updateExpense = useCallback(async (id: number, updates: UpdateExpense) => {
@@ -172,7 +173,7 @@ export function useExpenses() {
       toast.error('Falha ao atualizar despesa');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   // Excluir despesa
   const deleteExpense = useCallback(async (id: number) => {
@@ -193,7 +194,7 @@ export function useExpenses() {
       toast.error('Falha ao excluir despesa');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   // Buscar despesas por tipo
   const getExpensesByType = useCallback((type: string) => {

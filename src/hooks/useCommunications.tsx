@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -8,6 +8,7 @@ type NewCommunication = Database['public']['Tables']['comunicacoes']['Insert'];
 type UpdateCommunication = Database['public']['Tables']['comunicacoes']['Update'];
 
 export function useCommunications(clientId?: number) {
+  const supabase = useSupabaseClient();
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export function useCommunications(clientId?: number) {
     };
 
     loadCommunications();
-  }, [clientId]);
+  }, [clientId, supabase]);
 
   // Add new communication
   const addCommunication = useCallback(async (communication: NewCommunication) => {
@@ -66,7 +67,7 @@ export function useCommunications(clientId?: number) {
       console.error('Error adding communication:', err);
       toast.error('Failed to add communication');
     }
-  }, []);
+  }, [supabase]);
 
   // Update communication
   const updateCommunication = useCallback(async (id: number, updates: UpdateCommunication) => {
@@ -90,7 +91,7 @@ export function useCommunications(clientId?: number) {
       console.error('Error updating communication:', err);
       toast.error('Failed to update communication');
     }
-  }, []);
+  }, [supabase]);
 
   // Delete communication
   const deleteCommunication = useCallback(async (id: number) => {
@@ -110,7 +111,7 @@ export function useCommunications(clientId?: number) {
       console.error('Error deleting communication:', err);
       toast.error('Failed to delete communication');
     }
-  }, []);
+  }, [supabase]);
 
   return {
     communications,

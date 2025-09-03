@@ -540,14 +540,14 @@ const LeadCompraPage = () => {
                   <div className="space-y-2">
                     <Label>Ordenar Por</Label>
                     <Select
-                      value={filters.ordenarPor || ''}
-                      onValueChange={(value) => updateFilter('ordenarPor', value)}
+                      value={filters.ordenarPor || 'data'}
+                      onValueChange={(value) => updateFilter('ordenarPor', value === 'data' ? undefined : value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Data (mais recente)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Data (mais recente)</SelectItem>
+                        <SelectItem value="data">Data (mais recente)</SelectItem>
                         <SelectItem value="nome">Nome</SelectItem>
                         <SelectItem value="idade">Idade</SelectItem>
                         <SelectItem value="valor_pago">Valor Pago</SelectItem>

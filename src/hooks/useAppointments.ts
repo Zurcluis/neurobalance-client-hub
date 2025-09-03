@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -15,6 +15,7 @@ type NewAppointment = Omit<Database['public']['Tables']['agendamentos']['Insert'
 type UpdateAppointment = Partial<NewAppointment>;
 
 export function useAppointments() {
+  const supabase = useSupabaseClient();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export function useAppointments() {
       } finally {
         setIsLoading(false);
       }
-  }, []);
+  }, [supabase]);
 
   // Load appointments from Supabase
   useEffect(() => {
@@ -105,7 +106,7 @@ export function useAppointments() {
       toast.error('Failed to add appointment');
       throw error;
     }
-  }, []);
+  }, [supabase]);
 
   // Update appointment
   const updateAppointment = useCallback(async (id: number, appointment: {
@@ -157,7 +158,7 @@ export function useAppointments() {
       toast.error('Failed to update appointment');
       throw error;
     }
-  }, []);
+  }, [supabase]);
 
   // Delete appointment
   const deleteAppointment = useCallback(async (id: number) => {
@@ -178,7 +179,7 @@ export function useAppointments() {
       toast.error('Failed to delete appointment');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   return {
     appointments,

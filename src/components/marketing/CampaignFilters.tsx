@@ -45,14 +45,14 @@ const CampaignFiltersComponent: React.FC<CampaignFiltersProps> = ({
         <div className="space-y-2">
           <Label htmlFor="origem-filter">Origem da Campanha</Label>
           <Select
-            value={filters.origem || ''}
-            onValueChange={(value) => updateFilter('origem', value)}
+            value={filters.origem || 'todas'}
+            onValueChange={(value) => updateFilter('origem', value === 'todas' ? undefined : value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Todas as origens" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas as origens</SelectItem>
+              <SelectItem value="todas">Todas as origens</SelectItem>
               {ORIGENS_CAMPANHA.map((origem) => (
                 <SelectItem key={origem} value={origem}>
                   {origem}
@@ -71,14 +71,14 @@ const CampaignFiltersComponent: React.FC<CampaignFiltersProps> = ({
             </Label>
             <div className="grid grid-cols-2 gap-2">
               <Select
-                value={filters.mesInicio?.toString() || ''}
-                onValueChange={(value) => updateFilter('mesInicio', value ? parseInt(value) : undefined)}
+                value={filters.mesInicio?.toString() || 'qualquer'}
+                onValueChange={(value) => updateFilter('mesInicio', value === 'qualquer' ? undefined : parseInt(value))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Mês" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Qualquer</SelectItem>
+                  <SelectItem value="qualquer">Qualquer</SelectItem>
                   {MESES.map((mes) => (
                     <SelectItem key={mes.valor} value={mes.valor.toString()}>
                       {mes.nome}
@@ -88,14 +88,14 @@ const CampaignFiltersComponent: React.FC<CampaignFiltersProps> = ({
               </Select>
               
               <Select
-                value={filters.anoInicio?.toString() || ''}
-                onValueChange={(value) => updateFilter('anoInicio', value ? parseInt(value) : undefined)}
+                value={filters.anoInicio?.toString() || 'qualquer'}
+                onValueChange={(value) => updateFilter('anoInicio', value === 'qualquer' ? undefined : parseInt(value))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Ano" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Qualquer</SelectItem>
+                  <SelectItem value="qualquer">Qualquer</SelectItem>
                   {years.map((year) => (
                     <SelectItem key={year} value={year.toString()}>
                       {year}
@@ -114,14 +114,14 @@ const CampaignFiltersComponent: React.FC<CampaignFiltersProps> = ({
             </Label>
             <div className="grid grid-cols-2 gap-2">
               <Select
-                value={filters.mesFim?.toString() || ''}
-                onValueChange={(value) => updateFilter('mesFim', value ? parseInt(value) : undefined)}
+                value={filters.mesFim?.toString() || 'qualquer'}
+                onValueChange={(value) => updateFilter('mesFim', value === 'qualquer' ? undefined : parseInt(value))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Mês" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Qualquer</SelectItem>
+                  <SelectItem value="qualquer">Qualquer</SelectItem>
                   {MESES.map((mes) => (
                     <SelectItem key={mes.valor} value={mes.valor.toString()}>
                       {mes.nome}
@@ -131,14 +131,14 @@ const CampaignFiltersComponent: React.FC<CampaignFiltersProps> = ({
               </Select>
               
               <Select
-                value={filters.anoFim?.toString() || ''}
-                onValueChange={(value) => updateFilter('anoFim', value ? parseInt(value) : undefined)}
+                value={filters.anoFim?.toString() || 'qualquer'}
+                onValueChange={(value) => updateFilter('anoFim', value === 'qualquer' ? undefined : parseInt(value))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Ano" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Qualquer</SelectItem>
+                  <SelectItem value="qualquer">Qualquer</SelectItem>
                   {years.map((year) => (
                     <SelectItem key={year} value={year.toString()}>
                       {year}
@@ -158,14 +158,14 @@ const CampaignFiltersComponent: React.FC<CampaignFiltersProps> = ({
               Ordenar Por
             </Label>
             <Select
-              value={filters.ordenarPor || ''}
-              onValueChange={(value) => updateFilter('ordenarPor', value)}
+              value={filters.ordenarPor || 'data'}
+              onValueChange={(value) => updateFilter('ordenarPor', value === 'data' ? undefined : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Data (mais recente)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Data (mais recente)</SelectItem>
+                <SelectItem value="data">Data (mais recente)</SelectItem>
                 <SelectItem value="nome">Nome da Campanha</SelectItem>
                 <SelectItem value="investimento">Investimento</SelectItem>
                 <SelectItem value="leads">Número de Leads</SelectItem>

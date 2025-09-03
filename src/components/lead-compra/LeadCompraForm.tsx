@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { LeadCompra, GENEROS, TIPOS, CIDADES_PORTUGAL } from '@/types/lead-compra';
+import { LeadCompra, GENEROS, TIPOS, STATUS_OPTIONS } from '@/types/lead-compra';
 import { User, Mail, Phone, MapPin, Euro, Calendar, Target, Save, X } from 'lucide-react';
 
 const leadCompraSchema = z.object({
@@ -21,6 +21,7 @@ const leadCompraSchema = z.object({
   valor_pago: z.number().min(0, 'Valor deve ser positivo'),
   data_evento: z.string().min(1, 'Data do evento é obrigatória'),
   tipo: z.enum(TIPOS, { required_error: 'Selecione o tipo' }),
+  status: z.enum(STATUS_OPTIONS, { required_error: 'Selecione o status' }),
   origem_campanha: z.string().optional(),
   observacoes: z.string().optional(),
 });
@@ -59,6 +60,7 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
       valor_pago: leadCompra.valor_pago,
       data_evento: leadCompra.data_evento.split('T')[0], // Apenas a data
       tipo: leadCompra.tipo,
+      status: leadCompra.status,
       origem_campanha: leadCompra.origem_campanha || '',
       observacoes: leadCompra.observacoes || '',
     } : {
@@ -67,10 +69,11 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
       telefone: '',
       idade: 25,
       genero: 'Feminino',
-      cidade: 'Lisboa',
+      cidade: '',
       valor_pago: 0,
       data_evento: new Date().toISOString().split('T')[0],
       tipo: 'Lead',
+      status: 'Marcaram avaliação',
       origem_campanha: '',
       observacoes: '',
     }
@@ -192,21 +195,12 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
                 <MapPin className="h-4 w-4" />
                 Cidade
               </Label>
-              <Select
-                value={watchedValues.cidade || ''}
-                onValueChange={(value) => setValue('cidade', value)}
-              >
-                <SelectTrigger className={errors.cidade ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Selecione a cidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CIDADES_PORTUGAL.map((cidade) => (
-                    <SelectItem key={cidade} value={cidade}>
-                      {cidade}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                id="cidade"
+                placeholder="Ex: Lisboa, Porto, Braga..."
+                className={errors.cidade ? 'border-red-500' : ''}
+                {...register('cidade')}
+              />
               {errors.cidade && (
                 <p className="text-sm text-red-500">{errors.cidade.message}</p>
               )}
@@ -274,6 +268,28 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
               </Select>
               {errors.tipo && (
                 <p className="text-sm text-red-500">{errors.tipo.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={watchedValues.status || ''}
+                onValueChange={(value) => setValue('status', value as any)}
+              >
+                <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.status && (
+                <p className="text-sm text-red-500">{errors.status.message}</p>
               )}
             </div>
 

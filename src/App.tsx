@@ -11,7 +11,6 @@ import FinancesPage from "./pages/FinancesPage";
 import StatisticsPage from "./pages/StatisticsPage";
 import InvestmentsPage from "./pages/InvestmentsPage";
 import MarketingReportsPage from "./pages/MarketingReportsPage";
-import LeadCompraPage from "./pages/LeadCompraPage";
 import NotFound from "./pages/NotFound";
 import MonitoringPage from "./pages/MonitoringPage";
 import LoginPage from "./pages/LoginPage";
@@ -23,13 +22,18 @@ import AdminClientsFullPage from "./pages/AdminClientsFullPage";
 import AdminClientProfilePage from "./pages/AdminClientProfilePage";
 import AdminCalendarFullPage from "./pages/AdminCalendarFullPage";
 import AdminManagementPage from "./pages/AdminManagementPage";
+import MarketingLoginPage from "./pages/MarketingLoginPage";
+import MarketingAreaPage from "./pages/MarketingAreaPage";
 import { ThemeProvider } from "./hooks/use-theme";
 import { LanguageProvider } from "./hooks/use-language";
 import { AuthProvider } from "./contexts/AuthContext";
+import { DatabaseProvider } from "./contexts/DatabaseContext";
 import { ClientAuthProvider } from "./hooks/useClientAuth";
 import { AdminAuthProvider } from "./hooks/useAdminAuth";
+import { MarketingAuthProvider } from "./hooks/useMarketingAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AdminProtectedRoute } from "./components/admin/AdminProtectedRoute";
+import { MarketingProtectedRoute } from "./components/marketing/MarketingProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -38,107 +42,102 @@ const App = () => (
     <ThemeProvider defaultTheme="light">
       <LanguageProvider>
         <AuthProvider>
-          <ClientAuthProvider>
-            <AdminAuthProvider>
-              <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  {/* Admin Routes */}
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute>
-                        <Index />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/clients"
-                    element={
-                      <ProtectedRoute>
-                        <ClientsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/clients/:clientId"
-                    element={
-                      <ProtectedRoute>
-                        <ClientDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/calendar"
-                    element={
-                      <ProtectedRoute>
-                        <CalendarPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/monitoring"
-                    element={
-                      <ProtectedRoute>
-                        <MonitoringPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/finances"
-                    element={
-                      <ProtectedRoute>
-                        <FinancesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/statistics"
-                    element={
-                      <ProtectedRoute>
-                        <StatisticsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/investments"
-                    element={
-                      <ProtectedRoute>
-                        <InvestmentsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/marketing-reports"
-                    element={
-                      <ProtectedRoute>
-                        <MarketingReportsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/lead-compra"
-                    element={
-                      <ProtectedRoute>
-                        <LeadCompraPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin-management"
-                    element={
-                      <ProtectedRoute>
-                        <AdminManagementPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  
-                  {/* Admin Routes */}
-                  <Route path="/admin-login" element={<AdminLoginPage />} />
+          <DatabaseProvider>
+            <ClientAuthProvider>
+              <AdminAuthProvider>
+                <MarketingAuthProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      {/* Admin Routes */}
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/auth/callback" element={<AuthCallback />} />
+                      <Route
+                        path="/"
+                        element={
+                          <ProtectedRoute>
+                            <Index />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/clients"
+                        element={
+                          <ProtectedRoute>
+                            <ClientsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/clients/:clientId"
+                        element={
+                          <ProtectedRoute>
+                            <ClientDetailPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/calendar"
+                        element={
+                          <ProtectedRoute>
+                            <CalendarPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/monitoring"
+                        element={
+                          <ProtectedRoute>
+                            <MonitoringPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/finances"
+                        element={
+                          <ProtectedRoute>
+                            <FinancesPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/statistics"
+                        element={
+                          <ProtectedRoute>
+                            <StatisticsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/investments"
+                        element={
+                          <ProtectedRoute>
+                            <InvestmentsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/marketing-reports"
+                        element={
+                          <ProtectedRoute>
+                            <MarketingReportsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/admin-management"
+                        element={
+                          <ProtectedRoute>
+                            <AdminManagementPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      {/* Admin Routes */}
+                      <Route path="/admin-login" element={<AdminLoginPage />} />
                                                 <Route
               path="/admin/clients"
               element={
@@ -164,6 +163,17 @@ const App = () => (
                     } 
                   />
                   
+                  {/* Marketing Routes */}
+                  <Route path="/marketing-login" element={<MarketingLoginPage />} />
+                  <Route
+                    path="/marketing"
+                    element={
+                      <MarketingProtectedRoute>
+                        <MarketingAreaPage />
+                      </MarketingProtectedRoute>
+                    }
+                  />
+                  
                   {/* Client Routes */}
                   <Route path="/client-login" element={<ClientLoginPage />} />
                   <Route path="/client-dashboard" element={<ClientDashboardPage />} />
@@ -173,8 +183,10 @@ const App = () => (
                 </Routes>
               </BrowserRouter>
               </TooltipProvider>
+                </MarketingAuthProvider>
             </AdminAuthProvider>
           </ClientAuthProvider>
+        </DatabaseProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>

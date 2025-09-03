@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 import { Session } from '@/types/client';
@@ -9,6 +9,7 @@ type NewSession = Database['public']['Tables']['sessoes_ativas']['Insert'];
 type UpdateSession = Database['public']['Tables']['sessoes_ativas']['Update'];
 
 export function useSessions(clientId?: number) {
+  const supabase = useSupabaseClient();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export function useSessions(clientId?: number) {
     };
 
     loadSessions();
-  }, [clientId]);
+  }, [clientId, supabase]);
 
   // Add new session
   const addSession = useCallback(async (session: NewSession) => {
@@ -97,7 +98,7 @@ export function useSessions(clientId?: number) {
       toast.error('Failed to add session');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   // Update session
   const updateSession = useCallback(async (id: number, updates: UpdateSession) => {
@@ -137,7 +138,7 @@ export function useSessions(clientId?: number) {
       toast.error('Failed to update session');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   // Delete session
   const deleteSession = useCallback(async (id: number) => {
@@ -158,7 +159,7 @@ export function useSessions(clientId?: number) {
       toast.error('Failed to delete session');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   return {
     sessions,

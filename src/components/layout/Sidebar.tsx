@@ -20,6 +20,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { NotificationBar } from '@/components/notifications/NotificationBar';
+import { DatabaseManagerDialog } from '@/components/dashboard/DatabaseManagerDialog';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -59,7 +60,6 @@ const Sidebar = () => {
     { name: 'Finanças', icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
     { name: 'Investimentos', icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
     { name: 'Marketing', icon: <Megaphone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/marketing-reports' },
-    { name: 'Lead Compra', icon: <Target className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/lead-compra' },
     { name: 'Estatísticas', icon: <PieChart className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/statistics' },
     { name: 'Administrativas', icon: <UserCog className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin-management' },
   ];
@@ -209,6 +209,7 @@ const Sidebar = () => {
           >
             <Calendar className="h-5 w-5" />
           </button>
+          <DatabaseManagerDialog />
           </div>
           <div className={cn(
             isCollapsed && !isMobile ? "mt-2" : ""

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -8,6 +8,7 @@ type NewClientMood = Database['public']['Tables']['humor_cliente']['Insert'];
 type UpdateClientMood = Database['public']['Tables']['humor_cliente']['Update'];
 
 export function useClientMoods(clientId?: number) {
+  const supabase = useSupabaseClient();
   const [moods, setMoods] = useState<ClientMood[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export function useClientMoods(clientId?: number) {
     };
 
     loadMoods();
-  }, [clientId]);
+  }, [clientId, supabase]);
 
   // Add new mood entry
   const addMood = useCallback(async (mood: NewClientMood) => {
@@ -66,7 +67,7 @@ export function useClientMoods(clientId?: number) {
       console.error('Error adding mood entry:', err);
       toast.error('Failed to add mood entry');
     }
-  }, []);
+  }, [supabase]);
 
   // Update mood entry
   const updateMood = useCallback(async (id: number, updates: UpdateClientMood) => {
@@ -90,7 +91,7 @@ export function useClientMoods(clientId?: number) {
       console.error('Error updating mood entry:', err);
       toast.error('Failed to update mood entry');
     }
-  }, []);
+  }, [supabase]);
 
   // Delete mood entry
   const deleteMood = useCallback(async (id: number) => {
@@ -110,7 +111,7 @@ export function useClientMoods(clientId?: number) {
       console.error('Error deleting mood entry:', err);
       toast.error('Failed to delete mood entry');
     }
-  }, []);
+  }, [supabase]);
 
   return {
     moods,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -8,6 +8,7 @@ type NewClient = Database['public']['Tables']['clientes']['Insert'];
 type UpdateClient = Database['public']['Tables']['clientes']['Update'];
 
 export function useClients() {
+  const supabase = useSupabaseClient();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export function useClients() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   // Initial load
   useEffect(() => {
@@ -85,7 +86,7 @@ export function useClients() {
       console.error('Error adding client:', err);
       toast.error('Failed to add client');
     }
-  }, []);
+  }, [supabase]);
 
   // Update client
   const updateClient = useCallback(async (id: number, updates: UpdateClient) => {
@@ -106,7 +107,7 @@ export function useClients() {
       console.error('Error updating client:', err);
       toast.error('Failed to update client');
     }
-  }, [loadClients]);
+  }, [loadClients, supabase]);
 
   // Delete client
   const deleteClient = useCallback(async (id: number) => {
@@ -127,7 +128,7 @@ export function useClients() {
       console.error('Error deleting client:', err);
       toast.error('Failed to delete client');
     }
-  }, [loadClients]);
+  }, [loadClients, supabase]);
 
   // Search clients
   const searchClients = useCallback((query: string) => {

@@ -1,20 +1,11 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
+import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from 'sonner';
+import { Database } from '@/types/supabase';
 
-export interface Admin {
-  id: string;
-  nome: string;
-  email: string;
-  data_nascimento: string;
-  morada: string;
-  contacto: string;
-  role: 'admin' | 'assistant';
-  ativo: boolean;
-  created_at: string;
-  updated_at?: string;
-  last_login?: string;
-}
+export type Admin = Database['public']['Tables']['admins']['Row'];
+export type NewAdmin = Database['public']['Tables']['admins']['Insert'];
+export type UpdateAdmin = Database['public']['Tables']['admins']['Update'];
 
 export interface AdminFormData {
   nome: string;
@@ -27,138 +18,106 @@ export interface AdminFormData {
 }
 
 export const useAdmins = () => {
-  const [admins, setAdmins] = useState<Admin[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    const supabase = useSupabaseClient();
+    const [admins, setAdmins] = useState < Admin[] > ([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState < string | null > (null);
 
-  const fetchAdmins = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+    const fetchAdmins = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const {
+                data,
+                error
+            } = await supabase.from('admins').select('*');
+            if (error) throw error;
+            setAdmins(data || []);
+        } catch (err: any) {
+            console.error('Erro ao buscar administrativas:', err);
+            setError(err instanceof Error ? err.message : 'Erro desconhecido');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [supabase]);
 
-      const { data, error } = await supabase.rpc('get_admins');
+    const createAdmin = useCallback(async (newAdmin: NewAdmin) => {
+        try {
+            const {
+                data,
+                error
+            } = await supabase.from('admins').insert(newAdmin).select();
+            if (error) throw error;
+            setAdmins(prev => [...prev, ...data]);
+            toast.success("Administrador adicionado com sucesso!");
+            return true;
+        } catch (err: any) {
+            console.error('Erro ao criar administrativa:', err);
+            toast.error(err.message || "Não foi possível adicionar o administrador.");
+            return false;
+        }
+    }, [supabase]);
 
-      if (error) {
-        console.error('Erro ao buscar administrativas:', error);
-        setError(error.message);
-        return;
-      }
+    const updateAdmin = useCallback(async (id: string, updatedAdmin: UpdateAdmin) => {
+        try {
+            const {
+                data,
+                error
+            } = await supabase.from('admins').update(updatedAdmin).eq('id', id).select();
+            if (error) throw error;
+            setAdmins(prev => prev.map(admin => admin.id === id ? data[0] : admin));
+            toast.success("Administrador atualizado com sucesso!");
+            return true;
+        } catch (err: any) {
+            console.error('Erro ao atualizar administrativa:', err);
+            toast.error(err.message || "Não foi possível atualizar o administrador.");
+            return false;
+        }
+    }, [supabase]);
 
-      setAdmins(data || []);
-    } catch (err) {
-      console.error('Erro ao buscar administrativas:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const deleteAdmin = useCallback(async (id: string) => {
+        try {
+            const {
+                error
+            } = await supabase.from('admins').delete().eq('id', id);
+            if (error) throw error;
+            setAdmins(prev => prev.filter(admin => admin.id !== id));
+            toast.success("Administrador removido com sucesso!");
+            return true;
+        } catch (err: any) {
+            console.error('Erro ao eliminar administrativa:', err);
+            toast.error(err.message || "Não foi possível remover o administrador.");
+            return false;
+        }
+    }, [supabase]);
 
-  const createAdmin = async (adminData: AdminFormData): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.rpc('create_admin', {
-        p_nome: adminData.nome,
-        p_email: adminData.email,
-        p_data_nascimento: adminData.data_nascimento,
-        p_morada: adminData.morada,
-        p_contacto: adminData.contacto,
-        p_role: adminData.role,
-        p_ativo: adminData.ativo
-      });
 
-      if (error) {
-        console.error('Erro ao criar administrativa:', error);
-        toast.error(`Erro ao criar administrativa: ${error.message}`);
-        return false;
-      }
+    const getAdminStats = useCallback(async () => {
+        try {
+            const {
+                data,
+                error
+            } = await supabase.rpc('get_admin_stats');
+            if (error) throw error;
+            return data;
+        } catch (err: any) {
+            console.error("Error fetching admin stats:", err);
+            return null;
+        }
+    }, [supabase]);
 
-      toast.success('Administrativa criada com sucesso!');
-      await fetchAdmins(); // Recarregar lista
-      return true;
-    } catch (err) {
-      console.error('Erro ao criar administrativa:', err);
-      toast.error('Erro ao criar administrativa');
-      return false;
-    }
-  };
 
-  const updateAdmin = async (id: string, adminData: AdminFormData): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.rpc('update_admin', {
-        p_id: id,
-        p_nome: adminData.nome,
-        p_email: adminData.email,
-        p_data_nascimento: adminData.data_nascimento,
-        p_morada: adminData.morada,
-        p_contacto: adminData.contacto,
-        p_role: adminData.role,
-        p_ativo: adminData.ativo
-      });
-
-      if (error) {
-        console.error('Erro ao atualizar administrativa:', error);
-        toast.error(`Erro ao atualizar administrativa: ${error.message}`);
-        return false;
-      }
-
-      toast.success('Administrativa atualizada com sucesso!');
-      await fetchAdmins(); // Recarregar lista
-      return true;
-    } catch (err) {
-      console.error('Erro ao atualizar administrativa:', err);
-      toast.error('Erro ao atualizar administrativa');
-      return false;
-    }
-  };
-
-  const deleteAdmin = async (id: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.rpc('delete_admin', {
-        p_id: id
-      });
-
-      if (error) {
-        console.error('Erro ao eliminar administrativa:', error);
-        toast.error(`Erro ao eliminar administrativa: ${error.message}`);
-        return false;
-      }
-
-      toast.success('Administrativa eliminada com sucesso!');
-      await fetchAdmins(); // Recarregar lista
-      return true;
-    } catch (err) {
-      console.error('Erro ao eliminar administrativa:', err);
-      toast.error('Erro ao eliminar administrativa');
-      return false;
-    }
-  };
-
-  const getAdminStats = () => {
-    const totalAdmins = admins.length;
-    const activeAdmins = admins.filter(admin => admin.ativo).length;
-    const adminRoles = admins.filter(admin => admin.role === 'admin').length;
-    const assistantRoles = admins.filter(admin => admin.role === 'assistant').length;
+    useEffect(() => {
+        fetchAdmins();
+    }, [fetchAdmins]);
 
     return {
-      total: totalAdmins,
-      active: activeAdmins,
-      inactive: totalAdmins - activeAdmins,
-      admins: adminRoles,
-      assistants: assistantRoles
+        admins,
+        isLoading,
+        error,
+        createAdmin,
+        updateAdmin,
+        deleteAdmin,
+        refreshAdmins: fetchAdmins,
+        getAdminStats
     };
-  };
-
-  useEffect(() => {
-    fetchAdmins();
-  }, []);
-
-  return {
-    admins,
-    isLoading,
-    error,
-    createAdmin,
-    updateAdmin,
-    deleteAdmin,
-    refreshAdmins: fetchAdmins,
-    getAdminStats
-  };
 };
