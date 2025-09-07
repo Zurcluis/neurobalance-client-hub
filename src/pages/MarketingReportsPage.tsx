@@ -644,25 +644,22 @@ const MarketingReportsPage = () => {
             </div>
           </TabsContent>
 
-          {/* Tarefas: cada card é uma lead e a coluna depende do status */}
+          {/* Tarefas: cada card é uma lead e a coluna depende do status/etapa */}
           <TabsContent value="tasks" className="space-y-6">
-            <div className="grid grid-cols-1 2xl:grid-cols-4 xl:grid-cols-3 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 2xl:grid-cols-5 xl:grid-cols-4 lg:grid-cols-2 gap-4">
               {([
-                'Iniciou Neurofeedback',
-                'Continuam Neurofeedback',
-                'Marcaram avaliação',
-                'Falta resultados da avaliação',
-                'Vão marcar consulta mais à frente',
-                'Vai iniciar NFB mas ainda não marcou primeira consulta',
-                'Começa mais tarde',
-                'Não vai avançar',
+                'A pensar',
+                'Avaliação inicial',
+                '1º avaliação',
+                'Neurofeedback',
+                'Terminou',
               ] as const).map(statusName => (
                 <Card key={statusName} className="p-4 bg-muted/30">
                   <CardHeader className="p-0 mb-3">
                     <CardTitle className="text-base">{statusName}</CardTitle>
                   </CardHeader>
                   <div className="space-y-2">
-                    {filteredLeads.filter(l => l.status === statusName).map(lead => (
+                    {filteredLeads.filter(l => (l.etapa || 'A pensar') === statusName).map(lead => (
                       <Card key={lead.id} className="p-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
@@ -687,7 +684,7 @@ const MarketingReportsPage = () => {
                         </div>
                       </Card>
                     ))}
-                    {filteredLeads.filter(l => l.status === statusName).length === 0 && (
+                    {filteredLeads.filter(l => (l.etapa || 'A pensar') === statusName).length === 0 && (
                       <div className="text-xs text-gray-500">Sem leads neste estado.</div>
                     )}
                   </div>

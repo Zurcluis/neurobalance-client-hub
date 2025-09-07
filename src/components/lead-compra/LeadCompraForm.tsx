@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { LeadCompra, GENEROS, TIPOS, STATUS_OPTIONS } from '@/types/lead-compra';
+import { LeadCompra, GENEROS, TIPOS, STATUS_OPTIONS, ETAPA_OPTIONS } from '@/types/lead-compra';
 import { User, Mail, Phone, MapPin, Euro, Calendar, Target, Save, X } from 'lucide-react';
 
 const leadCompraSchema = z.object({
@@ -22,6 +22,7 @@ const leadCompraSchema = z.object({
   data_evento: z.string().min(1, 'Data do evento é obrigatória'),
   tipo: z.enum(TIPOS, { required_error: 'Selecione o tipo' }),
   status: z.enum(STATUS_OPTIONS, { required_error: 'Selecione o status' }),
+  etapa: z.enum(ETAPA_OPTIONS, { required_error: 'Selecione a etapa' }).optional(),
   origem_campanha: z.string().optional(),
   observacoes: z.string().optional(),
 });
@@ -74,6 +75,7 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
       data_evento: new Date().toISOString().split('T')[0],
       tipo: 'Lead',
       status: 'Marcaram avaliação',
+      etapa: 'A pensar',
       origem_campanha: '',
       observacoes: '',
     }
@@ -290,6 +292,26 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
               </Select>
               {errors.status && (
                 <p className="text-sm text-red-500">{errors.status.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="etapa">Etapa</Label>
+              <Select
+                value={watchedValues.etapa || ''}
+                onValueChange={(value) => setValue('etapa', value as any)}
+              >
+                <SelectTrigger className={errors.etapa ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione a etapa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ETAPA_OPTIONS.map((et) => (
+                    <SelectItem key={et} value={et}>{et}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.etapa && (
+                <p className="text-sm text-red-500">{errors.etapa.message}</p>
               )}
             </div>
 
