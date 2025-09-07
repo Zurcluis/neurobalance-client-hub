@@ -38,7 +38,11 @@ import {
   Euro,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  ListTodo,
+  ArrowLeft,
+  ArrowRight,
+  Archive
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -87,6 +91,39 @@ const MarketingReportsPage = () => {
     tipo: 'Todos'
   });
   const [showLeadImporter, setShowLeadImporter] = useState(false);
+
+  const [tasks, setTasks] = useState<{ id: string; title: string; status: 'todo' | 'in_progress' | 'done' | 'archived' }[]>([
+    { id: 't1', title: 'Analisar resultados das campanhas', status: 'todo' },
+    { id: 't2', title: 'Escrever proposta de mídia paga', status: 'todo' },
+    { id: 't3', title: 'Agendar reunião inicial com o cliente', status: 'in_progress' },
+  ]);
+  const [newTaskTitles, setNewTaskTitles] = useState<Record<'todo' | 'in_progress' | 'done' | 'archived', string>>({
+    todo: '',
+    in_progress: '',
+    done: '',
+    archived: ''
+  });
+
+  const addTask = (status: 'todo' | 'in_progress' | 'done' | 'archived') => {
+    const title = newTaskTitles[status].trim();
+    if (!title) return;
+    setTasks(prev => [{ id: crypto.randomUUID(), title, status }, ...prev]);
+    setNewTaskTitles(prev => ({ ...prev, [status]: '' }));
+  };
+
+  const moveTask = (id: string, direction: 'left' | 'right') => {
+    const order: ('todo' | 'in_progress' | 'done' | 'archived')[] = ['todo', 'in_progress', 'done', 'archived'];
+    setTasks(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const idx = order.indexOf(t.status);
+      const nextIdx = direction === 'left' ? Math.max(0, idx - 1) : Math.min(order.length - 1, idx + 1);
+      return { ...t, status: order[nextIdx] };
+    }));
+  };
+
+  const removeTask = (id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+  };
 
   // Filtrar campanhas baseado na busca e filtros
   const filteredCampaigns = useMemo(() => {
@@ -428,7 +465,7 @@ const MarketingReportsPage = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
@@ -444,6 +481,10 @@ const MarketingReportsPage = () => {
             <TabsTrigger value="lead-dashboard" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Lead Analytics
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="flex items-center gap-2">
+              <ListTodo className="h-4 w-4" />
+              Tarefas
             </TabsTrigger>
             <TabsTrigger value="import" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
@@ -600,6 +641,60 @@ const MarketingReportsPage = () => {
                 title="Importar Leads e Compras"
                 description="Importe dados de leads e compras de arquivos Excel, Word ou PDF"
               />
+            </div>
+          </TabsContent>
+
+          {/* Tarefas */}
+          <TabsContent value="tasks" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              {([
+                { key: 'todo', title: 'A fazer' },
+                { key: 'in_progress', title: 'Em andamento' },
+                { key: 'done', title: 'Concluída' },
+                { key: 'archived', title: 'Arquivada' },
+              ] as { key: 'todo' | 'in_progress' | 'done' | 'archived'; title: string }[]).map(col => (
+                <Card key={col.key} className="p-4 bg-muted/30">
+                  <CardHeader className="p-0 mb-3">
+                    <CardTitle className="text-base">{col.title}</CardTitle>
+                  </CardHeader>
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      placeholder="Nova tarefa"
+                      value={newTaskTitles[col.key]}
+                      onChange={(e) => setNewTaskTitles({ ...newTaskTitles, [col.key]: e.target.value })}
+                    />
+                    <Button onClick={() => addTask(col.key)} size="icon">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {tasks.filter(t => t.status === col.key).map(t => (
+                      <Card key={t.id} className="p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium flex-1">{t.title}</span>
+                          <div className="flex items-center gap-1">
+                            <Button variant="outline" size="icon" onClick={() => moveTask(t.id, 'left')}>
+                              <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => moveTask(t.id, 'right')}>
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                            {t.status === 'archived' ? (
+                              <Button variant="outline" size="icon" onClick={() => removeTask(t.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button variant="outline" size="icon" onClick={() => moveTask(t.id, 'right')}>
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
