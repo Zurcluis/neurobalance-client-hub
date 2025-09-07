@@ -644,54 +644,52 @@ const MarketingReportsPage = () => {
             </div>
           </TabsContent>
 
-          {/* Tarefas */}
+          {/* Tarefas: cada card é uma lead e a coluna depende do status */}
           <TabsContent value="tasks" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 2xl:grid-cols-4 xl:grid-cols-3 lg:grid-cols-2 gap-4">
               {([
-                { key: 'todo', title: 'A fazer' },
-                { key: 'in_progress', title: 'Em andamento' },
-                { key: 'done', title: 'Concluída' },
-                { key: 'archived', title: 'Arquivada' },
-              ] as { key: 'todo' | 'in_progress' | 'done' | 'archived'; title: string }[]).map(col => (
-                <Card key={col.key} className="p-4 bg-muted/30">
+                'Iniciou Neurofeedback',
+                'Continuam Neurofeedback',
+                'Marcaram avaliação',
+                'Falta resultados da avaliação',
+                'Vão marcar consulta mais à frente',
+                'Vai iniciar NFB mas ainda não marcou primeira consulta',
+                'Começa mais tarde',
+                'Não vai avançar',
+              ] as const).map(statusName => (
+                <Card key={statusName} className="p-4 bg-muted/30">
                   <CardHeader className="p-0 mb-3">
-                    <CardTitle className="text-base">{col.title}</CardTitle>
+                    <CardTitle className="text-base">{statusName}</CardTitle>
                   </CardHeader>
-                  <div className="flex gap-2 mb-3">
-                    <Input
-                      placeholder="Nova tarefa"
-                      value={newTaskTitles[col.key]}
-                      onChange={(e) => setNewTaskTitles({ ...newTaskTitles, [col.key]: e.target.value })}
-                    />
-                    <Button onClick={() => addTask(col.key)} size="icon">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
                   <div className="space-y-2">
-                    {tasks.filter(t => t.status === col.key).map(t => (
-                      <Card key={t.id} className="p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium flex-1">{t.title}</span>
+                    {filteredLeads.filter(l => l.status === statusName).map(lead => (
+                      <Card key={lead.id} className="p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{lead.nome}</span>
+                              <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>{lead.tipo}</Badge>
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              {lead.email && <div>{lead.email}</div>}
+                              {lead.cidade && <div>{lead.cidade}</div>}
+                              {lead.data_evento && <div>{new Date(lead.data_evento).toLocaleDateString('pt-PT')}</div>}
+                            </div>
+                          </div>
                           <div className="flex items-center gap-1">
-                            <Button variant="outline" size="icon" onClick={() => moveTask(t.id, 'left')}>
-                              <ArrowLeft className="h-4 w-4" />
+                            <Button variant="outline" size="icon" onClick={() => handleEditLead(lead)}>
+                              <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="icon" onClick={() => moveTask(t.id, 'right')}>
-                              <ArrowRight className="h-4 w-4" />
+                            <Button variant="outline" size="icon" onClick={() => handleDeleteLead(lead.id)} className="text-red-600">
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                            {t.status === 'archived' ? (
-                              <Button variant="outline" size="icon" onClick={() => removeTask(t.id)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              <Button variant="outline" size="icon" onClick={() => moveTask(t.id, 'right')}>
-                                <Archive className="h-4 w-4" />
-                              </Button>
-                            )}
                           </div>
                         </div>
                       </Card>
                     ))}
+                    {filteredLeads.filter(l => l.status === statusName).length === 0 && (
+                      <div className="text-xs text-gray-500">Sem leads neste estado.</div>
+                    )}
                   </div>
                 </Card>
               ))}

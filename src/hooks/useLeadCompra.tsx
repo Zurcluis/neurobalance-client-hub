@@ -98,9 +98,8 @@ export const useLeadCompra = () => {
 	const addLead = useCallback(async (leadData: Omit < LeadCompra, 'id' | 'created_at' | 'updated_at' > ) => {
 		setIsLoading(true);
 		try {
-			// Enquanto a coluna 'status' não existir na tabela, evitar enviar para o Supabase
-			const { status: _statusIgnored, ...payload } = leadData as any;
-			const {
+			let payload: any = leadData as any;
+			let {
 				data,
 				error
 			} = await supabase
@@ -115,6 +114,24 @@ export const useLeadCompra = () => {
 			toast.success('Lead/Compra adicionado com sucesso!');
 			return data;
 		} catch (err) {
+			if (err instanceof Error && /column\s+"status"\s+does not exist|42703/i.test(err.message)) {
+				try {
+					const { status: _ignore, ...fallbackPayload } = (leadData as any);
+					const { data: data2, error: error2 } = await supabase
+						.from('lead_compra')
+						.insert([fallbackPayload])
+						.select()
+						.single();
+					if (error2) throw error2;
+					setLeads(prev => [data2, ...prev]);
+					toast.success('Lead/Compra adicionado com sucesso!');
+					return data2 as any;
+				} catch (e2) {
+					const msg = e2 instanceof Error ? e2.message : 'Erro ao adicionar lead';
+					toast.error(msg);
+					throw e2;
+				}
+			}
 			const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar lead';
 			toast.error(errorMessage);
 			throw err;
@@ -126,9 +143,8 @@ export const useLeadCompra = () => {
 	const updateLead = useCallback(async (id: string, updates: Partial < LeadCompra > ) => {
 		setIsLoading(true);
 		try {
-			// Enquanto a coluna 'status' não existir na tabela, evitar enviar para o Supabase
-			const { status: _statusIgnored, ...payload } = updates as any;
-			const {
+			let payload: any = updates as any;
+			let {
 				data,
 				error
 			} = await supabase
@@ -146,6 +162,27 @@ export const useLeadCompra = () => {
 			toast.success('Lead/Compra atualizado com sucesso!');
 			return data;
 		} catch (err) {
+			if (err instanceof Error && /column\s+"status"\s+does not exist|42703/i.test(err.message)) {
+				try {
+					const { status: _ignore, ...fallbackPayload } = (updates as any);
+					const { data: data2, error: error2 } = await supabase
+						.from('lead_compra')
+						.update(fallbackPayload)
+						.eq('id', id)
+						.select()
+						.single();
+					if (error2) throw error2;
+					setLeads(prev => prev.map(lead =>
+						lead.id === id ? data2 : lead
+					));
+					toast.success('Lead/Compra atualizado com sucesso!');
+					return data2 as any;
+				} catch (e2) {
+					const msg = e2 instanceof Error ? e2.message : 'Erro ao atualizar lead';
+					toast.error(msg);
+					throw e2;
+				}
+			}
 			const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar lead';
 			toast.error(errorMessage);
 			throw err;
