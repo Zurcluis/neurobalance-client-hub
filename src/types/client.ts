@@ -8,15 +8,15 @@ export type UpdateClient = Database['public']['Tables']['clientes']['Update'];
 export const clientSchema = z.object({
   id: z.number(),
   nome: z.string().min(1, 'Nome é obrigatório'),
-  email: z.string().email('Email inválido').optional(),
-  telefone: z.string().min(1, 'Telefone é obrigatório'),
+  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  telefone: z.string().optional().or(z.literal('')),
   data_nascimento: z.string().nullable(),
-  genero: z.enum(['Homem', 'Mulher', 'Outro']),
-  morada: z.string().min(1, 'Morada é obrigatória'),
+  genero: z.enum(['Homem', 'Mulher', 'Outro']).optional(),
+  morada: z.string().optional().or(z.literal('')),
   notas: z.string().optional(),
-  estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'call']),
-  tipo_contato: z.enum(['Lead', 'Contato', 'Email', 'Instagram', 'Facebook']),
-  como_conheceu: z.enum(['Anúncio', 'Instagram', 'Facebook', 'Recomendação']),
+  estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'call']).optional(),
+  tipo_contato: z.enum(['Lead', 'Contato', 'Email', 'Instagram', 'Facebook']).optional(),
+  como_conheceu: z.enum(['Anúncio', 'Instagram', 'Facebook', 'Recomendação']).optional(),
   numero_sessoes: z.number().optional(),
   total_pago: z.number().optional(),
   max_sessoes: z.number().optional(),
@@ -28,7 +28,8 @@ export const clientSchema = z.object({
   updated_at: z.string().optional(),
   responsavel: z.string().nullable().optional(),
   motivo: z.string().nullable().optional(),
-  id_manual: z.string().nullable().optional(),
+  id_manual: z.string().min(1, 'ID Manual é obrigatório'),
+  data_entrada_clinica: z.string().nullable().optional(),
 });
 
 export const newClientSchema = clientSchema.omit({ id: true, criado_em: true, updated_at: true });
@@ -41,6 +42,7 @@ export interface ClientDetailData extends z.infer<typeof clientSchema> {
   responsavel?: string | null;
   motivo?: string | null;
   id_manual?: string | null;
+  data_entrada_clinica?: string | null;
 }
 
 export interface Session {

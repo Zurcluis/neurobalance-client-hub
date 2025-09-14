@@ -37,6 +37,7 @@ export interface ClientFormData {
   responsavel?: string;
   motivo?: string;
   id_manual?: string;
+  data_entrada_clinica: Date | null;
 }
 
 interface ClientFormProps {
@@ -67,6 +68,9 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
   const [birthDate, setBirthDate] = useState<Date | null>(
     defaultValues.data_nascimento ? new Date(defaultValues.data_nascimento) : null
   );
+  const [clinicEntryDate, setClinicEntryDate] = useState<Date | null>(
+    defaultValues.data_entrada_clinica ? new Date(defaultValues.data_entrada_clinica) : null
+  );
   const [statusValue, setStatusValue] = useState<'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call'>(
     defaultValues.estado || 'ongoing'
   );
@@ -95,6 +99,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
     onSubmit({
       ...sanitizedData,
       data_nascimento: data.data_nascimento instanceof Date ? data.data_nascimento : birthDate,
+      data_entrada_clinica: data.data_entrada_clinica instanceof Date ? data.data_entrada_clinica : clinicEntryDate,
     });
   };
 
@@ -119,32 +124,32 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="id_manual" className="text-base">ID Manual</Label>
+          <Label htmlFor="id_manual" className="text-base">ID Manual <span className="text-red-500">*</span></Label>
           <Input
             id="id_manual"
             type="text"
-            {...register('id_manual')}
-            placeholder="ID personalizado (opcional)"
-            className="h-11 text-base"
+            {...register('id_manual', {
+              required: 'ID Manual é obrigatório'
+            })}
+            placeholder="ID personalizado"
+            className={`h-11 text-base ${errors.id_manual ? 'border-red-500' : ''}`}
           />
+          {errors.id_manual && (
+            <p className="text-sm text-red-500">{errors.id_manual.message}</p>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
-          <Label htmlFor="telefone" className="text-base">Telefone <span className="text-red-500">*</span></Label>
+          <Label htmlFor="telefone" className="text-base">Telefone</Label>
           <Input
             id="telefone"
             type="tel"
-            {...register('telefone', {
-              required: 'Telefone é obrigatório'
-            })}
+            {...register('telefone')}
             placeholder="Número de telefone"
-            className={`h-11 text-base ${errors.telefone ? 'border-red-500' : ''}`}
+            className="h-11 text-base"
           />
-          {errors.telefone && (
-            <p className="text-sm text-red-500">{errors.telefone.message}</p>
-          )}
         </div>
 
         <div className="space-y-2">
@@ -169,11 +174,11 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
-          <Label htmlFor="data_nascimento" className="text-base">Data de Nascimento <span className="text-red-500">*</span></Label>
+          <Label htmlFor="data_nascimento" className="text-base">Data de Nascimento</Label>
           <Controller
             control={control}
             name="data_nascimento"
-            rules={{ required: 'Data de nascimento é obrigatória' }}
+            rules={{}}
             render={({ field }) => (
               <DatePicker
                 selected={field.value}
@@ -195,15 +200,44 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             <p className="text-sm text-red-500">{errors.data_nascimento.message}</p>
           )}
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="data_entrada_clinica" className="text-base">Data de Entrada na Clínica</Label>
+          <Controller
+            control={control}
+            name="data_entrada_clinica"
+            rules={{}}
+            render={({ field }) => (
+              <DatePicker
+                selected={field.value}
+                onChange={(date: Date | null) => {
+                  field.onChange(date);
+                  setClinicEntryDate(date);
+                }}
+                showMonthDropdown
+                showYearDropdown
+                dropdownMode="select"
+                dateFormat="dd/MM/yyyy"
+                placeholderText="Selecione a data"
+                wrapperClassName="w-full"
+                maxDate={new Date()}
+                className={`h-11 text-base w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errors.data_entrada_clinica ? 'border-red-500' : ''}`}
+              />
+            )}
+          />
+          {errors.data_entrada_clinica && (
+            <p className="text-sm text-red-500">{errors.data_entrada_clinica.message}</p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
-          <Label htmlFor="genero" className="text-base">Género <span className="text-red-500">*</span></Label>
+          <Label htmlFor="genero" className="text-base">Género</Label>
           <Controller
             control={control}
             name="genero"
-            rules={{ required: 'Género é obrigatório' }}
+            rules={{}}
             render={({ field }) => (
               <Select 
                 onValueChange={field.onChange}
@@ -227,13 +261,11 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="morada" className="text-base">Morada <span className="text-red-500">*</span></Label>
+          <Label htmlFor="morada" className="text-base">Morada</Label>
           <Input
             id="morada"
             type="text"
-            {...register('morada', {
-              required: 'Morada é obrigatória'
-            })}
+            {...register('morada')}
             placeholder="Morada completa"
             className={`h-11 text-base ${errors.morada ? 'border-red-500' : ''}`}
           />
@@ -245,11 +277,11 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
-          <Label htmlFor="tipo_contato" className="text-base">Tipo de Contacto <span className="text-red-500">*</span></Label>
+          <Label htmlFor="tipo_contato" className="text-base">Tipo de Contacto</Label>
           <Controller
             control={control}
             name="tipo_contato"
-            rules={{ required: 'Tipo de contacto é obrigatório' }}
+            rules={{}}
             render={({ field }) => (
               <Select 
                 onValueChange={field.onChange}
@@ -275,11 +307,11 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="como_conheceu" className="text-base">Como Conheceu <span className="text-red-500">*</span></Label>
+          <Label htmlFor="como_conheceu" className="text-base">Como Conheceu</Label>
           <Controller
             control={control}
             name="como_conheceu"
-            rules={{ required: 'Como conheceu é obrigatório' }}
+            rules={{}}
             render={({ field }) => (
               <Select 
                 onValueChange={field.onChange}
@@ -306,11 +338,11 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="estado" className="text-base">Estado <span className="text-red-500">*</span></Label>
+        <Label htmlFor="estado" className="text-base">Estado</Label>
         <Controller
           control={control}
           name="estado"
-          rules={{ required: 'Estado é obrigatório' }}
+          rules={{}}
           render={({ field }) => (
             <Select 
               onValueChange={(value: any) => {
