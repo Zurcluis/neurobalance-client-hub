@@ -563,7 +563,16 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                   <TableBody>
                     {filteredPayments.slice(0, 5).map(payment => (
                       <TableRow key={payment.id}>
-                        <TableCell className="font-medium">{payment.cliente_nome || '-'}</TableCell>
+                        <TableCell className="font-medium">
+                          {payment.cliente_nome ? (
+                            <>
+                              {payment.cliente_nome}
+                              {payment.cliente_id_manual && (
+                                <span className="text-gray-500 ml-1">(ID: {payment.cliente_id_manual})</span>
+                              )}
+                            </>
+                          ) : '-'}
+                        </TableCell>
                         <TableCell>
                           {
                             (() => {
@@ -730,7 +739,16 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                     {sortedPayments.length > 0 ? (
                       sortedPayments.map(payment => (
                         <TableRow key={payment.id}>
-                          <TableCell className="font-medium">{payment.cliente_nome || '-'}</TableCell>
+                          <TableCell className="font-medium">
+                          {payment.cliente_nome ? (
+                            <>
+                              {payment.cliente_nome}
+                              {payment.cliente_id_manual && (
+                                <span className="text-gray-500 ml-1">(ID: {payment.cliente_id_manual})</span>
+                              )}
+                            </>
+                          ) : '-'}
+                        </TableCell>
                           <TableCell>
                             {
                               (() => {
