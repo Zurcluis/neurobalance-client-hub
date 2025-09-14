@@ -3,7 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
-type Payment = Database['public']['Tables']['pagamentos']['Row'];
+type Payment = Database['public']['Tables']['pagamentos']['Row'] & {
+  clientes?: {
+    nome: string;
+    id_manual: string;
+  } | null;
+};
 type NewPayment = Database['public']['Tables']['pagamentos']['Insert'];
 type UpdatePayment = Database['public']['Tables']['pagamentos']['Update'];
 
@@ -19,7 +24,13 @@ export function usePayments(clientId?: number) {
         setIsLoading(true);
         let query = supabase
           .from('pagamentos')
-          .select('*')
+          .select(`
+            *,
+            clientes (
+              nome,
+              id_manual
+            )
+          `)
           .order('data', { ascending: false });
           
         // Se um clientId for fornecido, filtrar por esse cliente

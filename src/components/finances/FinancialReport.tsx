@@ -51,7 +51,12 @@ type PaymentWithClient = SupabaseDatabase['public']['Tables']['pagamentos']['Row
 type Payment = Omit<SupabaseDatabase['public']['Tables']['pagamentos']['Row'], 'id_cliente'> & {
   id_cliente: string | number;
   cliente_nome?: string;
+  cliente_id_manual?: string;
   agendamento_titulo?: string;
+  clientes?: {
+    nome: string;
+    id_manual: string;
+  } | null;
 };
 
 // Cores para os gráficos
@@ -80,7 +85,13 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   // Usar pagamentos do hook apenas se não tivermos pagamentos iniciais
   useEffect(() => {
     if (!initialPayments?.length && hookPayments.length > 0) {
-      setPayments(hookPayments);
+      // Processar pagamentos para incluir dados do cliente
+      const processedPayments = hookPayments.map((payment: any) => ({
+        ...payment,
+        cliente_nome: payment.clientes?.nome || null,
+        cliente_id_manual: payment.clientes?.id_manual || null
+      }));
+      setPayments(processedPayments);
       setLoadingError(null);
     }
   }, [hookPayments, initialPayments]);
@@ -166,6 +177,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
         searchQuery === '' ||
         (payment.descricao && payment.descricao.toLowerCase().includes(searchLower)) ||
         (payment.cliente_nome && payment.cliente_nome.toLowerCase().includes(searchLower)) ||
+        (payment.cliente_id_manual && payment.cliente_id_manual.toLowerCase().includes(searchLower)) ||
         payment.tipo.toLowerCase().includes(searchLower);
       
       return matchesDateRange && matchesPaymentMethod && matchesSearch;
@@ -609,7 +621,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Pesquisar por nome, descrição..."
+                      placeholder="Pesquisar por nome, ID manual, descrição..."
                       className="pl-8"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
