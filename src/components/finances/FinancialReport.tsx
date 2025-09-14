@@ -86,11 +86,14 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   useEffect(() => {
     if (!initialPayments?.length && hookPayments.length > 0) {
       // Processar pagamentos para incluir dados do cliente
-      const processedPayments = hookPayments.map((payment: any) => ({
-        ...payment,
-        cliente_nome: payment.clientes?.nome || null,
-        cliente_id_manual: payment.clientes?.id_manual || null
-      }));
+      const processedPayments = hookPayments.map((payment: any) => {
+        console.log('Payment data:', payment);
+        return {
+          ...payment,
+          cliente_nome: payment.clientes?.nome || null,
+          cliente_id_manual: payment.clientes?.id_manual || null
+        };
+      });
       setPayments(processedPayments);
       setLoadingError(null);
     }
