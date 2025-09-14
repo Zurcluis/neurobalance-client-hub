@@ -331,7 +331,7 @@ export const useLeadCompra = () => {
 						valor_pago: parseFloat(item.valor_pago.toString()) || 0,
 						data_evento: item.data_evento,
 						tipo: item.tipo as any,
-						origem_campanha: item.origem_campanha ? .trim() || null,
+						origem_campanha: item.origem_campanha?.trim() || null,
 					};
 
 					// Inserir no banco
