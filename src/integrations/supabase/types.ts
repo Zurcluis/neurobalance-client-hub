@@ -228,53 +228,32 @@ export interface Database {
         Row: {
           id: number
           nome: string
-          email: string
-          telefone: string
-          data_nascimento: string
-          genero: string
-          morada: string
-          notas: string
-          estado: string
-          tipo_contato: string
-          como_conheceu: string
-          numero_sessoes: number
-          total_pago: number
-          max_sessoes: number
-          proxima_sessao: string
+          email: string | null
+          telefone: string | null
+          data_nascimento: string | null
+          genero: string | null
+          morada: string | null
+          notas: string | null
+          estado: string | null
+          tipo_contato: string | null
+          como_conheceu: string | null
+          numero_sessoes: number | null
+          total_pago: number | null
+          max_sessoes: number | null
+          proxima_sessao: string | null
           criado_em: string
           updated_at: string
           responsavel: string | null
           motivo: string | null
-          id_manual: string | null
+          id_manual: string
+          data_entrada_clinica: string | null
         }
         Insert: {
           id?: number
           nome: string
           email?: string
-          telefone: string
-          data_nascimento: string
-          genero: string
-          morada: string
-          notas?: string
-          estado: string
-          tipo_contato: string
-          como_conheceu: string
-          numero_sessoes?: number
-          total_pago?: number
-          max_sessoes?: number
-          proxima_sessao?: string
-          criado_em?: string
-          updated_at?: string
-          responsavel?: string | null
-          motivo?: string | null
-          id_manual?: string | null
-        }
-        Update: {
-          id?: number
-          nome?: string
-          email?: string
           telefone?: string
-          data_nascimento?: string
+          data_nascimento?: string | null
           genero?: string
           morada?: string
           notas?: string
@@ -289,7 +268,31 @@ export interface Database {
           updated_at?: string
           responsavel?: string | null
           motivo?: string | null
-          id_manual?: string | null
+          id_manual: string
+          data_entrada_clinica?: string | null
+        }
+        Update: {
+          id?: number
+          nome?: string
+          email?: string | null
+          telefone?: string | null
+          data_nascimento?: string | null
+          genero?: string | null
+          morada?: string | null
+          notas?: string | null
+          estado?: string | null
+          tipo_contato?: string | null
+          como_conheceu?: string | null
+          numero_sessoes?: number | null
+          total_pago?: number | null
+          max_sessoes?: number | null
+          proxima_sessao?: string | null
+          criado_em?: string
+          updated_at?: string
+          responsavel?: string | null
+          motivo?: string | null
+          id_manual?: string
+          data_entrada_clinica?: string | null
         }
         Relationships: []
       }
