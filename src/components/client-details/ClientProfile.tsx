@@ -151,6 +151,12 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                   <span>{calculateAge(client.data_nascimento)} anos</span>
                 </div>
               )}
+              {client.data_entrada_clinica && (
+                <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
+                  <span>Entrada: {formatDate(client.data_entrada_clinica)}</span>
+                </div>
+              )}
               <div className="flex items-center text-xs sm:text-sm text-gray-600">
                 <HashIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
                 <span>ID: {client.id}</span>
@@ -345,6 +351,44 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       
                       <FormField
                         control={profileForm.control}
+                        name="data_entrada_clinica"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data de Entrada na Clínica</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(new Date(field.value), 'dd/MM/yyyy') : <span>Selecione uma data</span>}
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <CalendarComponent
+                                  mode="single"
+                                  selected={field.value ? new Date(field.value) : undefined}
+                                  onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : null)}
+                                  initialFocus
+                                  disabled={(date) => date > new Date()}
+                                  className={cn("p-3 pointer-events-auto")}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={profileForm.control}
                         name="genero"
                         render={({ field }) => (
                           <FormItem>
@@ -360,6 +404,31 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                                 <SelectItem value="Homem">Homem</SelectItem>
                                 <SelectItem value="Mulher">Mulher</SelectItem>
                                 <SelectItem value="Outro">Outro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={profileForm.control}
+                        name="estado"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Estado</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value ? String(field.value) : ''}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o estado" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ongoing">Em andamento</SelectItem>
+                                <SelectItem value="thinking">A pensar</SelectItem>
+                                <SelectItem value="no-need">Não precisa</SelectItem>
+                                <SelectItem value="finished">Finalizado</SelectItem>
+                                <SelectItem value="desistiu">Desistiu</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
@@ -419,33 +488,6 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                         )}
                       />
                     </div>
-                    
-                    <FormField
-                      control={profileForm.control}
-                      name="estado"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estado</FormLabel>
-                          <FormControl>
-                            <Select 
-                              onValueChange={field.onChange} 
-                                defaultValue={field.value ? String(field.value) : 'ongoing'}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o estado" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="ongoing">On Going</SelectItem>
-                                <SelectItem value="thinking">Thinking</SelectItem>
-                                <SelectItem value="no-need">No Need</SelectItem>
-                                <SelectItem value="finished">Finished</SelectItem>
-                                <SelectItem value="call">Call</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField

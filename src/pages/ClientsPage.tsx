@@ -270,7 +270,7 @@ const ClientsPage = () => {
     thinking: filteredAndSortedClients.filter(client => client.estado === 'thinking'),
     'no-need': filteredAndSortedClients.filter(client => client.estado === 'no-need'),
     finished: filteredAndSortedClients.filter(client => client.estado === 'finished'),
-    call: filteredAndSortedClients.filter(client => client.estado === 'call'),
+    desistiu: filteredAndSortedClients.filter(client => client.estado === 'desistiu'),
   }), [filteredAndSortedClients]);
 
   const handleAddClient = async (data: ClientFormData) => {
@@ -546,7 +546,7 @@ const ClientsPage = () => {
                   <SelectItem value="thinking">Pensando</SelectItem>
                   <SelectItem value="no-need">Sem Necessidade</SelectItem>
                   <SelectItem value="finished">Finalizado</SelectItem>
-                  <SelectItem value="call">Ligar</SelectItem>
+                  <SelectItem value="desistiu">Desistiu</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -773,7 +773,7 @@ const ClientsPage = () => {
                 <TabsTrigger value="thinking">Pensando ({clientsByStatus.thinking.length})</TabsTrigger>
                 <TabsTrigger value="no-need">Sem Necessidade ({clientsByStatus['no-need'].length})</TabsTrigger>
                 <TabsTrigger value="finished">Finalizado ({clientsByStatus.finished.length})</TabsTrigger>
-                <TabsTrigger value="call">Ligar ({clientsByStatus.call.length})</TabsTrigger>
+                <TabsTrigger value="desistiu">Desistiu ({clientsByStatus.desistiu.length})</TabsTrigger>
         </TabsList>
         
         <TabsContent value="all" className="mt-0">

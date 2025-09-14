@@ -28,7 +28,7 @@ export interface ClientFormData {
   genero: 'Homem' | 'Mulher' | 'Outro';
   morada: string;
   notas?: string;
-  estado: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call';
+  estado: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu';
   tipo_contato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
   como_conheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
   numero_sessoes?: number;
@@ -71,7 +71,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
   const [clinicEntryDate, setClinicEntryDate] = useState<Date | null>(
     defaultValues.data_entrada_clinica ? new Date(defaultValues.data_entrada_clinica) : null
   );
-  const [statusValue, setStatusValue] = useState<'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call'>(
+  const [statusValue, setStatusValue] = useState<'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu'>(
     defaultValues.estado || 'ongoing'
   );
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -356,11 +356,11 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
                 <SelectValue placeholder="Selecione o estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ongoing">On Going</SelectItem>
-                <SelectItem value="thinking">Thinking</SelectItem>
-                <SelectItem value="no-need">No Need</SelectItem>
-                <SelectItem value="finished">Finished</SelectItem>
-                <SelectItem value="call">Call</SelectItem>
+                <SelectItem value="ongoing">Em Andamento</SelectItem>
+                <SelectItem value="thinking">Pensando</SelectItem>
+                <SelectItem value="no-need">Sem Necessidade</SelectItem>
+                <SelectItem value="finished">Finalizado</SelectItem>
+                <SelectItem value="desistiu">Desistiu</SelectItem>
               </SelectContent>
             </Select>
           )}

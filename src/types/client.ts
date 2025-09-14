@@ -14,7 +14,7 @@ export const clientSchema = z.object({
   genero: z.enum(['Homem', 'Mulher', 'Outro']).optional(),
   morada: z.string().optional().or(z.literal('')),
   notas: z.string().optional(),
-  estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'call']).optional(),
+  estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'desistiu']).optional(),
   tipo_contato: z.enum(['Lead', 'Contato', 'Email', 'Instagram', 'Facebook']).optional(),
   como_conheceu: z.enum(['Anúncio', 'Instagram', 'Facebook', 'Recomendação']).optional(),
   numero_sessoes: z.number().optional(),
