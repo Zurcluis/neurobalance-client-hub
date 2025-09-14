@@ -7,8 +7,9 @@ import { LineChart, Line } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Database as SupabaseDatabase } from '@/integrations/supabase/types';
-import { format, parseISO, isSameMonth, subMonths, isSameYear, getMonth, getYear } from 'date-fns';
+import { format, parseISO, isSameMonth, subMonths, isSameYear, getMonth, getYear, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
 import {
   Table,
   TableBody,
@@ -86,14 +87,11 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   useEffect(() => {
     if (!initialPayments?.length && hookPayments.length > 0) {
       // Processar pagamentos para incluir dados do cliente
-      const processedPayments = hookPayments.map((payment: any) => {
-        console.log('Payment data:', payment);
-        return {
-          ...payment,
-          cliente_nome: payment.clientes?.nome || null,
-          cliente_id_manual: payment.clientes?.id_manual || null
-        };
-      });
+      const processedPayments = hookPayments.map((payment: any) => ({
+        ...payment,
+        cliente_nome: payment.clientes?.nome || null,
+        cliente_id_manual: payment.clientes?.id_manual || null
+      }));
       setPayments(processedPayments);
       setLoadingError(null);
     }
@@ -163,6 +161,42 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   const [sortColumn, setSortColumn] = useState<string>('data');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showTableHelpDialog, setShowTableHelpDialog] = useState(false);
+  const [overviewPeriodFilter, setOverviewPeriodFilter] = useState<TimeRange>('all');
+  
+  // Função para filtrar pagamentos por período
+  const getFilteredPaymentsByPeriod = (period: TimeRange) => {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = now;
+
+    switch (period) {
+      case '7d':
+        startDate = subDays(now, 7);
+        break;
+      case '30d':
+        startDate = subDays(now, 30);
+        break;
+      case '90d':
+        startDate = subDays(now, 90);
+        break;
+      case '1y':
+        startDate = subDays(now, 365);
+        break;
+      case 'all':
+      default:
+        return payments;
+    }
+
+    return payments.filter(payment => {
+      const paymentDate = new Date(payment.data);
+      return isWithinInterval(paymentDate, { start: startDate, end: endDate });
+    });
+  };
+
+  // Pagamentos filtrados para a visão geral
+  const overviewFilteredPayments = useMemo(() => {
+    return getFilteredPaymentsByPeriod(overviewPeriodFilter);
+  }, [payments, overviewPeriodFilter]);
   
   // Filtragem de pagamentos
   const filteredPayments = useMemo(() => {
@@ -211,14 +245,14 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     });
   }, [filteredPayments, sortColumn, sortDirection]);
   
-  // Dados para os indicadores
+  // Dados para os indicadores (usando pagamentos filtrados por período)
   const totalRevenue = useMemo(() => {
-    return filteredPayments.reduce((total, payment) => total + payment.valor, 0);
-  }, [filteredPayments]);
+    return overviewFilteredPayments.reduce((total, payment) => total + payment.valor, 0);
+  }, [overviewFilteredPayments]);
   
   const averagePayment = useMemo(() => {
-    return filteredPayments.length ? totalRevenue / filteredPayments.length : 0;
-  }, [filteredPayments, totalRevenue]);
+    return overviewFilteredPayments.length ? totalRevenue / overviewFilteredPayments.length : 0;
+  }, [overviewFilteredPayments, totalRevenue]);
   
   // Dados para o gráfico de receita por mês
   const revenueByMonth = useMemo(() => {
@@ -261,7 +295,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     });
     
     // Preencher com os dados reais
-    filteredPayments.forEach(payment => {
+    overviewFilteredPayments.forEach(payment => {
       if (methodData[payment.tipo] !== undefined) {
         methodData[payment.tipo] += payment.valor;
           } else {
@@ -273,7 +307,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     return Object.entries(methodData)
       .map(([name, value]) => ({ name, value }))
       .filter(item => item.value > 0);
-  }, [filteredPayments]);
+  }, [overviewFilteredPayments]);
   
   // Dados para o gráfico de principais clientes
   const topClients = useMemo(() => {
@@ -414,6 +448,15 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
         
         {/* Visão Geral */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Filtro de Período */}
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Métricas de Receita</h3>
+            <TimeRangeSelector
+              selectedRange={overviewPeriodFilter}
+              onRangeChange={setOverviewPeriodFilter}
+            />
+          </div>
+          
           {/* Indicadores */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="glassmorphism hover:shadow-md transition-shadow">
@@ -426,7 +469,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
           <CardContent>
                 <div className="text-2xl font-bold">€{totalRevenue.toLocaleString('pt-PT')}</div>
             <p className="text-xs text-neuro-gray mt-1">
-                  {filteredPayments.length} pagamentos registrados
+                  {overviewFilteredPayments.length} pagamentos registrados
             </p>
           </CardContent>
         </Card>
@@ -566,16 +609,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                   <TableBody>
                     {filteredPayments.slice(0, 5).map(payment => (
                       <TableRow key={payment.id}>
-                        <TableCell className="font-medium">
-                          {payment.cliente_nome ? (
-                            <>
-                              {payment.cliente_nome}
-                              {payment.cliente_id_manual && (
-                                <span className="text-gray-500 ml-1">(ID: {payment.cliente_id_manual})</span>
-                              )}
-                            </>
-                          ) : '-'}
-                        </TableCell>
+                        <TableCell className="font-medium">{payment.cliente_nome || '-'}</TableCell>
                         <TableCell>
                           {
                             (() => {
@@ -742,16 +776,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                     {sortedPayments.length > 0 ? (
                       sortedPayments.map(payment => (
                         <TableRow key={payment.id}>
-                          <TableCell className="font-medium">
-                          {payment.cliente_nome ? (
-                            <>
-                              {payment.cliente_nome}
-                              {payment.cliente_id_manual && (
-                                <span className="text-gray-500 ml-1">(ID: {payment.cliente_id_manual})</span>
-                              )}
-                            </>
-                          ) : '-'}
-                        </TableCell>
+                          <TableCell className="font-medium">{payment.cliente_nome || '-'}</TableCell>
                           <TableCell>
                             {
                               (() => {
