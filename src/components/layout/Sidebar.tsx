@@ -57,11 +57,11 @@ const Sidebar = () => {
     { name: t('dashboard'), icon: <Home className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/' },
     { name: t('clients'), icon: <User className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clients' },
     { name: t('calendar'), icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/calendar' },
-    { name: 'Finanças', icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
-    { name: 'Investimentos', icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
-    { name: 'Marketing', icon: <Megaphone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/marketing-reports' },
-    { name: 'Estatísticas', icon: <PieChart className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/statistics' },
-    { name: 'Administrativas', icon: <UserCog className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin-management' },
+    { name: t('finances'), icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
+    { name: t('investments'), icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
+    { name: t('marketing'), icon: <Megaphone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/marketing-reports' },
+    { name: t('statistics'), icon: <PieChart className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/statistics' },
+    { name: t('administrative'), icon: <UserCog className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin-management' },
   ];
   
   const communicationItems = [

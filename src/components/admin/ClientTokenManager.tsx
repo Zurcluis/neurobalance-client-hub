@@ -55,6 +55,41 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId, onClo
   const [generatingToken, setGeneratingToken] = useState(false);
   const [showToken, setShowToken] = useState<number | null>(null);
   const [expirationHours, setExpirationHours] = useState(24);
+  const [validityOption, setValidityOption] = useState('24h');
+
+  // Opções de validade predefinidas
+  const validityOptions = [
+    { value: '1h', label: '1 hora' },
+    { value: '6h', label: '6 horas' },
+    { value: '12h', label: '12 horas' },
+    { value: '24h', label: '24 horas' },
+    { value: '1w', label: '1 semana' },
+    { value: '1m', label: '1 mês' },
+    { value: '3m', label: '3 meses' },
+    { value: '6m', label: '6 meses' },
+    { value: '1y', label: '1 ano' }
+  ];
+
+  // Função para converter opção de validade em horas
+  const getHoursFromOption = (option: string): number => {
+    switch (option) {
+      case '1h': return 1;
+      case '6h': return 6;
+      case '12h': return 12;
+      case '24h': return 24;
+      case '1w': return 24 * 7; // 1 semana
+      case '1m': return 24 * 30; // 1 mês (aproximado)
+      case '3m': return 24 * 90; // 3 meses (aproximado)
+      case '6m': return 24 * 180; // 6 meses (aproximado)
+      case '1y': return 24 * 365; // 1 ano (aproximado)
+      default: return 24;
+    }
+  };
+
+  // Atualizar horas quando a opção mudar
+  useEffect(() => {
+    setExpirationHours(getHoursFromOption(validityOption));
+  }, [validityOption]);
 
   useEffect(() => {
     fetchClients();
@@ -279,15 +314,18 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId, onClo
             {selectedClientId && (
               <div className="flex gap-4 items-end">
                 <div className="flex-1">
-                  <label className="text-sm font-medium">Validade (horas)</label>
-                  <Input
-                    type="number"
-                    value={expirationHours}
-                    onChange={(e) => setExpirationHours(Number(e.target.value))}
-                    min="1"
-                    max="8760"
-                    className="mt-1"
-                  />
+                  <label className="text-sm font-medium">Validade</label>
+                  <select
+                    value={validityOption}
+                    onChange={(e) => setValidityOption(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3f9094] focus:border-[#3f9094]"
+                  >
+                    {validityOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <Button
                   onClick={generateToken}

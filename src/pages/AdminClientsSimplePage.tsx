@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { ADMIN_PERMISSIONS } from '@/types/admin';
+import { getFirstAndLastName } from '@/utils/nameUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,7 +87,8 @@ const AdminClientsSimplePage = () => {
     const matchesSearch = 
       (client.nome && client.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (client.telefone && client.telefone.includes(searchTerm));
+      (client.telefone && client.telefone.includes(searchTerm)) ||
+      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm.toLowerCase()));
     
     return matchesSearch;
   });
@@ -187,7 +189,7 @@ const AdminClientsSimplePage = () => {
                   <div>
                     <p className="text-sm text-gray-600">Clientes Ativos</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {clients.filter(c => c.ativo).length}
+                      {clients.length}
                     </p>
                   </div>
                 </div>
@@ -212,7 +214,7 @@ const AdminClientsSimplePage = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Pesquisar clientes..."
+                placeholder="Pesquisar por nome, email, telefone ou ID manual..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -228,11 +230,11 @@ const AdminClientsSimplePage = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900">
-                        {client.nome || 'Nome não disponível'}
+                        {getFirstAndLastName(client.nome || 'Nome não disponível')}
                       </CardTitle>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={client.ativo ? "default" : "secondary"}>
-                          {client.ativo ? "Ativo" : "Inativo"}
+                        <Badge variant="default">
+                          Ativo
                         </Badge>
                       </div>
                     </div>
@@ -257,8 +259,8 @@ const AdminClientsSimplePage = () => {
                   <div className="pt-3 border-t border-gray-200 mt-4">
                     <div className="text-xs text-gray-500 mb-2">
                       Registado em {
-                        client.created_at && isValid(parseISO(client.created_at))
-                          ? format(parseISO(client.created_at), 'dd/MM/yyyy', { locale: pt })
+                        client.criado_em && isValid(parseISO(client.criado_em))
+                          ? format(parseISO(client.criado_em), 'dd/MM/yyyy', { locale: pt })
                           : 'Data não disponível'
                       }
                     </div>
@@ -337,12 +339,13 @@ const AdminClientsSimplePage = () => {
       </main>
 
       {/* Formulário de Cliente */}
-      <ClientForm
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        client={editingClient}
-        onSubmit={editingClient ? handleUpdateClient : handleAddClient}
-      />
+      {isFormOpen && (
+        <ClientForm
+          defaultValues={editingClient}
+          isEditing={!!editingClient}
+          onSubmit={editingClient ? handleUpdateClient : handleAddClient}
+        />
+      )}
     </div>
   );
 };

@@ -18,6 +18,7 @@ import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval
 import { ptBR } from 'date-fns/locale';
 import useClients from '@/hooks/useClients';
 import useAppointments from '@/hooks/useAppointments';
+import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
 
 const FinancesPage = () => {
   const { t } = useLanguage();
@@ -25,7 +26,7 @@ const FinancesPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [periodFilter, setPeriodFilter] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
+  const [periodFilter, setPeriodFilter] = useState<TimeRange>('all');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -295,23 +296,14 @@ const FinancesPage = () => {
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-[#3f9094]">Dashboard Financeiro</h1>
+            <h1 className="text-3xl font-bold text-[#3f9094]">{t('dashboard')} {t('finances')}</h1>
             <p className="text-gray-600 mt-2">Análise completa de receitas, despesas e performance financeira</p>
           </div>
           <div className="flex gap-3">
-            <Select value={periodFilter} onValueChange={(value: any) => setPeriodFilter(value)}>
-              <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Selecionar período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Últimos 7 dias</SelectItem>
-                <SelectItem value="30d">Últimos 30 dias</SelectItem>
-                <SelectItem value="90d">Últimos 90 dias</SelectItem>
-                <SelectItem value="1y">Último ano</SelectItem>
-                <SelectItem value="all">Todos os dados</SelectItem>
-              </SelectContent>
-            </Select>
+            <TimeRangeSelector
+              selectedRange={periodFilter}
+              onRangeChange={setPeriodFilter}
+            />
             <Button onClick={handleExportData} variant="outline" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
               Exportar

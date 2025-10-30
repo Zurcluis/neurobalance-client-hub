@@ -5,6 +5,7 @@ import { Trash2, Edit, Phone, Mail, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Database } from '@/integrations/supabase/types';
 import { useAdminContext } from '@/contexts/AdminContext';
+import { getFirstAndLastName } from '@/utils/nameUtils';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 
@@ -26,7 +27,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
     <Card className={`relative overflow-hidden ${statusClass}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-xl font-bold truncate">
-          {client.nome}
+          {getFirstAndLastName(client.nome)}
           {client.id_manual ? ` (ID: ${client.id_manual})` : ''}
         </CardTitle>
       </CardHeader>

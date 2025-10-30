@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserCog, Mail, User, Shield, Calendar, MapPin, Phone } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
 
 // Schema de validação
 const adminSchema = z.object({
@@ -67,6 +68,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
   admin,
   onSubmit,
 }) => {
+  const { t } = useLanguage();
   const form = useForm<AdminFormData>({
     resolver: zodResolver(adminSchema),
     defaultValues: {
@@ -122,11 +124,11 @@ const AdminForm: React.FC<AdminFormProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCog className="h-5 w-5 text-[#3f9094]" />
-            {admin ? 'Editar Administrativa' : 'Adicionar Administrativa'}
+            {admin ? t('editAdministrative') : t('addAdministrative')}
           </DialogTitle>
           <DialogDescription>
             {admin 
@@ -139,7 +141,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
             console.log('Erros de validação:', errors);
-          })} className="space-y-6">
+          })} className="space-y-4 mt-4">
             {/* Nome */}
             <FormField
               control={form.control}
@@ -148,7 +150,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    Nome Completo
+                    {t('fullName')}
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -169,7 +171,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    Email
+                    {t('email')}
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -191,7 +193,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Data de Nascimento
+                    {t('dateOfBirth')}
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -212,7 +214,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
-                    Morada
+                    {t('address')}
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -233,7 +235,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    Contacto
+                    {t('contact')}
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -254,7 +256,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    Tipo de Acesso
+                    {t('accessType')}
                   </FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
@@ -267,8 +269,8 @@ const AdminForm: React.FC<AdminFormProps> = ({
                         <div className="flex items-center gap-2">
                           <Shield className="h-4 w-4 text-red-500" />
                           <div>
-                            <div className="font-medium">Administradora</div>
-                            <div className="text-xs text-gray-500">Acesso completo ao sistema</div>
+                            <div className="font-medium">{t('administrator')}</div>
+                            <div className="text-xs text-gray-500">{t('fullAccess')}</div>
                           </div>
                         </div>
                       </SelectItem>
@@ -276,8 +278,8 @@ const AdminForm: React.FC<AdminFormProps> = ({
                         <div className="flex items-center gap-2">
                           <UserCog className="h-4 w-4 text-blue-500" />
                           <div>
-                            <div className="font-medium">Assistente</div>
-                            <div className="text-xs text-gray-500">Acesso limitado a clientes e calendário</div>
+                            <div className="font-medium">{t('assistant')}</div>
+                            <div className="text-xs text-gray-500">{t('limitedAccess')}</div>
                           </div>
                         </div>
                       </SelectItem>
@@ -296,10 +298,10 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">
-                      Conta Ativa
+                      {t('activeAccount')}
                     </FormLabel>
                     <div className="text-sm text-gray-500">
-                      Permitir que esta administrativa aceda ao sistema
+                      {t('allowAccess')}
                     </div>
                   </div>
                   <FormControl>
@@ -313,14 +315,14 @@ const AdminForm: React.FC<AdminFormProps> = ({
             />
 
             {/* Botões */}
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-6 border-t border-gray-200 mt-6">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleClose}
                 className="flex-1"
               >
-                Cancelar
+                {t('cancel')}
               </Button>
               <Button
                 type="button"
@@ -333,7 +335,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 }}
                 className="flex-1 bg-[#3f9094] hover:bg-[#2d7a7e]"
               >
-                {admin ? 'Atualizar' : 'Adicionar'}
+                {admin ? t('update') : t('add')}
               </Button>
             </div>
           </form>

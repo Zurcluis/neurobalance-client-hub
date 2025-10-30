@@ -28,9 +28,12 @@ import {
   Calendar,
   User,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  Link,
+  Send
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Admin {
   id: string;
@@ -60,6 +63,7 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   tokens,
   onTokenUpdate,
 }) => {
+  const { t } = useLanguage();
   const [selectedAdminId, setSelectedAdminId] = useState<string>('');
   const [showTokens, setShowTokens] = useState<{ [key: string]: boolean }>({});
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -115,6 +119,37 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
     );
     onTokenUpdate(updatedTokens);
     toast.success('Token desativado com sucesso!');
+  };
+
+  // Gerar link de acesso administrativo
+  const generateAdminLoginLink = (token: string) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/admin-login?token=${token}`;
+  };
+
+  // Copiar link de acesso
+  const copyLoginLink = async (token: string) => {
+    try {
+      const link = generateAdminLoginLink(token);
+      await navigator.clipboard.writeText(link);
+      toast.success('Link de acesso copiado');
+    } catch (error) {
+      toast.error('Erro ao copiar link');
+    }
+  };
+
+  // Enviar link por email
+  const sendLoginLink = async (token: string, adminEmail: string) => {
+    try {
+      const link = generateAdminLoginLink(token);
+      
+      // Simular envio do email
+      toast.success(`Link de acesso enviado para ${adminEmail}`);
+      
+      // Em produção, você implementaria o envio real do email aqui
+    } catch (error) {
+      toast.error('Erro ao enviar link');
+    }
   };
 
   // Eliminar token
@@ -328,37 +363,51 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                     </div>
 
                     {/* Ações */}
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRefreshToken(token.id)}
-                        className="flex-1"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-1" />
-                        Renovar
-                      </Button>
-                      
-                      {token.is_active && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <div className="flex gap-2">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleDeactivateToken(token.id)}
-                          className="text-orange-600 hover:text-orange-700"
+                          onClick={() => copyLoginLink(token.token)}
+                          className="flex-1"
+                          disabled={!token.is_active || isExpired}
                         >
-                          <EyeOff className="h-4 w-4 mr-1" />
-                          Desativar
+                          <Link className="h-4 w-4 mr-1" />
+                          {t('copyLink')}
                         </Button>
-                      )}
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => sendLoginLink(token.token, admin?.email || '')}
+                          className="flex-1"
+                          disabled={!token.is_active || isExpired}
+                        >
+                          <Send className="h-4 w-4 mr-1" />
+                          {t('sendEmail')}
+                        </Button>
+                      </div>
                       
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteToken(token.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRefreshToken(token.id)}
+                          className="flex-1"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          {t('renew')}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteToken(token.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

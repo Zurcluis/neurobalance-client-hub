@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,7 +9,6 @@ import {
   User, 
   Calendar, 
   CreditCard, 
-  FileText, 
   MessageSquare, 
   Bell, 
   LogOut,
@@ -25,7 +23,9 @@ import {
   Euro,
   Activity,
   TrendingUp,
-  Settings
+  Settings,
+  Menu,
+  X
 } from 'lucide-react';
 import { useClientAuth, useClientData, useClientMessages, useClientNotifications } from '@/hooks/useClientAuth';
 import { toast } from 'sonner';
@@ -33,7 +33,6 @@ import { format, parseISO, isAfter, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ClientAppointments from '@/components/client-dashboard/ClientAppointments';
 import ClientPayments from '@/components/client-dashboard/ClientPayments';
-import ClientReports from '@/components/client-dashboard/ClientReports';
 import ClientChat from '@/components/client-dashboard/ClientChat';
 import ClientProfile from '@/components/client-dashboard/ClientProfile';
 import ClientNotifications from '@/components/client-dashboard/ClientNotifications';
@@ -44,6 +43,7 @@ const ClientDashboardPage = () => {
   const { messages, unreadCount: unreadMessages = 0 } = useClientMessages();
   const { notifications, unreadCount: unreadNotifications = 0 } = useClientNotifications();
   const [activeTab, setActiveTab] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   // Redirecionar se não estiver autenticado
@@ -97,6 +97,16 @@ const ClientDashboardPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
+              {/* Mobile Menu Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden mr-2"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+              
               <img 
                 src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
                 alt="NeuroBalance Logo" 
@@ -163,38 +173,108 @@ const ClientDashboardPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          {/* Navigation Tabs */}
-          <TabsList className="grid w-full grid-cols-6 bg-white rounded-lg shadow-sm overflow-x-auto">
-            <TabsTrigger value="overview" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
-              <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xs:inline">Visão Geral</span>
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
-              <User className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xs:inline">Perfil</span>
-            </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xs:inline">Agendamentos</span>
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
-              <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xs:inline">Pagamentos</span>
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
-              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xs:inline">Relatórios</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="flex flex-col items-center gap-1 p-2 sm:p-3 text-xs sm:text-sm">
-              <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xs:inline">Chat</span>
-            </TabsTrigger>
-          </TabsList>
+      <main className="flex flex-1 overflow-hidden">
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        {/* Sidebar Navigation */}
+        <div className={`w-64 bg-white border-r border-gray-200 flex flex-col fixed lg:relative inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}>
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+          </div>
+          
+          <nav className="flex-1 p-4 space-y-2">
+            <button
+              onClick={() => {
+                setActiveTab('overview');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-[#3f9094] text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Activity className="h-5 w-5" />
+              <span>Visão Geral</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab('profile');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'profile'
+                  ? 'bg-[#3f9094] text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <User className="h-5 w-5" />
+              <span>Perfil</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab('appointments');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'appointments'
+                  ? 'bg-[#3f9094] text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Calendar className="h-5 w-5" />
+              <span>Agendamentos</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab('payments');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'payments'
+                  ? 'bg-[#3f9094] text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <CreditCard className="h-5 w-5" />
+              <span>Pagamentos</span>
+            </button>
+            
+            
+            <button
+              onClick={() => {
+                setActiveTab('chat');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'chat'
+                  ? 'bg-[#3f9094] text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <MessageSquare className="h-5 w-5" />
+              <span>Chat</span>
+            </button>
+          </nav>
+        </div>
 
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+            {activeTab === 'overview' && (
+              <div className="space-y-4 sm:space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {/* Estatísticas Rápidas */}
               <Card>
@@ -332,38 +412,36 @@ const ClientDashboardPage = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+              </div>
+            )}
 
           {/* Profile Tab */}
-          <TabsContent value="profile">
+            {activeTab === 'profile' && (
             <ClientProfile clientData={clientData} />
-          </TabsContent>
+            )}
 
           {/* Appointments Tab */}
-          <TabsContent value="appointments">
+            {activeTab === 'appointments' && (
             <ClientAppointments clientId={session.clientId} />
-          </TabsContent>
+            )}
 
           {/* Payments Tab */}
-          <TabsContent value="payments">
+            {activeTab === 'payments' && (
             <ClientPayments clientId={session.clientId} />
-          </TabsContent>
+            )}
 
-          {/* Reports Tab */}
-          <TabsContent value="reports">
-            <ClientReports clientId={session.clientId} />
-          </TabsContent>
 
           {/* Chat Tab */}
-          <TabsContent value="chat">
+            {activeTab === 'chat' && (
             <ClientChat clientId={session.clientId} />
-          </TabsContent>
+            )}
 
-          {/* Notifications Tab - Hidden but accessible */}
-          <TabsContent value="notifications">
+            {/* Notifications Tab */}
+            {activeTab === 'notifications' && (
             <ClientNotifications />
-          </TabsContent>
-        </Tabs>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );

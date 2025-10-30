@@ -27,6 +27,7 @@ import AdminForm from '@/components/admin-management/AdminForm';
 import AdminTokenManager from '@/components/admin-management/AdminTokenManager';
 import { useAdmins, Admin } from '@/hooks/useAdmins';
 import { calculateAge } from '@/utils/dateUtils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface AdminToken {
   id: string;
@@ -38,6 +39,7 @@ interface AdminToken {
 }
 
 const AdminManagementPage = () => {
+  const { t } = useLanguage();
   const { 
     admins, 
     isLoading, 
@@ -149,7 +151,7 @@ const AdminManagementPage = () => {
           <div className="flex items-center gap-3">
             <UserCog className="h-8 w-8 text-[#3f9094]" />
             <div>
-              <h1 className="text-3xl font-bold text-[#3f9094]">Gestão de Administrativas</h1>
+              <h1 className="text-3xl font-bold text-[#3f9094]">{t('adminManagement')}</h1>
               <p className="text-gray-600 mt-2">Gerir administrativas, assistentes e tokens de acesso</p>
             </div>
           </div>
@@ -226,8 +228,8 @@ const AdminManagementPage = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="admins">Administrativas</TabsTrigger>
-            <TabsTrigger value="tokens">Tokens de Acesso</TabsTrigger>
+            <TabsTrigger value="admins">{t('administrative')}</TabsTrigger>
+            <TabsTrigger value="tokens">{t('adminTokens')}</TabsTrigger>
           </TabsList>
 
           {/* Tab Administrativas */}

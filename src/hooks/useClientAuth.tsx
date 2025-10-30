@@ -211,6 +211,7 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
 // Hook para usar dados do cliente autenticado
 export const useClientData = () => {
   const { session } = useClientAuth();
+  const supabase = useSupabaseClient();
   const [clientData, setClientData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -239,7 +240,7 @@ export const useClientData = () => {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, supabase]);
 
   useEffect(() => {
     if (session) {
@@ -253,6 +254,7 @@ export const useClientData = () => {
 // Hook para gerenciar mensagens do cliente
 export const useClientMessages = () => {
   const { session } = useClientAuth();
+  const supabase = useSupabaseClient();
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -280,7 +282,7 @@ export const useClientMessages = () => {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, supabase]);
 
   const sendMessage = useCallback(async (message: string) => {
     if (!session) return false;
@@ -304,7 +306,7 @@ export const useClientMessages = () => {
     } catch (error: any) {
       return false;
     }
-  }, [session, fetchMessages]);
+  }, [session, fetchMessages, supabase]);
 
   const markAsRead = useCallback(async (messageId: number) => {
     try {
@@ -319,7 +321,7 @@ export const useClientMessages = () => {
 
       await fetchMessages();
     } catch (error: any) {}
-  }, [fetchMessages]);
+  }, [fetchMessages, supabase]);
 
   useEffect(() => {
     if (session) {
@@ -343,6 +345,7 @@ export const useClientMessages = () => {
 // Hook para gerenciar notificações do cliente
 export const useClientNotifications = () => {
   const { session } = useClientAuth();
+  const supabase = useSupabaseClient();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -372,7 +375,7 @@ export const useClientNotifications = () => {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, supabase]);
 
   const markAsRead = useCallback(async (notificationId: number) => {
     try {
@@ -390,7 +393,7 @@ export const useClientNotifications = () => {
     } catch (error: any) {
       console.error('Erro ao marcar notificação como lida:', error);
     }
-  }, [fetchNotifications]);
+  }, [fetchNotifications, supabase]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 

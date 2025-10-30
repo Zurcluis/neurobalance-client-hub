@@ -18,6 +18,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getFirstAndLastName } from '@/utils/nameUtils';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import AdminSidebar from '@/components/admin/AdminSidebar';
@@ -86,8 +87,9 @@ const AdminClientsPage = () => {
   const filteredClients = clients.filter(client => {
     const matchesSearch = 
       client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client.telefone && client.telefone.includes(searchTerm));
+      (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.telefone && client.telefone.includes(searchTerm)) ||
+      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'active' && client.ativo) ||
@@ -230,7 +232,7 @@ const AdminClientsPage = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
-                      placeholder="Pesquisar clientes..."
+                      placeholder="Pesquisar por nome, email, telefone ou ID manual..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 w-full sm:w-80"
@@ -264,7 +266,7 @@ const AdminClientsPage = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg font-semibold text-slate-900">
-                          {client.nome}
+                          {getFirstAndLastName(client.nome)}
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge variant={client.ativo ? "default" : "secondary"}>

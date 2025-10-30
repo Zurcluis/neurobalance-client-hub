@@ -135,7 +135,8 @@ export function useClients() {
     const searchTerm = query.toLowerCase();
     return clients.filter(client => 
       client.nome.toLowerCase().includes(searchTerm) ||
-      client.email.toLowerCase().includes(searchTerm)
+      (client.email && client.email.toLowerCase().includes(searchTerm)) ||
+      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm))
     );
   }, [clients]);
 

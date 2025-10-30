@@ -38,16 +38,15 @@ import {
   Euro,
   Mail,
   Phone,
-  MapPin,
-  ListTodo,
-  ArrowLeft,
-  ArrowRight,
-  Archive
+  MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
+import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
+import { useLanguage } from '@/hooks/use-language';
 
 const MarketingReportsPage = () => {
   const { isMarketingContext } = useMarketingContext();
+  const { t } = useLanguage();
   
   // Marketing Campaigns hooks
   const {
@@ -92,38 +91,8 @@ const MarketingReportsPage = () => {
   });
   const [showLeadImporter, setShowLeadImporter] = useState(false);
 
-  const [tasks, setTasks] = useState<{ id: string; title: string; status: 'todo' | 'in_progress' | 'done' | 'archived' }[]>([
-    { id: 't1', title: 'Analisar resultados das campanhas', status: 'todo' },
-    { id: 't2', title: 'Escrever proposta de mídia paga', status: 'todo' },
-    { id: 't3', title: 'Agendar reunião inicial com o cliente', status: 'in_progress' },
-  ]);
-  const [newTaskTitles, setNewTaskTitles] = useState<Record<'todo' | 'in_progress' | 'done' | 'archived', string>>({
-    todo: '',
-    in_progress: '',
-    done: '',
-    archived: ''
-  });
-
-  const addTask = (status: 'todo' | 'in_progress' | 'done' | 'archived') => {
-    const title = newTaskTitles[status].trim();
-    if (!title) return;
-    setTasks(prev => [{ id: crypto.randomUUID(), title, status }, ...prev]);
-    setNewTaskTitles(prev => ({ ...prev, [status]: '' }));
-  };
-
-  const moveTask = (id: string, direction: 'left' | 'right') => {
-    const order: ('todo' | 'in_progress' | 'done' | 'archived')[] = ['todo', 'in_progress', 'done', 'archived'];
-    setTasks(prev => prev.map(t => {
-      if (t.id !== id) return t;
-      const idx = order.indexOf(t.status);
-      const nextIdx = direction === 'left' ? Math.max(0, idx - 1) : Math.min(order.length - 1, idx + 1);
-      return { ...t, status: order[nextIdx] };
-    }));
-  };
-
-  const removeTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-  };
+  // Time range filter
+  const [periodFilter, setPeriodFilter] = useState<TimeRange>('all');
 
   // Filtrar campanhas baseado na busca e filtros
   const filteredCampaigns = useMemo(() => {
@@ -412,16 +381,20 @@ const MarketingReportsPage = () => {
         {/* Cabeçalho */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Marketing</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('marketing')}</h1>
             <p className="text-gray-600">Gerencie campanhas, leads e análises de marketing</p>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <TimeRangeSelector
+              selectedRange={periodFilter}
+              onRangeChange={setPeriodFilter}
+            />
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-blue-600 hover:bg-blue-700">
                   <Plus className="h-4 w-4 mr-2" />
-                  Nova Campanha
+                  {t('newCampaign')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -465,38 +438,34 @@ const MarketingReportsPage = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              Dashboard
+              {t('dashboard')}
             </TabsTrigger>
             <TabsTrigger value="campaigns" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Campanhas
+              {t('campaigns')}
             </TabsTrigger>
             <TabsTrigger value="leads" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Leads
+              {t('leads')}
             </TabsTrigger>
             <TabsTrigger value="lead-dashboard" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Lead Analytics
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="flex items-center gap-2">
-              <ListTodo className="h-4 w-4" />
-              Tarefas
+              {t('leadAnalytics')}
             </TabsTrigger>
             <TabsTrigger value="import" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
-              Importar
+              {t('import')}
             </TabsTrigger>
             <TabsTrigger value="filters" className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
-              Filtros
+              {t('filters')}
             </TabsTrigger>
             <TabsTrigger value="export" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
-              Exportar
+              {t('export')}
             </TabsTrigger>
           </TabsList>
 
@@ -641,55 +610,6 @@ const MarketingReportsPage = () => {
                 title="Importar Leads e Compras"
                 description="Importe dados de leads e compras de arquivos Excel, Word ou PDF"
               />
-            </div>
-          </TabsContent>
-
-          {/* Tarefas: cada card é uma lead e a coluna depende do status/etapa */}
-          <TabsContent value="tasks" className="space-y-6">
-            <div className="grid grid-cols-1 2xl:grid-cols-5 xl:grid-cols-4 lg:grid-cols-2 gap-4">
-              {([
-                'A pensar',
-                'Avaliação inicial',
-                '1º avaliação',
-                'Neurofeedback',
-                'Terminou',
-              ] as const).map(statusName => (
-                <Card key={statusName} className="p-4 bg-muted/30">
-                  <CardHeader className="p-0 mb-3">
-                    <CardTitle className="text-base">{statusName}</CardTitle>
-                  </CardHeader>
-                  <div className="space-y-2">
-                    {filteredLeads.filter(l => (l.etapa || 'A pensar') === statusName).map(lead => (
-                      <Card key={lead.id} className="p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{lead.nome}</span>
-                              <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>{lead.tipo}</Badge>
-                            </div>
-                            <div className="text-xs text-gray-600 mt-1">
-                              {lead.email && <div>{lead.email}</div>}
-                              {lead.cidade && <div>{lead.cidade}</div>}
-                              {lead.data_evento && <div>{new Date(lead.data_evento).toLocaleDateString('pt-PT')}</div>}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button variant="outline" size="icon" onClick={() => handleEditLead(lead)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => handleDeleteLead(lead.id)} className="text-red-600">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                    {filteredLeads.filter(l => (l.etapa || 'A pensar') === statusName).length === 0 && (
-                      <div className="text-xs text-gray-500">Sem leads neste estado.</div>
-                    )}
-                  </div>
-                </Card>
-              ))}
             </div>
           </TabsContent>
 

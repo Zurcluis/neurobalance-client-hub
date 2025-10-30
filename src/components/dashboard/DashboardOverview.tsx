@@ -8,6 +8,8 @@ import useClients from '@/hooks/useClients';
 import useAppointments from '@/hooks/useAppointments';
 import usePayments from '@/hooks/usePayments';
 import { useExpenses } from '@/hooks/useExpenses';
+import { getFirstAndLastName } from '@/utils/nameUtils';
+import TimeRangeSelector, { TimeRange } from './TimeRangeSelector';
 import { format, isToday, parseISO, isFuture, subDays, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, LineChart, Line, PieChart, Pie, Cell, ComposedChart, Area, AreaChart } from 'recharts';
@@ -46,7 +48,7 @@ const RecentClientsTable = ({ clients, appointments, payments }: { clients: Clie
                 {client.nome.charAt(0).toUpperCase()}
               </div>
             <div>
-                <p className="font-medium text-gray-800">{client.nome}</p>
+                <p className="font-medium text-gray-800">{getFirstAndLastName(client.nome)}</p>
               <p className="text-sm text-gray-600">{client.email || 'Sem email'}</p>
               </div>
             </div>
@@ -81,7 +83,7 @@ const DashboardOverview = () => {
   const [completedSessions, setCompletedSessions] = useState<number>(0);
   const [totalSessions, setTotalSessions] = useState<number>(0);
   const [recentClients, setRecentClients] = useState<any[]>([]);
-  const [periodFilter, setPeriodFilter] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
+  const [periodFilter, setPeriodFilter] = useState<TimeRange>('all');
   
   // Métricas avançadas
   const advancedMetrics = useMemo(() => {
@@ -363,6 +365,14 @@ const DashboardOverview = () => {
   
   return (
     <div className="space-y-6">
+      {/* Seletor de Período Temporal */}
+      <div className="flex justify-end mb-4">
+        <TimeRangeSelector
+          selectedRange={periodFilter}
+          onRangeChange={setPeriodFilter}
+        />
+      </div>
+
       {/* Próximos Agendamentos */}
       <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/30 border-l-4 border-l-[#5DA399]">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
