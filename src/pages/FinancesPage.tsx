@@ -9,11 +9,13 @@ import MonthlyAnalysis from '@/components/finances/MonthlyAnalysis';
 import BalanceSheet from '@/components/finances/BalanceSheet';
 import FiscalReports from '@/components/finances/FiscalReports';
 import FiscalDeadlines from '@/components/finances/FiscalDeadlines';
+import SmartTaxCalculator from '@/components/finances/SmartTaxCalculator';
+import FinancialChatbot from '@/components/finances/FinancialChatbot';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowDownCircle, ArrowUpCircle, TrendingUp, Calculator, Calendar, FileText, AlertCircle } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, TrendingUp, Calculator, Calendar, FileText, AlertCircle, Sparkles } from 'lucide-react';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePayments } from '@/hooks/usePayments';
 
@@ -85,7 +87,7 @@ const FinancesPage = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 lg:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7 lg:grid-cols-7">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -94,9 +96,16 @@ const FinancesPage = () => {
               <Calculator className="h-4 w-4" />
               <span className="hidden sm:inline">Impostos</span>
             </TabsTrigger>
+            <TabsTrigger value="calculadora" className="flex items-center gap-2 relative">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Calculadora</span>
+              <span className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                NOVO
+              </span>
+            </TabsTrigger>
             <TabsTrigger value="mensal" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Análise Mensal</span>
+              <span className="hidden sm:inline">Mensal</span>
             </TabsTrigger>
             <TabsTrigger value="balanco" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -118,6 +127,10 @@ const FinancesPage = () => {
 
           <TabsContent value="impostos" className="space-y-6">
             <TaxBreakdown payments={paymentsData} expenses={expenses} year={currentYear} />
+          </TabsContent>
+
+          <TabsContent value="calculadora" className="space-y-6">
+            <SmartTaxCalculator />
           </TabsContent>
 
           <TabsContent value="mensal" className="space-y-6">
@@ -179,6 +192,9 @@ const FinancesPage = () => {
         </TabsContent>
       </Tabs>
       </div>
+
+      {/* Chatbot Financeiro - Disponível em todas as abas */}
+      <FinancialChatbot />
     </PageLayout>
   );
 };
