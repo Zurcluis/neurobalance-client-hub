@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 
 interface AuthContextType {
   session: Session | null;
@@ -17,21 +18,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('AuthProvider: Initializing auth state');
+    logger.log('AuthProvider: Initializing auth state');
     
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('AuthProvider: Initial session check', { session });
+      logger.log('AuthProvider: Initial session check', { session });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('AuthProvider: Auth state changed', { event: _event, session });
+      logger.log('AuthProvider: Auth state changed', { event: _event, session });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

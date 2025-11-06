@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { toast } from 'sonner';
 import { MarketingSession, MarketingAuthRequest, MarketingAuthResponse, MARKETING_PERMISSIONS } from '@/types/marketing-auth';
+import { logger } from '@/lib/logger';
+import { DEV_MARKETING_USERS } from '@/config/dev-credentials';
 
 interface MarketingAuthContextType {
   session: MarketingSession | null;
@@ -23,23 +24,6 @@ export const useMarketingAuth = () => {
   return context;
 };
 
-// Dados hardcoded para desenvolvimento - similar ao sistema administrativo
-const MARKETING_USERS = [
-  {
-    id: 'mkt_001',
-    name: 'Marketing Manager',
-    email: 'marketing@neurobalance.com',
-    role: 'marketing_manager' as const,
-    tokens: ['MKT2024', 'MARKETING123', 'NEURO_MKT']
-  },
-  {
-    id: 'mkt_002', 
-    name: 'Marketing Assistant',
-    email: 'marketing.assistant@neurobalance.com',
-    role: 'marketing_assistant' as const,
-    tokens: ['ASSIST_MKT', 'MKT_HELPER']
-  }
-];
 
 export const MarketingAuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<MarketingSession | null>(null);
@@ -54,7 +38,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
   // Validar token
   const validateToken = useCallback(async (token: string, email: string): Promise<MarketingSession | null> => {
     try {
-      const user = MARKETING_USERS.find(u => 
+      const user = DEV_MARKETING_USERS.find(u => 
         u.email === email && u.tokens.includes(token)
       );
 
@@ -99,7 +83,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
           localStorage.removeItem('marketing_session');
         }
       } catch (error) {
-        console.error('Erro ao carregar sessão salva:', error);
+        logger.error('Erro ao carregar sessão salva:', error);
         localStorage.removeItem('marketing_session');
       }
     }
@@ -150,7 +134,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
       }
     } catch (error) {
       const errorMessage = 'Erro interno do servidor';
-      console.error('Erro no login:', error);
+      logger.error('Erro no login:', error);
       setError(errorMessage);
       return {
         success: false,
@@ -171,7 +155,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
     if (!session) return false;
 
     try {
-      const user = MARKETING_USERS.find(u => u.id === session.marketingId);
+      const user = DEV_MARKETING_USERS.find(u => u.id === session.marketingId);
       if (!user) return false;
 
       const newToken = generateToken();
@@ -188,7 +172,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
       localStorage.setItem('marketing_session', JSON.stringify(refreshedSession));
       return true;
     } catch (error) {
-      console.error('Erro ao renovar sessão:', error);
+      logger.error('Erro ao renovar sessão:', error);
       logout();
       return false;
     }

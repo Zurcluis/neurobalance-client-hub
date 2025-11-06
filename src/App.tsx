@@ -1,29 +1,9 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import ClientsPage from "./pages/ClientsPage";
-import ClientDetailPage from "./pages/ClientDetailPage";
-import CalendarPage from "./pages/CalendarPage";
-import FinancesPage from "./pages/FinancesPage";
-import StatisticsPage from "./pages/StatisticsPage";
-import InvestmentsPage from "./pages/InvestmentsPage";
-import MarketingReportsPage from "./pages/MarketingReportsPage";
-import NotFound from "./pages/NotFound";
-import MonitoringPage from "./pages/MonitoringPage";
-import LoginPage from "./pages/LoginPage";
-import AuthCallback from "./pages/AuthCallback";
-import ClientLoginPage from "./pages/ClientLoginPage";
-import ClientDashboardPage from "./pages/ClientDashboardPage";
-import AdminLoginPage from "./pages/AdminLoginPage";
-import AdminClientsFullPage from "./pages/AdminClientsFullPage";
-import AdminClientProfilePage from "./pages/AdminClientProfilePage";
-import AdminCalendarFullPage from "./pages/AdminCalendarFullPage";
-import AdminManagementPage from "./pages/AdminManagementPage";
-import MarketingLoginPage from "./pages/MarketingLoginPage";
-import MarketingAreaPage from "./pages/MarketingAreaPage";
 import { ThemeProvider } from "./hooks/use-theme";
 import { LanguageProvider } from "./hooks/use-language";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -34,23 +14,65 @@ import { MarketingAuthProvider } from "./hooks/useMarketingAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AdminProtectedRoute } from "./components/admin/AdminProtectedRoute";
 import { MarketingProtectedRoute } from "./components/marketing/MarketingProtectedRoute";
+import { ErrorBoundary } from "./components/shared/ErrorBoundary";
+import { SkipLinks } from "./components/accessibility/SkipLinks";
 
-const queryClient = new QueryClient();
+const Index = lazy(() => import("./pages/Index"));
+const ClientsPage = lazy(() => import("./pages/ClientsPage"));
+const ClientDetailPage = lazy(() => import("./pages/ClientDetailPage"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const FinancesPage = lazy(() => import("./pages/FinancesPage"));
+const StatisticsPage = lazy(() => import("./pages/StatisticsPage"));
+const InvestmentsPage = lazy(() => import("./pages/InvestmentsPage"));
+const MarketingReportsPage = lazy(() => import("./pages/MarketingReportsPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const MonitoringPage = lazy(() => import("./pages/MonitoringPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const ClientLoginPage = lazy(() => import("./pages/ClientLoginPage"));
+const ClientDashboardPage = lazy(() => import("./pages/ClientDashboardPage"));
+const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
+const AdminClientsFullPage = lazy(() => import("./pages/AdminClientsFullPage"));
+const AdminClientProfilePage = lazy(() => import("./pages/AdminClientProfilePage"));
+const AdminCalendarFullPage = lazy(() => import("./pages/AdminCalendarFullPage"));
+const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
+const MarketingLoginPage = lazy(() => import("./pages/MarketingLoginPage"));
+const MarketingAreaPage = lazy(() => import("./pages/MarketingAreaPage"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+  </div>
+);
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light">
-      <LanguageProvider>
-        <AuthProvider>
-          <DatabaseProvider>
-            <ClientAuthProvider>
-              <AdminAuthProvider>
-                <MarketingAuthProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <BrowserRouter>
-                    <Routes>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light">
+        <LanguageProvider>
+          <AuthProvider>
+            <DatabaseProvider>
+              <ClientAuthProvider>
+                <AdminAuthProvider>
+                  <MarketingAuthProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <Sonner />
+                      <BrowserRouter>
+                        <SkipLinks />
+                        <Suspense fallback={<LoadingFallback />}>
+                          <Routes>
                       {/* Admin Routes */}
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/auth/callback" element={<AuthCallback />} />
@@ -178,19 +200,21 @@ const App = () => (
                   <Route path="/client-login" element={<ClientLoginPage />} />
                   <Route path="/client-dashboard" element={<ClientDashboardPage />} />
                   
-                  {/* 404 Route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-              </TooltipProvider>
-                </MarketingAuthProvider>
-            </AdminAuthProvider>
-          </ClientAuthProvider>
-        </DatabaseProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+                            {/* 404 Route */}
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </Suspense>
+                      </BrowserRouter>
+                    </TooltipProvider>
+                  </MarketingAuthProvider>
+                </AdminAuthProvider>
+              </ClientAuthProvider>
+            </DatabaseProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

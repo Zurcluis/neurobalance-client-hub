@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { NotificationBar } from '@/components/notifications/NotificationBar';
 import { DatabaseManagerDialog } from '@/components/dashboard/DatabaseManagerDialog';
+import { KeyboardShortcutsDialog } from '@/components/accessibility/KeyboardShortcutsDialog';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -108,8 +109,10 @@ const Sidebar = () => {
             size="sm" 
             className="mt-4 w-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800" 
             onClick={() => setIsCollapsed(!isCollapsed)}
+            aria-label={isCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            aria-expanded={!isCollapsed}
           >
-            {isCollapsed ? <Menu /> : <ChevronLeftIcon className="h-5 w-5" />}
+            {isCollapsed ? <Menu aria-hidden="true" /> : <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />}
           </Button>
         </div>
         )}
@@ -119,6 +122,7 @@ const Sidebar = () => {
           variant="outline" 
           className="w-full relative text-left flex items-center justify-between pl-3 py-2 h-auto rounded-lg"
           onClick={() => setShowSearch(true)}
+          aria-label="Abrir busca rápida (Ctrl+K)"
         >
           <span className={cn(
             "text-gray-500 dark:text-gray-400",
@@ -126,11 +130,16 @@ const Sidebar = () => {
           )}>
             Pesquisar...
           </span>
-          <Search className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <Search className="h-5 w-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
         </Button>
       </div>
 
-      <nav className="flex-1">
+      <nav 
+        id="navigation" 
+        className="flex-1"
+        role="navigation"
+        aria-label="Menu principal"
+      >
         <ul className={cn(
           "space-y-1",
           isMobile && "space-y-2"
@@ -148,9 +157,10 @@ const Sidebar = () => {
                     : 'sidebar-item-inactive',
                   isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-start px-3'
                 )}
+                aria-current={location.pathname === item.path ? 'page' : undefined}
                 onClick={() => isMobile && document.querySelector('.drawer-close')?.dispatchEvent(new Event('click'))}
               >
-                <span className={isMobile ? "text-xl" : "text-lg"}>{item.icon}</span>
+                <span className={isMobile ? "text-xl" : "text-lg"} aria-hidden="true">{item.icon}</span>
                 {(!isCollapsed || isMobile) && <span className={cn("ml-3", isMobile && "font-medium")}>{item.name}</span>}
               </Link>
             </li>
@@ -158,7 +168,7 @@ const Sidebar = () => {
         </ul>
         
         {/* Communication section */}
-        <div className={cn("mt-8", isMobile && "mt-10")}>
+        <div className={cn("mt-8", isMobile && "mt-10")} role="region" aria-label="Comunicações">
           <h3 className={cn(
             'text-[#3A726D] dark:text-[#E6ECEA] font-medium mb-2',
             isMobile && "text-base px-4",
@@ -182,8 +192,9 @@ const Sidebar = () => {
                     isMobile && "text-base py-3.5 px-4",
                     isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-start px-3'
                   )}
+                  aria-label={item.name}
                 >
-                  <span className={isMobile ? "text-xl" : "text-lg"}>{item.icon}</span>
+                  <span className={isMobile ? "text-xl" : "text-lg"} aria-hidden="true">{item.icon}</span>
                   {(!isCollapsed || isMobile) && <span className={cn("ml-3", isMobile && "font-medium")}>{item.name}</span>}
                 </button>
               </li>
@@ -206,9 +217,11 @@ const Sidebar = () => {
           <button 
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 rounded-lg transition"
             onClick={() => setShowCalendarSync(true)}
+            aria-label="Sincronizar com Google Calendar"
           >
-            <Calendar className="h-5 w-5" />
+            <Calendar className="h-5 w-5" aria-hidden="true" />
           </button>
+          <KeyboardShortcutsDialog />
           <DatabaseManagerDialog />
           </div>
           <div className={cn(
@@ -229,8 +242,9 @@ const Sidebar = () => {
               variant="ghost"
               className="w-full mt-4 flex items-center justify-center text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
               onClick={handleLogout}
+              aria-label="Fazer logout do sistema"
             >
-              <LogOut className="h-5 w-5 mr-2" />
+              <LogOut className="h-5 w-5 mr-2" aria-hidden="true" />
               {t('logout')}
             </Button>
           </>
@@ -267,8 +281,13 @@ const Sidebar = () => {
       <div className="fixed top-0 left-0 z-40 w-full bg-white/90 dark:bg-[#1A1F2C]/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 flex justify-between items-center px-4 py-3 pt-safe">
         <Drawer>
           <DrawerTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 flex items-center justify-center">
-              <Menu className="h-6 w-6" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full h-11 w-11 flex items-center justify-center"
+              aria-label="Abrir menu de navegação"
+            >
+              <Menu className="h-6 w-6" aria-hidden="true" />
             </Button>
           </DrawerTrigger>
           <DrawerContent className="h-[95vh] rounded-t-xl border-t-0">
@@ -284,8 +303,14 @@ const Sidebar = () => {
         
         <div className="flex items-center gap-2">
           <NotificationBar />
-          <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 flex items-center justify-center" onClick={() => setShowSearch(true)}>
-            <Search className="h-5 w-5" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full h-11 w-11 flex items-center justify-center" 
+            onClick={() => setShowSearch(true)}
+            aria-label="Abrir busca rápida"
+          >
+            <Search className="h-5 w-5" aria-hidden="true" />
         </Button>
         </div>
       </div>

@@ -90,31 +90,42 @@ interface ExpenseFormValues {
 // Categorias de despesas
 const expenseCategories = {
   'Fixas': [
-    'Água',
     'Renda',
-    'Eletricidade',
-    'Telemóvel/Internet',
+    'Água',
+    'Luz',
+    'Telemóvel',
     'Salários',
     'Contabilidade',
+    'ChatGPT',
+    'Netflix',
     'Reembolso de Capital'
+  ],
+  'Variáveis': [
+    'Despesas Operacionais',
+    'Manutenção',
+    'Combustível',
+    'Seguros',
+    'Publicidade',
+    'Outras Despesas Operacionais'
+  ],
+  'Investimento': [
+    'Equipamentos',
+    'Melhorias',
+    'Software',
+    'Formação'
   ],
   'Materiais': [
     'Elétrodos',
     'Pasta Condutora',
     'Pasta Nuprep',
-    'Tinta para Impressora',
-    'Material de Escritório'
+    'Água Destilada',
+    'Material de Escritório',
+    'Tinta para Impressora'
   ],
   'Outras': [
-    'Manutenção',
-    'Combustível',
-    'Seguros',
     'Impostos',
-    'Subscrições Online',
-    'Publicidade',
     'Devolveu Dinheiro',
     'Outros'
-
   ]
 };
 

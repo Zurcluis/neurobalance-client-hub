@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { ClientSession, ClientAuthRequest, ClientAuthResponse } from '@/types/client-dashboard';
+import { logger } from '@/lib/logger';
 
 interface ClientAuthContextType {
   session: ClientSession | null;
@@ -46,7 +47,7 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
           localStorage.removeItem('client_session');
         }
       } catch (error) {
-        console.error('Erro ao carregar sessão do cliente:', error);
+        logger.error('Erro ao carregar sessão do cliente:', error);
         localStorage.removeItem('client_session');
       }
     }
@@ -128,7 +129,13 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
         };
       }
 
-      // Criar sessão
+      if (!clientData.email) {
+        return {
+          success: false,
+          error: 'Email do cliente não encontrado. Entre em contato com o suporte.'
+        };
+      }
+
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const newSession: ClientSession = {
         token: tokenData,
@@ -154,7 +161,11 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
       return {
         success: true,
         token: tokenData,
-        client: clientData,
+        client: {
+          id: clientData.id,
+          nome: clientData.nome,
+          email: clientData.email
+        },
         expiresAt
       };
 
@@ -184,7 +195,7 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
       await validateToken(session.token);
       return true;
     } catch (error) {
-      console.error('Erro ao atualizar sessão:', error);
+      logger.error('Erro ao atualizar sessão:', error);
       return false;
     }
   }, [session, validateToken]);
@@ -234,9 +245,10 @@ export const useClientData = () => {
       }
 
       setClientData(data);
-    } catch (error: any) {
-      console.error('Erro ao buscar dados do cliente:', error);
-      setError(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      logger.error('Erro ao buscar dados do cliente:', error);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -277,8 +289,9 @@ export const useClientMessages = () => {
       }
 
       setMessages(data || []);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -303,7 +316,8 @@ export const useClientMessages = () => {
 
       await fetchMessages();
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      logger.error('Erro ao enviar mensagem:', error);
       return false;
     }
   }, [session, fetchMessages, supabase]);
@@ -320,7 +334,9 @@ export const useClientMessages = () => {
       }
 
       await fetchMessages();
-    } catch (error: any) {}
+    } catch (error: unknown) {
+      logger.error('Erro ao marcar mensagem como lida:', error);
+    }
   }, [fetchMessages, supabase]);
 
   useEffect(() => {
@@ -369,9 +385,10 @@ export const useClientNotifications = () => {
       }
 
       setNotifications(data || []);
-    } catch (error: any) {
-      console.error('Erro ao buscar notificações:', error);
-      setError(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      logger.error('Erro ao buscar notificações:', error);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -390,8 +407,8 @@ export const useClientNotifications = () => {
 
       // Atualizar lista de notificações
       await fetchNotifications();
-    } catch (error: any) {
-      console.error('Erro ao marcar notificação como lida:', error);
+    } catch (error: unknown) {
+      logger.error('Erro ao marcar notificação como lida:', error);
     }
   }, [fetchNotifications, supabase]);
 

@@ -17,6 +17,9 @@ import { Database } from '@/integrations/supabase/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { DashboardSkeleton } from '@/components/shared/SkeletonCard';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { useAnnouncer } from '@/hooks/useAnnouncer';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 
@@ -77,6 +80,7 @@ const DashboardOverview = () => {
   const { appointments, isLoading: isAppointmentsLoading } = useAppointments();
   const { payments, isLoading: isPaymentsLoading, getTotalRevenue } = usePayments();
   const { expenses, isLoading: isExpensesLoading, getTotalExpenses } = useExpenses();
+  const { announce } = useAnnouncer();
   
   const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
@@ -84,6 +88,7 @@ const DashboardOverview = () => {
   const [totalSessions, setTotalSessions] = useState<number>(0);
   const [recentClients, setRecentClients] = useState<any[]>([]);
   const [periodFilter, setPeriodFilter] = useState<TimeRange>('all');
+  const [hasAnnounced, setHasAnnounced] = useState(false);
   
   // Métricas avançadas
   const advancedMetrics = useMemo(() => {
@@ -269,6 +274,20 @@ const DashboardOverview = () => {
       setRecentClients(sortedClients);
     }
   }, [clients, isClientsLoading]);
+
+  useEffect(() => {
+    const isLoading = isClientsLoading || isAppointmentsLoading || isPaymentsLoading || isExpensesLoading;
+    
+    if (!isLoading && !hasAnnounced) {
+      const clientsCount = clients?.length || 0;
+      const appointmentsCount = appointments?.length || 0;
+      announce(
+        `Dashboard carregado. ${clientsCount} clientes, ${appointmentsCount} agendamentos.`,
+        'polite'
+      );
+      setHasAnnounced(true);
+    }
+  }, [isClientsLoading, isAppointmentsLoading, isPaymentsLoading, isExpensesLoading, clients, appointments, hasAnnounced, announce]);
     
   const formatAppointmentsForTable = (appointments) => {
     return appointments.map(appointment => ({
@@ -314,52 +333,27 @@ const DashboardOverview = () => {
   };
   
   if (isClientsLoading || isAppointmentsLoading || isPaymentsLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3f9094] mx-auto mb-4"></div>
-          <p className="text-lg font-medium text-gray-700">Carregando dados...</p>
-          <p className="text-sm text-gray-500">Aguarde enquanto processamos as informações</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
   
   if (clients.length === 0) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center p-12 bg-gradient-to-br from-white to-[#E6ECEA]/30 rounded-xl shadow-lg border border-[#B1D4CF]/20 text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#3f9094] to-[#5DA399] rounded-full flex items-center justify-center mb-4">
-            <User className="h-8 w-8 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-[#3f9094] mb-4">Bem-vindo ao NeuroBalance CMS</h2>
-          <p className="text-gray-600 max-w-md mb-8">
-            Este é o seu sistema de gestão de clientes. Comece adicionando o seu primeiro cliente para
-            visualizar estatísticas e agendamentos avançados.
-          </p>
-          <div className="flex gap-4">
-            <Button 
-              asChild
-              className="bg-gradient-to-r from-[#3f9094] to-[#5DA399] hover:from-[#2A5854] hover:to-[#3f9094] shadow-lg"
-            >
-              <Link to="/clients">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Cliente
-              </Link>
-            </Button>
-            <Button 
-              asChild
-              variant="outline" 
-              className="border-[#3f9094] text-[#3f9094] hover:bg-[#3f9094] hover:text-white"
-            >
-              <Link to="/calendar">
-                <Calendar className="h-4 w-4 mr-2" />
-                Ver Calendário
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
+      <EmptyState
+        icon={<User className="h-12 w-12" />}
+        title="Bem-vindo ao NeuroBalance CMS"
+        description="Este é o seu sistema de gestão de clientes. Comece adicionando o seu primeiro cliente para visualizar estatísticas e agendamentos avançados."
+        action={{
+          label: "Adicionar Cliente",
+          onClick: () => navigate('/clients'),
+          icon: <Plus className="h-4 w-4" />
+        }}
+        secondaryAction={{
+          label: "Ver Calendário",
+          onClick: () => navigate('/calendar'),
+          icon: <Calendar className="h-4 w-4" />
+        }}
+        className="bg-gradient-to-br from-white to-[#E6ECEA]/30 rounded-xl shadow-lg border border-[#B1D4CF]/20"
+      />
     );
   }
   

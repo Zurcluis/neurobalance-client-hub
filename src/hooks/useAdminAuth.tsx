@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { toast } from 'sonner';
-import { AdminSession, AdminAuthRequest, AdminAuthResponse, ADMIN_PERMISSIONS } from '@/types/admin';
+import { AdminSession, AdminAuthRequest, AdminAuthResponse } from '@/types/admin';
+import { logger } from '@/lib/logger';
+import { DEV_ADMINS } from '@/config/dev-credentials';
 
 interface AdminAuthContextType {
   session: AdminSession | null;
@@ -23,29 +25,6 @@ export const useAdminAuth = () => {
   return context;
 };
 
-// Admins hardcoded para funcionar sem base de dados
-const HARDCODED_ADMINS = [
-  {
-    id: 1,
-    nome: 'Admin Principal',
-    email: 'admin@neurobalance.pt',
-    role: 'admin' as const,
-    permissions: Object.values(ADMIN_PERMISSIONS),
-    is_active: true
-  },
-  {
-    id: 2,
-    nome: 'Assistente',
-    email: 'assistente@neurobalance.pt',
-    role: 'assistant' as const,
-    permissions: [
-      ADMIN_PERMISSIONS.VIEW_CLIENTS,
-      ADMIN_PERMISSIONS.VIEW_CALENDAR,
-      ADMIN_PERMISSIONS.MANAGE_APPOINTMENTS,
-    ],
-    is_active: true
-  }
-];
 
 export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<AdminSession | null>(null);
@@ -78,8 +57,7 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
       // Simular delay de rede
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Buscar admin nos dados hardcoded
-      const adminData = HARDCODED_ADMINS.find(admin => 
+      const adminData = DEV_ADMINS.find(admin => 
         admin.email === request.email && admin.is_active
       );
 
@@ -193,7 +171,7 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
             localStorage.removeItem('admin_session');
           }
         } catch (error) {
-          console.error('Erro ao carregar sessão do admin:', error);
+          logger.error('Erro ao carregar sessão do admin:', error);
           localStorage.removeItem('admin_session');
         }
       }
@@ -272,7 +250,7 @@ export const useAdminDashboardStats = () => {
           pendingAppointments: 2
         });
       } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error);
+        logger.error('Erro ao buscar estatísticas:', error);
       } finally {
         setLoading(false);
       }
