@@ -46,20 +46,20 @@ BEGIN
 
         CREATE POLICY "Usuários autenticados podem visualizar campanhas"
         ON public.email_sms_campaigns FOR SELECT
-        USING (auth.role() = 'authenticated');
+        USING (auth.uid() IS NOT NULL);
 
         CREATE POLICY "Usuários autenticados podem inserir campanhas"
         ON public.email_sms_campaigns FOR INSERT
-        WITH CHECK (auth.role() = 'authenticated');
+        WITH CHECK (auth.uid() IS NOT NULL);
 
         CREATE POLICY "Usuários autenticados podem atualizar campanhas"
         ON public.email_sms_campaigns FOR UPDATE
-        USING (auth.role() = 'authenticated')
-        WITH CHECK (auth.role() = 'authenticated');
+        USING (auth.uid() IS NOT NULL)
+        WITH CHECK (auth.uid() IS NOT NULL);
 
         CREATE POLICY "Usuários autenticados podem excluir campanhas"
         ON public.email_sms_campaigns FOR DELETE
-        USING (auth.role() = 'authenticated');
+        USING (auth.uid() IS NOT NULL);
     END IF;
 END $$;
 
@@ -91,16 +91,16 @@ BEGIN
 
         CREATE POLICY "Usuários autenticados podem visualizar logs"
         ON public.email_sms_campaign_logs FOR SELECT
-        USING (auth.role() = 'authenticated');
+        USING (auth.uid() IS NOT NULL);
 
         CREATE POLICY "Usuários autenticados podem inserir logs"
         ON public.email_sms_campaign_logs FOR INSERT
-        WITH CHECK (auth.role() = 'authenticated');
+        WITH CHECK (auth.uid() IS NOT NULL);
 
         CREATE POLICY "Usuários autenticados podem atualizar logs"
         ON public.email_sms_campaign_logs FOR UPDATE
-        USING (auth.role() = 'authenticated')
-        WITH CHECK (auth.role() = 'authenticated');
+        USING (auth.uid() IS NOT NULL)
+        WITH CHECK (auth.uid() IS NOT NULL);
     END IF;
 END $$;
 
