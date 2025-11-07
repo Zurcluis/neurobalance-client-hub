@@ -4,15 +4,17 @@ import { useMarketingContext } from '@/contexts/MarketingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
 import { useLeadCompra } from '@/hooks/useLeadCompra';
+import { useEmailSmsCampaigns } from '@/hooks/useEmailSmsCampaigns';
 import { MarketingCampaign, CampaignFilters } from '@/types/marketing';
 import { LeadCompra, LeadCompraFilters } from '@/types/lead-compra';
+import { EmailSmsCampaign, NewEmailSmsCampaign } from '@/types/email-sms-campaign';
 import CampaignForm from '@/components/marketing/CampaignForm';
 import CampaignCard from '@/components/marketing/CampaignCard';
 import CampaignFiltersComponent from '@/components/marketing/CampaignFilters';
@@ -22,6 +24,8 @@ import LeadCompraForm from '@/components/lead-compra/LeadCompraForm';
 import LeadCompraDashboard from '@/components/lead-compra/LeadCompraDashboard';
 import ImportManager from '@/components/lead-compra/ImportManager';
 import FileImporter from '@/components/shared/FileImporter';
+import { EmailSmsCampaignForm } from '@/components/marketing/EmailSmsCampaignForm';
+import { EmailSmsCampaignCard } from '@/components/marketing/EmailSmsCampaignCard';
 import { 
   Plus, 
   Search, 
@@ -90,6 +94,22 @@ const MarketingReportsPage = () => {
     tipo: 'Todos'
   });
   const [showLeadImporter, setShowLeadImporter] = useState(false);
+
+  // Email/SMS Campaigns hooks
+  const {
+    campaigns: emailSmsCampaigns,
+    isLoading: emailSmsLoading,
+    error: emailSmsError,
+    fetchCampaigns: fetchEmailSmsCampaigns,
+    addCampaign: addEmailSmsCampaign,
+    updateCampaign: updateEmailSmsCampaign,
+    deleteCampaign: deleteEmailSmsCampaign,
+  } = useEmailSmsCampaigns();
+
+  // Email/SMS Campaigns states
+  const [isEmailSmsFormOpen, setIsEmailSmsFormOpen] = useState(false);
+  const [editingEmailSmsCampaign, setEditingEmailSmsCampaign] = useState<EmailSmsCampaign | null>(null);
+  const [emailSmsSearchTerm, setEmailSmsSearchTerm] = useState('');
 
   // Time range filter
   const [periodFilter, setPeriodFilter] = useState<TimeRange>('all');
@@ -433,12 +453,56 @@ const MarketingReportsPage = () => {
                 />
               </DialogContent>
             </Dialog>
+
+            <Dialog open={isEmailSmsFormOpen} onOpenChange={setIsEmailSmsFormOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-purple-600 hover:bg-purple-700">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Nova Campanha Email/SMS
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingEmailSmsCampaign ? 'Editar Campanha Email/SMS' : 'Nova Campanha Email/SMS'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingEmailSmsCampaign 
+                      ? 'Atualize as informações da campanha de email/SMS e os clientes destinatários.' 
+                      : 'Crie uma nova campanha de email ou SMS para enviar aos seus clientes.'}
+                  </DialogDescription>
+                </DialogHeader>
+                <EmailSmsCampaignForm
+                  campaign={editingEmailSmsCampaign || undefined}
+                  onSubmit={async (data) => {
+                    try {
+                      if (editingEmailSmsCampaign) {
+                        await updateEmailSmsCampaign(editingEmailSmsCampaign.id, data);
+                        toast.success('Campanha atualizada com sucesso!');
+                      } else {
+                        await addEmailSmsCampaign(data);
+                        toast.success('Campanha criada com sucesso!');
+                      }
+                      setIsEmailSmsFormOpen(false);
+                      setEditingEmailSmsCampaign(null);
+                    } catch (error) {
+                      console.error('Erro ao salvar campanha:', error);
+                    }
+                  }}
+                  onCancel={() => {
+                    setIsEmailSmsFormOpen(false);
+                    setEditingEmailSmsCampaign(null);
+                  }}
+                  isLoading={emailSmsLoading || false}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               {t('dashboard')}
@@ -446,6 +510,10 @@ const MarketingReportsPage = () => {
             <TabsTrigger value="campaigns" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               {t('campaigns')}
+            </TabsTrigger>
+            <TabsTrigger value="email-sms" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Email/SMS
             </TabsTrigger>
             <TabsTrigger value="leads" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
@@ -486,6 +554,81 @@ const MarketingReportsPage = () => {
                 roas: 0
               }} 
             />
+          </TabsContent>
+
+          {/* Campanhas Email/SMS */}
+          <TabsContent value="email-sms" className="space-y-6">
+            {/* Barra de Busca */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Buscar campanhas por nome..."
+                  value={emailSmsSearchTerm}
+                  onChange={(e) => setEmailSmsSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Resumo */}
+            <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg">
+              <p className="text-sm text-purple-900 dark:text-purple-100">
+                Mostrando <strong>{emailSmsCampaigns.filter(c => 
+                  !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+                ).length}</strong> de <strong>{emailSmsCampaigns.length}</strong> campanhas
+              </p>
+            </div>
+
+            {/* Lista de Campanhas Email/SMS */}
+            {emailSmsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              </div>
+            ) : emailSmsCampaigns.filter(c => 
+              !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+            ).length === 0 ? (
+              <div className="text-center py-8">
+                <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">
+                  {emailSmsCampaigns.length === 0 
+                    ? 'Nenhuma campanha de email/SMS cadastrada ainda.' 
+                    : 'Nenhuma campanha encontrada com os filtros aplicados.'
+                  }
+                </p>
+                {emailSmsCampaigns.length === 0 && (
+                  <Button 
+                    className="mt-4 bg-purple-600 hover:bg-purple-700" 
+                    onClick={() => setIsEmailSmsFormOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Primeira Campanha
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {emailSmsCampaigns
+                  .filter(c => 
+                    !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+                  )
+                  .map((campaign) => (
+                    <EmailSmsCampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      onEdit={(campaign) => {
+                        setEditingEmailSmsCampaign(campaign);
+                        setIsEmailSmsFormOpen(true);
+                      }}
+                      onDelete={async (id) => {
+                        if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
+                          await deleteEmailSmsCampaign(id);
+                        }
+                      }}
+                    />
+                  ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Lista de Campanhas */}
