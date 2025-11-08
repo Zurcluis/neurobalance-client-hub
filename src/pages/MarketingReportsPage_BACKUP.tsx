@@ -412,8 +412,8 @@ const MarketingReportsPage = () => {
             />
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90">
-                  <Plus className="h-4 w-4" />
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="h-4 w-4 mr-2" />
                   {t('newCampaign')}
                 </Button>
               </DialogTrigger>
@@ -434,8 +434,8 @@ const MarketingReportsPage = () => {
 
             <Dialog open={isLeadFormOpen} onOpenChange={setIsLeadFormOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Plus className="h-4 w-4" />
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <Plus className="h-4 w-4 mr-2" />
                   Novo Lead
                 </Button>
               </DialogTrigger>
@@ -566,6 +566,77 @@ const MarketingReportsPage = () => {
 
               {/* Campanhas de Marketing */}
               <TabsContent value="marketing" className="space-y-6 mt-4">
+            {/* Barra de Busca */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Buscar campanhas por nome..."
+                  value={emailSmsSearchTerm}
+                  onChange={(e) => setEmailSmsSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Resumo */}
+            <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg">
+              <p className="text-sm text-purple-900 dark:text-purple-100">
+                Mostrando <strong>{emailSmsCampaigns.filter(c => 
+                  !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+                ).length}</strong> de <strong>{emailSmsCampaigns.length}</strong> campanhas
+              </p>
+            </div>
+
+            {/* Lista de Campanhas Email/SMS */}
+            {emailSmsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              </div>
+            ) : emailSmsCampaigns.filter(c => 
+              !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+            ).length === 0 ? (
+              <div className="text-center py-8">
+                <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">
+                  {emailSmsCampaigns.length === 0 
+                    ? 'Nenhuma campanha de email/SMS cadastrada ainda.' 
+                    : 'Nenhuma campanha encontrada com os filtros aplicados.'
+                  }
+                </p>
+                {emailSmsCampaigns.length === 0 && (
+                  <Button 
+                    className="mt-4 bg-purple-600 hover:bg-purple-700" 
+                    onClick={() => setIsEmailSmsFormOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Primeira Campanha
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {emailSmsCampaigns
+                  .filter(c => 
+                    !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+                  )
+                  .map((campaign) => (
+                    <EmailSmsCampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      onEdit={(campaign) => {
+                        setEditingEmailSmsCampaign(campaign);
+                        setIsEmailSmsFormOpen(true);
+                      }}
+                      onDelete={async (id) => {
+                        if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
+                          await deleteEmailSmsCampaign(id);
+                        }
+                      }}
+                    />
+                  ))}
+              </div>
+            )}
                 {/* Barra de Busca */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-1">
@@ -650,80 +721,6 @@ const MarketingReportsPage = () => {
 
               {/* Email/SMS Campanhas */}
               <TabsContent value="email-sms" className="space-y-6 mt-4">
-                {/* Barra de Busca */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Buscar campanhas por nome..."
-                      value={emailSmsSearchTerm}
-                      onChange={(e) => setEmailSmsSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                {/* Resumo */}
-                <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg">
-                  <p className="text-sm text-purple-900 dark:text-purple-100">
-                    Mostrando <strong>{emailSmsCampaigns.filter(c => 
-                      !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
-                    ).length}</strong> de <strong>{emailSmsCampaigns.length}</strong> campanhas
-                  </p>
-                </div>
-
-                {/* Lista de Campanhas Email/SMS */}
-                {emailSmsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                  </div>
-                ) : emailSmsCampaigns.filter(c => 
-                  !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
-                ).length === 0 ? (
-                  <div className="text-center py-8">
-                    <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {emailSmsCampaigns.length === 0 
-                        ? 'Nenhuma campanha de email/SMS cadastrada ainda.' 
-                        : 'Nenhuma campanha encontrada com os filtros aplicados.'
-                      }
-                    </p>
-                    {emailSmsCampaigns.length === 0 && (
-                      <Button 
-                        className="mt-4 bg-purple-600 hover:bg-purple-700" 
-                        onClick={() => setIsEmailSmsFormOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Criar Primeira Campanha
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {emailSmsCampaigns
-                      .filter(c => 
-                        !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
-                      )
-                      .map((campaign) => (
-                        <EmailSmsCampaignCard
-                          key={campaign.id}
-                          campaign={campaign}
-                          onEdit={(campaign) => {
-                            setEditingEmailSmsCampaign(campaign);
-                            setIsEmailSmsFormOpen(true);
-                          }}
-                          onDelete={async (id) => {
-                            if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
-                              await deleteEmailSmsCampaign(id);
-                            }
-                          }}
-                        />
-                      ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
 
           {/* ⚙️ Ferramentas - Import, Export, Filtros Consolidados */}
           <TabsContent value="tools" className="space-y-6 mt-6">

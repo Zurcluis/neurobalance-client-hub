@@ -80,23 +80,23 @@ interface KPICardProps {
 }
 
 const KPICard: React.FC<KPICardProps> = ({ title, value, subtitle, icon, trend, color = '#3f9094' }) => (
-  <Card className="hover:shadow-lg transition-shadow">
+  <Card className="hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4" style={{ borderLeftColor: color }}>
     <CardContent className="p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-lg" style={{ backgroundColor: `${color}20` }}>
+          <div className="p-3 rounded-xl shadow-sm" style={{ backgroundColor: `${color}20` }}>
             <div style={{ color }}>{icon}</div>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>}
           </div>
         </div>
         {trend && (
           <div className={`flex items-center space-x-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {trend.isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            <span className="text-sm font-medium">{Math.abs(trend.value)}%</span>
+            {trend.isPositive ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+            <span className="text-sm font-bold">{Math.abs(trend.value)}%</span>
           </div>
         )}
       </div>
@@ -315,14 +315,18 @@ const StatisticsPage = () => {
   return (
     <PageLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Header Melhorado */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Estatísticas</h1>
-            <p className="text-gray-600">Análise completa do desempenho da clínica</p>
-      </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent">
+              Estatísticas & Analytics
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Análise completa do desempenho e insights da clínica
+            </p>
+          </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
               <SelectTrigger className="w-48">
                 <Filter className="h-4 w-4 mr-2" />
@@ -337,9 +341,9 @@ const StatisticsPage = () => {
               </SelectContent>
             </Select>
             
-            <Button onClick={exportData} variant="outline" className="flex items-center gap-2">
+            <Button onClick={exportData} variant="outline" size="sm" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
-              Exportar
+              <span className="hidden sm:inline">Exportar Dados</span>
             </Button>
                   </div>
               </div>
@@ -381,22 +385,22 @@ const StatisticsPage = () => {
 
         {/* Navigation Tabs */}
         <Tabs value={selectedView} onValueChange={(value: any) => setSelectedView(value)}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
-              Visão Geral
+              <span className="hidden sm:inline">Visão Geral</span>
             </TabsTrigger>
             <TabsTrigger value="clients" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Clientes
+              <span className="hidden sm:inline">Clientes</span>
             </TabsTrigger>
             <TabsTrigger value="appointments" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Agendamentos
+              <span className="hidden sm:inline">Agendamentos</span>
             </TabsTrigger>
             <TabsTrigger value="financial" className="flex items-center gap-2">
               <Euro className="h-4 w-4" />
-              Financeiro
+              <span className="hidden sm:inline">Financeiro</span>
             </TabsTrigger>
           </TabsList>
 
