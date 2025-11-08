@@ -36,6 +36,7 @@ import ClientPayments from '@/components/client-dashboard/ClientPayments';
 import ClientChat from '@/components/client-dashboard/ClientChat';
 import ClientProfile from '@/components/client-dashboard/ClientProfile';
 import ClientNotifications from '@/components/client-dashboard/ClientNotifications';
+import { ClientAvailabilityManager } from '@/components/availability';
 
 const ClientDashboardPage = () => {
   const { session, logout, isAuthenticated } = useClientAuth();
@@ -234,6 +235,21 @@ const ClientDashboardPage = () => {
             >
               <Calendar className="h-5 w-5" />
               <span>Agendamentos</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab('availability');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                activeTab === 'availability'
+                  ? 'bg-[#3f9094] text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Clock className="h-5 w-5" />
+              <span>Minha Disponibilidade</span>
             </button>
             
             <button
@@ -439,6 +455,10 @@ const ClientDashboardPage = () => {
             {/* Notifications Tab */}
             {activeTab === 'notifications' && (
             <ClientNotifications />
+            )}
+
+            {activeTab === 'availability' && clientData && (
+              <ClientAvailabilityManager clienteId={clientData.id} />
             )}
           </div>
         </div>
