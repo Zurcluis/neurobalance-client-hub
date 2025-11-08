@@ -284,15 +284,15 @@ const AppointmentCalendar = () => {
     switch (status) {
       case 'confirmado':
       case 'agendado':
-        return 'border-l-4 border-green-500';
+        return 'border-l-4 border-blue-500';
       case 'pendente':
-        return 'border-l-4 border-yellow-500';
+        return 'border-l-4 border-orange-500';
       case 'cancelado':
-        return 'border-l-4 border-gray-500';
+        return 'border-l-4 border-red-500';
       case 'realizado':
-        return 'border-l-4 border-[#3f9094]';
+        return 'border-l-4 border-green-500';
       default:
-        return 'border-l-4 border-yellow-500';
+        return 'border-l-4 border-orange-500';
     }
   };
 
@@ -505,37 +505,6 @@ const AppointmentCalendar = () => {
                       <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
                     )}
                   </div>
-                  
-                  {/* Indicadores de Status - Bolinhas Coloridas */}
-                  {dayAppointments.length > 0 && (
-                    <div className="absolute top-1 left-1 flex gap-0.5 flex-wrap max-w-[60%]">
-                      {dayAppointments.filter(apt => apt.estado === 'pendente').length > 0 && (
-                        <div 
-                          className="w-2 h-2 rounded-full bg-yellow-500 border border-yellow-600" 
-                          title="Pendente"
-                        />
-                      )}
-                      {dayAppointments.filter(apt => apt.estado === 'confirmado' || apt.estado === 'agendado').length > 0 && (
-                        <div 
-                          className="w-2 h-2 rounded-full bg-green-500 border border-green-600" 
-                          title="Confirmado"
-                        />
-                      )}
-                      {dayAppointments.filter(apt => apt.estado === 'realizado').length > 0 && (
-                        <div 
-                          className="w-2 h-2 rounded-full bg-[#3f9094] border border-[#2A5854]" 
-                          title="Realizado"
-                        />
-                      )}
-                      {dayAppointments.filter(apt => apt.estado === 'cancelado').length > 0 && (
-                        <div 
-                          className="w-2 h-2 rounded-full bg-gray-500 border border-gray-600" 
-                          title="Cancelado"
-                        />
-                      )}
-                    </div>
-                  )}
-                  
                   <div className="space-y-1">
                     {dayHoliday && (
                       <div className={`text-xs px-1 py-0.5 rounded truncate border ${getHolidayColor(dayHoliday.type)} opacity-50`}>
@@ -545,11 +514,11 @@ const AppointmentCalendar = () => {
                     
                     {dayAppointments.slice(0, dayHoliday ? 1 : 2).map((appointment, index) => {
                       const statusConfig = {
-                        'pendente': { label: 'Pendente', bg: 'bg-yellow-500', text: 'text-yellow-900' },
-                        'confirmado': { label: 'Confirmado', bg: 'bg-green-500', text: 'text-green-900' },
-                        'agendado': { label: 'Confirmado', bg: 'bg-green-500', text: 'text-green-900' },
-                        'realizado': { label: 'Realizado', bg: 'bg-[#3f9094]', text: 'text-white' },
-                        'cancelado': { label: 'Cancelado', bg: 'bg-gray-500', text: 'text-white' },
+                        pendente: { label: 'Pendente', bg: 'bg-orange-500', text: 'text-white' },
+                        confirmado: { label: 'Confirmado', bg: 'bg-blue-500', text: 'text-white' },
+                        agendado: { label: 'Confirmado', bg: 'bg-blue-500', text: 'text-white' },
+                        realizado: { label: 'Realizado', bg: 'bg-green-500', text: 'text-white' },
+                        cancelado: { label: 'Cancelado', bg: 'bg-red-500', text: 'text-white' },
                       };
                       const status = statusConfig[appointment.estado as keyof typeof statusConfig] || statusConfig.pendente;
                       
@@ -831,19 +800,19 @@ const AppointmentCalendar = () => {
             <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Status de Eventos</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-yellow-500 border border-yellow-600"></div>
+                <div className="w-3 h-3 rounded-full bg-orange-500 border border-orange-600"></div>
                 <span className="text-xs text-gray-700">Pendente</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-green-500 border border-green-600"></div>
+                <div className="w-3 h-3 rounded-full bg-blue-500 border border-blue-600"></div>
                 <span className="text-xs text-gray-700">Confirmado</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-[#3f9094] border border-[#2A5854]"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500 border border-green-600"></div>
                 <span className="text-xs text-gray-700">Realizado</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-gray-500 border border-gray-600"></div>
+                <div className="w-3 h-3 rounded-full bg-red-500 border border-red-600"></div>
                 <span className="text-xs text-gray-700">Cancelado</span>
               </div>
             </div>
