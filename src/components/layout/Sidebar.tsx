@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
 import { 
@@ -58,6 +58,7 @@ const Sidebar = () => {
     { name: t('dashboard'), icon: <Home className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/' },
     { name: t('clients'), icon: <User className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clients' },
     { name: t('calendar'), icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/calendar' },
+    { name: 'Disponibilidades', icon: <Clock className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin/availability' },
     { name: t('finances'), icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
     { name: t('investments'), icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
     { name: t('marketing'), icon: <Megaphone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/marketing-reports' },

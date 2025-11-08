@@ -36,6 +36,7 @@ const AdminClientsFullPage = lazy(() => import("./pages/AdminClientsFullPage"));
 const AdminClientProfilePage = lazy(() => import("./pages/AdminClientProfilePage"));
 const AdminCalendarFullPage = lazy(() => import("./pages/AdminCalendarFullPage"));
 const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
+const AdminAvailabilityPage = lazy(() => import("./pages/AdminAvailabilityPage"));
 const MarketingLoginPage = lazy(() => import("./pages/MarketingLoginPage"));
 const MarketingAreaPage = lazy(() => import("./pages/MarketingAreaPage"));
 
@@ -183,6 +184,15 @@ const App = () => (
                         <AdminCalendarFullPage />
                       </AdminProtectedRoute>
                     } 
+                  />
+                  
+                  <Route
+                    path="/admin/availability"
+                    element={
+                      <AdminProtectedRoute requiredPermission="view_clients">
+                        <AdminAvailabilityPage />
+                      </AdminProtectedRoute>
+                    }
                   />
                   
                   {/* Marketing Routes */}
