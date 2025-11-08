@@ -546,7 +546,26 @@ const MarketingReportsPage = () => {
                 <Users className="h-5 w-5 text-[#3f9094]" />
                 Analytics de Leads
               </h3>
-              <LeadCompraDashboard leads={filteredLeads} statistics={statistics} />
+              <LeadCompraDashboard 
+                leads={filteredLeads} 
+                statistics={statistics || {
+                  totalRegistos: 0,
+                  comprasRegistadas: 0,
+                  leadsRegistados: 0,
+                  valorTotalRegistado: 0,
+                  estatisticasValores: {
+                    registosComValor: 0,
+                    media: 0,
+                    minimo: 0,
+                    mediana: 0,
+                    maximo: 0
+                  },
+                  distribuicaoPorGenero: { masculino: 0, feminino: 0, outro: 0 },
+                  distribuicaoPorCidade: {},
+                  distribuicaoPorMes: {},
+                  conversaoLeadParaCompra: 0
+                }} 
+              />
             </div>
           </TabsContent>
 
