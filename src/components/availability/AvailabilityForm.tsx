@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useClientAvailability } from '@/hooks/useClientAvailability';
 import {
   ClientAvailability,
   NewClientAvailability,
@@ -21,18 +22,24 @@ import {
 interface AvailabilityFormProps {
   clienteId: number;
   availability?: ClientAvailability;
-  onSubmit: (data: NewClientAvailability) => Promise<void>;
+  defaultDiaSemana?: number;
+  onSuccess?: () => void;
   onCancel: () => void;
+  onSubmit?: (data: NewClientAvailability) => Promise<void>;
   isLoading?: boolean;
 }
 
 export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
   clienteId,
   availability,
-  onSubmit,
+  defaultDiaSemana,
+  onSuccess,
   onCancel,
+  onSubmit,
   isLoading = false,
 }) => {
+  const { addAvailability, updateAvailability, isAdding, isUpdating } = useClientAvailability(clienteId);
+
   const {
     register,
     control,
@@ -54,7 +61,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
           notas: availability.notas || undefined,
         }
       : {
-          dia_semana: 1,
+          dia_semana: defaultDiaSemana ?? 1,
           hora_inicio: '09:00',
           hora_fim: '10:00',
           preferencia: 'media',
@@ -80,8 +87,19 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
       notas: data.notas || null,
     };
 
-    await onSubmit(submitData);
+    if (onSubmit) {
+      await onSubmit(submitData);
+    } else {
+      if (availability?.id) {
+        await updateAvailability(availability.id, submitData);
+      } else {
+        await addAvailability(submitData);
+      }
+      if (onSuccess) onSuccess();
+    }
   };
+
+  const loading = isLoading || isAdding || isUpdating;
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
@@ -259,11 +277,11 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
 
       {/* Ações */}
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Salvando...' : availability ? 'Atualizar' : 'Adicionar Horário'}
+        <Button type="submit" disabled={loading}>
+          {loading ? 'Salvando...' : availability ? 'Atualizar' : 'Adicionar Horário'}
         </Button>
       </div>
     </form>
