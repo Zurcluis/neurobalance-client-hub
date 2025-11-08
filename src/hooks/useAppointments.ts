@@ -183,23 +183,31 @@ export function useAppointments() {
   // Delete appointment
   const deleteAppointment = useCallback(async (id: number) => {
     try {
-      const { error: deleteError } = await supabase
+      const { data, error: deleteError } = await supabase
         .from('agendamentos')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (deleteError) {
         throw deleteError;
       }
 
+      if (!data) {
+        toast.warning('Agendamento já não existe');
+      }
+
       setAppointments(prev => prev.filter(appointment => appointment.id !== id));
-      toast.success('Appointment deleted successfully');
+      // Garantir sincronização com o backend
+      fetchAppointments();
+      toast.success('Agendamento eliminado com sucesso');
     } catch (err) {
       console.error('Error deleting appointment:', err);
-      toast.error('Failed to delete appointment');
+      toast.error('Falha ao eliminar agendamento');
       throw err;
     }
-  }, [supabase]);
+  }, [supabase, fetchAppointments]);
 
   return {
     appointments,
