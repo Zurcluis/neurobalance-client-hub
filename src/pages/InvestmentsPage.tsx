@@ -142,18 +142,15 @@ const InvestmentsPage = () => {
           "p-6 space-y-6",
           isMobile && "pt-20"
         )}>
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-[#3f9094]" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  Investimentos
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Gerencie seu portfólio de investimentos
-                </p>
-              </div>
+          {/* Header Melhorado */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent">
+                Portfólio de Investimentos
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                Acompanhe e gerencie seus investimentos em tempo real
+              </p>
             </div>
             
             <div className="flex items-center gap-3">
@@ -165,7 +162,7 @@ const InvestmentsPage = () => {
                 className="flex items-center gap-2"
               >
                 <RefreshCw className={cn("h-4 w-4", marketLoading && "animate-spin")} />
-                {!isMobile && "Atualizar"}
+                {!isMobile && "Atualizar Preços"}
               </Button>
               
               <Button
@@ -173,10 +170,10 @@ const InvestmentsPage = () => {
                   setEditingInvestment(null);
                   setIsFormOpen(true);
                 }}
-                className="bg-[#3f9094] hover:bg-[#2d7a7e] flex items-center gap-2"
+                className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90 flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
-                {!isMobile && "Adicionar"}
+                {!isMobile && "Novo Investimento"}
               </Button>
             </div>
           </div>
