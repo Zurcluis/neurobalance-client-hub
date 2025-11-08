@@ -118,21 +118,31 @@ export function useAppointments() {
     notas?: string;
     estado?: string;
     terapeuta?: string;
+    cor?: string;
   }) => {
     try {
-      const { data, error } = await supabase
+      // Primeiro fazer o update
+      const updateData: any = {};
+      if (appointment.titulo !== undefined) updateData.titulo = appointment.titulo;
+      if (appointment.data !== undefined) updateData.data = appointment.data;
+      if (appointment.hora !== undefined) updateData.hora = appointment.hora;
+      if (appointment.id_cliente !== undefined) updateData.id_cliente = appointment.id_cliente;
+      if (appointment.tipo !== undefined) updateData.tipo = appointment.tipo;
+      if (appointment.notas !== undefined) updateData.notas = appointment.notas;
+      if (appointment.estado !== undefined) updateData.estado = appointment.estado;
+      if (appointment.terapeuta !== undefined) updateData.terapeuta = appointment.terapeuta;
+      if (appointment.cor !== undefined) updateData.cor = appointment.cor;
+
+      const { error: updateError } = await supabase
         .from('agendamentos')
-        .update({
-          titulo: appointment.titulo,
-          data: appointment.data,
-          hora: appointment.hora,
-          id_cliente: appointment.id_cliente,
-          tipo: appointment.tipo,
-          notas: appointment.notas,
-          estado: appointment.estado,
-          terapeuta: appointment.terapeuta
-        })
-        .eq('id', id)
+        .update(updateData)
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Depois buscar o agendamento atualizado
+      const { data, error: selectError } = await supabase
+        .from('agendamentos')
         .select(`
           *,
           clientes (
@@ -141,21 +151,31 @@ export function useAppointments() {
             telefone
           )
         `)
-        .single();
+        .eq('id', id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (selectError) throw selectError;
       
-      // Atualizar o agendamento no estado local com os dados do cliente
-      const updatedAppointment = data as Appointment;
-      setAppointments(prev => prev.map(app => 
-        app.id === id ? updatedAppointment : app
-      ));
-      
-      toast.success('Appointment updated successfully');
-      return data;
+      if (data) {
+        // Atualizar o agendamento no estado local com os dados do cliente
+        const updatedAppointment = data as Appointment;
+        setAppointments(prev => prev.map(app => 
+          app.id === id ? updatedAppointment : app
+        ));
+        
+        toast.success('Agendamento atualizado com sucesso');
+        return data;
+      } else {
+        // Se não encontrou, atualizar localmente mesmo assim
+        setAppointments(prev => prev.map(app => 
+          app.id === id ? { ...app, ...updateData } : app
+        ));
+        toast.success('Agendamento atualizado com sucesso');
+        return null;
+      }
     } catch (error) {
       console.error('Erro ao atualizar agendamento:', error);
-      toast.error('Failed to update appointment');
+      toast.error('Erro ao atualizar agendamento');
       throw error;
     }
   }, [supabase]);

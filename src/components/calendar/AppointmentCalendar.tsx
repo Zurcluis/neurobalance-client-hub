@@ -23,6 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Plus, Search, Calendar, ChevronLeft, ChevronRight, Menu, MoreHorizontal, Settings, HelpCircle } from 'lucide-react';
 import useAppointments from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
+import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { getAllHolidaysUntil2040, isHoliday } from '@/data/portugueseHolidays';
 import { Checkbox } from '../ui/checkbox';
@@ -76,6 +77,8 @@ const AppointmentCalendar = () => {
   const [currentView, setCurrentView] = useState<CalendarView>('month');
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [clientAvailabilities, setClientAvailabilities] = useState<Record<number, any[]>>({});
+  const [showAvailabilities, setShowAvailabilities] = useState(true);
 
   const holidays = getAllHolidaysUntil2040();
 
@@ -176,6 +179,38 @@ const AppointmentCalendar = () => {
     }
   };
 
+  // Buscar disponibilidades dos clientes
+  useEffect(() => {
+    const fetchAvailabilities = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('client_availability')
+          .select('*, clientes(id, nome)')
+          .eq('status', 'ativo');
+
+        if (error) throw error;
+
+        // Agrupar por cliente
+        const grouped: Record<number, any[]> = {};
+        data?.forEach((avail: any) => {
+          const clienteId = avail.cliente_id;
+          if (!grouped[clienteId]) {
+            grouped[clienteId] = [];
+          }
+          grouped[clienteId].push(avail);
+        });
+
+        setClientAvailabilities(grouped);
+      } catch (error) {
+        console.error('Erro ao buscar disponibilidades:', error);
+      }
+    };
+
+    if (showAvailabilities) {
+      fetchAvailabilities();
+    }
+  }, [showAvailabilities]);
+
   const getDayAppointments = (day: Date) => {
     if (!day) return [];
     
@@ -183,6 +218,23 @@ const AppointmentCalendar = () => {
       const appointmentDate = parseISO(appointment.data);
       return isSameDay(appointmentDate, day);
     });
+  };
+
+  const getDayAvailabilities = (day: Date) => {
+    if (!day || !showAvailabilities) return [];
+    
+    const dayOfWeek = day.getDay();
+    const availabilities: any[] = [];
+    
+    Object.values(clientAvailabilities).forEach((clientAvails) => {
+      clientAvails.forEach((avail: any) => {
+        if (avail.dia_semana === dayOfWeek && avail.status === 'ativo') {
+          availabilities.push(avail);
+        }
+      });
+    });
+    
+    return availabilities;
   };
 
   const getDayHoliday = (day: Date) => {
@@ -491,19 +543,54 @@ const AppointmentCalendar = () => {
                       </div>
                     )}
                     
-                    {dayAppointments.slice(0, dayHoliday ? 1 : 2).map((appointment, index) => (
-                      <div
-                        key={`main-${appointment.id}-${index}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEventClick(appointment);
-                        }}
-                        className={`text-xs px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${getAppointmentStatusColor(appointment.estado)}`}
-                        style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
-                      >
-                        {appointment.titulo}
+                    {dayAppointments.slice(0, dayHoliday ? 1 : 2).map((appointment, index) => {
+                      const statusConfig = {
+                        'pendente': { label: 'Pendente', bg: 'bg-yellow-500', text: 'text-yellow-900' },
+                        'confirmado': { label: 'Confirmado', bg: 'bg-green-500', text: 'text-green-900' },
+                        'agendado': { label: 'Confirmado', bg: 'bg-green-500', text: 'text-green-900' },
+                        'realizado': { label: 'Realizado', bg: 'bg-[#3f9094]', text: 'text-white' },
+                        'cancelado': { label: 'Cancelado', bg: 'bg-gray-500', text: 'text-white' },
+                      };
+                      const status = statusConfig[appointment.estado as keyof typeof statusConfig] || statusConfig.pendente;
+                      
+                      return (
+                        <div
+                          key={`main-${appointment.id}-${index}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEventClick(appointment);
+                          }}
+                          className={`relative text-xs px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${getAppointmentStatusColor(appointment.estado)}`}
+                          style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
+                        >
+                          {/* Badge de Status no Topo */}
+                          <div className={`absolute -top-1.5 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${status.bg} ${status.text} shadow-sm z-10`}>
+                            {status.label}
+                          </div>
+                          <div className="pt-1">{appointment.titulo}</div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Mostrar Disponibilidades */}
+                    {showAvailabilities && getDayAvailabilities(day).length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {getDayAvailabilities(day).slice(0, 2).map((avail: any, idx: number) => (
+                          <div
+                            key={`avail-${avail.id}-${idx}`}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 truncate"
+                            title={`${avail.clientes?.nome || 'Cliente'}: ${avail.hora_inicio}-${avail.hora_fim}`}
+                          >
+                            🕐 {avail.hora_inicio}-{avail.hora_fim}
+                          </div>
+                        ))}
+                        {getDayAvailabilities(day).length > 2 && (
+                          <div className="text-[10px] text-blue-600 dark:text-blue-400 px-1">
+                            +{getDayAvailabilities(day).length - 2} disponíveis
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    )}
                     {dayAppointments.length > (dayHoliday ? 1 : 2) && (
                       <div className="text-xs text-gray-500 px-2">
                         +{dayAppointments.length - (dayHoliday ? 1 : 2)} mais
@@ -761,8 +848,28 @@ const AppointmentCalendar = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-2 italic">
-              * Bolinhas coloridas aparecem no canto superior esquerdo de cada dia
+              * Badge de status aparece no topo de cada agendamento
             </p>
+
+            <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Disponibilidades</h3>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="show-availabilities"
+                checked={showAvailabilities}
+                onCheckedChange={(checked) => setShowAvailabilities(checked === true)}
+              />
+              <label htmlFor="show-availabilities" className="text-xs text-gray-700 cursor-pointer">
+                Mostrar disponibilidades dos clientes
+              </label>
+            </div>
+            {showAvailabilities && (
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
+                  <span className="text-xs text-gray-700">Horários disponíveis</span>
+                </div>
+              </div>
+            )}
 
             <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Feriados e Datas Especiais</h3>
             <div className="space-y-2">
