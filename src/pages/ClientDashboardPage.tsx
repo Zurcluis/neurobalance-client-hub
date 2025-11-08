@@ -37,6 +37,7 @@ import ClientChat from '@/components/client-dashboard/ClientChat';
 import ClientProfile from '@/components/client-dashboard/ClientProfile';
 import ClientNotifications from '@/components/client-dashboard/ClientNotifications';
 import { ClientAvailabilityManager } from '@/components/availability';
+import { NotificationPanel } from '@/components/availability/NotificationPanel';
 
 const ClientDashboardPage = () => {
   const { session, logout, isAuthenticated } = useClientAuth();
@@ -458,7 +459,10 @@ const ClientDashboardPage = () => {
             )}
 
             {activeTab === 'availability' && clientData && (
-              <ClientAvailabilityManager clienteId={clientData.id} />
+              <div className="space-y-6">
+                <ClientAvailabilityManager clienteId={clientData.id} />
+                <NotificationPanel clienteId={clientData.id} />
+              </div>
             )}
           </div>
         </div>
