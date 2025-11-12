@@ -32,7 +32,7 @@ export type StatusDisponibilidade = typeof STATUS_DISPONIBILIDADE[number];
 export const PREFERENCIA_HORARIO = ['alta', 'media', 'baixa'] as const;
 export type PreferenciaHorario = typeof PREFERENCIA_HORARIO[number];
 
-export const RECORRENCIA = ['semanal', 'quinzenal', 'mensal'] as const;
+export const RECORRENCIA = ['diaria', 'semanal', 'quinzenal', 'mensal'] as const;
 export type Recorrencia = typeof RECORRENCIA[number];
 
 export const STATUS_SUGESTAO = ['pendente', 'aceita', 'rejeitada', 'expirada'] as const;

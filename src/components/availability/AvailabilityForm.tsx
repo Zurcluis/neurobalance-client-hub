@@ -1,6 +1,8 @@
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +25,7 @@ interface AvailabilityFormProps {
   clienteId: number;
   availability?: ClientAvailability;
   defaultDiaSemana?: number;
+  defaultDate?: Date;
   onSuccess?: () => void;
   onCancel: () => void;
   onSubmit?: (data: NewClientAvailability) => Promise<void>;
@@ -33,6 +36,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
   clienteId,
   availability,
   defaultDiaSemana,
+  defaultDate,
   onSuccess,
   onCancel,
   onSubmit,
@@ -71,7 +75,9 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
   });
 
   const watchStatus = watch('status');
+  const watchRecorrencia = watch('recorrencia');
   const isTemporario = watchStatus === 'temporario';
+  const isDiaria = watchRecorrencia === 'diaria';
 
   const handleFormSubmit = async (data: AvailabilityFormData) => {
     const submitData: NewClientAvailability = {
@@ -82,8 +88,12 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
       preferencia: data.preferencia,
       recorrencia: data.recorrencia,
       status: data.status,
-      valido_de: data.valido_de || null,
-      valido_ate: data.valido_ate || null,
+      valido_de: data.recorrencia === 'diaria' && defaultDate 
+        ? format(defaultDate, 'yyyy-MM-dd') 
+        : (data.valido_de || null),
+      valido_ate: data.recorrencia === 'diaria' && defaultDate 
+        ? format(defaultDate, 'yyyy-MM-dd') 
+        : (data.valido_ate || null),
       notas: data.notas || null,
     };
 
@@ -238,11 +248,16 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
               </Select>
             )}
           />
+          {isDiaria && defaultDate && (
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              Esta disponibilidade será apenas para {format(defaultDate, "d 'de' MMMM", { locale: ptBR })}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Período de Validade (se temporário) */}
-      {isTemporario && (
+      {isTemporario && !isDiaria && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
           <div className="space-y-2">
             <Label htmlFor="valido_de">Válido De</Label>

@@ -21,6 +21,9 @@ interface TimeGridViewProps {
   onEventClick: (appointment: Appointment) => void;
   onDateChange?: (date: Date) => void;
   isDailyView?: boolean;
+  availabilities?: Record<number, any[]>;
+  showAvailabilities?: boolean;
+  holidays?: any[];
 }
 
 const TimeGridView: React.FC<TimeGridViewProps> = ({
@@ -30,6 +33,9 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
   onEventClick,
   onDateChange,
   isDailyView = false,
+  availabilities = {},
+  showAvailabilities = false,
+  holidays = [],
 }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -57,6 +63,41 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
     });
   };
 
+  const getAvailabilitiesForDayAndHour = (day: Date, hour: number) => {
+    if (!showAvailabilities) return [];
+    const dayOfWeek = day.getDay();
+    const dateString = format(day, 'yyyy-MM-dd');
+    const avails: any[] = [];
+    
+    Object.values(availabilities).forEach((clientAvails) => {
+      clientAvails.forEach((avail: any) => {
+        if (avail.status !== 'ativo') return;
+        
+        let isValidDay = false;
+        if (avail.recorrencia === 'diaria') {
+          isValidDay = avail.valido_de === dateString;
+        } else {
+          isValidDay = avail.dia_semana === dayOfWeek;
+        }
+        
+        if (isValidDay) {
+          const [startHour] = avail.hora_inicio.split(':').map(Number);
+          const [endHour] = avail.hora_fim.split(':').map(Number);
+          if (hour >= startHour && hour < endHour) {
+            avails.push(avail);
+          }
+        }
+      });
+    });
+    
+    return avails;
+  };
+
+  const getHolidayForDay = (day: Date) => {
+    const dateString = format(day, 'yyyy-MM-dd');
+    return holidays.find((holiday: any) => holiday.date === dateString);
+  };
+
   const handleTimeSlotClick = (day: Date, hour: number) => {
     const clickedDate = new Date(day);
     clickedDate.setHours(hour, 0, 0, 0);
@@ -64,7 +105,8 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
   };
 
   const navigateDay = (direction: 'prev' | 'next') => {
-    const newDate = direction === 'prev' ? subDays(currentDate, 1) : addDays(currentDate, 1);
+    const increment = isDailyView ? 1 : 7;
+    const newDate = direction === 'prev' ? subDays(currentDate, increment) : addDays(currentDate, increment);
     setCurrentDate(newDate);
     if (onDateChange) {
       onDateChange(newDate);
@@ -88,8 +130,8 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
 
   return (
     <div className="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Header com navegação para vista diária */}
-      {isDailyView && (
+      {/* Header com navegação */}
+      {(isDailyView || days.length === 7) && (
         <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="sm" onClick={goToToday}>
@@ -103,7 +145,10 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
             </Button>
           </div>
           <div className="text-lg font-medium text-gray-900">
-            {format(currentDate, "dd 'de' MMMM 'de' yyyy", { locale: pt })}
+            {isDailyView 
+              ? format(currentDate, "dd 'de' MMMM 'de' yyyy", { locale: pt })
+              : `${format(days[0], "dd 'de' MMM", { locale: pt })} - ${format(days[days.length - 1], "dd 'de' MMM 'de' yyyy", { locale: pt })}`
+            }
           </div>
           <div className="w-20"></div> {/* Espaçador */}
         </div>
@@ -158,6 +203,8 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
             {/* Colunas dos dias */}
             {days.map((day, dayIndex) => {
               const dayAppointments = getAppointmentsForDayAndHour(day, hour);
+              const dayAvailabilities = getAvailabilitiesForDayAndHour(day, hour);
+              const dayHoliday = hour === 0 ? getHolidayForDay(day) : null;
               
               return (
                 <div
@@ -165,6 +212,14 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                   className="border-r border-gray-200 last:border-r-0 p-1 cursor-pointer hover:bg-[#e6f2f3] transition-colors relative min-h-[60px]"
                   onClick={() => handleTimeSlotClick(day, hour)}
                 >
+                  {/* Feriados - mostrar apenas na primeira hora */}
+                  {dayHoliday && (
+                    <div className="text-[10px] px-1 py-0.5 mb-1 rounded bg-red-50 border border-red-200 text-red-700 truncate">
+                      {dayHoliday.name}
+                    </div>
+                  )}
+                  
+                  {/* Agendamentos */}
                   {dayAppointments.map((appointment, appointmentIndex) => (
                     <div
                       key={appointmentIndex}
@@ -184,6 +239,17 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                       <div className="text-xs opacity-90 truncate">
                         {appointment.clientes?.nome || 'Sem cliente'}
                       </div>
+                    </div>
+                  ))}
+                  
+                  {/* Disponibilidades */}
+                  {dayAvailabilities.map((avail, availIndex) => (
+                    <div
+                      key={`avail-${availIndex}`}
+                      className="text-[10px] px-1 py-0.5 mb-1 rounded bg-blue-50 border border-blue-200 text-blue-700 truncate cursor-help transition-all hover:bg-blue-100"
+                      title={`${avail.hora_inicio} - ${avail.hora_fim}`}
+                    >
+                      ID: {avail.clientes?.id_manual || avail.cliente_id} - {avail.clientes?.nome || 'Cliente'}
                     </div>
                   ))}
                 </div>

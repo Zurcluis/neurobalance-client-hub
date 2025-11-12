@@ -68,24 +68,28 @@ export function useAppointments() {
     cor?: string;
   }) => {
     try {
+      const appointmentToInsert = {
+        titulo: appointment.titulo,
+        data: appointment.data,
+        hora: appointment.hora,
+        id_cliente: appointment.id_cliente,
+        tipo: appointment.tipo,
+        notas: appointment.notas || '',
+        estado: appointment.estado,
+        terapeuta: appointment.terapeuta || '',
+        cor: appointment.cor || '#3B82F6'
+      };
+
+      console.log('Inserindo agendamento:', appointmentToInsert);
+
       const { data, error } = await supabase
         .from('agendamentos')
-        .insert([
-          {
-            titulo: appointment.titulo,
-            data: appointment.data,
-            hora: appointment.hora,
-            id_cliente: appointment.id_cliente,
-            tipo: appointment.tipo,
-            notas: appointment.notas,
-            estado: appointment.estado,
-            terapeuta: appointment.terapeuta,
-            cor: appointment.cor
-          }
-        ])
+        .insert([appointmentToInsert])
         .select(`
           *,
           clientes (
+            id,
+            id_manual,
             nome,
             email,
             telefone
@@ -93,17 +97,20 @@ export function useAppointments() {
         `)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro do Supabase:', error);
+        throw new Error(error.message || 'Erro ao inserir agendamento na base de dados');
+      }
       
-      // Adicionar o novo agendamento ao estado local com os dados do cliente
       const newAppointment = data as Appointment;
       setAppointments(prev => [...prev, newAppointment]);
       
-      toast.success('Appointment added successfully');
+      toast.success('Agendamento adicionado com sucesso');
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao adicionar agendamento:', error);
-      toast.error('Failed to add appointment');
+      const errorMsg = error?.message || 'Erro desconhecido ao adicionar agendamento';
+      toast.error(`Erro: ${errorMsg}`);
       throw error;
     }
   }, [supabase]);
@@ -183,31 +190,23 @@ export function useAppointments() {
   // Delete appointment
   const deleteAppointment = useCallback(async (id: number) => {
     try {
-      const { data, error: deleteError } = await supabase
+      const { error: deleteError } = await supabase
         .from('agendamentos')
         .delete()
-        .eq('id', id)
-        .select('id')
-        .maybeSingle();
+        .eq('id', id);
 
       if (deleteError) {
         throw deleteError;
       }
 
-      if (!data) {
-        toast.warning('Agendamento já não existe');
-      }
-
       setAppointments(prev => prev.filter(appointment => appointment.id !== id));
-      // Garantir sincronização com o backend
-      fetchAppointments();
       toast.success('Agendamento eliminado com sucesso');
     } catch (err) {
-      console.error('Error deleting appointment:', err);
+      console.error('Erro ao eliminar agendamento:', err);
       toast.error('Falha ao eliminar agendamento');
       throw err;
     }
-  }, [supabase, fetchAppointments]);
+  }, [supabase]);
 
   return {
     appointments,

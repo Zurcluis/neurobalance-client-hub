@@ -152,43 +152,6 @@ const AdminDashboardPage = () => {
           </Card>
         </div>
 
-        {/* Ações Rápidas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-900">Ações Rápidas</CardTitle>
-            <p className="text-gray-600">Acesso rápido às funcionalidades principais</p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredActions.map((action, index) => (
-                <Link key={index} to={action.path}>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer border-gray-200 hover:border-gray-300">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="bg-[#3f9094] p-3 rounded-lg text-white">
-                          {action.icon}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-1">
-                            {action.title}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-3">
-                            {action.description}
-                          </p>
-                          <div className="flex items-center text-sm text-gray-500 hover:text-gray-700">
-                            Acessar
-                            <ArrowRight className="h-4 w-4 ml-1" />
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Informações do Sistema */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>

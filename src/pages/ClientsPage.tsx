@@ -619,26 +619,6 @@ const ClientsPage = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-gray-900 border-t-4 border-t-amber-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-amber-600" />
-                    Ações Rápidas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8" onClick={() => setIsAddClientOpen(true)}>
-                      <Plus className="h-3 w-3" />
-                      Novo Cliente
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8" onClick={() => setActiveTab('clients')}>
-                      <Users className="h-3 w-3" />
-                      Ver Todos
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Gráficos Analytics */}

@@ -77,6 +77,7 @@ const AppointmentCalendar = () => {
   const [currentView, setCurrentView] = useState<CalendarView>('month');
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [clientAvailabilities, setClientAvailabilities] = useState<Record<number, any[]>>({});
   const [showAvailabilities, setShowAvailabilities] = useState(true);
 
@@ -153,17 +154,21 @@ const AppointmentCalendar = () => {
 
   const onSubmit = async (data: AppointmentFormValues) => {
     try {
+      const clientId = data.id_cliente === null || data.id_cliente === undefined ? null : Number(data.id_cliente);
+      
       const appointmentData = {
-        titulo: data.titulo,
+        titulo: data.titulo || 'Novo Agendamento',
         data: `${data.data}T${data.hora}:00`,
         hora: data.hora,
-        id_cliente: data.id_cliente,
+        id_cliente: clientId,
         tipo: data.tipo,
-        notas: data.notas,
+        notas: data.notas || '',
         estado: data.estado,
-        terapeuta: data.terapeuta,
-        cor: data.cor
+        terapeuta: data.terapeuta || '',
+        cor: data.cor || '#3B82F6'
       };
+
+      console.log('Dados a serem enviados:', appointmentData);
 
       if (selectedAppointment) {
         await updateAppointment(selectedAppointment.id, appointmentData);
@@ -173,9 +178,13 @@ const AppointmentCalendar = () => {
 
       setIsDialogOpen(false);
       setSelectedAppointment(null);
+      setClientSearchQuery('');
       form.reset();
-    } catch (error) {
-      console.error('Error saving appointment:', error);
+      toast.success('Agendamento salvo com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao salvar agendamento:', error);
+      const errorMessage = error?.message || 'Erro desconhecido ao salvar agendamento';
+      toast.error(`Erro: ${errorMessage}`);
     }
   };
 
@@ -224,11 +233,18 @@ const AppointmentCalendar = () => {
     if (!day || !showAvailabilities) return [];
     
     const dayOfWeek = day.getDay();
+    const dateString = format(day, 'yyyy-MM-dd');
     const availabilities: any[] = [];
     
     Object.values(clientAvailabilities).forEach((clientAvails) => {
       clientAvails.forEach((avail: any) => {
-        if (avail.dia_semana === dayOfWeek && avail.status === 'ativo') {
+        if (avail.status !== 'ativo') return;
+        
+        if (avail.recorrencia === 'diaria') {
+          if (avail.valido_de === dateString) {
+            availabilities.push(avail);
+          }
+        } else if (avail.dia_semana === dayOfWeek) {
           availabilities.push(avail);
         }
       });
@@ -547,10 +563,10 @@ const AppointmentCalendar = () => {
                         {getDayAvailabilities(day).slice(0, 2).map((avail: any, idx: number) => (
                           <div
                             key={`avail-${avail.id}-${idx}`}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 truncate"
-                            title={`${avail.clientes?.nome || 'Cliente'}: ${avail.hora_inicio}-${avail.hora_fim}`}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 truncate cursor-help transition-all hover:bg-blue-100 dark:hover:bg-blue-900"
+                            title={`${avail.hora_inicio} - ${avail.hora_fim}`}
                           >
-                            🕐 {avail.hora_inicio}-{avail.hora_fim}
+                            ID: {avail.clientes?.id_manual || avail.cliente_id} - {avail.clientes?.nome || 'Cliente'}
                           </div>
                         ))}
                         {getDayAvailabilities(day).length > 2 && (
@@ -591,13 +607,16 @@ const AppointmentCalendar = () => {
         onEventClick={handleEventClick}
         onDateChange={(newDate) => setSelectedDate(newDate)}
         isDailyView={true}
+        availabilities={clientAvailabilities}
+        showAvailabilities={showAvailabilities}
+        holidays={holidays}
       />
     );
   };
 
     const renderWeekView = () => {
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
-    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+    const weekStart = startOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
+    const weekEnd = endOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
     return (
@@ -606,6 +625,10 @@ const AppointmentCalendar = () => {
         appointments={appointments}
         onTimeSlotClick={openNewAppointmentDialog}
         onEventClick={handleEventClick}
+        onDateChange={(newDate) => setSelectedDate(newDate)}
+        availabilities={clientAvailabilities}
+        showAvailabilities={showAvailabilities}
+        holidays={holidays}
       />
     );
   };
@@ -938,27 +961,123 @@ const AppointmentCalendar = () => {
               <FormField
                 control={form.control}
                 name="id_cliente"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente (Opcional)</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))} value={field.value?.toString() || "null"}>
-                    <FormControl>
-                          <SelectTrigger>
-                          <SelectValue placeholder="Selecione um cliente (opcional)" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="null">Sem cliente</SelectItem>
-                          {clients.map(client => (
-                            <SelectItem key={client.id} value={client.id.toString()}>
-                              {client.nome}
+                render={({ field }) => {
+                  const filteredClients = clients.filter(client => {
+                    if (!clientSearchQuery || clientSearchQuery.trim() === '') return true;
+                    const searchLower = clientSearchQuery.toLowerCase().trim();
+                    return (
+                      (client.nome && client.nome.toLowerCase().includes(searchLower)) ||
+                      (client.id_manual && client.id_manual.toLowerCase().includes(searchLower)) ||
+                      (client.id && client.id.toString().includes(searchLower))
+                    );
+                  });
+
+                  const selectedClient = clients.find(c => c.id === field.value);
+                  const displayClients = clientSearchQuery ? filteredClients : clients;
+
+                  console.log('Total de clientes carregados:', clients.length);
+                  console.log('Clientes a exibir:', displayClients.length);
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Cliente (Opcional)</FormLabel>
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder={isLoadingClients ? "Carregando clientes..." : "🔍 Pesquisar por nome ou ID..."}
+                            value={clientSearchQuery}
+                            onChange={(e) => {
+                              setClientSearchQuery(e.target.value);
+                            }}
+                            disabled={isLoadingClients}
+                            className="w-full"
+                          />
+                          {isLoadingClients && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <Select 
+                          onValueChange={(value) => {
+                            console.log('Cliente selecionado no Select:', value);
+                            field.onChange(value === "null" ? null : parseInt(value));
+                            setClientSearchQuery('');
+                          }} 
+                          value={field.value?.toString() || "null"}
+                          disabled={isLoadingClients}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={
+                                isLoadingClients 
+                                  ? "Carregando clientes..." 
+                                  : selectedClient
+                                    ? `${selectedClient.id_manual ? `[${selectedClient.id_manual}]` : `[ID: ${selectedClient.id}]`} ${selectedClient.nome}`
+                                    : clientSearchQuery 
+                                      ? `${displayClients.length} cliente(s) filtrado(s)` 
+                                      : `Selecionar cliente (${clients.length} disponíveis)`
+                              } />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-[300px] overflow-y-auto">
+                            <SelectItem value="null">
+                              <span className="font-normal text-gray-600">Sem cliente associado</span>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                            {displayClients.length > 0 && displayClients.map(client => (
+                              <SelectItem key={client.id} value={client.id.toString()}>
+                                {client.id_manual ? `[${client.id_manual}] ` : `[ID: ${client.id}] `}
+                                {client.nome || 'Cliente sem nome'}
+                              </SelectItem>
+                            ))}
+                            {displayClients.length === 0 && clientSearchQuery && (
+                              <div className="px-2 py-3 text-center text-sm text-gray-500">
+                                Nenhum cliente encontrado para "{clientSearchQuery}"
+                              </div>
+                            )}
+                            {clients.length === 0 && !clientSearchQuery && !isLoadingClients && (
+                              <div className="px-2 py-3 text-center text-sm text-gray-500">
+                                Nenhum cliente cadastrado
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+
+                        {selectedClient && (
+                          <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                            <span className="text-sm font-medium text-blue-900">
+                              ✓ {selectedClient.id_manual ? `[${selectedClient.id_manual}] ` : `[ID: ${selectedClient.id}] `}
+                              {selectedClient.nome}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                field.onChange(null);
+                                setClientSearchQuery('');
+                              }}
+                              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                            >
+                              ✕ Remover
+                            </button>
+                          </div>
+                        )}
+
+                        {!isLoadingClients && (
+                          <p className="text-xs text-gray-500">
+                            {clientSearchQuery ? (
+                              <>{filteredClients.length} de {clients.length} cliente(s) {filteredClients.length === 1 ? 'encontrado' : 'encontrados'}</>
+                            ) : (
+                              <>{clients.length} cliente(s) disponível{clients.length === 1 ? '' : 'eis'}</>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField

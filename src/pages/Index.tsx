@@ -199,52 +199,6 @@ const Index = () => {
           </div>
         )}
 
-        {/* Card de Ações Rápidas (sempre visível) */}
-        <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-gray-900 border-t-4 border-t-purple-500">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-purple-600" />
-              <CardTitle>Ações Rápidas</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Button 
-                variant="outline" 
-                className="flex flex-col h-auto py-4 gap-2"
-                onClick={() => navigate('/clients')}
-              >
-                <Plus className="h-5 w-5" />
-                <span className="text-sm">Novo Cliente</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex flex-col h-auto py-4 gap-2"
-                onClick={() => navigate('/calendar')}
-              >
-                <Calendar className="h-5 w-5" />
-                <span className="text-sm">Agendar Sessão</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex flex-col h-auto py-4 gap-2"
-                onClick={() => navigate('/finances')}
-              >
-                <Euro className="h-5 w-5" />
-                <span className="text-sm">Registrar Pagamento</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex flex-col h-auto py-4 gap-2"
-                onClick={() => navigate('/statistics')}
-              >
-                <TrendingUp className="h-5 w-5" />
-                <span className="text-sm">Ver Estatísticas</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Dashboard Principal */}
         <DashboardOverview />
       </div>

@@ -249,26 +249,6 @@ const FinancesPage = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-gray-900 border-t-4 border-t-purple-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-purple-600" />
-                    Ações Rápidas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8">
-                      <Plus className="h-3 w-3" />
-                      Nova Receita
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8">
-                      <Calculator className="h-3 w-3" />
-                      Calcular Impostos
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Dashboard de Fluxo de Caixa */}
