@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Home, Zap, Phone, Users, Briefcase, Calculator, Wrench, Beaker, FileText, ShoppingCart } from 'lucide-react';
+import { Home, Zap, Phone, Users, Briefcase, Calculator, Wrench, Beaker, FileText, ShoppingCart, PiggyBank } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 
@@ -51,6 +51,15 @@ const EXPENSE_CATEGORIES = {
       'Software'
     ]
   },
+  emprestimos: {
+    name: 'Empréstimos',
+    color: '#ec4899',
+    icon: PiggyBank,
+    subcategories: [
+      'Devolveu Dinheiro',
+      'Banco BPI'
+    ]
+  },
   materiais: {
     name: 'Materiais',
     color: '#3b82f6',
@@ -77,8 +86,13 @@ const EXPENSE_CATEGORIES = {
 };
 
 const categorizeExpense = (expense: any): string => {
+  const tipo = (expense.tipo || '').toLowerCase();
   const categoria = (expense.categoria || '').toLowerCase();
   const descricao = (expense.descricao || '').toLowerCase();
+  
+  if (tipo.includes('empréstimo') || tipo.includes('emprestimo')) {
+    return 'emprestimos';
+  }
   
   for (const [key, config] of Object.entries(EXPENSE_CATEGORIES)) {
     for (const subcat of config.subcategories) {

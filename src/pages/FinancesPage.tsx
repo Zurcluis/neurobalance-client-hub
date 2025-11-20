@@ -11,6 +11,7 @@ import FiscalReports from '@/components/finances/FiscalReports';
 import FiscalDeadlines from '@/components/finances/FiscalDeadlines';
 import SmartTaxCalculator from '@/components/finances/SmartTaxCalculator';
 import FinancialChatbot from '@/components/finances/FinancialChatbot';
+import LoanTracker from '@/components/finances/LoanTracker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
@@ -34,7 +35,8 @@ import {
   TrendingDown,
   DollarSign,
   Download,
-  Zap
+  Zap,
+  PiggyBank
 } from 'lucide-react';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePayments } from '@/hooks/usePayments';
@@ -163,7 +165,7 @@ const FinancesPage = () => {
 
         {/* Tabs Principais - Reorganizadas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto md:h-10">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#3f9094] data-[state=active]:to-[#2A5854]">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Visão Geral</span>
@@ -171,6 +173,10 @@ const FinancesPage = () => {
             <TabsTrigger value="transactions" className="flex items-center gap-2">
               <ArrowLeftRight className="h-4 w-4" />
               <span className="hidden sm:inline">Transações</span>
+            </TabsTrigger>
+            <TabsTrigger value="loans" className="flex items-center gap-2">
+              <PiggyBank className="h-4 w-4" />
+              <span className="hidden sm:inline">Empréstimos</span>
             </TabsTrigger>
             <TabsTrigger value="analysis" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -308,6 +314,11 @@ const FinancesPage = () => {
                 </Tabs>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 🏦 Empréstimos */}
+          <TabsContent value="loans" className="space-y-6 mt-6">
+            <LoanTracker expenses={expenses} />
           </TabsContent>
 
           {/* 📊 Análises */}

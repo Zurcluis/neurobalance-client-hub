@@ -114,6 +114,10 @@ const expenseCategories = {
     'Software',
     'Formação'
   ],
+  'Empréstimos': [
+    'Devolveu Dinheiro',
+    'Banco BPI'
+  ],
   'Materiais': [
     'Elétrodos',
     'Pasta Condutora',
@@ -124,7 +128,6 @@ const expenseCategories = {
   ],
   'Outras': [
     'Impostos',
-    'Devolveu Dinheiro',
     'Outros'
   ]
 };
