@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Megaphone, BarChart3, Target, LogOut, Menu, X, User, Shield, ChevronLeft } from 'lucide-react';
+import { Megaphone, BarChart3, Target, LogOut, Menu, X, User, Shield, ChevronLeft, ExternalLink, Layout } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -38,6 +38,12 @@ const MarketingSidebar: React.FC = () => {
       name: 'Dashboard', 
       icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, 
       path: '/marketing',
+      permission: MARKETING_PERMISSIONS.VIEW_ANALYTICS
+    },
+    { 
+      name: 'Landing Page', 
+      icon: <Layout className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, 
+      path: '/marketing/landing',
       permission: MARKETING_PERMISSIONS.VIEW_ANALYTICS
     },
   ];
