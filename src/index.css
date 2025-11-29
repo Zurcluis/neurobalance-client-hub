@@ -33,6 +33,17 @@
   }
 }
 
+/* Safe area para dispositivos com notch (iPhone X+) */
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
 /* Componentes responsivos */
 @layer components {
   .container-responsive {

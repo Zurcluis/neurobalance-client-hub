@@ -26,6 +26,38 @@ import { toast } from 'sonner';
 import { format, parseISO, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return fallbackCopyToClipboard(text);
+    }
+  }
+  return fallbackCopyToClipboard(text);
+};
+
+const fallbackCopyToClipboard = (text: string): boolean => {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  textArea.style.top = '-999999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  
+  try {
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch {
+    document.body.removeChild(textArea);
+    return false;
+  }
+};
+
 interface ClientToken {
   id: number;
   id_cliente: number;
@@ -177,10 +209,11 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId, onClo
       toast.success('Token gerado com sucesso');
       await fetchTokens(selectedClientId);
       
-      // Copiar token para clipboard
       if (data) {
-        await navigator.clipboard.writeText(data);
-        toast.success('Token copiado para a área de transferência');
+        const copied = await copyToClipboard(data);
+        if (copied) {
+          toast.success('Token copiado para a área de transferência');
+        }
       }
     } catch (error: any) {
       console.error('Erro ao gerar token:', error);
@@ -210,10 +243,10 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId, onClo
   };
 
   const copyToken = async (token: string) => {
-    try {
-      await navigator.clipboard.writeText(token);
+    const success = await copyToClipboard(token);
+    if (success) {
       toast.success('Token copiado para a área de transferência');
-    } catch (error) {
+    } else {
       toast.error('Erro ao copiar token');
     }
   };
@@ -224,11 +257,11 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId, onClo
   };
 
   const copyLoginLink = async (token: string) => {
-    try {
-      const link = generateClientLoginLink(token);
-      await navigator.clipboard.writeText(link);
+    const link = generateClientLoginLink(token);
+    const success = await copyToClipboard(link);
+    if (success) {
       toast.success('Link de acesso copiado');
-    } catch (error) {
+    } else {
       toast.error('Erro ao copiar link');
     }
   };
