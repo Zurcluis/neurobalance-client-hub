@@ -40,6 +40,7 @@ const AdminAvailabilityPage = lazy(() => import("./pages/AdminAvailabilityPage")
 const MarketingLoginPage = lazy(() => import("./pages/MarketingLoginPage"));
 const MarketingAreaPage = lazy(() => import("./pages/MarketingAreaPage"));
 const MarketingLandingPage = lazy(() => import("./pages/MarketingLandingPage"));
+const MarketingTokensPage = lazy(() => import("./pages/MarketingTokensPage"));
 const ClinicInfoPage = lazy(() => import("./pages/ClinicInfoPage"));
 
 const queryClient = new QueryClient({
@@ -209,6 +210,14 @@ const App = () => (
                                 <MarketingProtectedRoute>
                                   <MarketingLandingPage />
                                 </MarketingProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/marketing/tokens"
+                              element={
+                                <ProtectedRoute>
+                                  <MarketingTokensPage />
+                                </ProtectedRoute>
                               }
                             />
                             <Route path="/landing" element={<MarketingLandingPage />} />

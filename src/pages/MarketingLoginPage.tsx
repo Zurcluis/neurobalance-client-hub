@@ -12,7 +12,7 @@ import { Megaphone, Loader2, Eye, EyeOff } from 'lucide-react';
 const MarketingLoginPage = () => {
   const navigate = useNavigate();
   const { login, loading, error, isAuthenticated } = useMarketingAuth();
-  
+
   const [formData, setFormData] = useState({
     email: '',
     token: ''
@@ -27,6 +27,27 @@ const MarketingLoginPage = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  // Auto-preencher email e token a partir da URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const emailParam = params.get('email');
+    const tokenParam = params.get('token');
+
+    if (emailParam || tokenParam) {
+      setFormData({
+        email: emailParam || '',
+        token: tokenParam || ''
+      });
+
+      // Auto-submit se ambos estiverem presentes
+      if (emailParam && tokenParam) {
+        setTimeout(() => {
+          handleSubmit(new Event('submit') as any);
+        }, 500);
+      }
+    }
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -37,14 +58,14 @@ const MarketingLoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.email || !formData.token) {
       toast.error('Por favor, preencha todos os campos');
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const response = await login({
         email: formData.email,
@@ -80,9 +101,9 @@ const MarketingLoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <img 
-            src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-            alt="NeuroBalance Logo" 
+          <img
+            src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+            alt="NeuroBalance Logo"
             className="mx-auto h-20 w-auto mb-4"
           />
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -154,9 +175,9 @@ const MarketingLoginPage = () => {
                 </Alert>
               )}
 
-              <Button 
-                type="submit" 
-                className="w-full bg-[#3f9094] hover:bg-[#2d7a7e]" 
+              <Button
+                type="submit"
+                className="w-full bg-[#3f9094] hover:bg-[#2d7a7e]"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

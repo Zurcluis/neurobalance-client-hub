@@ -38,6 +38,54 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
   // Validar token
   const validateToken = useCallback(async (token: string, email: string): Promise<MarketingSession | null> => {
     try {
+      // Primeiro, verificar tokens gerados (access tokens)
+      const savedTokensStr = localStorage.getItem('marketing_access_tokens');
+      if (savedTokensStr) {
+        try {
+          const savedTokens = JSON.parse(savedTokensStr);
+          const accessToken = savedTokens.find((t: any) =>
+            t.token === token && t.email === email && t.isActive
+          );
+
+          if (accessToken) {
+            // Verificar se não expirou
+            const expiresAt = new Date(accessToken.expiresAt);
+            if (expiresAt < new Date()) {
+              return null; // Token expirado
+            }
+
+            // Atualizar contagem de uso
+            const updatedTokens = savedTokens.map((t: any) =>
+              t.token === token
+                ? { ...t, usageCount: (t.usageCount || 0) + 1, lastUsedAt: new Date().toISOString() }
+                : t
+            );
+            localStorage.setItem('marketing_access_tokens', JSON.stringify(updatedTokens));
+
+            // Criar sessão baseada no access token
+            const permissions = accessToken.role === 'marketing_manager'
+              ? Object.values(MARKETING_PERMISSIONS)
+              : [MARKETING_PERMISSIONS.VIEW_CAMPAIGNS, MARKETING_PERMISSIONS.VIEW_LEADS, MARKETING_PERMISSIONS.VIEW_ANALYTICS];
+
+            const sessionToken = generateToken();
+            const sessionExpiresAt = new Date(accessToken.expiresAt); // Usar mesma expiração do token
+
+            return {
+              marketingId: accessToken.id,
+              marketingName: accessToken.name,
+              marketingEmail: accessToken.email,
+              role: accessToken.role,
+              permissions,
+              token: sessionToken,
+              expiresAt: sessionExpiresAt.toISOString()
+            };
+          }
+        } catch (error) {
+          console.error('Erro ao processar access tokens:', error);
+        }
+      }
+
+      // Fallback: verificar credenciais de desenvolvimento
       const user = DEV_MARKETING_USERS.find(u =>
         u.email === email && u.tokens.includes(token)
       );
