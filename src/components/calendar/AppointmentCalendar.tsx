@@ -514,10 +514,18 @@ const AppointmentCalendar = () => {
                       {status.label}
                     </span>
                   </div>
-                  {/* Nome do cliente e título */}
-                  <p className="font-semibold text-sm">
-                    {clientInfo?.nome || appointment.titulo}
-                  </p>
+                  {/* Nome do cliente - exibir só se não tiver ID */}
+                  {!clientId && (
+                    <p className="font-semibold text-sm">
+                      {clientInfo?.nome || appointment.titulo}
+                    </p>
+                  )}
+                  {/* ID do cliente - linha principal */}
+                  {clientId && (
+                    <p className="font-bold text-base">
+                      {clientId}
+                    </p>
+                  )}
                   {/* Hora e tipo */}
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-xs opacity-90">{format(parseISO(appointment.data), 'HH:mm')}</p>
@@ -629,45 +637,44 @@ const AppointmentCalendar = () => {
                           {/* Mobile: Layout compacto */}
                           {isMobile ? (
                             <div className="flex items-center gap-1">
-                              {/* ID do cliente (se existir) */}
-                              {clientId && (
-                                <span className="font-bold text-[8px] bg-white/90 text-gray-800 px-0.5 rounded">
-                                  {clientId}
+                              {/* ID e Hora */}
+                              {clientId ? (
+                                <>
+                                  <span className="font-bold text-[9px] flex-1">
+                                    {clientId}
+                                  </span>
+                                  <span className="text-[8px] opacity-90 shrink-0">
+                                    {format(parseISO(appointment.data), 'HH:mm')}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="font-medium truncate text-[9px] flex-1">
+                                  {appointment.titulo?.substring(0, 10)}
                                 </span>
                               )}
-                              {/* Nome truncado */}
-                              <span className="font-medium truncate text-[9px] flex-1">
-                                {clientInfo?.nome?.split(' ')[0] || appointment.titulo?.substring(0, 6)}
-                              </span>
-                              {/* Hora */}
-                              <span className="text-[8px] opacity-90 shrink-0">
-                                {format(parseISO(appointment.data), 'HH:mm')}
-                              </span>
                             </div>
                           ) : (
                             <>
-                              {/* Desktop: Layout compacto */}
-                              <div className="flex items-center justify-between gap-1">
-                                {/* ID do Cliente - Só mostra se existir */}
-                                {clientId && (
-                                  <span className="font-bold text-[9px] bg-white/90 text-gray-800 px-0.5 py-0 rounded shadow-sm">
+                              {/* Desktop: Apenas ID e Hora */}
+                              {clientId ? (
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-bold text-sm flex-1">
                                     {clientId}
                                   </span>
-                                )}
-                                {/* Badge de Status compacto */}
-                                <span className={`px-0.5 py-0 rounded text-[8px] font-bold ${status.bg} ${status.text} shadow-sm ${!clientId ? 'ml-auto' : ''}`}>
-                                  {status.labelFull}
-                                </span>
-                              </div>
-                              {/* Nome/Título e Hora em linha única */}
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="font-medium truncate text-xs leading-tight flex-1">
-                                  {clientInfo?.nome || appointment.titulo}
-                                </span>
-                                <span className="text-[10px] opacity-80 shrink-0">
-                                  {format(parseISO(appointment.data), 'HH:mm')}
-                                </span>
-                              </div>
+                                  <span className="text-[10px] opacity-80 shrink-0">
+                                    {format(parseISO(appointment.data), 'HH:mm')}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium truncate text-xs leading-tight flex-1">
+                                    {appointment.titulo}
+                                  </span>
+                                  <span className="text-[10px] opacity-80 shrink-0">
+                                    {format(parseISO(appointment.data), 'HH:mm')}
+                                  </span>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
@@ -793,7 +800,9 @@ const AppointmentCalendar = () => {
                                 appointment.estado === 'cancelado' ? 'Cancelado' : 'Pendente'}
                           </span>
                         </div>
-                        <p className="font-semibold truncate">{appointment.clientes?.nome || appointment.titulo}</p>
+                        {!(appointment.clientes as any)?.id_manual && (
+                          <p className="font-semibold truncate">{appointment.clientes?.nome || appointment.titulo}</p>
+                        )}
                         <p className="text-sm opacity-80 capitalize">{appointment.tipo}</p>
                       </div>
                     </li>
