@@ -36,12 +36,10 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
     if (savedSession) {
       try {
         const parsedSession: ClientSession = JSON.parse(savedSession);
-        
+
         // Verificar se a sessão não expirou
         if (new Date(parsedSession.expiresAt) > new Date()) {
           setSession(parsedSession);
-          // Validar token no servidor
-          validateToken(parsedSession.token);
         } else {
           // Sessão expirada, remover do localStorage
           localStorage.removeItem('client_session');
@@ -51,8 +49,9 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
         localStorage.removeItem('client_session');
       }
     }
+    // IMPORTANT: Set loading false AFTER checking localStorage
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   // Validar token no servidor
   const validateToken = useCallback(async (token: string) => {
@@ -416,7 +415,7 @@ export const useClientNotifications = () => {
   // Verificar e enviar lembretes automáticos
   const checkAndSendReminders = useCallback(async () => {
     if (!session) return;
-    
+
     try {
       // Chamar função que envia lembretes para sessões próximas
       await supabase.rpc<any, any>('check_and_send_reminders');
@@ -429,12 +428,12 @@ export const useClientNotifications = () => {
   // Buscar confirmações pendentes
   const fetchPendingConfirmations = useCallback(async () => {
     if (!session) return;
-    
+
     try {
       const { data, error: fetchError } = await supabase.rpc<any, any>('get_pending_confirmations', {
         p_client_id: session.clientId
       });
-      
+
       if (!fetchError && data) {
         setPendingConfirmations(data);
       }
@@ -465,7 +464,7 @@ export const useClientNotifications = () => {
       }
 
       setNotifications(data || []);
-      
+
       // Também buscar confirmações pendentes
       await fetchPendingConfirmations();
     } catch (error: unknown) {

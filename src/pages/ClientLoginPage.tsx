@@ -205,16 +205,6 @@ const ClientLoginPage = () => {
           </p>
         </div>
 
-        {/* Link para Voltar */}
-        <div className="text-center">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="text-gray-600 hover:text-gray-800"
-          >
-            ← Voltar ao site principal
-          </Button>
-        </div>
       </div>
     </div>
   );

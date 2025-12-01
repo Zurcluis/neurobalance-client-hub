@@ -100,3 +100,4 @@ USING (true);
 -- 7. Teste registar um pagamento na aplicação
 -- ============================================================
 
+

@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { 
-  User, 
-  Calendar, 
-  CreditCard, 
-  MessageSquare, 
-  Bell, 
+import {
+  User,
+  Calendar,
+  CreditCard,
+  MessageSquare,
+  Bell,
   LogOut,
   Clock,
   CheckCircle,
@@ -43,7 +43,7 @@ import { NotificationPanel } from '@/components/availability/NotificationPanel';
 import { cn } from '@/lib/utils';
 
 const ClientDashboardPage = () => {
-  const { session, logout, isAuthenticated } = useClientAuth();
+  const { session, logout, isAuthenticated, loading: authLoading } = useClientAuth();
   const { clientData, loading: clientLoading } = useClientData();
   const { messages, unreadCount: unreadMessages = 0 } = useClientMessages();
   const { notifications, unreadCount: unreadNotifications = 0 } = useClientNotifications();
@@ -53,10 +53,10 @@ const ClientDashboardPage = () => {
 
   // Redirecionar se não estiver autenticado
   useEffect(() => {
-    if (!isAuthenticated && !clientLoading) {
+    if (!authLoading && !isAuthenticated && !clientLoading) {
       navigate('/client-login', { replace: true });
     }
-  }, [isAuthenticated, clientLoading, navigate]);
+  }, [isAuthenticated, clientLoading, authLoading, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -64,7 +64,7 @@ const ClientDashboardPage = () => {
     navigate('/client-login', { replace: true });
   };
 
-  if (clientLoading) {
+  if (clientLoading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-cyan-50/20">
         <div className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 animate-pulse" />
@@ -140,10 +140,10 @@ const ClientDashboardPage = () => {
                   )} />
                 </div>
               </Button>
-              
-              <img 
-                src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-                alt="NeuroBalance Logo" 
+
+              <img
+                src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+                alt="NeuroBalance Logo"
                 className="h-24 w-auto sm:h-28 lg:h-32 transition-transform hover:scale-105"
               />
               <div className="min-w-0 flex-1 hidden sm:block">
@@ -161,8 +161,8 @@ const ClientDashboardPage = () => {
                 size="sm"
                 className={cn(
                   "relative p-2 h-10 w-10 rounded-xl transition-all duration-200",
-                  activeTab === 'notifications' 
-                    ? "bg-teal-100 text-teal-700" 
+                  activeTab === 'notifications'
+                    ? "bg-teal-100 text-teal-700"
                     : "hover:bg-gray-100 text-gray-600"
                 )}
                 onClick={() => setActiveTab('notifications')}
@@ -175,8 +175,8 @@ const ClientDashboardPage = () => {
                 )}
               </Button>
 
-              {/* Mensagens */}
-              <Button
+              {/* Mensagens - Ocultado temporariamente */}
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 className={cn(
@@ -193,7 +193,7 @@ const ClientDashboardPage = () => {
                     {unreadMessages > 9 ? '9+' : unreadMessages}
                   </span>
                 )}
-              </Button>
+              </Button> */}
 
               {/* Separador */}
               <div className="hidden sm:block h-8 w-px bg-gray-200 mx-1" />
@@ -226,12 +226,12 @@ const ClientDashboardPage = () => {
       <main className="flex flex-1 overflow-hidden">
         {/* Mobile Overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
-        
+
         {/* Sidebar Navigation - Moderna */}
         <div className={cn(
           "w-72 bg-white/95 backdrop-blur-xl border-r border-gray-100/50 flex flex-col fixed lg:relative inset-y-0 left-0 z-50 shadow-2xl lg:shadow-none",
@@ -241,9 +241,9 @@ const ClientDashboardPage = () => {
           {/* Header da Sidebar com Logo */}
           <div className="p-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <img 
-                src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-                alt="NeuroBalance Logo" 
+              <img
+                src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+                alt="NeuroBalance Logo"
                 className="h-28 w-auto"
               />
               <div>
@@ -252,7 +252,7 @@ const ClientDashboardPage = () => {
               </div>
             </div>
           </div>
-          
+
           <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
             {[
               { id: 'overview', icon: Activity, label: 'Visão Geral', bgColor: 'bg-violet-100', iconColor: 'text-violet-600' },
@@ -260,7 +260,7 @@ const ClientDashboardPage = () => {
               { id: 'appointments', icon: Calendar, label: 'Agendamentos', bgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
               { id: 'availability', icon: Clock, label: 'Minha Disponibilidade', bgColor: 'bg-amber-100', iconColor: 'text-amber-600' },
               { id: 'payments', icon: CreditCard, label: 'Pagamentos', bgColor: 'bg-rose-100', iconColor: 'text-rose-600' },
-              { id: 'chat', icon: MessageSquare, label: 'Chat', bgColor: 'bg-indigo-100', iconColor: 'text-indigo-600', badge: unreadMessages },
+              // { id: 'chat', icon: MessageSquare, label: 'Chat', bgColor: 'bg-indigo-100', iconColor: 'text-indigo-600', badge: unreadMessages },
             ].map((item) => (
               <button
                 key={item.id}
@@ -277,8 +277,8 @@ const ClientDashboardPage = () => {
               >
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all",
-                  activeTab === item.id 
-                    ? "bg-white/20" 
+                  activeTab === item.id
+                    ? "bg-white/20"
                     : item.bgColor
                 )}>
                   <item.icon className={cn(
@@ -290,8 +290,8 @@ const ClientDashboardPage = () => {
                 {item.badge && item.badge > 0 && (
                   <span className={cn(
                     "ml-auto px-2 py-0.5 text-xs font-bold rounded-full",
-                    activeTab === item.id 
-                      ? "bg-white/30 text-white" 
+                    activeTab === item.id
+                      ? "bg-white/30 text-white"
                       : "bg-rose-100 text-rose-600"
                   )}>
                     {item.badge}
@@ -314,7 +314,7 @@ const ClientDashboardPage = () => {
                 <span className="text-sm font-semibold text-gray-800">Progresso</span>
               </div>
               <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="absolute inset-y-0 left-0 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full transition-all duration-1000"
                   style={{ width: `${clientData.max_sessoes > 0 ? (clientData.numero_sessoes / clientData.max_sessoes) * 100 : 0}%` }}
                 />
@@ -329,7 +329,7 @@ const ClientDashboardPage = () => {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
-          {/* Overview Tab */}
+            {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-6">
                 {/* Saudação Mobile */}
@@ -377,12 +377,12 @@ const ClientDashboardPage = () => {
                       </div>
                       <p className="text-xs sm:text-sm text-white/80 font-medium mb-1">Próxima Sessão</p>
                       <p className="text-lg sm:text-xl font-bold">
-                        {clientData.proxima_sessao 
+                        {clientData.proxima_sessao
                           ? format(parseISO(clientData.proxima_sessao), 'dd MMM', { locale: ptBR })
                           : 'Agendar'}
                       </p>
                       <p className="text-xs text-white/60 mt-1">
-                        {clientData.proxima_sessao 
+                        {clientData.proxima_sessao
                           ? (clientData.proxima_sessao_hora || format(parseISO(clientData.proxima_sessao), 'HH:mm', { locale: ptBR }))
                           : 'Sem agendamento'}
                       </p>
@@ -398,12 +398,12 @@ const ClientDashboardPage = () => {
                       </div>
                       <p className="text-xs sm:text-sm text-white/80 font-medium mb-1">Progresso</p>
                       <p className="text-2xl sm:text-3xl font-bold">
-                        {clientData.max_sessoes > 0 
-                          ? Math.round((clientData.numero_sessoes / clientData.max_sessoes) * 100) 
+                        {clientData.max_sessoes > 0
+                          ? Math.round((clientData.numero_sessoes / clientData.max_sessoes) * 100)
                           : 0}%
                       </p>
                       <div className="mt-2 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-white rounded-full transition-all duration-1000"
                           style={{ width: `${clientData.max_sessoes > 0 ? (clientData.numero_sessoes / clientData.max_sessoes) * 100 : 0}%` }}
                         />
@@ -453,7 +453,7 @@ const ClientDashboardPage = () => {
                               </div>
                             </div>
                             <Badge className={
-                              clientData.proxima_sessao_estado === 'confirmado' 
+                              clientData.proxima_sessao_estado === 'confirmado'
                                 ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0"
                                 : "bg-amber-100 text-amber-700 hover:bg-amber-100 border-0"
                             }>
@@ -466,8 +466,8 @@ const ClientDashboardPage = () => {
                             <p className="text-sm">Nenhuma sessão agendada</p>
                           </div>
                         )}
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full rounded-xl h-11 font-medium hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 transition-colors"
                           onClick={() => setActiveTab('appointments')}
                         >
@@ -502,8 +502,8 @@ const ClientDashboardPage = () => {
                       <div className="space-y-3">
                         {notifications.length > 0 ? (
                           notifications.slice(0, 3).map((notification, idx) => (
-                            <div 
-                              key={notification.id} 
+                            <div
+                              key={notification.id}
                               className={cn(
                                 "flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-gray-50",
                                 idx === 0 && "bg-violet-50/50"
@@ -528,8 +528,8 @@ const ClientDashboardPage = () => {
                             <p className="text-sm">Nenhuma notificação</p>
                           </div>
                         )}
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full rounded-xl h-11 font-medium hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 transition-colors"
                           onClick={() => setActiveTab('notifications')}
                         >
@@ -543,30 +543,30 @@ const ClientDashboardPage = () => {
               </div>
             )}
 
-          {/* Profile Tab */}
+            {/* Profile Tab */}
             {activeTab === 'profile' && (
-            <ClientProfile clientData={clientData} />
+              <ClientProfile clientData={clientData} />
             )}
 
-          {/* Appointments Tab */}
+            {/* Appointments Tab */}
             {activeTab === 'appointments' && (
-            <ClientAppointments clientId={session.clientId} />
+              <ClientAppointments clientId={session.clientId} />
             )}
 
-          {/* Payments Tab */}
+            {/* Payments Tab */}
             {activeTab === 'payments' && (
-            <ClientPayments clientId={session.clientId} />
+              <ClientPayments clientId={session.clientId} />
             )}
 
 
-          {/* Chat Tab */}
-            {activeTab === 'chat' && (
-            <ClientChat clientId={session.clientId} />
-            )}
+            {/* Chat Tab - Ocultado temporariamente */}
+            {/* {activeTab === 'chat' && (
+              <ClientChat clientId={session.clientId} />
+              )} */}
 
             {/* Notifications Tab */}
             {activeTab === 'notifications' && (
-            <ClientNotifications />
+              <ClientNotifications />
             )}
 
             {activeTab === 'availability' && clientData && (
@@ -583,7 +583,7 @@ const ClientDashboardPage = () => {
       <nav className="fixed bottom-0 left-0 right-0 lg:hidden z-50 safe-area-bottom">
         {/* Blur Background */}
         <div className="absolute inset-0 bg-white/80 backdrop-blur-xl border-t border-gray-100/50" />
-        
+
         {/* Navigation Items */}
         <div className="relative flex justify-around items-center h-16 px-2">
           {[
@@ -591,7 +591,7 @@ const ClientDashboardPage = () => {
             { id: 'appointments', icon: Calendar, label: 'Agenda' },
             { id: 'availability', icon: Clock, label: 'Disp.' },
             { id: 'payments', icon: CreditCard, label: 'Pagam.' },
-            { id: 'chat', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
+            // { id: 'chat', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
           ].map((item) => (
             <button
               key={item.id}
@@ -601,36 +601,36 @@ const ClientDashboardPage = () => {
               {/* Pill Background Animado */}
               <div className={cn(
                 "absolute inset-x-2 top-1 bottom-1 rounded-2xl transition-all duration-300",
-                activeTab === item.id 
-                  ? "bg-gradient-to-r from-teal-500/10 to-cyan-500/10 scale-100" 
+                activeTab === item.id
+                  ? "bg-gradient-to-r from-teal-500/10 to-cyan-500/10 scale-100"
                   : "scale-0"
               )} />
-              
+
               {/* Ícone */}
               <div className={cn(
                 "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
-                activeTab === item.id 
-                  ? "bg-gradient-to-r from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/30 -translate-y-1" 
+                activeTab === item.id
+                  ? "bg-gradient-to-r from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/30 -translate-y-1"
                   : "group-hover:bg-gray-100"
               )}>
                 <item.icon className={cn(
                   "h-5 w-5 transition-colors",
                   activeTab === item.id ? "text-white" : "text-gray-500 group-hover:text-gray-700"
                 )} />
-                
+
                 {/* Badge */}
                 {item.badge && item.badge > 0 && (
                   <span className={cn(
                     "absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center",
-                    activeTab === item.id 
-                      ? "bg-white text-teal-600" 
+                    activeTab === item.id
+                      ? "bg-white text-teal-600"
                       : "bg-gradient-to-r from-rose-500 to-pink-500 text-white"
                   )}>
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}
               </div>
-              
+
               {/* Label */}
               <span className={cn(
                 "text-[10px] font-medium mt-0.5 transition-colors",
@@ -649,4 +649,4 @@ const ClientDashboardPage = () => {
   );
 };
 
-export default ClientDashboardPage; 
+export default ClientDashboardPage;

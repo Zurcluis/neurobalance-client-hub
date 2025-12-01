@@ -5,7 +5,13 @@ import { useAdminContext } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, CalendarPlus, CreditCard, User, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, CreditCard, User, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink, Key, Check, Loader2 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { ClientDetailData, Session, Payment, ClientFile, ClientMood } from '@/types/client';
@@ -69,7 +75,7 @@ const ClientDetailPage = () => {
   const { clients, isLoading: isLoadingClients, updateClient: updateClientInDb, deleteClient: deleteClientFromDb } = useClients();
   const { payments, isLoading: isLoadingPayments, addPayment: addPaymentToDb } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
   const { appointments, isLoading: isLoadingAppointments } = useAppointments();
-  
+
   // Estados
   const [client, setClient] = useState<ClientDetailData | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -79,36 +85,39 @@ const ClientDetailPage = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMoods, setIsLoadingMoods] = useState(true);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const [activeToken, setActiveToken] = useState<string | null>(null);
 
   // Função para obter a próxima sessão do cliente
   const findNextAppointment = useCallback(() => {
     if (!appointments || !clientId) return null;
-    
+
     const now = new Date();
-    const clientAppointments = appointments.filter(app => 
-      app.id_cliente?.toString() === clientId && 
+    const clientAppointments = appointments.filter(app =>
+      app.id_cliente?.toString() === clientId &&
       isAfter(parseISO(app.data), now)
     );
-    
+
     if (clientAppointments.length === 0) return null;
-    
+
     // Ordenar por data, do mais próximo para o mais distante
-    clientAppointments.sort((a, b) => 
+    clientAppointments.sort((a, b) =>
       compareDesc(parseISO(b.data), parseISO(a.data)) * -1
     );
-    
+
     return clientAppointments[0];
   }, [appointments, clientId]);
 
   // Função para formatar a data da próxima sessão para exibição
   const formatNextAppointment = useCallback((appointment: DbAppointment | null) => {
     if (!appointment) return null;
-    
+
     const appointmentDate = parseISO(appointment.data);
     const formattedDate = format(appointmentDate, 'dd/MM/yyyy');
     const formattedTime = format(appointmentDate, 'HH:mm');
     const appointmentType = appointment.tipo.charAt(0).toUpperCase() + appointment.tipo.slice(1);
-    
+
     return {
       formattedText: `${formattedDate} às ${formattedTime}`,
       title: appointment.titulo,
@@ -121,7 +130,7 @@ const ClientDetailPage = () => {
   useEffect(() => {
     if (!isLoadingClients && clientId) {
       const foundClient = clients.find(c => c.id?.toString() === clientId);
-      
+
       if (foundClient) {
         const clientToSet: ClientDetailData = {
           ...foundClient,
@@ -142,20 +151,20 @@ const ClientDetailPage = () => {
     if (!isLoadingAppointments && clientId) {
       const nextAppointment = findNextAppointment();
       const formattedNextAppointment = formatNextAppointment(nextAppointment);
-      
+
       // Apenas atualizar se a sessão atual for diferente
       if (formattedNextAppointment !== null) {
         setClient(prevClient => {
           if (!prevClient) return null;
-          
+
           // Verificar se o valor já é o mesmo para evitar atualizações desnecessárias
           if (prevClient.proxima_sessao === formattedNextAppointment.formattedText &&
-              prevClient.proxima_sessao_titulo === formattedNextAppointment.title &&
-              prevClient.proxima_sessao_tipo === formattedNextAppointment.type &&
-              prevClient.proxima_sessao_estado === formattedNextAppointment.status) {
+            prevClient.proxima_sessao_titulo === formattedNextAppointment.title &&
+            prevClient.proxima_sessao_tipo === formattedNextAppointment.type &&
+            prevClient.proxima_sessao_estado === formattedNextAppointment.status) {
             return prevClient; // Retorna o mesmo objeto se não houver alterações
           }
-          
+
           return {
             ...prevClient,
             proxima_sessao: formattedNextAppointment.formattedText,
@@ -168,15 +177,15 @@ const ClientDetailPage = () => {
         // Caso não tenha próxima sessão
         setClient(prevClient => {
           if (!prevClient) return null;
-          
+
           // Verificar se já está null para evitar atualizações desnecessárias
           if (prevClient.proxima_sessao === null &&
-              prevClient.proxima_sessao_titulo === null &&
-              prevClient.proxima_sessao_tipo === null &&
-              prevClient.proxima_sessao_estado === null) {
+            prevClient.proxima_sessao_titulo === null &&
+            prevClient.proxima_sessao_tipo === null &&
+            prevClient.proxima_sessao_estado === null) {
             return prevClient;
           }
-          
+
           return {
             ...prevClient,
             proxima_sessao: null,
@@ -201,7 +210,7 @@ const ClientDetailPage = () => {
             .select('*')
             .eq('id_cliente', parseInt(clientId))
             .order('data', { ascending: false });
-            
+
           if (error) {
             console.error('Erro ao carregar estados emocionais do Supabase:', error);
             // Se falhar, carregar do localStorage como fallback
@@ -218,9 +227,9 @@ const ClientDetailPage = () => {
               notes: mood.notas,
               date: mood.data
             }));
-            
+
             setMoods(formattedMoods);
-            
+
             // Atualizar o localStorage com os dados mais recentes do Supabase
             const allMoods = loadFromStorage<ClientMood[]>('clientMoods', []);
             const filteredMoods = allMoods.filter(mood => mood.clientId !== clientId);
@@ -233,7 +242,7 @@ const ClientDetailPage = () => {
           setIsLoadingMoods(false);
         }
       };
-      
+
       fetchMoods();
     }
   }, [clientId]);
@@ -241,7 +250,7 @@ const ClientDetailPage = () => {
   // Se o cliente não for encontrado, mostrar erro
   if (isLoading || isLoadingClients) {
     const loadingContent = <div>Carregando...</div>;
-    
+
     return isAdminContext ? loadingContent : (
       <PageLayout>
         {loadingContent}
@@ -255,12 +264,12 @@ const ClientDetailPage = () => {
         <h2 className="text-2xl font-bold text-red-500">Cliente Não Encontrado</h2>
         <p className="mt-2 mb-6">O cliente que procura não existe ou foi removido.</p>
         <Link to={isAdminContext ? "/admin/clients" : "/clients"}>
-            <Button>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar para Clientes
-            </Button>
-          </Link>
-        </div>
+          <Button>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar para Clientes
+          </Button>
+        </Link>
+      </div>
     );
 
     return isAdminContext ? errorContent : (
@@ -273,25 +282,25 @@ const ClientDetailPage = () => {
   // Handlers
   const updateClient = async (data: Partial<ClientDetailData>) => {
     if (!client || !clientId) return;
-    
+
     try {
       // Verificar se o ID foi alterado
       if (data.id && data.id !== client.id) {
         // Operação de alteração de ID é diferente de uma atualização normal
-        
+
         // 1. Remover o ID do objeto antes de passar para o Supabase para que ele não tente atualizar o ID
         const { id, ...updateData } = data;
-        
+
         if (!id) {
           throw new Error('ID não fornecido para a operação de alteração de ID');
         }
-        
+
         // 2. Criar um novo cliente com o novo ID
         // Precisamos garantir que todos os campos obrigatórios estejam presentes
         const newClientData = {
           id: id,
           nome: client.nome,
-          email: client.email, 
+          email: client.email,
           telefone: client.telefone,
           data_nascimento: client.data_nascimento,
           genero: client.genero,
@@ -301,80 +310,80 @@ const ClientDetailPage = () => {
           como_conheceu: client.como_conheceu,
           ...updateData
         };
-        
+
         const { error: insertError } = await supabase
           .from('clientes')
           .insert([newClientData]);
-          
+
         if (insertError) {
           throw new Error(`Falha ao criar cliente com novo ID: ${insertError.message}`);
         }
-        
+
         // 3. Atualizar referências em outras tabelas
-        
+
         // 3.1 Atualizar pagamentos
         const { error: paymentsError } = await supabase
           .from('pagamentos')
           .update({ id_cliente: id })
           .eq('id_cliente', client.id);
-          
+
         if (paymentsError) {
           toast.warning(`Falha ao atualizar referências de pagamentos: ${paymentsError.message}`);
           console.error('Erro ao atualizar pagamentos:', paymentsError);
         }
-        
+
         // 3.2 Atualizar sessões/agendamentos
         const { error: appointmentsError } = await supabase
           .from('agendamentos')
           .update({ id_cliente: id })
           .eq('id_cliente', client.id);
-          
+
         if (appointmentsError) {
           toast.warning(`Falha ao atualizar referências de agendamentos: ${appointmentsError.message}`);
           console.error('Erro ao atualizar agendamentos:', appointmentsError);
         }
-        
+
         // 3.3 Atualizar registros de humor
         const { error: moodError } = await supabase
           .from('humor_cliente')
           .update({ id_cliente: id })
           .eq('id_cliente', client.id);
-          
+
         if (moodError) {
           toast.warning(`Falha ao atualizar registros de humor: ${moodError.message}`);
           console.error('Erro ao atualizar registros de humor:', moodError);
         }
-        
+
         // 4. Excluir o cliente com o ID antigo
         const { error: deleteError } = await supabase
           .from('clientes')
           .delete()
           .eq('id', client.id);
-          
+
         if (deleteError) {
           throw new Error(`Falha ao excluir cliente com ID antigo: ${deleteError.message}`);
         }
-        
+
         // 5. Atualizar o cliente no estado local
         setClient(prevClient => {
           if (!prevClient) return null;
           return { ...prevClient, ...data };
         });
-        
+
         // 6. Redirecionar para a página do cliente com o novo ID
         navigate(`/clients/${id}`);
-        
+
         toast.success('ID do cliente e perfil atualizados com sucesso!');
       } else {
         // Atualização normal sem alterar o ID
         // Remover campos temporários que não existem no banco de dados
-        const { 
-          proxima_sessao_titulo, 
-          proxima_sessao_tipo, 
-          proxima_sessao_estado, 
-          ...updateData 
+        const {
+          proxima_sessao_titulo,
+          proxima_sessao_tipo,
+          proxima_sessao_estado,
+          ...updateData
         } = data;
-        
+
         await updateClientInDb(parseInt(clientId, 10), updateData);
         setClient(prevClient => {
           if (!prevClient) return null;
@@ -416,57 +425,57 @@ const ClientDetailPage = () => {
     // Salva no Supabase primeiro
     const supabase = (window as any).supabase;
     if (supabase) {
-       supabase.from('sessoes').insert(newSession).then(({ error }: any) => {
-          if (error) {
-             toast.error(`Erro ao salvar sessão: ${error.message}`);
-             console.error("Erro Supabase insert session:", error);
-          } else {
-             // Se salvou no Supabase, atualiza localStorage e estado
-             const allSessions = loadFromStorage<Session[]>('sessions', []);
-             const updatedSessions = [...allSessions, newSession];
-             saveToStorage('sessions', updatedSessions);
-             setSessions(prev => [...prev, newSession]);
-             updateClient({ numero_sessoes: (client?.numero_sessoes || 0) + 1 });
-             toast.success('Sessão adicionada com sucesso');
-          }
-       });
+      supabase.from('sessoes').insert(newSession).then(({ error }: any) => {
+        if (error) {
+          toast.error(`Erro ao salvar sessão: ${error.message}`);
+          console.error("Erro Supabase insert session:", error);
+        } else {
+          // Se salvou no Supabase, atualiza localStorage e estado
+          const allSessions = loadFromStorage<Session[]>('sessions', []);
+          const updatedSessions = [...allSessions, newSession];
+          saveToStorage('sessions', updatedSessions);
+          setSessions(prev => [...prev, newSession]);
+          updateClient({ numero_sessoes: (client?.numero_sessoes || 0) + 1 });
+          toast.success('Sessão adicionada com sucesso');
+        }
+      });
     } else {
-       toast.error("Supabase não conectado. Não foi possível salvar a sessão.");
+      toast.error("Supabase não conectado. Não foi possível salvar a sessão.");
     }
   };
 
   const handleUpdateSession = (updatedSession: Session) => {
-     setSessions(prevSessions => {
-        const sessionIndex = prevSessions.findIndex(s => s.id === updatedSession.id);
-        let updatedSessionList;
-        
-        if (sessionIndex > -1) {
-            // Atualiza sessão existente na lista local
-            updatedSessionList = [...prevSessions];
-            updatedSessionList[sessionIndex] = updatedSession;
-        } else {
-            // Adiciona nova sessão à lista local (caso de 1ª edição de agendamento)
-            updatedSessionList = [...prevSessions, updatedSession];
-        }
+    setSessions(prevSessions => {
+      const sessionIndex = prevSessions.findIndex(s => s.id === updatedSession.id);
+      let updatedSessionList;
 
-        // Atualiza a lista geral de sessões no localStorage com os dados que vieram do Supabase
-        const allSessions = loadFromStorage<Session[]>('sessions', []);
-        const sessionExistsInAll = allSessions.some(s => s.id === updatedSession.id);
-        let allUpdatedSessions;
-        if (sessionExistsInAll) {
-             allUpdatedSessions = allSessions.map(s => s.id === updatedSession.id ? updatedSession : s);
-        } else {
-             allUpdatedSessions = [...allSessions, updatedSession];
-        }
-        saveToStorage('sessions', allUpdatedSessions);
-        
-        // Se foi uma adição (vindo do calendário), atualiza contagem no cliente
-        if (sessionIndex === -1) {
-             updateClient({ numero_sessoes: (client?.numero_sessoes || 0) + 1 });
-        }
+      if (sessionIndex > -1) {
+        // Atualiza sessão existente na lista local
+        updatedSessionList = [...prevSessions];
+        updatedSessionList[sessionIndex] = updatedSession;
+      } else {
+        // Adiciona nova sessão à lista local (caso de 1ª edição de agendamento)
+        updatedSessionList = [...prevSessions, updatedSession];
+      }
 
-        return updatedSessionList; // Retorna a lista atualizada para o estado local
-     });
+      // Atualiza a lista geral de sessões no localStorage com os dados que vieram do Supabase
+      const allSessions = loadFromStorage<Session[]>('sessions', []);
+      const sessionExistsInAll = allSessions.some(s => s.id === updatedSession.id);
+      let allUpdatedSessions;
+      if (sessionExistsInAll) {
+        allUpdatedSessions = allSessions.map(s => s.id === updatedSession.id ? updatedSession : s);
+      } else {
+        allUpdatedSessions = [...allSessions, updatedSession];
+      }
+      saveToStorage('sessions', allUpdatedSessions);
+
+      // Se foi uma adição (vindo do calendário), atualiza contagem no cliente
+      if (sessionIndex === -1) {
+        updateClient({ numero_sessoes: (client?.numero_sessoes || 0) + 1 });
+      }
+
+      return updatedSessionList; // Retorna a lista atualizada para o estado local
+    });
   };
 
   const addPayment = async (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
@@ -494,10 +503,10 @@ const ClientDetailPage = () => {
       // Encontrar o pagamento para calcular a diferença no valor
       const originalPayment = payments.find(p => p.id === paymentId);
       if (!originalPayment) return;
-      
+
       // Calcular diferença no valor para atualizar o total pago do cliente
       const valueDifference = data.valor - originalPayment.valor;
-      
+
       // Atualizar o pagamento no banco de dados
       const { error } = await supabase
         .from('pagamentos')
@@ -509,14 +518,14 @@ const ClientDetailPage = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', paymentId);
-        
+
       if (error) throw error;
-      
+
       // Atualizar o total pago no cliente
       if (valueDifference !== 0) {
         updateClient({ total_pago: (client?.total_pago || 0) + valueDifference });
       }
-      
+
       toast.success('Pagamento atualizado com sucesso');
     } catch (error) {
       console.error("Erro ao editar pagamento:", error);
@@ -528,15 +537,15 @@ const ClientDetailPage = () => {
     try {
       const paymentToDelete = payments.find(p => p.id === paymentId);
       if (!paymentToDelete) return;
-      
+
       // Usando Supabase diretamente
       const { error } = await supabase
         .from('pagamentos')
         .delete()
         .eq('id', paymentId);
-        
+
       if (error) throw error;
-      
+
       // Atualizar o total pago
       updateClient({ total_pago: Math.max(0, (client?.total_pago || 0) - paymentToDelete.valor) });
       toast.success('Pagamento eliminado com sucesso');
@@ -549,30 +558,30 @@ const ClientDetailPage = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      
+
       const allowedTypes = [
-        'application/pdf', 
-        'text/plain', 
+        'application/pdf',
+        'text/plain',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'image/jpeg',
         'image/jpg',
         'image/png'
       ];
-      
+
       if (!allowedTypes.includes(file.type)) {
         toast.error('Tipo de ficheiro não suportado. Apenas PDF, TXT, XLSX, JPG e PNG são permitidos.');
         return;
       }
-      
+
       const fileUrl = URL.createObjectURL(file);
-      
+
       let fileType = 'outro';
       if (file.type === 'application/pdf') fileType = 'pdf';
       else if (file.type === 'text/plain') fileType = 'txt';
       else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') fileType = 'xlsx';
       else if (file.type === 'image/jpeg' || file.type === 'image/jpg') fileType = 'jpg';
       else if (file.type === 'image/png') fileType = 'png';
-      
+
       const newFile: ClientFile = {
         id: Date.now().toString(),
         clientId: clientId as string,
@@ -582,11 +591,11 @@ const ClientDetailPage = () => {
         url: fileUrl,
         uploadDate: new Date().toISOString(),
       };
-      
+
       const allFiles = loadFromStorage<ClientFile[]>('clientFiles', []);
       const updatedFiles = [...allFiles, newFile];
       saveToStorage('clientFiles', updatedFiles);
-      
+
       setFiles(prev => [...prev, newFile]);
       toast.success('Ficheiro carregado com sucesso');
     }
@@ -599,15 +608,15 @@ const ClientDetailPage = () => {
     setFiles(files.filter(file => file.id !== fileId));
     toast.success('Ficheiro eliminado com sucesso');
   };
-  
+
   const handleAddMood = async (mood: Omit<ClientMood, 'id' | 'clientId'>) => {
     try {
       // O ID será atribuído pelo ClientMoodTracker após a inserção no Supabase
       const newMood = { ...mood, id: Date.now().toString(), clientId: clientId as string };
-      
+
       // Atualizar estado localmente
       setMoods(prev => [newMood, ...prev]);
-      
+
       // O ClientMoodTracker já cuida da persistência no Supabase e localStorage
       toast.success("Registo de humor adicionado com sucesso.");
     } catch (error) {
@@ -616,49 +625,143 @@ const ClientDetailPage = () => {
     }
   };
 
+  // Copiar para área de transferência
+  const copyToClipboardWithFeedback = async (text: string, itemType: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedItem(itemType);
+      toast.success(`${itemType} copiado!`);
+      setTimeout(() => setCopiedItem(null), 2000);
+    } catch {
+      toast.error('Erro ao copiar');
+    }
+  };
+
+  // Gerar token de acesso
+  const generateToken = async () => {
+    if (!client) return;
+    try {
+      setIsGeneratingToken(true);
+
+      const { data, error } = await supabase.rpc<any, any>('create_client_access_token', {
+        client_id: client.id,
+        expires_hours: 24 * 30 // 30 dias
+      });
+
+      if (error) throw error;
+
+      setActiveToken(data);
+      await copyToClipboardWithFeedback(data, 'Token');
+      toast.success('Token gerado e copiado!');
+    } catch (error: any) {
+      console.error('Erro ao gerar token:', error);
+      toast.error('Erro ao gerar token');
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  };
+
+  // Gerar link de acesso
+  const getLoginLink = (token: string) => {
+    return `${window.location.origin}/client-login?token=${token}`;
+  };
+
+  // Copiar link de acesso
+  const copyLoginLink = async () => {
+    if (!client) return;
+    if (activeToken) {
+      await copyToClipboardWithFeedback(getLoginLink(activeToken), 'Link');
+    } else {
+      // Gerar token primeiro e depois copiar link
+      try {
+        setIsGeneratingToken(true);
+        const { data, error } = await supabase.rpc<any, any>('create_client_access_token', {
+          client_id: client.id,
+          expires_hours: 24 * 30
+        });
+
+        if (error) throw error;
+
+        setActiveToken(data);
+        await copyToClipboardWithFeedback(getLoginLink(data), 'Link');
+      } catch (error: any) {
+        console.error('Erro ao gerar token:', error);
+        toast.error('Erro ao gerar token');
+      } finally {
+        setIsGeneratingToken(false);
+      }
+    }
+  };
+
+  // Abrir link diretamente
+  const openLoginLink = async () => {
+    if (!client) return;
+    if (activeToken) {
+      window.open(getLoginLink(activeToken), '_blank');
+    } else {
+      try {
+        setIsGeneratingToken(true);
+        const { data, error } = await supabase.rpc<any, any>('create_client_access_token', {
+          client_id: client.id,
+          expires_hours: 24 * 30
+        });
+
+        if (error) throw error;
+
+        setActiveToken(data);
+        window.open(getLoginLink(data), '_blank');
+      } catch (error: any) {
+        console.error('Erro ao gerar token:', error);
+        toast.error('Erro ao gerar token');
+      } finally {
+        setIsGeneratingToken(false);
+      }
+    }
+  };
+
   // Renderização
   const renderTabContent = () => {
     switch (activeTab) {
       case 'profile':
         return (
-          <ClientProfile 
-            client={client!} 
-            onUpdateClient={updateClient} 
-            onDeleteClient={handleDeleteClient} 
+          <ClientProfile
+            client={client!}
+            onUpdateClient={updateClient}
+            onDeleteClient={handleDeleteClient}
           />
         );
       case 'sessions':
-        return <ClientSessions 
-                  sessions={sessions}
-                  clientId={clientId!} 
-                  onAddSession={addSession} 
-                  client={client!} 
-                  onUpdateClient={updateClient}
-                  onUpdateSession={handleUpdateSession}
-               />;
+        return <ClientSessions
+          sessions={sessions}
+          clientId={clientId!}
+          onAddSession={addSession}
+          client={client!}
+          onUpdateClient={updateClient}
+          onUpdateSession={handleUpdateSession}
+        />;
       case 'payments':
-        return <ClientPayments 
-                  payments={payments as any[]} 
-                  clientId={clientId!} 
-                  onAddPayment={addPayment} 
-                  onDeletePayment={deletePayment}
-                  onEditPayment={editPayment}
-               />;
+        return <ClientPayments
+          payments={payments as any[]}
+          clientId={clientId!}
+          onAddPayment={addPayment}
+          onDeletePayment={deletePayment}
+          onEditPayment={editPayment}
+        />;
       case 'files':
         return <ClientFiles files={files} onUploadFile={handleFileUpload} onDeleteFile={deleteFile} />;
       case 'reports':
         return <ClientReports client={client!} sessions={sessions} payments={payments as any[]} />;
       case 'mood':
-        return <ClientMoodTracker 
-                 clientId={clientId!} 
-                 onSubmitMood={handleAddMood} 
-                 moods={moods}
-               />;
+        return <ClientMoodTracker
+          clientId={clientId!}
+          onSubmitMood={handleAddMood}
+          moods={moods}
+        />;
       default:
         return <ClientProfile client={client!} onUpdateClient={updateClient} onDeleteClient={handleDeleteClient} />;
     }
   };
-  
+
   // Prepare the tabs data for the ClientDetailTabs component
   const tabs = [
     { id: 'profile', label: 'Perfil', content: renderTabContent() },
@@ -668,7 +771,7 @@ const ClientDetailPage = () => {
     { id: 'reports', label: 'Relatórios', content: null },
     { id: 'mood', label: 'Estado Emocional', content: null }
   ];
-  
+
   // Helper function para copiar texto
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -676,7 +779,7 @@ const ClientDetailPage = () => {
   };
 
   // Calcular progresso das sessões
-  const sessionProgress = client.max_sessoes 
+  const sessionProgress = client.max_sessoes
     ? Math.min(((client.numero_sessoes || 0) / client.max_sessoes) * 100, 100)
     : 0;
 
@@ -713,7 +816,7 @@ const ClientDetailPage = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#3f9094] rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
         </div>
-        
+
         <div className="relative">
           {/* Top Row - Back Button */}
           <div className="flex items-center justify-between mb-4">
@@ -723,11 +826,11 @@ const ClientDetailPage = () => {
                 Voltar
               </Button>
             </Link>
-            
+
             {/* Quick Actions - Desktop */}
             <div className="hidden sm:flex items-center gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
                 onClick={() => setActiveTab('sessions')}
@@ -735,8 +838,8 @@ const ClientDetailPage = () => {
                 <CalendarPlus className="h-4 w-4 mr-1.5" />
                 Agendar
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
                 onClick={() => setActiveTab('payments')}
@@ -746,55 +849,130 @@ const ClientDetailPage = () => {
               </Button>
             </div>
           </div>
-          
+
           {/* Client Info Row */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {/* Avatar */}
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br ${getAvatarColor(client.nome)} flex items-center justify-center shadow-lg flex-shrink-0`}>
-              <span className="text-white text-xl sm:text-2xl font-bold">
-                {getInitials(client.nome)}
-              </span>
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
+              {/* Avatar */}
+              <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br ${getAvatarColor(client.nome)} flex items-center justify-center shadow-lg flex-shrink-0`}>
+                <span className="text-white text-xl sm:text-2xl font-bold">
+                  {getInitials(client.nome)}
+                </span>
+              </div>
+
+              {/* Name & Contact */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">
+                    {client.nome}
+                  </h1>
+                  {client.id_manual && (
+                    <span className="px-2 py-0.5 bg-[#3f9094]/20 text-[#3f9094] rounded-full text-xs font-medium">
+                      ID: {client.id_manual}
+                    </span>
+                  )}
+                </div>
+
+                {/* Contact Info with copy buttons */}
+                <div className="flex flex-wrap items-center gap-3 mt-2">
+                  <button
+                    onClick={() => copyToClipboard(client.email, 'Email')}
+                    className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    <span className="truncate max-w-[200px]">{client.email}</span>
+                    <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(client.telefone, 'Telefone')}
+                    className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    <span>{client.telefone}</span>
+                    <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </div>
+              </div>
             </div>
-            
-            {/* Name & Contact */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">
-                  {client.nome}
-                </h1>
-                {client.id_manual && (
-                  <span className="px-2 py-0.5 bg-[#3f9094]/20 text-[#3f9094] rounded-full text-xs font-medium">
-                    ID: {client.id_manual}
-                  </span>
-                )}
-              </div>
-              
-              {/* Contact Info with copy buttons */}
-              <div className="flex flex-wrap items-center gap-3 mt-2">
-                <button 
-                  onClick={() => copyToClipboard(client.email, 'Email')}
-                  className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
-                >
-                  <Mail className="h-3.5 w-3.5" />
-                  <span className="truncate max-w-[200px]">{client.email}</span>
-                  <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-                <button 
-                  onClick={() => copyToClipboard(client.telefone, 'Telefone')}
-                  className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
-                >
-                  <Phone className="h-3.5 w-3.5" />
-                  <span>{client.telefone}</span>
-                  <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              </div>
+
+            {/* Access Actions */}
+            <div className="flex items-center gap-2 w-full lg:w-auto mt-4 lg:mt-0">
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 lg:flex-none h-9 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                      onClick={generateToken}
+                      disabled={isGeneratingToken}
+                    >
+                      {isGeneratingToken ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : copiedItem === 'Token' ? (
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <Key className="h-3.5 w-3.5" />
+                      )}
+                      <span className="ml-1.5">Token</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Gerar e copiar token</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 lg:flex-none h-9 text-xs border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                      onClick={copyLoginLink}
+                      disabled={isGeneratingToken}
+                    >
+                      {copiedItem === 'Link' ? (
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                      <span className="ml-1.5">Link</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Copiar link de acesso</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 lg:flex-none h-9 text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:text-teal-800"
+                      onClick={openLoginLink}
+                      disabled={isGeneratingToken}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span className="ml-1.5">Abrir</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Abrir portal do cliente</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
-          
+
           {/* Quick Actions - Mobile */}
           <div className="flex sm:hidden items-center gap-2 mt-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
               onClick={() => setActiveTab('sessions')}
@@ -802,8 +980,8 @@ const ClientDetailPage = () => {
               <CalendarPlus className="h-4 w-4 mr-1.5" />
               Agendar
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
               onClick={() => setActiveTab('payments')}
@@ -814,7 +992,7 @@ const ClientDetailPage = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Sessões Card com Progresso */}
@@ -840,7 +1018,7 @@ const ClientDetailPage = () => {
             )}
           </CardContent>
         </Card>
-        
+
         {/* Total Pago Card */}
         <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4">
@@ -855,7 +1033,7 @@ const ClientDetailPage = () => {
             </p>
           </CardContent>
         </Card>
-        
+
         {/* Próxima Sessão Card */}
         <Card className="col-span-2 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4">
@@ -879,11 +1057,10 @@ const ClientDetailPage = () => {
                   </div>
                 </div>
                 {client.proxima_sessao_estado && (
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    client.proxima_sessao_estado === 'confirmado' ? 'bg-green-100 text-green-700' :
-                    client.proxima_sessao_estado === 'pendente' ? 'bg-amber-100 text-amber-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${client.proxima_sessao_estado === 'confirmado' ? 'bg-green-100 text-green-700' :
+                      client.proxima_sessao_estado === 'pendente' ? 'bg-amber-100 text-amber-700' :
+                        'bg-gray-100 text-gray-700'
+                    }`}>
                     {client.proxima_sessao_estado}
                   </span>
                 )}
@@ -891,9 +1068,9 @@ const ClientDetailPage = () => {
             ) : (
               <div className="flex items-center justify-between">
                 <p className="text-gray-400 dark:text-gray-500 text-sm">Sem sessões agendadas</p>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="text-[#3f9094] hover:bg-[#3f9094]/10"
                   onClick={() => setActiveTab('sessions')}
                 >
@@ -905,11 +1082,11 @@ const ClientDetailPage = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Tabs Section */}
-      <ClientDetailTabs 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
+      <ClientDetailTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
         tabs={tabs.map(tab => ({
           ...tab,
           content: tab.id === activeTab ? renderTabContent() : null
