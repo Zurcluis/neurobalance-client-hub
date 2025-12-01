@@ -5,15 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useLeadCompra } from '@/hooks/useLeadCompra';
+import useClients from '@/hooks/useClients';
 import { LeadCompra, LeadCompraFilters } from '@/types/lead-compra';
 import LeadCompraForm from '@/components/lead-compra/LeadCompraForm';
 import LeadCompraDashboard from '@/components/lead-compra/LeadCompraDashboard';
 import ImportManager from '@/components/lead-compra/ImportManager';
 import FileImporter from '@/components/shared/FileImporter';
+import ConvertLeadDialog, { ConvertedClientData } from '@/components/clients/ConvertLeadDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Plus, 
   Search, 
@@ -29,7 +32,8 @@ import {
   Calendar,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -52,6 +56,14 @@ const LeadCompraPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<LeadCompraFilters>({});
   const [showImporter, setShowImporter] = useState(false);
+  
+  // Estados para conversão de lead para cliente
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [selectedLeadForConversion, setSelectedLeadForConversion] = useState<LeadCompra | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  
+  // Hook para adicionar clientes
+  const { addClient } = useClients();
 
   // Filtrar leads baseado na busca e filtros
   const filteredLeads = useMemo(() => {
@@ -189,6 +201,45 @@ const LeadCompraPage = () => {
   const handleClearFilters = () => {
     setFilters({});
     setSearchTerm('');
+  };
+
+  // Handler para abrir dialog de conversão
+  const handleOpenConvertDialog = (lead: LeadCompra) => {
+    setSelectedLeadForConversion(lead);
+    setConvertDialogOpen(true);
+  };
+
+  // Handler para converter lead em cliente
+  const handleConvertLead = async (clientData: ConvertedClientData) => {
+    setIsConverting(true);
+    try {
+      await addClient({
+        nome: clientData.nome,
+        email: clientData.email || '',
+        telefone: clientData.telefone,
+        data_nascimento: clientData.data_nascimento ? clientData.data_nascimento.toISOString() : null,
+        genero: clientData.genero,
+        morada: clientData.morada,
+        notas: clientData.notas || 'Convertido de Lead Compra',
+        estado: clientData.estado,
+        tipo_contato: clientData.tipo_contato,
+        como_conheceu: clientData.como_conheceu,
+        numero_sessoes: clientData.numero_sessoes || 0,
+        total_pago: clientData.total_pago || 0,
+        max_sessoes: clientData.max_sessoes || 0,
+        responsavel: clientData.responsavel || null,
+        motivo: clientData.motivo || null,
+        id_manual: clientData.id_manual
+      });
+
+      toast.success('Lead convertida em cliente com sucesso! Acesse a página de Clientes para ver.');
+    } catch (error) {
+      console.error('Erro ao converter lead:', error);
+      toast.error('Falha ao converter lead em cliente');
+      throw error;
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   const updateFilter = (key: keyof LeadCompraFilters, value: any) => {
@@ -409,6 +460,23 @@ const LeadCompraPage = () => {
                           </div>
                         </div>
                         <div className="flex gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenConvertDialog(lead)}
+                                  className="h-8 w-8 p-0 text-[#3f9094] hover:text-[#2A5854] hover:bg-[#3f9094]/10"
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Converter para Cliente</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -565,6 +633,16 @@ const LeadCompraPage = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Dialog de Conversão de Lead para Cliente */}
+      <ConvertLeadDialog
+        open={convertDialogOpen}
+        onOpenChange={setConvertDialogOpen}
+        lead={selectedLeadForConversion}
+        leadType="compra"
+        onConvert={handleConvertLead}
+        isLoading={isConverting}
+      />
     </PageLayout>
   );
 };

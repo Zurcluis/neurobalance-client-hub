@@ -15,6 +15,7 @@ type Payment = {
 type PaymentWithClient = Payment & {
   clientes?: {
     nome: string | null;
+    id_manual?: string | null;
   } | null;
 };
 
@@ -141,8 +142,9 @@ export function usePayments() {
         .from('pagamentos')
         .select(`
           *,
-          clientes:id_cliente (
-            nome
+          clientes (
+            nome,
+            id_manual
           )
         `)
         .order('data', { ascending: false });
@@ -160,12 +162,27 @@ export function usePayments() {
         return;
       }
       
-      const formattedPayments = data.map((payment: PaymentWithClient) => ({
-        ...payment,
-        cliente_nome: payment.clientes?.nome || 'Cliente Desconhecido'
-      }));
+      // Log do primeiro pagamento para debug
+      if (data.length > 0) {
+        console.log('Primeiro pagamento (raw):', data[0]);
+        console.log('Cliente do primeiro pagamento:', data[0].clientes);
+      }
+      
+      const formattedPayments = data.map((payment: PaymentWithClient) => {
+        const clienteNome = payment.clientes?.nome || 'Cliente Desconhecido';
+        const clienteIdManual = payment.clientes?.id_manual || null;
+        
+        console.log(`Pagamento ${payment.id} - cliente_id_manual:`, clienteIdManual);
+        
+        return {
+          ...payment,
+          cliente_nome: clienteNome,
+          cliente_id_manual: clienteIdManual
+        };
+      });
       
       console.log('Pagamentos formatados:', formattedPayments.length);
+      console.log('Primeiro pagamento formatado:', formattedPayments[0]);
       setPayments(formattedPayments);
     } catch (err) {
       console.error('Erro ao carregar pagamentos:', err);

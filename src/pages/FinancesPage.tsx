@@ -52,7 +52,7 @@ const FinancesPage = () => {
   const [taxTab, setTaxTab] = useState<string>('breakdown');
   const currentYear = new Date().getFullYear();
 
-  const { expenses, isLoading: isLoadingExpenses } = useExpenses();
+  const { expenses, isLoading: isLoadingExpenses, fetchExpenses: refreshExpenses } = useExpenses();
   const { payments: paymentsData, isLoading: isLoadingPayments } = usePayments();
 
   const fetchPayments = async () => {
@@ -309,7 +309,7 @@ const FinancesPage = () => {
                   </TabsContent>
                   
                   <TabsContent value="expenses" className="mt-4">
-                    <ExpenseManager />
+                    <ExpenseManager onExpenseChange={refreshExpenses} />
                   </TabsContent>
                 </Tabs>
               </CardContent>

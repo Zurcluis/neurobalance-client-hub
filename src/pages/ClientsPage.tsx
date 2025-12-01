@@ -7,15 +7,21 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import ClientImport from '@/components/clients/ClientImport';
+import ConvertLeadDialog, { ConvertedClientData } from '@/components/clients/ConvertLeadDialog';
+import LeadsReadyForConversion from '@/components/clients/LeadsReadyForConversion';
 import { 
-  Plus, Search, Upload, X, Calendar, Filter, ChevronDown, Download, 
+  Plus, Search, Upload, X, Calendar, Filter, ChevronDown, ChevronUp, Download, 
   Users, TrendingUp, BarChart3, Target, PieChart, User, Key, MessageSquare,
-  AlertCircle, Clock, Zap, SlidersHorizontal
+  AlertCircle, Clock, Zap, SlidersHorizontal, UserPlus, Minimize2, Maximize2
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useClients from '@/hooks/useClients';
+import { useLandingLeads } from '@/hooks/useLandingLeads';
 import { ClientDetailData } from '@/types/client';
+import { LandingLead } from '@/types/landing-lead';
+import { LeadCompra } from '@/types/lead-compra';
 import { Database } from '@/integrations/supabase/types';
 import { format, parseISO, isValid, subMonths, subDays, isAfter, isBefore, differenceInYears, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -69,8 +75,21 @@ const ClientsPage = () => {
   const [selectedGender, setSelectedGender] = useState<string>('all');
   const [ageRange, setAgeRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name');
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>('clients');
   const [clientView, setClientView] = useState<'all' | 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu'>('all');
+  
+  // Estado para conversão de leads
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<LandingLead | LeadCompra | null>(null);
+  const [selectedLeadType, setSelectedLeadType] = useState<'landing' | 'compra'>('landing');
+  const [isConverting, setIsConverting] = useState(false);
+  
+  // Hook para atualizar status de landing leads após conversão
+  const { updateLeadStatus } = useLandingLeads();
+  
+  // Estados para controlar cards colapsáveis
+  const [isAlertsExpanded, setIsAlertsExpanded] = useState(true);
+  const [isLeadsExpanded, setIsLeadsExpanded] = useState(true);
 
   // Filtros avançados
   const filteredAndSortedClients = useMemo(() => {
@@ -390,6 +409,52 @@ const ClientsPage = () => {
     }
   };
 
+  // Handler para abrir dialog de conversão
+  const handleOpenConvertDialog = (lead: LandingLead | LeadCompra, type: 'landing' | 'compra') => {
+    setSelectedLead(lead);
+    setSelectedLeadType(type);
+    setConvertDialogOpen(true);
+  };
+
+  // Handler para converter lead em cliente
+  const handleConvertLead = async (clientData: ConvertedClientData) => {
+    setIsConverting(true);
+    try {
+      // Criar o cliente
+      await addClient({
+        nome: clientData.nome,
+        email: clientData.email || '',
+        telefone: clientData.telefone,
+        data_nascimento: clientData.data_nascimento ? clientData.data_nascimento.toISOString() : null,
+        genero: clientData.genero,
+        morada: clientData.morada,
+        notas: clientData.notas || `Convertido de ${clientData.lead_type === 'landing' ? 'Landing Lead' : 'Lead Compra'}`,
+        estado: clientData.estado,
+        tipo_contato: clientData.tipo_contato,
+        como_conheceu: clientData.como_conheceu,
+        numero_sessoes: clientData.numero_sessoes || 0,
+        total_pago: clientData.total_pago || 0,
+        max_sessoes: clientData.max_sessoes || 0,
+        responsavel: clientData.responsavel || null,
+        motivo: clientData.motivo || null,
+        id_manual: clientData.id_manual
+      });
+
+      // Se for landing lead, atualizar o status para "Iniciou Neurofeedback"
+      if (clientData.lead_type === 'landing' && clientData.lead_id) {
+        await updateLeadStatus(clientData.lead_id, 'Iniciou Neurofeedback');
+      }
+
+      toast.success('Lead convertida em cliente com sucesso!');
+    } catch (error) {
+      console.error('Erro ao converter lead:', error);
+      toast.error('Falha ao converter lead em cliente');
+      throw error;
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
   const handleExportData = () => {
     const exportData = {
       clientes: filteredAndSortedClients.map(client => ({
@@ -476,65 +541,92 @@ const ClientsPage = () => {
           </div>
         </div>
 
-      {/* Alertas em Destaque */}
+      {/* Alertas em Destaque - Colapsável */}
       {(clientAnalytics.clientsNeedingAttention > 0 || clientAnalytics.upcomingSessions > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {clientAnalytics.clientsNeedingAttention > 0 && (
-              <Card className="border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-orange-500" />
-                    <CardTitle className="text-lg">Clientes Precisam de Atenção</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-orange-600">
-                        {clientAnalytics.clientsNeedingAttention}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Clientes "Pensando" há mais de 7 dias
-                      </p>
+        <Collapsible open={isAlertsExpanded} onOpenChange={setIsAlertsExpanded}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <AlertCircle className="h-4 w-4 text-orange-500" />
+              <span className="font-medium">Alertas e Notificações</span>
+              {!isAlertsExpanded && (
+                <Badge variant="secondary" className="text-xs">
+                  {clientAnalytics.clientsNeedingAttention + clientAnalytics.upcomingSessions} pendentes
+                </Badge>
+              )}
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                {isAlertsExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {clientAnalytics.clientsNeedingAttention > 0 && (
+                <Card className="border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-orange-500" />
+                      <CardTitle className="text-lg">Clientes Precisam de Atenção</CardTitle>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => {
-                      setSelectedStatus('thinking');
-                      setActiveTab('clients');
-                    }}>
-                      Ver Clientes
-                    </Button>
-                  </div>
-              </CardContent>
-            </Card>
-          )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-orange-600">
+                          {clientAnalytics.clientsNeedingAttention}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Clientes "Pensando" há mais de 7 dias
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setSelectedStatus('thinking');
+                        setActiveTab('clients');
+                      }}>
+                        Ver Clientes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-          {clientAnalytics.upcomingSessions > 0 && (
-              <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-blue-500" />
-                    <CardTitle className="text-lg">Próximas Sessões</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {clientAnalytics.upcomingSessions}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Agendamentos nos próximos 7 dias
-                      </p>
+              {clientAnalytics.upcomingSessions > 0 && (
+                <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-blue-500" />
+                      <CardTitle className="text-lg">Próximas Sessões</CardTitle>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => window.location.href = '/calendar'}>
-                      Ver Calendário
-                    </Button>
-                  </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {clientAnalytics.upcomingSessions}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Agendamentos nos próximos 7 dias
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => window.location.href = '/calendar'}>
+                        Ver Calendário
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
+
+        {/* Leads Prontas para Conversão */}
+        <LeadsReadyForConversion onConvertLead={handleOpenConvertDialog} />
 
         {/* Tabs Principais - Reorganizadas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -988,6 +1080,16 @@ const ClientsPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog de Conversão de Lead */}
+      <ConvertLeadDialog
+        open={convertDialogOpen}
+        onOpenChange={setConvertDialogOpen}
+        lead={selectedLead}
+        leadType={selectedLeadType}
+        onConvert={handleConvertLead}
+        isLoading={isConverting}
+      />
     </div>
   );
 

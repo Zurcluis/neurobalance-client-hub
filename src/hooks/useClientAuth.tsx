@@ -234,6 +234,7 @@ export const useClientData = () => {
       setLoading(true);
       setError(null);
 
+      // Buscar dados do cliente
       const { data, error: fetchError } = await supabase
         .from('clientes')
         .select('*')
@@ -244,7 +245,52 @@ export const useClientData = () => {
         throw fetchError;
       }
 
-      setClientData(data);
+      // Calcular dinamicamente o número de sessões realizadas
+      const { data: realizados, error: agendamentosError } = await supabase
+        .from('agendamentos')
+        .select('id')
+        .eq('id_cliente', session.clientId)
+        .eq('estado', 'realizado');
+
+      if (agendamentosError) {
+        logger.error('Erro ao buscar agendamentos realizados:', agendamentosError);
+      }
+
+      // Buscar próximo agendamento futuro (não realizado e não cancelado)
+      const now = new Date().toISOString();
+      const { data: proximoAgendamento, error: proximoError } = await supabase
+        .from('agendamentos')
+        .select('id, titulo, data, hora, tipo, estado, terapeuta')
+        .eq('id_cliente', session.clientId)
+        .gte('data', now.split('T')[0]) // Data >= hoje
+        .not('estado', 'in', '("cancelado","realizado")')
+        .order('data', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (proximoError) {
+        logger.error('Erro ao buscar próximo agendamento:', proximoError);
+      }
+
+      // Usar o valor calculado (mais preciso) se for maior que o armazenado
+      const sessoesRealizadas = realizados?.length || 0;
+      const sessoesArmazenadas = data?.numero_sessoes || 0;
+      const numeroSessoesFinal = Math.max(sessoesRealizadas, sessoesArmazenadas);
+
+      // Atualizar os dados do cliente com valores calculados
+      setClientData({
+        ...data,
+        numero_sessoes: numeroSessoesFinal,
+        // Usar o próximo agendamento calculado dinamicamente
+        proxima_sessao: proximoAgendamento?.data || null,
+        proxima_sessao_titulo: proximoAgendamento?.titulo || null,
+        proxima_sessao_tipo: proximoAgendamento?.tipo || null,
+        proxima_sessao_estado: proximoAgendamento?.estado || null,
+        proxima_sessao_hora: proximoAgendamento?.hora || null,
+        proxima_sessao_terapeuta: proximoAgendamento?.terapeuta || null,
+        _sessoes_calculadas: sessoesRealizadas
+      });
+
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro ao buscar dados do cliente:', error);
@@ -365,6 +411,37 @@ export const useClientNotifications = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingConfirmations, setPendingConfirmations] = useState<any[]>([]);
+
+  // Verificar e enviar lembretes automáticos
+  const checkAndSendReminders = useCallback(async () => {
+    if (!session) return;
+    
+    try {
+      // Chamar função que envia lembretes para sessões próximas
+      await supabase.rpc<any, any>('check_and_send_reminders');
+    } catch (error) {
+      // Silencioso - não é crítico se falhar
+      logger.error('Erro ao verificar lembretes:', error);
+    }
+  }, [session, supabase]);
+
+  // Buscar confirmações pendentes
+  const fetchPendingConfirmations = useCallback(async () => {
+    if (!session) return;
+    
+    try {
+      const { data, error: fetchError } = await supabase.rpc<any, any>('get_pending_confirmations', {
+        p_client_id: session.clientId
+      });
+      
+      if (!fetchError && data) {
+        setPendingConfirmations(data);
+      }
+    } catch (error) {
+      logger.error('Erro ao buscar confirmações pendentes:', error);
+    }
+  }, [session, supabase]);
 
   const fetchNotifications = useCallback(async () => {
     if (!session) return;
@@ -372,6 +449,9 @@ export const useClientNotifications = () => {
     try {
       setLoading(true);
       setError(null);
+
+      // Verificar e enviar lembretes antes de buscar notificações
+      await checkAndSendReminders();
 
       const { data, error: fetchError } = await supabase
         .from('client_notifications')
@@ -385,6 +465,9 @@ export const useClientNotifications = () => {
       }
 
       setNotifications(data || []);
+      
+      // Também buscar confirmações pendentes
+      await fetchPendingConfirmations();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro ao buscar notificações:', error);
@@ -392,7 +475,7 @@ export const useClientNotifications = () => {
     } finally {
       setLoading(false);
     }
-  }, [session, supabase]);
+  }, [session, supabase, checkAndSendReminders, fetchPendingConfirmations]);
 
   const markAsRead = useCallback(async (notificationId: number) => {
     try {
@@ -420,12 +503,19 @@ export const useClientNotifications = () => {
     }
   }, [session, fetchNotifications]);
 
+  // Contagem de confirmações pendentes urgentes (próximas 24h)
+  const urgentConfirmationsCount = pendingConfirmations.filter(
+    p => p.needs_confirmation && p.hours_until_appointment <= 24 && p.hours_until_appointment > 0
+  ).length;
+
   return {
     notifications,
     loading,
     error,
     markAsRead,
     unreadCount,
+    pendingConfirmations,
+    urgentConfirmationsCount,
     refetch: fetchNotifications
   };
 }; 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, CreditCard, Download, FileText, Search, Users, Calendar, DollarSign, Filter, ArrowUpDown, RefreshCw, Database } from 'lucide-react';
+import { BarChart3, CreditCard, Download, FileText, Search, Users, Calendar, DollarSign, Filter, ArrowUpDown, RefreshCw, Database, Edit, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { LineChart, Line } from 'recharts';
@@ -77,25 +77,24 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   // Usar o hook de pagamentos
   const { payments: hookPayments, isLoading: paymentsLoading, error: paymentsError, fetchPayments } = usePayments();
   
-  // Estado para armazenar pagamentos (usando initialPayments se fornecido)
-  const [payments, setPayments] = useState<any[]>(initialPayments || []);
-  
   // Estado para gerenciar erros específicos
   const [loadingError, setLoadingError] = useState<string | null>(null);
   
-  // Usar pagamentos do hook apenas se não tivermos pagamentos iniciais
+  // Estado para armazenar pagamentos (para permitir edição/eliminação local)
+  const [localPayments, setLocalPayments] = useState<any[]>([]);
+  
+  // Sincronizar localPayments quando hookPayments mudar
   useEffect(() => {
-    if (!initialPayments?.length && hookPayments.length > 0) {
-      // Processar pagamentos para incluir dados do cliente
-      const processedPayments = hookPayments.map((payment: any) => ({
-        ...payment,
-        cliente_nome: payment.clientes?.nome || null,
-        cliente_id_manual: payment.clientes?.id_manual || null
-      }));
-      setPayments(processedPayments);
-      setLoadingError(null);
+    if (hookPayments.length > 0) {
+      console.log('Sincronizando localPayments com hookPayments');
+      console.log('Primeiro pagamento:', hookPayments[0]);
+      console.log('cliente_id_manual:', hookPayments[0]?.cliente_id_manual);
+      setLocalPayments(hookPayments);
     }
-  }, [hookPayments, initialPayments]);
+  }, [hookPayments]);
+  
+  // Usar initialPayments se fornecido, senão usar localPayments
+  const effectivePayments = (initialPayments && initialPayments.length > 0) ? initialPayments : localPayments;
   
   // Verificar erro do hook
   useEffect(() => {
@@ -163,6 +162,11 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   const [showTableHelpDialog, setShowTableHelpDialog] = useState(false);
   const [overviewPeriodFilter, setOverviewPeriodFilter] = useState<TimeRange>('all');
   
+  // Estados para edição e eliminação de pagamentos
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  
   // Função para filtrar pagamentos por período
   const getFilteredPaymentsByPeriod = (period: TimeRange) => {
     const now = new Date();
@@ -184,10 +188,10 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
         break;
       case 'all':
       default:
-        return payments;
+        return effectivePayments;
     }
 
-    return payments.filter(payment => {
+    return effectivePayments.filter(payment => {
       const paymentDate = new Date(payment.data);
       return isWithinInterval(paymentDate, { start: startDate, end: endDate });
     });
@@ -196,11 +200,11 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   // Pagamentos filtrados para a visão geral
   const overviewFilteredPayments = useMemo(() => {
     return getFilteredPaymentsByPeriod(overviewPeriodFilter);
-  }, [payments, overviewPeriodFilter]);
+  }, [effectivePayments, overviewPeriodFilter]);
   
   // Filtragem de pagamentos
   const filteredPayments = useMemo(() => {
-    return payments.filter(payment => {
+    return effectivePayments.filter(payment => {
       const matchesDateRange = 
         (!dateRange.start || payment.data >= dateRange.start) && 
         (!dateRange.end || payment.data <= dateRange.end);
@@ -219,7 +223,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
       
       return matchesDateRange && matchesPaymentMethod && matchesSearch;
     });
-  }, [payments, dateRange, paymentMethodFilter, searchQuery]);
+  }, [effectivePayments, dateRange, paymentMethodFilter, searchQuery]);
   
   // Ordenação de pagamentos
   const sortedPayments = useMemo(() => {
@@ -373,6 +377,66 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     }
   };
   
+  // Função para editar pagamento
+  const handleEditPayment = (payment: any) => {
+    setEditingPayment({
+      ...payment,
+      data: payment.data.split('T')[0] // Garantir formato correto para input date
+    });
+    setIsEditDialogOpen(true);
+  };
+  
+  // Função para salvar edição de pagamento
+  const handleSavePayment = async () => {
+    if (!editingPayment) return;
+    
+    try {
+      const { error } = await supabase
+        .from('pagamentos')
+        .update({
+          data: editingPayment.data,
+          valor: editingPayment.valor,
+          tipo: editingPayment.tipo,
+          descricao: editingPayment.descricao
+        })
+        .eq('id', editingPayment.id);
+      
+      if (error) throw error;
+      
+      // Atualizar lista local
+      setLocalPayments(prev => prev.map(p => 
+        p.id === editingPayment.id ? { ...p, ...editingPayment } : p
+      ));
+      
+      setIsEditDialogOpen(false);
+      setEditingPayment(null);
+      toast.success('Pagamento atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar pagamento:', error);
+      toast.error('Erro ao atualizar pagamento');
+    }
+  };
+  
+  // Função para eliminar pagamento
+  const handleDeletePayment = async (paymentId: number) => {
+    try {
+      const { error } = await supabase
+        .from('pagamentos')
+        .delete()
+        .eq('id', paymentId);
+      
+      if (error) throw error;
+      
+      // Remover da lista local
+      setLocalPayments(prev => prev.filter(p => p.id !== paymentId));
+      setDeleteConfirmId(null);
+      toast.success('Pagamento eliminado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao eliminar pagamento:', error);
+      toast.error('Erro ao eliminar pagamento');
+    }
+  };
+  
   // Verificar carregamento
   const isLoading = paymentsLoading && !initialPayments?.length;
 
@@ -418,7 +482,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   }
   
   // Verificar se há dados
-  if (payments.length === 0) {
+  if (effectivePayments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <div className="text-center">
@@ -733,6 +797,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="whitespace-nowrap w-20">ID Cliente</TableHead>
                       <TableHead 
                         className="cursor-pointer hover:text-[#3f9094] whitespace-nowrap"
                         onClick={() => handleSort('cliente_nome')}
@@ -770,12 +835,16 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                         )}
                       </TableHead>
                       <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right w-24">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedPayments.length > 0 ? (
                       sortedPayments.map(payment => (
-                        <TableRow key={payment.id}>
+                        <TableRow key={payment.id} className="group">
+                          <TableCell className="font-mono text-xs text-gray-500">
+                            {payment.cliente_id_manual || '-'}
+                          </TableCell>
                           <TableCell className="font-medium">{payment.cliente_nome || '-'}</TableCell>
                           <TableCell>
                             {
@@ -788,14 +857,55 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                               })()
                             }
                           </TableCell>
-                          <TableCell>€{payment.valor.toLocaleString('pt-PT')}</TableCell>
+                          <TableCell className="font-semibold text-green-600">€{payment.valor.toLocaleString('pt-PT')}</TableCell>
                           <TableCell>{payment.tipo}</TableCell>
                           <TableCell className="max-w-xs truncate">{payment.descricao || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                                onClick={() => handleEditPayment(payment)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              {deleteConfirmId === payment.id ? (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 hover:bg-red-50 text-red-600"
+                                    onClick={() => handleDeletePayment(payment.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setDeleteConfirmId(null)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                  onClick={() => setDeleteConfirmId(payment.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center p-4">
+                        <TableCell colSpan={7} className="text-center p-4">
                           Nenhum pagamento encontrado com os filtros atuais.
                         </TableCell>
                       </TableRow>
@@ -806,7 +916,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
               
               {sortedPayments.length > 0 && (
                 <div className="text-sm text-muted-foreground mt-4">
-                  Mostrando {sortedPayments.length} de {payments.length} pagamentos
+                  Mostrando {sortedPayments.length} de {effectivePayments.length} pagamentos
                 </div>
               )}
             </CardContent>
@@ -950,6 +1060,97 @@ COMMENT ON TABLE public.pagamentos IS 'Tabela de pagamentos de clientes';`}
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog de Edição de Pagamento */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Pagamento</DialogTitle>
+            <DialogDescription>
+              Altere os dados do pagamento e clique em salvar.
+            </DialogDescription>
+          </DialogHeader>
+          {editingPayment && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Cliente</label>
+                <Input 
+                  value={editingPayment.cliente_nome || 'Cliente Desconhecido'} 
+                  disabled 
+                  className="bg-gray-50"
+                />
+                {editingPayment.cliente_id_manual && (
+                  <p className="text-xs text-gray-500">ID: {editingPayment.cliente_id_manual}</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data</label>
+                <Input 
+                  type="date"
+                  value={editingPayment.data}
+                  onChange={(e) => setEditingPayment({ ...editingPayment, data: e.target.value })}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Valor (€)</label>
+                <Input 
+                  type="number"
+                  step="0.01"
+                  value={editingPayment.valor}
+                  onChange={(e) => setEditingPayment({ ...editingPayment, valor: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Método de Pagamento</label>
+                <Select 
+                  value={editingPayment.tipo}
+                  onValueChange={(value) => setEditingPayment({ ...editingPayment, tipo: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="Multibanco">Multibanco</SelectItem>
+                    <SelectItem value="MBWay">MBWay</SelectItem>
+                    <SelectItem value="Transferência">Transferência</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Descrição</label>
+                <Input 
+                  value={editingPayment.descricao || ''}
+                  onChange={(e) => setEditingPayment({ ...editingPayment, descricao: e.target.value })}
+                  placeholder="Descrição do pagamento"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingPayment(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="bg-[#3f9094] hover:bg-[#2A5854]"
+                  onClick={handleSavePayment}
+                >
+                  Salvar Alterações
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

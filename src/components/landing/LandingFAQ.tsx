@@ -52,7 +52,7 @@ const faqs = [
 
 const LandingFAQ: React.FC = () => {
   return (
-    <section className="py-24 bg-gradient-to-b from-slate-50 to-white relative">
+    <section className="py-24 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(56,178,172,0.05),transparent_50%)]" />
       
       <div className="container mx-auto px-4 relative">
@@ -72,33 +72,62 @@ const LandingFAQ: React.FC = () => {
           </p>
         </div>
         
-        <div className="max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq, index) => (
-              <AccordionItem 
-                key={index} 
-                value={`item-${index}`}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden animate-fade-in px-2"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <AccordionTrigger className="px-6 py-5 hover:no-underline group">
-                  <div className="flex items-center gap-4 text-left">
-                    <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl text-white shadow-lg shadow-teal-500/20 group-hover:scale-110 transition-transform duration-300">
-                      <faq.icon className="w-5 h-5" />
+        {/* Grid layout: FAQ à esquerda, Imagem à direita */}
+        <div className="flex flex-col lg:flex-row gap-12 items-start max-w-7xl mx-auto">
+          {/* FAQ Column */}
+          <div className="w-full lg:w-1/2 order-2 lg:order-1">
+            <Accordion type="single" collapsible className="space-y-4">
+              {faqs.map((faq, index) => (
+                <AccordionItem 
+                  key={index} 
+                  value={`item-${index}`}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden animate-fade-in px-2"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <AccordionTrigger className="px-6 py-5 hover:no-underline group">
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl text-white shadow-lg shadow-teal-500/20 group-hover:scale-110 transition-transform duration-300">
+                        <faq.icon className="w-5 h-5" />
+                      </div>
+                      <span className="font-semibold text-slate-900 text-lg group-hover:text-teal-700 transition-colors">
+                        {faq.question}
+                      </span>
                     </div>
-                    <span className="font-semibold text-slate-900 text-lg group-hover:text-teal-700 transition-colors">
-                      {faq.question}
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-6">
-                  <div className="pl-16 text-slate-600 leading-relaxed">
-                    {faq.answer}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="pl-16 text-slate-600 leading-relaxed">
+                      {faq.answer}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+          
+          {/* Image Column - visível apenas em desktop */}
+          <div className="hidden lg:block lg:w-1/2 order-1 lg:order-2 relative lg:sticky lg:top-24">
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-teal-500/10">
+              {/* Imagem principal */}
+              <img 
+                src="/imagens/612 NEUROBALANCE 114.jpg" 
+                alt="Bárbara Mello Carvalho - Fundadora NeuroBalance"
+                className="w-full h-auto max-h-[800px] object-cover object-top"
+              />
+              
+              {/* Gradiente overlay esquerdo para suavizar transição */}
+              <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-slate-50/95 via-slate-50/50 to-transparent" />
+              
+              {/* Gradiente overlay inferior */}
+              <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-white via-white/70 to-transparent" />
+              
+              {/* Gradiente overlay superior suave */}
+              <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-slate-50/60 to-transparent" />
+            </div>
+            
+            {/* Decorative elements */}
+            <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-teal-400/20 to-cyan-400/20 rounded-full blur-2xl" />
+            <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-gradient-to-tr from-teal-500/15 to-cyan-500/15 rounded-full blur-3xl" />
+          </div>
         </div>
       </div>
     </section>

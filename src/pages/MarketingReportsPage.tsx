@@ -26,11 +26,12 @@ import ImportManager from '@/components/lead-compra/ImportManager';
 import FileImporter from '@/components/shared/FileImporter';
 import { EmailSmsCampaignForm } from '@/components/marketing/EmailSmsCampaignForm';
 import { EmailSmsCampaignCard } from '@/components/marketing/EmailSmsCampaignCard';
-import { 
-  Plus, 
-  Search, 
-  BarChart3, 
-  Calendar, 
+import LeadKanbanBoard from '@/components/marketing/LeadKanbanBoard';
+import {
+  Plus,
+  Search,
+  BarChart3,
+  Calendar,
   Download,
   Filter,
   X,
@@ -42,7 +43,10 @@ import {
   Euro,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  LayoutGrid,
+  List,
+  Kanban
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
@@ -51,7 +55,7 @@ import { useLanguage } from '@/hooks/use-language';
 const MarketingReportsPage = () => {
   const { isMarketingContext } = useMarketingContext();
   const { t } = useLanguage();
-  
+
   // Marketing Campaigns hooks
   const {
     campaigns,
@@ -204,7 +208,7 @@ const MarketingReportsPage = () => {
 
     // Aplicar busca por texto
     if (leadSearchTerm) {
-      filtered = filtered.filter(lead => 
+      filtered = filtered.filter(lead =>
         lead.nome?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
         lead.email?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
         lead.cidade?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
@@ -226,13 +230,13 @@ const MarketingReportsPage = () => {
     }
 
     if (leadFilters.dataInicio) {
-      filtered = filtered.filter(lead => 
+      filtered = filtered.filter(lead =>
         new Date(lead.data_evento) >= new Date(leadFilters.dataInicio!)
       );
     }
 
     if (leadFilters.dataFim) {
-      filtered = filtered.filter(lead => 
+      filtered = filtered.filter(lead =>
         new Date(lead.data_evento) <= new Date(leadFilters.dataFim!)
       );
     }
@@ -349,7 +353,7 @@ const MarketingReportsPage = () => {
       if (successCount > 0) {
         toast.success(`${successCount} campanhas importadas com sucesso!`);
       }
-      
+
       if (errorCount > 0) {
         toast.error(`${errorCount} campanhas falharam ao importar.`);
       }
@@ -369,7 +373,7 @@ const MarketingReportsPage = () => {
       if (successCount > 0) {
         toast.success(`${successCount} leads importados com sucesso!`);
       }
-      
+
       if (errorCount > 0) {
         toast.error(`${errorCount} leads falharam ao importar.`);
       }
@@ -398,577 +402,604 @@ const MarketingReportsPage = () => {
 
   const content = (
     <div className="space-y-6">
-        {/* Cabeçalho */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{t('marketing')}</h1>
-            <p className="text-gray-600">Gerencie campanhas, leads e análises de marketing</p>
-          </div>
-          
-          <div className="flex gap-2 items-center">
-            <TimeRangeSelector
-              selectedRange={periodFilter}
-              onRangeChange={setPeriodFilter}
-            />
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90">
-                  <Plus className="h-4 w-4" />
-                  {t('newCampaign')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
-                  </DialogTitle>
-                </DialogHeader>
-                <CampaignForm
-                  campaign={editingCampaign || undefined}
-                  onSubmit={handleSubmitCampaign}
-                  onCancel={handleCancelForm}
-                  isLoading={campaignsLoading || false}
-                />
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isLeadFormOpen} onOpenChange={setIsLeadFormOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Novo Lead
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingLead ? 'Editar Lead' : 'Novo Lead'}
-                  </DialogTitle>
-                </DialogHeader>
-                <LeadCompraForm
-                  leadCompra={editingLead || undefined}
-                  onSubmit={handleSubmitLead}
-                  onCancel={handleCancelLeadForm}
-                  isLoading={leadsLoading || false}
-                />
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isEmailSmsFormOpen} onOpenChange={setIsEmailSmsFormOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email/SMS
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingEmailSmsCampaign ? 'Editar Campanha Email/SMS' : 'Nova Campanha Email/SMS'}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {editingEmailSmsCampaign 
-                      ? 'Atualize as informações da campanha de email/SMS e os clientes destinatários.' 
-                      : 'Crie uma nova campanha de email ou SMS para enviar aos seus clientes.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <EmailSmsCampaignForm
-                  campaign={editingEmailSmsCampaign || undefined}
-                  onSubmit={async (data) => {
-                    try {
-                      if (editingEmailSmsCampaign) {
-                        await updateEmailSmsCampaign(editingEmailSmsCampaign.id, data);
-                        toast.success('Campanha atualizada com sucesso!');
-                      } else {
-                        await addEmailSmsCampaign(data);
-                        toast.success('Campanha criada com sucesso!');
-                      }
-                      setIsEmailSmsFormOpen(false);
-                      setEditingEmailSmsCampaign(null);
-                    } catch (error) {
-                      console.error('Erro ao salvar campanha:', error);
-                    }
-                  }}
-                  onCancel={() => {
-                    setIsEmailSmsFormOpen(false);
-                    setEditingEmailSmsCampaign(null);
-                  }}
-                  isLoading={emailSmsLoading || false}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
+      {/* Cabeçalho */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{t('marketing')}</h1>
+          <p className="text-gray-600">Gerencie campanhas, leads e análises de marketing</p>
         </div>
 
-        {/* Tabs Reorganizadas: 8 → 4 */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Visão Geral</span>
-            </TabsTrigger>
-            <TabsTrigger value="campaigns" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Campanhas</span>
-            </TabsTrigger>
-            <TabsTrigger value="leads" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">Leads</span>
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              <span className="hidden sm:inline">Ferramentas</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* 📊 Visão Geral - Combinando dashboard + lead analytics */}
-          <TabsContent value="overview" className="space-y-6 mt-6">
-            {/* Dashboard de Campanhas */}
-            <MarketingDashboard 
-              campaigns={filteredCampaigns} 
-              metrics={metrics || {
-                totalInvestimento: 0,
-                totalLeads: 0,
-                totalReunioes: 0,
-                totalVendas: 0,
-                totalReceita: 0,
-                cplMedio: 0,
-                cacMedio: 0,
-                taxaConversaoMedia: 0,
-                roi: 0,
-                roas: 0
-              }} 
-            />
-            
-            {/* Analytics de Leads */}
-            <div className="mt-8">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5 text-[#3f9094]" />
-                Analytics de Leads
-              </h3>
-              <LeadCompraDashboard 
-                leads={filteredLeads} 
-                statistics={statistics || {
-                  totalRegistos: 0,
-                  comprasRegistadas: 0,
-                  leadsRegistados: 0,
-                  valorTotalRegistado: 0,
-                  estatisticasValores: {
-                    registosComValor: 0,
-                    media: 0,
-                    minimo: 0,
-                    mediana: 0,
-                    maximo: 0
-                  },
-                  distribuicaoPorGenero: { masculino: 0, feminino: 0, outro: 0 },
-                  distribuicaoPorCidade: {},
-                  distribuicaoPorMes: {},
-                  conversaoLeadParaCompra: 0
-                }} 
+        <div className="flex gap-2 items-center">
+          <TimeRangeSelector
+            selectedRange={periodFilter}
+            onRangeChange={setPeriodFilter}
+          />
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90">
+                <Plus className="h-4 w-4" />
+                {t('newCampaign')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
+                </DialogTitle>
+              </DialogHeader>
+              <CampaignForm
+                campaign={editingCampaign || undefined}
+                onSubmit={handleSubmitCampaign}
+                onCancel={handleCancelForm}
+                isLoading={campaignsLoading || false}
               />
-            </div>
-          </TabsContent>
+            </DialogContent>
+          </Dialog>
 
-          {/* 📋 Campanhas - Marketing + Email/SMS juntos */}
-          <TabsContent value="campaigns" className="space-y-6 mt-6">
-            <Tabs defaultValue="marketing" className="w-full">
-              <TabsList className="grid w-full max-w-md grid-cols-2">
-                <TabsTrigger value="marketing" className="gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Marketing
-                </TabsTrigger>
-                <TabsTrigger value="email-sms" className="gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email/SMS
-                </TabsTrigger>
-              </TabsList>
+          <Dialog open={isLeadFormOpen} onOpenChange={setIsLeadFormOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Lead
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingLead ? 'Editar Lead' : 'Novo Lead'}
+                </DialogTitle>
+              </DialogHeader>
+              <LeadCompraForm
+                leadCompra={editingLead || undefined}
+                onSubmit={handleSubmitLead}
+                onCancel={handleCancelLeadForm}
+                isLoading={leadsLoading || false}
+              />
+            </DialogContent>
+          </Dialog>
 
-              {/* Campanhas de Marketing */}
-              <TabsContent value="marketing" className="space-y-6 mt-4">
-                {/* Barra de Busca */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Buscar campanhas por nome ou origem..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={showFilters ? 'bg-blue-50 border-blue-200' : ''}
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtros
-                  </Button>
-                  {(searchTerm || Object.keys(filters).length > 0) && (
-                    <Button variant="outline" onClick={handleClearFilters}>
-                      <X className="h-4 w-4 mr-2" />
-                      Limpar
-                    </Button>
-                  )}
-                </div>
+          <Dialog open={isEmailSmsFormOpen} onOpenChange={setIsEmailSmsFormOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-2">
+                <Mail className="h-4 w-4" />
+                Email/SMS
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingEmailSmsCampaign ? 'Editar Campanha Email/SMS' : 'Nova Campanha Email/SMS'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingEmailSmsCampaign
+                    ? 'Atualize as informações da campanha de email/SMS e os clientes destinatários.'
+                    : 'Crie uma nova campanha de email ou SMS para enviar aos seus clientes.'}
+                </DialogDescription>
+              </DialogHeader>
+              <EmailSmsCampaignForm
+                campaign={editingEmailSmsCampaign || undefined}
+                onSubmit={async (data) => {
+                  try {
+                    if (editingEmailSmsCampaign) {
+                      await updateEmailSmsCampaign(editingEmailSmsCampaign.id, data);
+                      toast.success('Campanha atualizada com sucesso!');
+                    } else {
+                      await addEmailSmsCampaign(data);
+                      toast.success('Campanha criada com sucesso!');
+                    }
+                    setIsEmailSmsFormOpen(false);
+                    setEditingEmailSmsCampaign(null);
+                  } catch (error) {
+                    console.error('Erro ao salvar campanha:', error);
+                  }
+                }}
+                onCancel={() => {
+                  setIsEmailSmsFormOpen(false);
+                  setEditingEmailSmsCampaign(null);
+                }}
+                isLoading={emailSmsLoading || false}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
 
-                {/* Filtros Expandidos */}
-                {showFilters && (
-                  <CampaignFiltersComponent
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                    onClearFilters={handleClearFilters}
+      {/* Tabs Reorganizadas: 8 → 4 */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Visão Geral</span>
+          </TabsTrigger>
+          <TabsTrigger value="campaigns" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline">Campanhas</span>
+          </TabsTrigger>
+          <TabsTrigger value="leads" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            <span className="hidden sm:inline">Leads</span>
+          </TabsTrigger>
+          <TabsTrigger value="tools" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            <span className="hidden sm:inline">Ferramentas</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* 📊 Visão Geral - Combinando dashboard + lead analytics */}
+        <TabsContent value="overview" className="space-y-6 mt-6">
+          {/* Dashboard de Campanhas */}
+          <MarketingDashboard
+            campaigns={filteredCampaigns}
+            metrics={metrics || {
+              totalInvestimento: 0,
+              totalLeads: 0,
+              totalReunioes: 0,
+              totalVendas: 0,
+              totalReceita: 0,
+              cplMedio: 0,
+              cacMedio: 0,
+              taxaConversaoMedia: 0,
+              roi: 0,
+              roas: 0
+            }}
+          />
+
+          {/* Analytics de Leads */}
+          <div className="mt-8">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Users className="h-5 w-5 text-[#3f9094]" />
+              Analytics de Leads
+            </h3>
+            <LeadCompraDashboard
+              leads={filteredLeads}
+              statistics={statistics || {
+                totalRegistos: 0,
+                comprasRegistadas: 0,
+                leadsRegistados: 0,
+                valorTotalRegistado: 0,
+                estatisticasValores: {
+                  registosComValor: 0,
+                  media: 0,
+                  minimo: 0,
+                  mediana: 0,
+                  maximo: 0
+                },
+                distribuicaoPorGenero: { masculino: 0, feminino: 0, outro: 0 },
+                distribuicaoPorCidade: {},
+                distribuicaoPorMes: {},
+                conversaoLeadParaCompra: 0
+              }}
+            />
+          </div>
+        </TabsContent>
+
+        {/* 📋 Campanhas - Marketing + Email/SMS juntos */}
+        <TabsContent value="campaigns" className="space-y-6 mt-6">
+          <Tabs defaultValue="marketing" className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="marketing" className="gap-2">
+                <Calendar className="h-4 w-4" />
+                Marketing
+              </TabsTrigger>
+              <TabsTrigger value="email-sms" className="gap-2">
+                <Mail className="h-4 w-4" />
+                Email/SMS
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Campanhas de Marketing */}
+            <TabsContent value="marketing" className="space-y-6 mt-4">
+              {/* Barra de Busca */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar campanhas por nome ou origem..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
                   />
-                )}
-
-                {/* Resumo */}
-                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    Mostrando <strong>{filteredCampaigns.length}</strong> de <strong>{campaigns.length}</strong> campanhas
-                    {(searchTerm || Object.keys(filters).length > 0) && ' (filtradas)'}
-                  </p>
                 </div>
-
-                {/* Lista de Campanhas */}
-                {campaignsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : filteredCampaigns.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {campaigns.length === 0 
-                        ? 'Nenhuma campanha cadastrada ainda.' 
-                        : 'Nenhuma campanha encontrada com os filtros aplicados.'
-                      }
-                    </p>
-                    {campaigns.length === 0 && (
-                      <Button 
-                        className="mt-4" 
-                        onClick={() => setIsFormOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Criar Primeira Campanha
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredCampaigns.map((campaign) => (
-                      <CampaignCard
-                        key={campaign.id}
-                        campaign={campaign}
-                        onEdit={handleEditCampaign}
-                        onDelete={handleDeleteCampaign}
-                      />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Email/SMS Campanhas */}
-              <TabsContent value="email-sms" className="space-y-6 mt-4">
-                {/* Barra de Busca */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Buscar campanhas por nome..."
-                      value={emailSmsSearchTerm}
-                      onChange={(e) => setEmailSmsSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                {/* Resumo */}
-                <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg">
-                  <p className="text-sm text-purple-900 dark:text-purple-100">
-                    Mostrando <strong>{emailSmsCampaigns.filter(c => 
-                      !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
-                    ).length}</strong> de <strong>{emailSmsCampaigns.length}</strong> campanhas
-                  </p>
-                </div>
-
-                {/* Lista de Campanhas Email/SMS */}
-                {emailSmsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                  </div>
-                ) : emailSmsCampaigns.filter(c => 
-                  !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
-                ).length === 0 ? (
-                  <div className="text-center py-8">
-                    <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {emailSmsCampaigns.length === 0 
-                        ? 'Nenhuma campanha de email/SMS cadastrada ainda.' 
-                        : 'Nenhuma campanha encontrada com os filtros aplicados.'
-                      }
-                    </p>
-                    {emailSmsCampaigns.length === 0 && (
-                      <Button 
-                        className="mt-4 bg-purple-600 hover:bg-purple-700" 
-                        onClick={() => setIsEmailSmsFormOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Criar Primeira Campanha
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {emailSmsCampaigns
-                      .filter(c => 
-                        !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
-                      )
-                      .map((campaign) => (
-                        <EmailSmsCampaignCard
-                          key={campaign.id}
-                          campaign={campaign}
-                          onEdit={(campaign) => {
-                            setEditingEmailSmsCampaign(campaign);
-                            setIsEmailSmsFormOpen(true);
-                          }}
-                          onDelete={async (id) => {
-                            if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
-                              await deleteEmailSmsCampaign(id);
-                            }
-                          }}
-                        />
-                      ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          {/* ⚙️ Ferramentas - Import, Export, Filtros Consolidados */}
-          <TabsContent value="tools" className="space-y-6 mt-6">
-            <Tabs defaultValue="import" className="w-full">
-              <TabsList className="grid w-full max-w-lg grid-cols-3">
-                <TabsTrigger value="import" className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Importar
-                </TabsTrigger>
-                <TabsTrigger value="export" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Exportar
-                </TabsTrigger>
-                <TabsTrigger value="filters" className="gap-2">
-                  <Filter className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={showFilters ? 'bg-blue-50 border-blue-200' : ''}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
                   Filtros
-                </TabsTrigger>
-              </TabsList>
+                </Button>
+                {(searchTerm || Object.keys(filters).length > 0) && (
+                  <Button variant="outline" onClick={handleClearFilters}>
+                    <X className="h-4 w-4 mr-2" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
 
-              {/* Import */}
-              <TabsContent value="import" className="space-y-6 mt-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <FileImporter
-                    onDataImported={handleDataImported}
-                    expectedType="marketing"
-                    title="Importar Campanhas de Marketing"
-                    description="Importe campanhas de marketing de arquivos Excel, Word ou PDF"
-                  />
-                  <FileImporter
-                    onDataImported={handleDataImported}
-                    expectedType="lead-compra"
-                    title="Importar Leads e Compras"
-                    description="Importe dados de leads e compras de arquivos Excel, Word ou PDF"
-                  />
-                </div>
-              </TabsContent>
-
-              {/* Export */}
-              <TabsContent value="export" className="space-y-6 mt-4">
-                <ExportManager campaigns={filteredCampaigns} />
-              </TabsContent>
-
-              {/* Filtros */}
-              <TabsContent value="filters" className="space-y-6 mt-4">
+              {/* Filtros Expandidos */}
+              {showFilters && (
                 <CampaignFiltersComponent
                   filters={filters}
                   onFiltersChange={setFilters}
                   onClearFilters={handleClearFilters}
                 />
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
+              )}
 
-          {/* Leads */}
-          {/* 🎯 Leads - Com ações de Import/Export integradas */}
-          <TabsContent value="leads" className="space-y-6 mt-6">
-            {/* Barra de busca e filtros para leads */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
+              {/* Resumo */}
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  Mostrando <strong>{filteredCampaigns.length}</strong> de <strong>{campaigns.length}</strong> campanhas
+                  {(searchTerm || Object.keys(filters).length > 0) && ' (filtradas)'}
+                </p>
+              </div>
+
+              {/* Lista de Campanhas */}
+              {campaignsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredCampaigns.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {campaigns.length === 0
+                      ? 'Nenhuma campanha cadastrada ainda.'
+                      : 'Nenhuma campanha encontrada com os filtros aplicados.'
+                    }
+                  </p>
+                  {campaigns.length === 0 && (
+                    <Button
+                      className="mt-4"
+                      onClick={() => setIsFormOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Primeira Campanha
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredCampaigns.map((campaign) => (
+                    <CampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      onEdit={handleEditCampaign}
+                      onDelete={handleDeleteCampaign}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Email/SMS Campanhas */}
+            <TabsContent value="email-sms" className="space-y-6 mt-4">
+              {/* Barra de Busca */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Buscar leads..."
-                    value={leadSearchTerm}
-                    onChange={(e) => setLeadSearchTerm(e.target.value)}
+                    placeholder="Buscar campanhas por nome..."
+                    value={emailSmsSearchTerm}
+                    onChange={(e) => setEmailSmsSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowLeadFilters(!showLeadFilters)}
-                className="flex items-center gap-2"
-              >
+
+              {/* Resumo */}
+              <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg">
+                <p className="text-sm text-purple-900 dark:text-purple-100">
+                  Mostrando <strong>{emailSmsCampaigns.filter(c =>
+                    !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+                  ).length}</strong> de <strong>{emailSmsCampaigns.length}</strong> campanhas
+                </p>
+              </div>
+
+              {/* Lista de Campanhas Email/SMS */}
+              {emailSmsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                </div>
+              ) : emailSmsCampaigns.filter(c =>
+                !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+              ).length === 0 ? (
+                <div className="text-center py-8">
+                  <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {emailSmsCampaigns.length === 0
+                      ? 'Nenhuma campanha de email/SMS cadastrada ainda.'
+                      : 'Nenhuma campanha encontrada com os filtros aplicados.'
+                    }
+                  </p>
+                  {emailSmsCampaigns.length === 0 && (
+                    <Button
+                      className="mt-4 bg-purple-600 hover:bg-purple-700"
+                      onClick={() => setIsEmailSmsFormOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Primeira Campanha
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {emailSmsCampaigns
+                    .filter(c =>
+                      !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+                    )
+                    .map((campaign) => (
+                      <EmailSmsCampaignCard
+                        key={campaign.id}
+                        campaign={campaign}
+                        onEdit={(campaign) => {
+                          setEditingEmailSmsCampaign(campaign);
+                          setIsEmailSmsFormOpen(true);
+                        }}
+                        onDelete={async (id) => {
+                          if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
+                            await deleteEmailSmsCampaign(id);
+                          }
+                        }}
+                      />
+                    ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        {/* ⚙️ Ferramentas - Import, Export, Filtros Consolidados */}
+        <TabsContent value="tools" className="space-y-6 mt-6">
+          <Tabs defaultValue="import" className="w-full">
+            <TabsList className="grid w-full max-w-lg grid-cols-3">
+              <TabsTrigger value="import" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Importar
+              </TabsTrigger>
+              <TabsTrigger value="export" className="gap-2">
+                <Download className="h-4 w-4" />
+                Exportar
+              </TabsTrigger>
+              <TabsTrigger value="filters" className="gap-2">
                 <Filter className="h-4 w-4" />
                 Filtros
-                {showLeadFilters && <X className="h-4 w-4" />}
-              </Button>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Import */}
+            <TabsContent value="import" className="space-y-6 mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <FileImporter
+                  onDataImported={handleDataImported}
+                  expectedType="marketing"
+                  title="Importar Campanhas de Marketing"
+                  description="Importe campanhas de marketing de arquivos Excel, Word ou PDF"
+                />
+                <FileImporter
+                  onDataImported={handleDataImported}
+                  expectedType="lead-compra"
+                  title="Importar Leads e Compras"
+                  description="Importe dados de leads e compras de arquivos Excel, Word ou PDF"
+                />
+              </div>
+            </TabsContent>
+
+            {/* Export */}
+            <TabsContent value="export" className="space-y-6 mt-4">
+              <ExportManager campaigns={filteredCampaigns} />
+            </TabsContent>
+
+            {/* Filtros */}
+            <TabsContent value="filters" className="space-y-6 mt-4">
+              <CampaignFiltersComponent
+                filters={filters}
+                onFiltersChange={setFilters}
+                onClearFilters={handleClearFilters}
+              />
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        {/* Leads */}
+        {/* 🎯 Leads - Com Kanban Board e Lista */}
+        <TabsContent value="leads" className="space-y-6 mt-6">
+          <Tabs defaultValue="kanban" className="w-full">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <TabsList className="grid w-full max-w-xs grid-cols-2">
+                <TabsTrigger value="kanban" className="gap-2">
+                  <LayoutGrid className="h-4 w-4" />
+                  Kanban
+                </TabsTrigger>
+                <TabsTrigger value="lista" className="gap-2">
+                  <List className="h-4 w-4" />
+                  Lista
+                </TabsTrigger>
+              </TabsList>
+              
+              <p className="text-sm text-gray-500">
+                Leads da Landing Page com gestão visual
+              </p>
             </div>
 
-            {/* Filtros de leads (quando visível) */}
-            {showLeadFilters && (
-              <Card className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <Label>Tipo</Label>
-                    <Select
-                      value={leadFilters.tipo || 'Todos'}
-                      onValueChange={(value) => setLeadFilters({ ...leadFilters, tipo: value as 'Compra' | 'Lead' | 'Todos' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Todos">Todos</SelectItem>
-                        <SelectItem value="Lead">Lead</SelectItem>
-                        <SelectItem value="Compra">Compra</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Cidade</Label>
+            {/* Kanban View - Leads da Landing Page */}
+            <TabsContent value="kanban" className="mt-4">
+              <LeadKanbanBoard />
+            </TabsContent>
+
+            {/* Lista View - Leads tradicionais */}
+            <TabsContent value="lista" className="space-y-4 mt-4">
+              {/* Barra de busca e filtros para leads */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
-                      placeholder="Filtrar por cidade"
-                      value={leadFilters.cidade || ''}
-                      onChange={(e) => setLeadFilters({ ...leadFilters, cidade: e.target.value })}
+                      placeholder="Buscar leads..."
+                      value={leadSearchTerm}
+                      onChange={(e) => setLeadSearchTerm(e.target.value)}
+                      className="pl-10"
                     />
                   </div>
-                  <div>
-                    <Label>Gênero</Label>
-                    <Select
-                      value={leadFilters.genero || 'todos'}
-                      onValueChange={(value) => setLeadFilters({ ...leadFilters, genero: value === 'todos' ? undefined : value as 'Masculino' | 'Feminino' | 'Outro' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todos os gêneros" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos</SelectItem>
-                        <SelectItem value="Masculino">Masculino</SelectItem>
-                        <SelectItem value="Feminino">Feminino</SelectItem>
-                        <SelectItem value="Outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button variant="outline" onClick={handleClearLeadFilters} className="w-full">
-                      Limpar Filtros
-                    </Button>
-                  </div>
                 </div>
-              </Card>
-            )}
-
-            {/* Lista de leads */}
-            {leadsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-gray-500">Carregando leads...</div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowLeadFilters(!showLeadFilters)}
+                  className="flex items-center gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filtros
+                  {showLeadFilters && <X className="h-4 w-4" />}
+                </Button>
               </div>
-            ) : (
-              <div className="grid gap-4">
-                {filteredLeads.map((lead) => (
-                  <Card key={lead.id} className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">{lead.nome}</h3>
-                          <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>
-                            {lead.tipo}
-                          </Badge>
-                          {lead.genero && (
-                            <Badge variant="outline">
-                              {lead.genero}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                          {lead.email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4" />
-                              {lead.email}
-                            </div>
-                          )}
-                          {lead.telefone && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              {lead.telefone}
-                            </div>
-                          )}
-                          {lead.cidade && (
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4" />
-                              {lead.cidade}
-                            </div>
-                          )}
-                          {lead.idade && (
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4" />
-                              {lead.idade} anos
-                            </div>
-                          )}
-                          {lead.valor_pago && lead.valor_pago > 0 && (
-                            <div className="flex items-center gap-2">
-                              <Euro className="h-4 w-4" />
-                              €{lead.valor_pago}
-                            </div>
-                          )}
-                          {lead.data_evento && (
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4" />
-                              {new Date(lead.data_evento).toLocaleDateString('pt-PT')}
-                            </div>
-                          )}
-                        </div>
-                        {lead.origem_campanha && (
-                          <p className="mt-2 text-sm text-gray-700">
-                            <strong>Campanha:</strong> {lead.origem_campanha}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditLead(lead)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteLead(lead.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+
+              {/* Filtros de leads (quando visível) */}
+              {showLeadFilters && (
+                <Card className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label>Tipo</Label>
+                      <Select
+                        value={leadFilters.tipo || 'Todos'}
+                        onValueChange={(value) => setLeadFilters({ ...leadFilters, tipo: value as 'Compra' | 'Lead' | 'Todos' })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Todos">Todos</SelectItem>
+                          <SelectItem value="Lead">Lead</SelectItem>
+                          <SelectItem value="Compra">Compra</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+                    <div>
+                      <Label>Cidade</Label>
+                      <Input
+                        placeholder="Filtrar por cidade"
+                        value={leadFilters.cidade || ''}
+                        onChange={(e) => setLeadFilters({ ...leadFilters, cidade: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Gênero</Label>
+                      <Select
+                        value={leadFilters.genero || 'todos'}
+                        onValueChange={(value) => setLeadFilters({ ...leadFilters, genero: value === 'todos' ? undefined : value as 'Masculino' | 'Feminino' | 'Outro' })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os gêneros" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos</SelectItem>
+                          <SelectItem value="Masculino">Masculino</SelectItem>
+                          <SelectItem value="Feminino">Feminino</SelectItem>
+                          <SelectItem value="Outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end">
+                      <Button variant="outline" onClick={handleClearLeadFilters} className="w-full">
+                        Limpar Filtros
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
 
-        </Tabs>
-      </div>
+              {/* Lista de leads */}
+              {leadsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-gray-500">Carregando leads...</div>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {filteredLeads.map((lead) => (
+                    <Card key={lead.id} className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-semibold text-lg">{lead.nome}</h3>
+                            <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>
+                              {lead.tipo}
+                            </Badge>
+                            {lead.genero && (
+                              <Badge variant="outline">
+                                {lead.genero}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                            {lead.email && (
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4" />
+                                {lead.email}
+                              </div>
+                            )}
+                            {lead.telefone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4" />
+                                {lead.telefone}
+                              </div>
+                            )}
+                            {lead.cidade && (
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4" />
+                                {lead.cidade}
+                              </div>
+                            )}
+                            {lead.idade && (
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                {lead.idade} anos
+                              </div>
+                            )}
+                            {lead.valor_pago && lead.valor_pago > 0 && (
+                              <div className="flex items-center gap-2">
+                                <Euro className="h-4 w-4" />
+                                €{lead.valor_pago}
+                              </div>
+                            )}
+                            {lead.data_evento && (
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                {new Date(lead.data_evento).toLocaleDateString('pt-PT')}
+                              </div>
+                            )}
+                          </div>
+                          {lead.origem_campanha && (
+                            <p className="mt-2 text-sm text-gray-700">
+                              <strong>Campanha:</strong> {lead.origem_campanha}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditLead(lead)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteLead(lead.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+      </Tabs>
+    </div>
   );
 
   // Se estamos no contexto de marketing (área protegida), não usar PageLayout

@@ -5,7 +5,8 @@ import { useAdminContext } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, CreditCard, User, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { ClientDetailData, Session, Payment, ClientFile, ClientMood } from '@/types/client';
 import ClientProfile from '@/components/client-details/ClientProfile';
@@ -668,67 +669,244 @@ const ClientDetailPage = () => {
     { id: 'mood', label: 'Estado Emocional', content: null }
   ];
   
+  // Helper function para copiar texto
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copiado!`);
+  };
+
+  // Calcular progresso das sessões
+  const sessionProgress = client.max_sessoes 
+    ? Math.min(((client.numero_sessoes || 0) / client.max_sessoes) * 100, 100)
+    : 0;
+
+  // Função para obter iniciais do nome
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  };
+
+  // Função para gerar cor baseada no nome
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-teal-400 to-cyan-500',
+      'from-violet-400 to-purple-500',
+      'from-rose-400 to-pink-500',
+      'from-amber-400 to-orange-500',
+      'from-emerald-400 to-green-500',
+      'from-blue-400 to-indigo-500',
+    ];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
   const pageContent = (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-6 gap-2">
-        <div className="flex items-center">
-          <Link to={isAdminContext ? "/admin/clients" : "/clients"}>
-            <Button variant="outline" size="sm" className="mr-2 sm:mr-4">
-              <ArrowLeft className="mr-1 sm:mr-2 h-4 w-4" />
-              <span className="hidden xs:inline">Voltar</span>
+      {/* Header Hero Section */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#3f9094]/10 via-white to-[#3f9094]/5 dark:from-[#3f9094]/20 dark:via-gray-900 dark:to-[#3f9094]/10 border border-[#3f9094]/20 p-4 sm:p-6">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#3f9094] rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
+        </div>
+        
+        <div className="relative">
+          {/* Top Row - Back Button */}
+          <div className="flex items-center justify-between mb-4">
+            <Link to={isAdminContext ? "/admin/clients" : "/clients"}>
+              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-[#3f9094] hover:bg-[#3f9094]/10">
+                <ArrowLeft className="mr-1.5 h-4 w-4" />
+                Voltar
+              </Button>
+            </Link>
+            
+            {/* Quick Actions - Desktop */}
+            <div className="hidden sm:flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
+                onClick={() => setActiveTab('sessions')}
+              >
+                <CalendarPlus className="h-4 w-4 mr-1.5" />
+                Agendar
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
+                onClick={() => setActiveTab('payments')}
+              >
+                <CreditCard className="h-4 w-4 mr-1.5" />
+                Pagamento
+              </Button>
+            </div>
+          </div>
+          
+          {/* Client Info Row */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Avatar */}
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br ${getAvatarColor(client.nome)} flex items-center justify-center shadow-lg flex-shrink-0`}>
+              <span className="text-white text-xl sm:text-2xl font-bold">
+                {getInitials(client.nome)}
+              </span>
+            </div>
+            
+            {/* Name & Contact */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">
+                  {client.nome}
+                </h1>
+                {client.id_manual && (
+                  <span className="px-2 py-0.5 bg-[#3f9094]/20 text-[#3f9094] rounded-full text-xs font-medium">
+                    ID: {client.id_manual}
+                  </span>
+                )}
+              </div>
+              
+              {/* Contact Info with copy buttons */}
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                <button 
+                  onClick={() => copyToClipboard(client.email, 'Email')}
+                  className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  <span className="truncate max-w-[200px]">{client.email}</span>
+                  <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+                <button 
+                  onClick={() => copyToClipboard(client.telefone, 'Telefone')}
+                  className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  <span>{client.telefone}</span>
+                  <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Quick Actions - Mobile */}
+          <div className="flex sm:hidden items-center gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
+              onClick={() => setActiveTab('sessions')}
+            >
+              <CalendarPlus className="h-4 w-4 mr-1.5" />
+              Agendar
             </Button>
-          </Link>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold gradient-heading truncate">{client.nome}</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 text-xs sm:text-sm lg:text-base overflow-hidden text-ellipsis">
-              {client.email} • {client.telefone}
-            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
+              onClick={() => setActiveTab('payments')}
+            >
+              <CreditCard className="h-4 w-4 mr-1.5" />
+              Pagamento
+            </Button>
           </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6">
-        <Card className="glassmorphism client-profile-card">
-          <CardContent className="pt-3 sm:pt-4 lg:pt-6">
-            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total de Sessões</p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold">{client.numero_sessoes || 0}</p>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Sessões Card com Progresso */}
+        <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 rounded-lg bg-[#3f9094]/10">
+                <TrendingUp className="h-4 w-4 text-[#3f9094]" />
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Sessões</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {client.numero_sessoes || 0}
+              {client.max_sessoes && (
+                <span className="text-sm font-normal text-gray-400">/{client.max_sessoes}</span>
+              )}
+            </p>
+            {client.max_sessoes && (
+              <div className="mt-2">
+                <Progress value={sessionProgress} className="h-1.5" />
+                <p className="text-[10px] text-gray-400 mt-1">{Math.round(sessionProgress)}% concluído</p>
+              </div>
+            )}
           </CardContent>
         </Card>
         
-        <Card className="glassmorphism client-profile-card">
-          <CardContent className="pt-3 sm:pt-4 lg:pt-6">
-            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total Pago</p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold">€{client.total_pago?.toLocaleString() || '0.00'}</p>
+        {/* Total Pago Card */}
+        <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <CreditCard className="h-4 w-4 text-emerald-500" />
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Pago</span>
+            </div>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              €{(client.total_pago || 0).toLocaleString('pt-PT', { minimumFractionDigits: 0 })}
+            </p>
           </CardContent>
         </Card>
         
-        <Card className="glassmorphism client-profile-card sm:col-span-2">
-          <CardContent className="pt-3 sm:pt-4 lg:pt-6">
-            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Próxima Sessão</p>
+        {/* Próxima Sessão Card */}
+        <Card className="col-span-2 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Clock className="h-4 w-4 text-blue-500" />
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Próxima Sessão</span>
+            </div>
             {client.proxima_sessao ? (
-              <div className="space-y-1">
-                <div className="flex items-center">
-                  <p className="text-base sm:text-lg lg:text-xl font-medium truncate">{client.proxima_sessao}</p>
-                  {client.proxima_sessao_estado && (
-                    <span className={`status-indicator status-indicator-${client.proxima_sessao_estado} ml-2 flex-shrink-0`}></span>
-                  )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{client.proxima_sessao}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-sm text-gray-500">{client.proxima_sessao_titulo}</span>
+                    {client.proxima_sessao_tipo && (
+                      <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded text-xs">
+                        {client.proxima_sessao_tipo}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 gap-1">
-                  <span className="truncate">{client.proxima_sessao_titulo}</span>
-                  {client.proxima_sessao_tipo && (
-                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs flex-shrink-0">
-                      {client.proxima_sessao_tipo}
-                    </span>
-                  )}
-                </div>
+                {client.proxima_sessao_estado && (
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    client.proxima_sessao_estado === 'confirmado' ? 'bg-green-100 text-green-700' :
+                    client.proxima_sessao_estado === 'pendente' ? 'bg-amber-100 text-amber-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {client.proxima_sessao_estado}
+                  </span>
+                )}
               </div>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Sem sessões agendadas</p>
+              <div className="flex items-center justify-between">
+                <p className="text-gray-400 dark:text-gray-500 text-sm">Sem sessões agendadas</p>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-[#3f9094] hover:bg-[#3f9094]/10"
+                  onClick={() => setActiveTab('sessions')}
+                >
+                  <CalendarPlus className="h-4 w-4 mr-1" />
+                  Agendar
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
       
+      {/* Tabs Section */}
       <ClientDetailTabs 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 

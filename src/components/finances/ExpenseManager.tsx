@@ -135,7 +135,11 @@ const expenseCategories = {
 // Cores para os gráficos
 const CHART_COLORS = ['#1088c4', '#9e50b3', '#3f9094', '#ecc249', '#e67c50', '#6633cc', '#44ad53', '#ce3838'];
 
-const ExpenseManager: React.FC = () => {
+interface ExpenseManagerProps {
+  onExpenseChange?: () => void;
+}
+
+const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
   // Usar o hook de despesas
   const { 
     expenses, 
@@ -211,6 +215,8 @@ const ExpenseManager: React.FC = () => {
       setIsAddDialogOpen(false);
       // Recarregar todas as despesas para garantir sincronização
       await fetchExpenses();
+      // Notificar componentes pai sobre a mudança
+      onExpenseChange?.();
       setFormValues({
         tipo: 'Fixas',
         categoria: '',
@@ -253,6 +259,8 @@ const ExpenseManager: React.FC = () => {
       setIsEditDialogOpen(false);
       // Recarregar todas as despesas para garantir sincronização
       await fetchExpenses();
+      // Notificar componentes pai sobre a mudança
+      onExpenseChange?.();
       setCurrentExpenseId(null);
       setFormValues({
         tipo: 'Fixas',
@@ -272,6 +280,8 @@ const ExpenseManager: React.FC = () => {
     if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
     try {
       await deleteExpense(id);
+      // Notificar componentes pai sobre a mudança
+      onExpenseChange?.();
     } catch (err) {
       console.error('Erro ao excluir despesa:', err);
     }

@@ -383,7 +383,7 @@ const ClientDashboardPage = () => {
                       </p>
                       <p className="text-xs text-white/60 mt-1">
                         {clientData.proxima_sessao 
-                          ? format(parseISO(clientData.proxima_sessao), 'HH:mm', { locale: ptBR })
+                          ? (clientData.proxima_sessao_hora || format(parseISO(clientData.proxima_sessao), 'HH:mm', { locale: ptBR }))
                           : 'Sem agendamento'}
                       </p>
                     </div>
@@ -443,14 +443,21 @@ const ClientDashboardPage = () => {
                                 </span>
                               </div>
                               <div>
-                                <p className="font-semibold text-gray-900">Sessão de Neurofeedback</p>
+                                <p className="font-semibold text-gray-900">
+                                  {clientData.proxima_sessao_titulo || 'Sessão'}
+                                </p>
                                 <p className="text-sm text-gray-500">
-                                  {format(parseISO(clientData.proxima_sessao), "EEEE 'às' HH:mm", { locale: ptBR })}
+                                  {format(parseISO(clientData.proxima_sessao), "EEEE", { locale: ptBR })} às {clientData.proxima_sessao_hora || format(parseISO(clientData.proxima_sessao), 'HH:mm', { locale: ptBR })}
+                                  {clientData.proxima_sessao_terapeuta && ` - ${clientData.proxima_sessao_terapeuta}`}
                                 </p>
                               </div>
                             </div>
-                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0">
-                              Confirmado
+                            <Badge className={
+                              clientData.proxima_sessao_estado === 'confirmado' 
+                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0"
+                                : "bg-amber-100 text-amber-700 hover:bg-amber-100 border-0"
+                            }>
+                              {clientData.proxima_sessao_estado === 'confirmado' ? 'Confirmado' : 'Pendente'}
                             </Badge>
                           </div>
                         ) : (

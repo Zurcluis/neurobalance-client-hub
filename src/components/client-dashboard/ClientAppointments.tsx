@@ -92,58 +92,35 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
     try {
       setConfirmingAppointment(appointmentId);
 
-      // Verificar se já existe confirmação
-      const existingConfirmation = appointments.find(apt => apt.id === appointmentId)?.confirmation;
+      // Usar função SECURITY DEFINER para confirmar/cancelar agendamento
+      // Esta função atualiza tanto a confirmação quanto o estado do agendamento de forma atómica
+      const { data: result, error } = await supabase.rpc<any, any>('client_confirm_appointment', {
+        p_appointment_id: appointmentId,
+        p_client_id: clientId,
+        p_status: status,
+        p_notes: notes || null
+      });
 
-      if (existingConfirmation) {
-        // Atualizar confirmação existente
-        const { error } = await supabase
-          .from('appointment_confirmations')
-          .update({
-            status,
-            confirmed_at: new Date().toISOString(),
-            notes: notes || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingConfirmation.id);
-
-        if (error) throw error;
-      } else {
-        // Criar nova confirmação
-        const { error } = await supabase
-          .from('appointment_confirmations')
-          .insert({
-            id_agendamento: appointmentId,
-            id_cliente: clientId,
-            status,
-            confirmed_at: new Date().toISOString(),
-            notes: notes || null
-          });
-
-        if (error) throw error;
+      if (error) {
+        console.error('Erro na função client_confirm_appointment:', error);
+        throw error;
       }
 
-      // Atualizar estado do agendamento se necessário
-      if (status === 'confirmed') {
-        await supabase
-          .from('agendamentos')
-          .update({ estado: 'confirmado' })
-          .eq('id', appointmentId);
-      } else if (status === 'cancelled') {
-        await supabase
-          .from('agendamentos')
-          .update({ estado: 'cancelado' })
-          .eq('id', appointmentId);
+      if (result && !result.success) {
+        throw new Error(result.error || 'Erro ao confirmar agendamento');
       }
 
       // Enviar notificação para a clínica
-      await supabase.rpc<any, any>('send_client_notification', {
-        client_id: clientId,
-        notification_title: `Agendamento ${status === 'confirmed' ? 'Confirmado' : 'Cancelado'}`,
-        notification_message: `O cliente ${status === 'confirmed' ? 'confirmou' : 'cancelou'} o agendamento de ${format(parseISO(appointments.find(apt => apt.id === appointmentId)?.data || ''), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`,
-        notification_type: status === 'confirmed' ? 'success' : 'warning',
-        expires_hours: 72
-      });
+      const appointment = appointments.find(apt => apt.id === appointmentId);
+      if (appointment) {
+        await supabase.rpc<any, any>('send_client_notification', {
+          client_id: clientId,
+          notification_title: `Agendamento ${status === 'confirmed' ? 'Confirmado' : 'Cancelado'}`,
+          notification_message: `O cliente ${status === 'confirmed' ? 'confirmou' : 'cancelou'} o agendamento de ${format(parseISO(appointment.data || ''), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`,
+          notification_type: status === 'confirmed' ? 'success' : 'warning',
+          expires_hours: 72
+        });
+      }
 
       toast.success(`Agendamento ${status === 'confirmed' ? 'confirmado' : 'cancelado'} com sucesso`);
       
@@ -155,7 +132,7 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
       setSelectedAppointment(null);
     } catch (error: any) {
       console.error('Erro ao confirmar agendamento:', error);
-      toast.error('Erro ao processar confirmação');
+      toast.error(error.message || 'Erro ao processar confirmação');
     } finally {
       setConfirmingAppointment(null);
     }

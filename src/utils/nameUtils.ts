@@ -23,3 +23,27 @@ export const getFirstAndLastName = (fullName: string): string => {
   // Se tiver mais de dois nomes, retorna primeiro e último
   return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
 };
+
+/**
+ * Extrai as iniciais de um nome completo (primeira letra do primeiro e último nome)
+ * @param fullName - Nome completo
+ * @returns String com as iniciais em maiúsculas
+ */
+export const getInitials = (fullName: string): string => {
+  if (!fullName || fullName.trim() === '') {
+    return '?';
+  }
+
+  const nameParts = fullName.trim().split(/\s+/);
+  
+  // Se tiver apenas um nome, retorna as duas primeiras letras
+  if (nameParts.length === 1) {
+    return nameParts[0].substring(0, 2).toUpperCase();
+  }
+  
+  // Retorna primeira letra do primeiro e último nome
+  const firstInitial = nameParts[0].charAt(0);
+  const lastInitial = nameParts[nameParts.length - 1].charAt(0);
+  
+  return `${firstInitial}${lastInitial}`.toUpperCase();
+};

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -33,15 +33,84 @@ interface LoanData {
 
 const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
   
+  // Debug: Monitorar mudanças nas despesas
+  useEffect(() => {
+    console.log('LoanTracker - Despesas recebidas:', expenses?.length || 0);
+    if (expenses?.length > 0) {
+      // Mostrar categorias únicas para debug
+      const categorias = [...new Set(expenses.map(e => e.categoria))];
+      const tipos = [...new Set(expenses.map(e => e.tipo))];
+      console.log('LoanTracker - Categorias disponíveis:', categorias);
+      console.log('LoanTracker - Tipos disponíveis:', tipos);
+      
+      // Mostrar despesas de empréstimos
+      const emprestimos = expenses.filter(e => 
+        e.tipo?.toLowerCase() === 'empréstimos' || 
+        e.tipo?.toLowerCase() === 'emprestimos'
+      );
+      console.log('LoanTracker - Despesas de Empréstimos:', emprestimos);
+    }
+  }, [expenses]);
+
   const loansData = useMemo(() => {
-    const devolveuDinheiroExpenses = expenses.filter(
-      exp => exp.categoria?.toLowerCase().includes('devolveu dinheiro')
-    );
+    // Normalizar string para comparação (remover acentos e lowercase)
+    const normalizeStr = (str: string | null | undefined): string => {
+      if (!str) return '';
+      return str.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+        .replace(/\s+/g, ' ') // Normalizar espaços
+        .trim();
+    };
+
+    // Filtrar despesas "Devolveu Dinheiro"
+    // Estrutura esperada: tipo='Empréstimos', categoria='Devolveu Dinheiro'
+    const devolveuDinheiroExpenses = expenses.filter(exp => {
+      const categoria = normalizeStr(exp.categoria);
+      const tipo = normalizeStr(exp.tipo);
+      
+      // Verificar se é da categoria "Devolveu Dinheiro"
+      const isDevolveuCategoria = categoria === 'devolveu dinheiro' || 
+                                   categoria.includes('devolveu dinheiro') ||
+                                   categoria.startsWith('devolveu');
+      
+      // Verificar se é do tipo "Empréstimos" com categoria correta
+      const isEmprestimoDevolveu = (tipo === 'emprestimos' || tipo === 'empréstimos') && 
+                                    isDevolveuCategoria;
+      
+      return isDevolveuCategoria || isEmprestimoDevolveu;
+    });
     
-    const bancoBPIExpenses = expenses.filter(
-      exp => exp.categoria?.toLowerCase().includes('banco bpi') || 
-            exp.categoria?.toLowerCase().includes('bpi')
-    );
+    // Filtrar despesas "Banco BPI"
+    const bancoBPIExpenses = expenses.filter(exp => {
+      const categoria = normalizeStr(exp.categoria);
+      const tipo = normalizeStr(exp.tipo);
+      
+      // Verificar se é da categoria "Banco BPI"
+      const isBPICategoria = categoria === 'banco bpi' || 
+                              categoria.includes('banco bpi') ||
+                              categoria === 'bpi';
+      
+      // Verificar se é do tipo "Empréstimos" com categoria correta
+      const isEmprestimoBPI = (tipo === 'emprestimos' || tipo === 'empréstimos') && 
+                               isBPICategoria;
+      
+      return isBPICategoria || isEmprestimoBPI;
+    });
+
+    // Debug: mostrar quantas despesas foram encontradas
+    console.log('LoanTracker - Total despesas recebidas:', expenses.length);
+    console.log('LoanTracker - Despesas "Devolveu Dinheiro" encontradas:', devolveuDinheiroExpenses.length);
+    if (devolveuDinheiroExpenses.length > 0) {
+      console.log('LoanTracker - Detalhes Devolveu Dinheiro:', devolveuDinheiroExpenses.map(e => ({
+        id: e.id,
+        tipo: e.tipo,
+        categoria: e.categoria,
+        valor: e.valor,
+        data: e.data
+      })));
+    }
+    console.log('LoanTracker - Despesas "Banco BPI" encontradas:', bancoBPIExpenses.length);
 
     const calculateLoanData = (
       payments: any[], 

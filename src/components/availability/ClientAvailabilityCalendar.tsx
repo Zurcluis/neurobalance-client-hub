@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus, X } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus, X, CheckCircle, CalendarCheck } from 'lucide-react';
 import { useClientAvailability } from '@/hooks/useClientAvailability';
+import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,17 @@ import { AvailabilityForm } from './AvailabilityForm';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import type { ClientAvailability } from '@/types/availability';
 import { getAllHolidaysUntil2040 } from '@/data/portugueseHolidays';
+
+// Interface para agendamentos do cliente
+interface ClientAppointment {
+  id: number;
+  titulo: string;
+  data: string;
+  hora: string;
+  estado: string;
+  tipo: string;
+  terapeuta?: string;
+}
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const DIAS_SEMANA_MOBILE = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -47,8 +59,56 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState<ClientAvailability | null>(null);
+  const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
   
   const holidays = getAllHolidaysUntil2040();
+
+  // Buscar agendamentos do cliente
+  const fetchAppointments = useCallback(async () => {
+    if (!clienteId) return;
+    
+    try {
+      setLoadingAppointments(true);
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select('id, titulo, data, hora, estado, tipo, terapeuta')
+        .eq('id_cliente', clienteId)
+        .order('data', { ascending: true });
+      
+      if (error) throw error;
+      setAppointments(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar agendamentos:', error);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  }, [clienteId]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
+
+  // Obter agendamentos para um dia específico
+  const getAppointmentsForDay = (date: Date) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    return appointments.filter((apt) => {
+      const aptDate = apt.data.split('T')[0];
+      return aptDate === dateString;
+    });
+  };
+
+  // Verificar se o dia tem sessões agendadas
+  const hasScheduledSessions = (date: Date) => {
+    const dayAppointments = getAppointmentsForDay(date);
+    return dayAppointments.some(apt => ['pendente', 'confirmado', 'agendado'].includes(apt.estado));
+  };
+
+  // Verificar se o dia tem sessões realizadas
+  const hasCompletedSessions = (date: Date) => {
+    const dayAppointments = getAppointmentsForDay(date);
+    return dayAppointments.some(apt => apt.estado === 'realizado');
+  };
   
   const getHolidayForDay = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
@@ -140,6 +200,9 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
     const hasAvail = hasAvailabilities(date);
     const availCount = getAvailabilitiesForDay(date).length;
     const holiday = getHolidayForDay(date);
+    const hasScheduled = hasScheduledSessions(date);
+    const hasCompleted = hasCompletedSessions(date);
+    const dayAppointments = getAppointmentsForDay(date);
 
     return (
       <button
@@ -151,14 +214,16 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
           isMobile ? 'h-11 min-h-[44px]' : 'h-16 sm:h-20',
           'hover:scale-105 hover:z-10',
           'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100',
-          isCurrentMonth && !isToday && !hasAvail && !holiday && 'hover:bg-gray-100',
+          isCurrentMonth && !isToday && !hasAvail && !holiday && !hasScheduled && !hasCompleted && 'hover:bg-gray-100',
           isToday && 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/30',
-          hasAvail && !isToday && 'bg-gradient-to-br from-emerald-50 to-teal-50 ring-1 ring-emerald-200',
-          holiday && holiday.type === 'feriado' && !isToday && 'bg-gradient-to-br from-rose-50 to-pink-50 ring-1 ring-rose-200',
-          holiday && holiday.type === 'feriado_municipal' && !isToday && 'bg-gradient-to-br from-orange-50 to-amber-50 ring-1 ring-orange-200',
-          holiday && holiday.type === 'dia_importante' && !isToday && 'bg-gradient-to-br from-violet-50 to-purple-50 ring-1 ring-violet-200'
+          hasScheduled && !isToday && !hasCompleted && 'bg-gradient-to-br from-teal-50 to-cyan-50 ring-1 ring-teal-300',
+          hasCompleted && !isToday && 'bg-gradient-to-br from-green-50 to-emerald-50 ring-1 ring-green-300',
+          hasAvail && !isToday && !hasScheduled && !hasCompleted && 'bg-gradient-to-br from-emerald-50 to-teal-50 ring-1 ring-emerald-200',
+          holiday && holiday.type === 'feriado' && !isToday && !hasScheduled && !hasCompleted && 'bg-gradient-to-br from-rose-50 to-pink-50 ring-1 ring-rose-200',
+          holiday && holiday.type === 'feriado_municipal' && !isToday && !hasScheduled && !hasCompleted && 'bg-gradient-to-br from-orange-50 to-amber-50 ring-1 ring-orange-200',
+          holiday && holiday.type === 'dia_importante' && !isToday && !hasScheduled && !hasCompleted && 'bg-gradient-to-br from-violet-50 to-purple-50 ring-1 ring-violet-200'
         )}
-        title={holiday ? holiday.name : undefined}
+        title={holiday ? holiday.name : (hasScheduled ? 'Sessão agendada' : (hasCompleted ? 'Sessão realizada' : undefined))}
       >
         <div className="flex flex-col items-center justify-center h-full gap-0.5">
           <span className={cn(
@@ -169,7 +234,34 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
           )}>
             {format(date, 'd')}
           </span>
-          {holiday && !isToday && (
+          
+          {/* Indicadores de sessão (prioridade sobre feriados e disponibilidades) */}
+          {(hasScheduled || hasCompleted) && !isToday && (
+            isMobile ? (
+              <div className="flex gap-0.5">
+                {hasScheduled && <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />}
+                {hasCompleted && <div className="w-1.5 h-1.5 rounded-full bg-green-600" />}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                {hasScheduled && (
+                  <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-teal-500 text-white flex items-center gap-0.5">
+                    <CalendarCheck className="w-2.5 h-2.5" />
+                    {dayAppointments.filter(apt => ['pendente', 'confirmado', 'agendado'].includes(apt.estado)).length}
+                  </span>
+                )}
+                {hasCompleted && (
+                  <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-green-600 text-white flex items-center gap-0.5">
+                    <CheckCircle className="w-2.5 h-2.5" />
+                    {dayAppointments.filter(apt => apt.estado === 'realizado').length}
+                  </span>
+                )}
+              </div>
+            )
+          )}
+          
+          {/* Feriados (quando não há sessões) */}
+          {holiday && !isToday && !hasScheduled && !hasCompleted && (
             isMobile ? (
               <div className={cn(
                 'w-1.5 h-1.5 rounded-full',
@@ -190,7 +282,9 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
               </span>
             )
           )}
-          {hasAvail && !holiday && (
+          
+          {/* Disponibilidades (quando não há sessões nem feriados) */}
+          {hasAvail && !holiday && !hasScheduled && !hasCompleted && (
             isMobile ? (
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             ) : (
@@ -307,24 +401,26 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
 
           {/* Legend */}
           <div className={cn(
-            "flex items-center justify-center gap-3 text-gray-500 py-2 flex-wrap",
-            isMobile ? "text-xs gap-2" : "text-sm"
+            "flex items-center justify-center text-gray-500 py-2 flex-wrap",
+            isMobile ? "text-[10px] gap-1.5" : "text-sm gap-3"
           )}>
             {[
-              { color: 'bg-blue-500', label: 'Hoje' },
-              { color: 'bg-emerald-500', label: isMobile ? 'Disp.' : 'Disponível' },
-              { color: 'bg-rose-500', label: isMobile ? 'Fer.' : 'Feriado' },
-              { color: 'bg-orange-500', label: isMobile ? 'Mun.' : 'Municipal' },
-              { color: 'bg-violet-500', label: isMobile ? 'Esp.' : 'Especial' },
+              { color: 'bg-blue-500', label: 'Hoje', mobileLabel: 'Hoje' },
+              { color: 'bg-emerald-500', label: 'Disponível', mobileLabel: 'Disp' },
+              { color: 'bg-teal-500', label: 'Agendado', mobileLabel: 'Agend' },
+              { color: 'bg-green-600', label: 'Realizado', mobileLabel: 'Real' },
+              { color: 'bg-rose-500', label: 'Feriado', mobileLabel: 'Fer' },
+              { color: 'bg-orange-500', label: 'Municipal', mobileLabel: 'Mun' },
+              { color: 'bg-violet-500', label: 'Especial', mobileLabel: 'Esp' },
             ].map((item) => (
-              <div key={item.label} className="flex items-center gap-1.5">
-                <div className={cn("w-2.5 h-2.5 rounded-full", item.color)} />
-                <span className="font-medium">{item.label}</span>
+              <div key={item.label} className="flex items-center gap-1">
+                <div className={cn("rounded-full", item.color, isMobile ? "w-2 h-2" : "w-2.5 h-2.5")} />
+                <span className="font-medium whitespace-nowrap">{isMobile ? item.mobileLabel : item.label}</span>
               </div>
             ))}
           </div>
 
-          {/* Selected Day Availabilities */}
+          {/* Selected Day Details */}
           {selectedDate && (
             <div className="mt-3 p-4 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl border border-gray-100">
               <div className="mb-3">
@@ -342,60 +438,130 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
                   </div>
                 )}
               </div>
-              {getAvailabilitiesForDay(selectedDate).length === 0 ? (
-                <div className="text-center py-4">
-                  <Clock className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm text-gray-500">Nenhuma disponibilidade configurada</p>
-                </div>
-              ) : (
-                <div className="space-y-2 mb-3">
-                  {getAvailabilitiesForDay(selectedDate).map((avail) => (
-                    <div
-                      key={avail.id}
-                      className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md shadow-emerald-500/20">
-                          <Clock className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <span className="font-semibold text-gray-900">
-                            {avail.hora_inicio} - {avail.hora_fim}
-                          </span>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
-                              {avail.preferencia}
-                            </Badge>
-                            {avail.recorrencia === 'diaria' && (
-                              <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
-                                Única
-                              </Badge>
-                            )}
+
+              {/* Sessões do dia */}
+              {getAppointmentsForDay(selectedDate).length > 0 && (
+                <div className="mb-4">
+                  <h5 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4 text-teal-600" />
+                    Sessões
+                  </h5>
+                  <div className="space-y-2">
+                    {getAppointmentsForDay(selectedDate).map((apt) => (
+                      <div
+                        key={apt.id}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-xl border shadow-sm",
+                          apt.estado === 'realizado' 
+                            ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
+                            : "bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-200"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-lg flex items-center justify-center shadow-md",
+                            apt.estado === 'realizado'
+                              ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-green-500/20"
+                              : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/20"
+                          )}>
+                            {apt.estado === 'realizado' 
+                              ? <CheckCircle className="h-5 w-5 text-white" />
+                              : <CalendarCheck className="h-5 w-5 text-white" />
+                            }
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              {apt.titulo || 'Sessão'}
+                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-xs text-gray-600">{apt.hora}</span>
+                              {apt.terapeuta && (
+                                <span className="text-xs text-gray-500">• {apt.terapeuta}</span>
+                              )}
+                            </div>
                           </div>
                         </div>
+                        <Badge className={cn(
+                          "border-0 text-xs",
+                          apt.estado === 'realizado' && "bg-green-100 text-green-700",
+                          apt.estado === 'confirmado' && "bg-blue-100 text-blue-700",
+                          apt.estado === 'pendente' && "bg-amber-100 text-amber-700",
+                          apt.estado === 'agendado' && "bg-teal-100 text-teal-700",
+                          apt.estado === 'cancelado' && "bg-red-100 text-red-700"
+                        )}>
+                          {apt.estado === 'realizado' ? '✓ Realizado' :
+                           apt.estado === 'confirmado' ? 'Confirmado' :
+                           apt.estado === 'pendente' ? 'Pendente' :
+                           apt.estado === 'agendado' ? 'Agendado' :
+                           apt.estado}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditAvailability(avail)}
-                          className="h-8 px-3 text-xs rounded-lg hover:bg-gray-100"
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteAvailability(avail.id)}
-                          className="h-8 w-8 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Disponibilidades do dia */}
+              <div className="mb-3">
+                <h5 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-emerald-600" />
+                  Disponibilidades
+                </h5>
+                {getAvailabilitiesForDay(selectedDate).length === 0 ? (
+                  <div className="text-center py-4 bg-white/50 rounded-lg">
+                    <Clock className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p className="text-sm text-gray-500">Nenhuma disponibilidade configurada</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {getAvailabilitiesForDay(selectedDate).map((avail) => (
+                      <div
+                        key={avail.id}
+                        className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                            <Clock className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-900">
+                              {avail.hora_inicio} - {avail.hora_fim}
+                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
+                                {avail.preferencia}
+                              </Badge>
+                              {avail.recorrencia === 'diaria' && (
+                                <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
+                                  Única
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditAvailability(avail)}
+                            className="h-8 px-3 text-xs rounded-lg hover:bg-gray-100"
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteAvailability(avail.id)}
+                            className="h-8 w-8 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <Button
                 onClick={() => {
                   setEditingAvailability(null);
