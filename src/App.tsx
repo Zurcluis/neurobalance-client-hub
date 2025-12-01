@@ -41,6 +41,7 @@ const MarketingLoginPage = lazy(() => import("./pages/MarketingLoginPage"));
 const MarketingAreaPage = lazy(() => import("./pages/MarketingAreaPage"));
 const MarketingLandingPage = lazy(() => import("./pages/MarketingLandingPage"));
 const MarketingTokensPage = lazy(() => import("./pages/MarketingTokensPage"));
+const ClientTokensPage = lazy(() => import("./pages/ClientTokensPage"));
 const ClinicInfoPage = lazy(() => import("./pages/ClinicInfoPage"));
 
 const queryClient = new QueryClient({
@@ -228,6 +229,14 @@ const App = () => (
                             {/* Client Routes */}
                             <Route path="/client-login" element={<ClientLoginPage />} />
                             <Route path="/client-dashboard" element={<ClientDashboardPage />} />
+                            <Route
+                              path="/client/tokens"
+                              element={
+                                <ProtectedRoute>
+                                  <ClientTokensPage />
+                                </ProtectedRoute>
+                              }
+                            />
 
                             {/* 404 Route */}
                             <Route path="*" element={<NotFound />} />
