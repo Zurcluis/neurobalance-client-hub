@@ -40,6 +40,7 @@ const AdminAvailabilityPage = lazy(() => import("./pages/AdminAvailabilityPage")
 const MarketingLoginPage = lazy(() => import("./pages/MarketingLoginPage"));
 const MarketingAreaPage = lazy(() => import("./pages/MarketingAreaPage"));
 const MarketingLandingPage = lazy(() => import("./pages/MarketingLandingPage"));
+const ClinicInfoPage = lazy(() => import("./pages/ClinicInfoPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -211,6 +212,9 @@ const App = () => (
                               }
                             />
                             <Route path="/landing" element={<MarketingLandingPage />} />
+
+                            {/* Clinic Info Page - Public */}
+                            <Route path="/clinic-info" element={<ClinicInfoPage />} />
 
                             {/* Client Routes */}
                             <Route path="/client-login" element={<ClientLoginPage />} />

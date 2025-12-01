@@ -38,7 +38,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
   // Validar token
   const validateToken = useCallback(async (token: string, email: string): Promise<MarketingSession | null> => {
     try {
-      const user = DEV_MARKETING_USERS.find(u => 
+      const user = DEV_MARKETING_USERS.find(u =>
         u.email === email && u.tokens.includes(token)
       );
 
@@ -46,13 +46,13 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
         return null;
       }
 
-      const permissions = user.role === 'marketing_manager' 
+      const permissions = user.role === 'marketing_manager'
         ? Object.values(MARKETING_PERMISSIONS)
         : [MARKETING_PERMISSIONS.VIEW_CAMPAIGNS, MARKETING_PERMISSIONS.VIEW_LEADS, MARKETING_PERMISSIONS.VIEW_ANALYTICS];
 
       const sessionToken = generateToken();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 8); // 8 horas de validade
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100); // Token nunca expira (100 anos)
 
       return {
         marketingId: user.id,
@@ -75,13 +75,8 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
     if (savedSession) {
       try {
         const parsedSession = JSON.parse(savedSession);
-        const expiresAt = new Date(parsedSession.expiresAt);
-        
-        if (expiresAt > new Date()) {
-          setSession(parsedSession);
-        } else {
-          localStorage.removeItem('marketing_session');
-        }
+        // Nunca expira - sempre aceitar sessão salva
+        setSession(parsedSession);
       } catch (error) {
         logger.error('Erro ao carregar sessão salva:', error);
         localStorage.removeItem('marketing_session');
@@ -90,23 +85,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
     setLoading(false);
   }, []);
 
-  // Auto-refresh do token (renovar se falta menos de 5 minutos para expirar)
-  useEffect(() => {
-    if (!session) return;
-
-    const checkTokenExpiry = () => {
-      const expiresAt = new Date(session.expiresAt);
-      const now = new Date();
-      const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-
-      if (expiresAt <= fiveMinutesFromNow) {
-        refreshSession();
-      }
-    };
-
-    const interval = setInterval(checkTokenExpiry, 60000); // Verificar a cada minuto
-    return () => clearInterval(interval);
-  }, [session]);
+  // Removido: Auto-refresh não é mais necessário pois tokens nunca expiram
 
   const login = useCallback(async (request: MarketingAuthRequest): Promise<MarketingAuthResponse> => {
     setLoading(true);
@@ -114,11 +93,11 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
 
     try {
       const validatedSession = await validateToken(request.token, request.email);
-      
+
       if (validatedSession) {
         setSession(validatedSession);
         localStorage.setItem('marketing_session', JSON.stringify(validatedSession));
-        
+
         return {
           success: true,
           session: validatedSession,

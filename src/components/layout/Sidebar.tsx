@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target, Clock } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target, Clock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
-import { 
-  Drawer, 
-  DrawerContent, 
+import {
+  Drawer,
+  DrawerContent,
   DrawerTrigger,
   DrawerClose
 } from '@/components/ui/drawer';
@@ -34,7 +34,7 @@ const Sidebar = () => {
   const { isPortrait } = useScreenSize();
   const { t } = useLanguage();
   const { signOut } = useAuth();
-  
+
   // Get communication type from localStorage if exists
   useEffect(() => {
     const commType = localStorage.getItem('communicationType');
@@ -63,9 +63,10 @@ const Sidebar = () => {
     { name: t('investments'), icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
     { name: t('marketing'), icon: <Megaphone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/marketing-reports' },
     { name: t('statistics'), icon: <PieChart className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/statistics' },
+    { name: 'Ficha Técnica', icon: <FileText className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clinic-info' },
     { name: t('administrative'), icon: <UserCog className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin-management' },
   ];
-  
+
   const communicationItems = [
     { name: t('messages'), icon: <MessageSquare className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'sms' },
     { name: t('email'), icon: <Mail className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'email' },
@@ -76,9 +77,9 @@ const Sidebar = () => {
     <div className={`p-4 flex flex-col h-full ${isMobile ? 'pt-safe mobile-menu-content' : ''}`}>
       {isMobile && (
         <div className="flex justify-between items-center mb-6">
-            <img 
-              src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-              alt="NeuroBalance Logo" 
+          <img
+            src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+            alt="NeuroBalance Logo"
             className="h-10 w-auto app-logo"
           />
           <DrawerClose asChild>
@@ -86,29 +87,29 @@ const Sidebar = () => {
               <X className="h-5 w-5" />
             </Button>
           </DrawerClose>
-          </div>
+        </div>
       )}
 
       {!isMobile && (
         <div className="flex flex-col items-center mb-8">
-          <img 
-            src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-            alt="NeuroBalance Logo" 
+          <img
+            src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+            alt="NeuroBalance Logo"
             className={cn(
               "app-logo mb-4 transition-all duration-300 object-contain",
-              isCollapsed ? "w-12 h-12" : "w-32 h-32" 
-            )} 
+              isCollapsed ? "w-12 h-12" : "w-32 h-32"
+            )}
           />
           {!isCollapsed && (
             <div className="text-center">
               <h1 className="font-bold text-lg text-[#3A726D] dark:text-[#E6ECEA]">NeuroBalance</h1>
               <p className="text-xs text-gray-600 dark:text-gray-400">Client Management</p>
             </div>
-        )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="mt-4 w-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800" 
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4 w-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => setIsCollapsed(!isCollapsed)}
             aria-label={isCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
             aria-expanded={!isCollapsed}
@@ -116,11 +117,11 @@ const Sidebar = () => {
             {isCollapsed ? <Menu aria-hidden="true" /> : <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />}
           </Button>
         </div>
-        )}
+      )}
 
       <div className="relative mb-8">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full relative text-left flex items-center justify-between pl-3 py-2 h-auto rounded-lg"
           onClick={() => setShowSearch(true)}
           aria-label="Abrir busca rápida (Ctrl+K)"
@@ -135,8 +136,8 @@ const Sidebar = () => {
         </Button>
       </div>
 
-      <nav 
-        id="navigation" 
+      <nav
+        id="navigation"
         className="flex-1"
         role="navigation"
         aria-label="Menu principal"
@@ -167,7 +168,7 @@ const Sidebar = () => {
             </li>
           ))}
         </ul>
-        
+
         {/* Communication section */}
         <div className={cn("mt-8", isMobile && "mt-10")} role="region" aria-label="Comunicações">
           <h3 className={cn(
@@ -213,17 +214,17 @@ const Sidebar = () => {
             "flex items-center",
             isCollapsed && !isMobile ? "flex-col gap-2" : "gap-1"
           )}>
-          <ThemeToggle />
-          <LanguageSwitch />
-          <button 
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 rounded-lg transition"
-            onClick={() => setShowCalendarSync(true)}
-            aria-label="Sincronizar com Google Calendar"
-          >
-            <Calendar className="h-5 w-5" aria-hidden="true" />
-          </button>
-          <KeyboardShortcutsDialog />
-          <DatabaseManagerDialog />
+            <ThemeToggle />
+            <LanguageSwitch />
+            <button
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 rounded-lg transition"
+              onClick={() => setShowCalendarSync(true)}
+              aria-label="Sincronizar com Google Calendar"
+            >
+              <Calendar className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <KeyboardShortcutsDialog />
+            <DatabaseManagerDialog />
           </div>
           <div className={cn(
             isCollapsed && !isMobile ? "mt-2" : ""
@@ -231,14 +232,14 @@ const Sidebar = () => {
             <NotificationBar />
           </div>
         </div>
-        
+
         {(!isCollapsed || isMobile) && (
           <>
             <div className="text-xs text-center text-gray-600 dark:text-gray-400 mt-4">
               <p>NeuroBalance Clinic</p>
               <p className="mt-1">{t('system')} v1.0.0</p>
             </div>
-            
+
             <Button
               variant="ghost"
               className="w-full mt-4 flex items-center justify-center text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
@@ -268,10 +269,10 @@ const Sidebar = () => {
           </div>
         </DrawerContent>
       </Drawer>
-      
+
       {/* Search Dialog */}
       <SearchDialog open={showSearch} onOpenChange={setShowSearch} />
-      
+
       {/* Google Calendar Sync Dialog */}
       <GoogleCalendarSync open={showCalendarSync} onOpenChange={setShowCalendarSync} />
     </div>
@@ -282,9 +283,9 @@ const Sidebar = () => {
       <div className="fixed top-0 left-0 z-40 w-full bg-white/90 dark:bg-[#1A1F2C]/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 flex justify-between items-center px-4 py-3 pt-safe">
         <Drawer>
           <DrawerTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="rounded-full h-11 w-11 flex items-center justify-center"
               aria-label="Abrir menu de navegação"
             >
@@ -295,24 +296,24 @@ const Sidebar = () => {
             {renderSidebarContent()}
           </DrawerContent>
         </Drawer>
-        
-        <img 
-          src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-          alt="NeuroBalance Logo" 
-          className="h-10 w-auto app-logo object-contain" 
+
+        <img
+          src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+          alt="NeuroBalance Logo"
+          className="h-10 w-auto app-logo object-contain"
         />
-        
+
         <div className="flex items-center gap-2">
           <NotificationBar />
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full h-11 w-11 flex items-center justify-center" 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full h-11 w-11 flex items-center justify-center"
             onClick={() => setShowSearch(true)}
             aria-label="Abrir busca rápida"
           >
             <Search className="h-5 w-5" aria-hidden="true" />
-        </Button>
+          </Button>
         </div>
       </div>
     );
@@ -331,7 +332,7 @@ const Sidebar = () => {
 // Ícone personalizado para o menu compacto
 const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M15 18l-6-6 6-6"/>
+    <path d="M15 18l-6-6 6-6" />
   </svg>
 );
 
