@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, createContext, useContext } fr
 import { MarketingSession, MarketingAuthRequest, MarketingAuthResponse, MARKETING_PERMISSIONS } from '@/types/marketing-auth';
 import { logger } from '@/lib/logger';
 import { DEV_MARKETING_USERS } from '@/config/dev-credentials';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MarketingAuthContextType {
   session: MarketingSession | null;
@@ -35,57 +36,118 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
     return btoa(Math.random().toString(36).substr(2) + Date.now().toString(36));
   };
 
-  // Validar token
-  const validateToken = useCallback(async (token: string, email: string): Promise<MarketingSession | null> => {
+  // Validar token no Supabase
+  const validateTokenInSupabase = async (token: string, email: string): Promise<MarketingSession | null> => {
     try {
-      // Primeiro, verificar tokens gerados (access tokens)
-      const savedTokensStr = localStorage.getItem('marketing_access_tokens');
-      if (savedTokensStr) {
-        try {
-          const savedTokens = JSON.parse(savedTokensStr);
-          const accessToken = savedTokens.find((t: any) =>
-            t.token === token && t.email === email && t.isActive
-          );
+      const { data, error } = await supabase.rpc('validate_marketing_token', {
+        p_token: token,
+        p_email: email
+      });
 
-          if (accessToken) {
-            // Verificar se não expirou
-            const expiresAt = new Date(accessToken.expiresAt);
-            if (expiresAt < new Date()) {
-              return null; // Token expirado
-            }
-
-            // Atualizar contagem de uso
-            const updatedTokens = savedTokens.map((t: any) =>
-              t.token === token
-                ? { ...t, usageCount: (t.usageCount || 0) + 1, lastUsedAt: new Date().toISOString() }
-                : t
-            );
-            localStorage.setItem('marketing_access_tokens', JSON.stringify(updatedTokens));
-
-            // Criar sessão baseada no access token
-            const permissions = accessToken.role === 'marketing_manager'
-              ? Object.values(MARKETING_PERMISSIONS)
-              : [MARKETING_PERMISSIONS.VIEW_CAMPAIGNS, MARKETING_PERMISSIONS.VIEW_LEADS, MARKETING_PERMISSIONS.VIEW_ANALYTICS];
-
-            const sessionToken = generateToken();
-            const sessionExpiresAt = new Date(accessToken.expiresAt); // Usar mesma expiração do token
-
-            return {
-              marketingId: accessToken.id,
-              marketingName: accessToken.name,
-              marketingEmail: accessToken.email,
-              role: accessToken.role,
-              permissions,
-              token: sessionToken,
-              expiresAt: sessionExpiresAt.toISOString()
-            };
-          }
-        } catch (error) {
-          console.error('Erro ao processar access tokens:', error);
-        }
+      if (error) {
+        console.log('Erro ao validar no Supabase, tentando localStorage:', error);
+        return null;
       }
 
-      // Fallback: verificar credenciais de desenvolvimento
+      if (data && data.length > 0 && data[0].is_valid) {
+        const tokenData = data[0];
+        const permissions = tokenData.token_role === 'marketing_manager'
+          ? Object.values(MARKETING_PERMISSIONS)
+          : [MARKETING_PERMISSIONS.VIEW_CAMPAIGNS, MARKETING_PERMISSIONS.VIEW_LEADS, MARKETING_PERMISSIONS.VIEW_ANALYTICS];
+
+        const sessionToken = generateToken();
+
+        return {
+          marketingId: tokenData.token_id,
+          marketingName: tokenData.token_name,
+          marketingEmail: tokenData.token_email,
+          role: tokenData.token_role,
+          permissions,
+          token: sessionToken,
+          expiresAt: tokenData.expires_at
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Erro ao validar token no Supabase:', error);
+      return null;
+    }
+  };
+
+  // Validar token no localStorage (fallback)
+  const validateTokenInLocalStorage = (token: string, email: string): MarketingSession | null => {
+    const savedTokensStr = localStorage.getItem('marketing_access_tokens');
+    if (!savedTokensStr) return null;
+
+    try {
+      const savedTokens = JSON.parse(savedTokensStr);
+      const accessToken = savedTokens.find((t: any) => {
+        const tokenMatch = t.token === token;
+        const emailMatch = t.email === email;
+        // Suportar ambos os formatos (camelCase e snake_case)
+        const isActive = t.isActive !== false && t.is_active !== false;
+        const expiresAt = new Date(t.expiresAt || t.expires_at);
+        const notExpired = expiresAt > new Date();
+        
+        return tokenMatch && emailMatch && isActive && notExpired;
+      });
+
+      if (accessToken) {
+        // Atualizar contagem de uso
+        const updatedTokens = savedTokens.map((t: any) =>
+          t.token === token
+            ? { 
+                ...t, 
+                usageCount: (t.usageCount || t.usage_count || 0) + 1, 
+                usage_count: (t.usageCount || t.usage_count || 0) + 1,
+                lastUsedAt: new Date().toISOString(),
+                last_used_at: new Date().toISOString()
+              }
+            : t
+        );
+        localStorage.setItem('marketing_access_tokens', JSON.stringify(updatedTokens));
+
+        const permissions = accessToken.role === 'marketing_manager'
+          ? Object.values(MARKETING_PERMISSIONS)
+          : [MARKETING_PERMISSIONS.VIEW_CAMPAIGNS, MARKETING_PERMISSIONS.VIEW_LEADS, MARKETING_PERMISSIONS.VIEW_ANALYTICS];
+
+        const sessionToken = generateToken();
+        const sessionExpiresAt = new Date(accessToken.expiresAt || accessToken.expires_at);
+
+        return {
+          marketingId: accessToken.id,
+          marketingName: accessToken.name,
+          marketingEmail: accessToken.email,
+          role: accessToken.role,
+          permissions,
+          token: sessionToken,
+          expiresAt: sessionExpiresAt.toISOString()
+        };
+      }
+    } catch (error) {
+      console.error('Erro ao processar localStorage:', error);
+    }
+
+    return null;
+  };
+
+  // Validar token (tenta Supabase primeiro, depois localStorage, depois credenciais de dev)
+  const validateToken = useCallback(async (token: string, email: string): Promise<MarketingSession | null> => {
+    try {
+      // 1. Tentar validar no Supabase
+      const supabaseResult = await validateTokenInSupabase(token, email);
+      if (supabaseResult) {
+        return supabaseResult;
+      }
+
+      // 2. Fallback: verificar no localStorage
+      const localStorageResult = validateTokenInLocalStorage(token, email);
+      if (localStorageResult) {
+        return localStorageResult;
+      }
+
+      // 3. Fallback: verificar credenciais de desenvolvimento
       const user = DEV_MARKETING_USERS.find(u =>
         u.email === email && u.tokens.includes(token)
       );
@@ -100,7 +162,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
 
       const sessionToken = generateToken();
       const expiresAt = new Date();
-      expiresAt.setFullYear(expiresAt.getFullYear() + 100); // Token nunca expira (100 anos)
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100);
 
       return {
         marketingId: user.id,

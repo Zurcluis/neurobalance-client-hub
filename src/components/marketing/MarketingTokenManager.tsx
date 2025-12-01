@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,20 +15,18 @@ import {
     User,
     Mail,
     ExternalLink,
-    Shield
+    Shield,
+    Loader2
 } from 'lucide-react';
-import {
-    MarketingAccessToken,
-    VALIDITY_PERIODS,
-    generateAccessToken,
-    calculateExpirationDate
-} from '@/types/marketing-tokens';
+import { VALIDITY_PERIODS } from '@/types/marketing-tokens';
+import { useMarketingTokens, MarketingAccessToken } from '@/hooks/useMarketingTokens';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const MarketingTokenManager = () => {
-    const [tokens, setTokens] = useState<MarketingAccessToken[]>([]);
+    const { tokens, loading, createToken, deleteToken, refreshTokens } = useMarketingTokens();
     const [copiedToken, setCopiedToken] = useState<string | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -37,59 +35,38 @@ const MarketingTokenManager = () => {
         validityPeriod: '7d' as keyof typeof VALIDITY_PERIODS
     });
 
-    // Carregar tokens salvos
-    useEffect(() => {
-        const savedTokens = localStorage.getItem('marketing_access_tokens');
-        if (savedTokens) {
-            try {
-                setTokens(JSON.parse(savedTokens));
-            } catch (error) {
-                console.error('Erro ao carregar tokens:', error);
-            }
-        }
-    }, []);
-
-    // Salvar tokens
-    const saveTokens = (newTokens: MarketingAccessToken[]) => {
-        localStorage.setItem('marketing_access_tokens', JSON.stringify(newTokens));
-        setTokens(newTokens);
-    };
-
-    const handleGenerateToken = () => {
+    const handleGenerateToken = async () => {
         if (!formData.name || !formData.email) {
             toast.error('Por favor, preencha nome e email');
             return;
         }
 
-        const newToken: MarketingAccessToken = {
-            id: `token_${Date.now()}`,
-            token: generateAccessToken(),
-            name: formData.name,
-            email: formData.email,
-            role: formData.role,
-            validityPeriod: formData.validityPeriod,
-            createdAt: new Date().toISOString(),
-            expiresAt: calculateExpirationDate(formData.validityPeriod),
-            createdBy: 'admin@neurobalance.pt',
-            isActive: true,
-            usageCount: 0
-        };
+        setIsCreating(true);
+        try {
+            const newToken = await createToken({
+                name: formData.name,
+                email: formData.email,
+                role: formData.role,
+                validityPeriod: formData.validityPeriod
+            });
 
-        const updatedTokens = [newToken, ...tokens];
-        saveTokens(updatedTokens);
+            if (newToken) {
+                toast.success('Token gerado com sucesso!');
+                handleCopyLink(newToken);
 
-        toast.success('Token gerado com sucesso!');
-
-        // Copiar link automaticamente
-        handleCopyLink(newToken);
-
-        // Limpar formulário
-        setFormData({
-            name: '',
-            email: '',
-            role: 'marketing_assistant',
-            validityPeriod: '7d'
-        });
+                // Limpar formulário
+                setFormData({
+                    name: '',
+                    email: '',
+                    role: 'marketing_assistant',
+                    validityPeriod: '7d'
+                });
+            }
+        } catch (error) {
+            toast.error('Erro ao gerar token');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     const handleCopyLink = (token: MarketingAccessToken) => {
@@ -103,18 +80,21 @@ const MarketingTokenManager = () => {
         setTimeout(() => setCopiedToken(null), 2000);
     };
 
-    const handleDeleteToken = (tokenId: string) => {
-        const updatedTokens = tokens.filter(t => t.id !== tokenId);
-        saveTokens(updatedTokens);
-        toast.success('Token removido');
+    const handleDeleteToken = async (tokenId: string) => {
+        const success = await deleteToken(tokenId);
+        if (success) {
+            toast.success('Token removido');
+        } else {
+            toast.error('Erro ao remover token');
+        }
     };
 
     const isTokenExpired = (expiresAt: string) => {
         return new Date(expiresAt) < new Date();
     };
 
-    const getActiveTokens = () => tokens.filter(t => t.isActive && !isTokenExpired(t.expiresAt));
-    const getExpiredTokens = () => tokens.filter(t => isTokenExpired(t.expiresAt));
+    const getActiveTokens = () => tokens.filter(t => t.is_active && !isTokenExpired(t.expires_at));
+    const getExpiredTokens = () => tokens.filter(t => isTokenExpired(t.expires_at));
 
     return (
         <div className="space-y-6">
@@ -191,9 +171,19 @@ const MarketingTokenManager = () => {
                     <Button
                         onClick={handleGenerateToken}
                         className="w-full bg-[#3f9094] hover:bg-[#2d7a7e]"
+                        disabled={isCreating}
                     >
-                        <Key className="h-4 w-4 mr-2" />
-                        Gerar Link de Acesso
+                        {isCreating ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Gerando...
+                            </>
+                        ) : (
+                            <>
+                                <Key className="h-4 w-4 mr-2" />
+                                Gerar Link de Acesso
+                            </>
+                        )}
                     </Button>
                 </CardContent>
             </Card>
@@ -234,7 +224,7 @@ const MarketingTokenManager = () => {
                                             <div className="flex items-center gap-4 text-xs text-gray-500">
                                                 <span className="flex items-center gap-1">
                                                     <Clock className="h-3 w-3" />
-                                                    Valid até: {format(new Date(token.expiresAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                                    Valid até: {format(new Date(token.expires_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                                                 </span>
                                                 <span>
                                                     Token: <code className="bg-gray-100 px-2 py-0.5 rounded">{token.token}</code>
