@@ -68,18 +68,18 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
     const dayOfWeek = day.getDay();
     const dateString = format(day, 'yyyy-MM-dd');
     const avails: any[] = [];
-    
+
     Object.values(availabilities).forEach((clientAvails) => {
       clientAvails.forEach((avail: any) => {
         if (avail.status !== 'ativo') return;
-        
+
         let isValidDay = false;
         if (avail.recorrencia === 'diaria') {
           isValidDay = avail.valido_de === dateString;
         } else {
           isValidDay = avail.dia_semana === dayOfWeek;
         }
-        
+
         if (isValidDay) {
           const [startHour] = avail.hora_inicio.split(':').map(Number);
           const [endHour] = avail.hora_fim.split(':').map(Number);
@@ -89,7 +89,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
         }
       });
     });
-    
+
     return avails;
   };
 
@@ -145,7 +145,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
             </Button>
           </div>
           <div className="text-lg font-medium text-gray-900">
-            {isDailyView 
+            {isDailyView
               ? format(currentDate, "dd 'de' MMMM 'de' yyyy", { locale: pt })
               : `${format(days[0], "dd 'de' MMM", { locale: pt })} - ${format(days[days.length - 1], "dd 'de' MMM 'de' yyyy", { locale: pt })}`
             }
@@ -164,11 +164,10 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
             <div className="text-xs font-medium text-gray-500 uppercase mb-1">
               {format(day, 'EEE', { locale: pt }).substring(0, 3)}
             </div>
-            <div className={`text-2xl font-normal ${
-              isSameDay(day, new Date()) 
-                ? 'bg-[#3f9094] text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto' 
+            <div className={`text-2xl font-normal ${isSameDay(day, new Date())
+                ? 'bg-[#3f9094] text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto'
                 : 'text-gray-900'
-            }`}>
+              }`}>
               {format(day, 'd')}
             </div>
           </div>
@@ -179,9 +178,9 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
       <div className="flex-1 overflow-y-auto max-h-[600px] relative">
         {/* Linha do tempo atual */}
         {isDailyView && isSameDay(currentDate, new Date()) && (
-          <div 
+          <div
             className="absolute left-0 right-0 z-10 pointer-events-none"
-            style={{ 
+            style={{
               top: `${getCurrentTimePosition()}px`,
               transform: 'translateY(-1px)'
             }}
@@ -199,13 +198,13 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
             <div className="p-2 text-xs text-gray-500 border-r border-gray-200 flex items-start justify-end pr-3">
               {hour === 0 ? '' : `${hour}:00`}
             </div>
-            
+
             {/* Colunas dos dias */}
             {days.map((day, dayIndex) => {
               const dayAppointments = getAppointmentsForDayAndHour(day, hour);
               const dayAvailabilities = getAvailabilitiesForDayAndHour(day, hour);
               const dayHoliday = hour === 0 ? getHolidayForDay(day) : null;
-              
+
               return (
                 <div
                   key={dayIndex}
@@ -218,7 +217,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                       {dayHoliday.name}
                     </div>
                   )}
-                  
+
                   {/* Agendamentos */}
                   {dayAppointments.map((appointment, appointmentIndex) => (
                     <div
@@ -241,7 +240,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Disponibilidades */}
                   {dayAvailabilities.map((avail, availIndex) => (
                     <div
@@ -249,7 +248,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                       className="text-[10px] px-1 py-0.5 mb-1 rounded bg-blue-50 border border-blue-200 text-blue-700 truncate cursor-help transition-all hover:bg-blue-100"
                       title={`${avail.hora_inicio} - ${avail.hora_fim}`}
                     >
-                      ID: {avail.clientes?.id_manual || avail.cliente_id} - {avail.clientes?.nome || 'Cliente'}
+                      {avail.clientes?.id_manual && `${avail.clientes.id_manual} - `}{avail.clientes?.nome || 'Cliente'}
                     </div>
                   ))}
                 </div>

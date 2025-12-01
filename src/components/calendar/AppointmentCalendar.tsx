@@ -26,12 +26,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { getAllHolidaysUntil2040, isHoliday } from '@/data/portugueseHolidays';
 import { Checkbox } from '../ui/checkbox';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator
 } from '../ui/dropdown-menu';
 import SmartScheduling from './SmartScheduling';
 import TimeGridView from './TimeGridView';
@@ -65,7 +65,7 @@ interface AppointmentFormValues {
 const AppointmentCalendar = () => {
   const { appointments, isLoading: isLoadingAppointments, addAppointment, updateAppointment, deleteAppointment } = useAppointments();
   const { clients, isLoading: isLoadingClients } = useClients();
-  
+
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -97,7 +97,7 @@ const AppointmentCalendar = () => {
   const openNewAppointmentDialog = (date?: Date) => {
     setSelectedAppointment(null);
     const today = date || new Date();
-    
+
     form.reset({
       titulo: '',
       data: format(today, 'yyyy-MM-dd'),
@@ -109,24 +109,24 @@ const AppointmentCalendar = () => {
       terapeuta: '',
       cor: '#3B82F6'
     });
-    
+
     setIsDialogOpen(true);
   };
 
   const handleEventClick = (appointment: Appointment) => {
-      setSelectedAppointment(appointment);
-      form.reset({
-        titulo: appointment.titulo,
-        data: format(parseISO(appointment.data), 'yyyy-MM-dd'),
-        hora: appointment.hora,
-        id_cliente: appointment.id_cliente,
-        tipo: (appointment.tipo || 'sessão') as AppointmentType,
-        notas: appointment.notas || '',
-        estado: appointment.estado,
-        terapeuta: appointment.terapeuta || '',
-        cor: appointment.cor || '#3B82F6'
-      });
-      setIsDialogOpen(true);
+    setSelectedAppointment(appointment);
+    form.reset({
+      titulo: appointment.titulo,
+      data: format(parseISO(appointment.data), 'yyyy-MM-dd'),
+      hora: appointment.hora,
+      id_cliente: appointment.id_cliente,
+      tipo: (appointment.tipo || 'sessão') as AppointmentType,
+      notas: appointment.notas || '',
+      estado: appointment.estado,
+      terapeuta: appointment.terapeuta || '',
+      cor: appointment.cor || '#3B82F6'
+    });
+    setIsDialogOpen(true);
   };
 
   const handleDeleteAppointment = async () => {
@@ -145,7 +145,7 @@ const AppointmentCalendar = () => {
   const onSubmit = async (data: AppointmentFormValues) => {
     try {
       const clientId = data.id_cliente === null || data.id_cliente === undefined ? null : Number(data.id_cliente);
-      
+
       const baseData = {
         titulo: data.titulo || 'Novo Agendamento',
         data: `${data.data}T${data.hora}:00`,
@@ -211,7 +211,7 @@ const AppointmentCalendar = () => {
 
         // Tentar encontrar cliente pelo nome se disponível
         if (apt.clientName && clients) {
-          const matchingClient = clients.find(c => 
+          const matchingClient = clients.find(c =>
             c.nome.toLowerCase().includes(apt.clientName!.toLowerCase())
           );
           if (matchingClient) {
@@ -261,7 +261,7 @@ const AppointmentCalendar = () => {
 
   const getDayAppointments = (day: Date) => {
     if (!day) return [];
-    
+
     return appointments.filter(appointment => {
       const appointmentDate = parseISO(appointment.data);
       return isSameDay(appointmentDate, day);
@@ -270,15 +270,15 @@ const AppointmentCalendar = () => {
 
   const getDayAvailabilities = (day: Date) => {
     if (!day || !showAvailabilities) return [];
-    
+
     const dayOfWeek = day.getDay();
     const dateString = format(day, 'yyyy-MM-dd');
     const availabilities: any[] = [];
-    
+
     Object.values(clientAvailabilities).forEach((clientAvails) => {
       clientAvails.forEach((avail: any) => {
         if (avail.status !== 'ativo') return;
-        
+
         if (avail.recorrencia === 'diaria') {
           if (avail.valido_de === dateString) {
             availabilities.push(avail);
@@ -288,7 +288,7 @@ const AppointmentCalendar = () => {
         }
       });
     });
-    
+
     return availabilities;
   };
 
@@ -320,7 +320,7 @@ const AppointmentCalendar = () => {
     if (customColor) {
       return `text-white border-none`;
     }
-    
+
     switch (type) {
       case 'avaliação':
         return 'bg-purple-500 text-white';
@@ -334,7 +334,7 @@ const AppointmentCalendar = () => {
         return 'bg-[#3f9094] text-white';
     }
   };
-  
+
   const getAppointmentStatusColor = (status: string) => {
     switch (status) {
       case 'confirmado':
@@ -374,7 +374,7 @@ const AppointmentCalendar = () => {
     const monthEnd = endOfMonth(currentDate);
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
     const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    
+
     const days = eachDayOfInterval({
       start: calendarStart,
       end: calendarEnd
@@ -382,7 +382,7 @@ const AppointmentCalendar = () => {
 
     const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-      return (
+    return (
       <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-medium text-gray-900">
@@ -407,7 +407,7 @@ const AppointmentCalendar = () => {
             </Button>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-7 gap-1 text-xs mb-2">
           {weekDays.map((day, index) => (
             <div key={`${day}-${index}`} className="text-center text-gray-500 font-medium py-2">
@@ -415,15 +415,15 @@ const AppointmentCalendar = () => {
             </div>
           ))}
         </div>
-        
+
         <div className="grid grid-cols-7 gap-1 text-xs">
           {days.map(day => {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isDayToday = isToday(day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const dayHoliday = getDayHoliday(day);
-            
-      return (
+
+            return (
               <button
                 key={format(day, 'yyyy-MM-dd')}
                 onClick={() => setSelectedDate(day)}
@@ -443,8 +443,8 @@ const AppointmentCalendar = () => {
               </button>
             );
           })}
-          </div>
         </div>
+      </div>
     );
   };
 
@@ -462,9 +462,9 @@ const AppointmentCalendar = () => {
     const dayEvents = getDayAppointments(selectedDate).sort((a, b) =>
       compareAsc(parseISO(a.data), parseISO(b.data))
     );
-    
+
     const dayHoliday = getDayHoliday(selectedDate);
-    
+
     return (
       <div className="mt-4">
         <h3 className="text-sm font-medium text-[#265255] mb-3">
@@ -480,7 +480,7 @@ const AppointmentCalendar = () => {
               )}
             </div>
           )}
-          
+
           {dayEvents.length > 0 ? (
             dayEvents.map((appointment, index) => {
               const statusConfig = {
@@ -492,8 +492,8 @@ const AppointmentCalendar = () => {
               };
               const status = statusConfig[appointment.estado as keyof typeof statusConfig] || statusConfig.pendente;
               const clientInfo = (appointment as any).clientes;
-              const clientId = clientInfo?.id_manual || (appointment as any).id_cliente;
-              
+              const clientId = clientInfo?.id_manual;
+
               return (
                 <div
                   key={`day-panel-${appointment.id}-${index}`}
@@ -505,7 +505,7 @@ const AppointmentCalendar = () => {
                   <div className="flex items-center justify-between mb-1.5">
                     {clientId ? (
                       <span className="font-bold text-xs bg-white/90 text-gray-800 px-2 py-0.5 rounded shadow-sm">
-                        ID: {clientId}
+                        {clientId}
                       </span>
                     ) : (
                       <span></span>
@@ -543,7 +543,7 @@ const AppointmentCalendar = () => {
     const monthEnd = endOfMonth(currentDate);
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
     const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    
+
     const days = eachDayOfInterval({
       start: calendarStart,
       end: calendarEnd
@@ -564,7 +564,7 @@ const AppointmentCalendar = () => {
             </div>
           ))}
         </div>
-        
+
         {weeks.map((week, weekIndex) => (
           <div key={weekIndex} className={`grid grid-cols-7 border-b border-gray-200 last:border-b-0 ${isMobile ? 'min-h-[70px]' : 'min-h-[120px]'}`}>
             {week.map(day => {
@@ -572,9 +572,9 @@ const AppointmentCalendar = () => {
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isDayToday = isToday(day);
               const dayHoliday = getDayHoliday(day);
-                  
+
               return (
-                <div 
+                <div
                   key={format(day, 'yyyy-MM-dd')}
                   className={`
                     border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-gray-50 relative
@@ -603,7 +603,7 @@ const AppointmentCalendar = () => {
                         <span className="opacity-70">{dayHoliday.name}</span>
                       </div>
                     )}
-                    
+
                     {dayAppointments.slice(0, dayHoliday ? 1 : (isMobile ? 1 : 2)).map((appointment, index) => {
                       const statusConfig = {
                         pendente: { label: 'P', labelFull: 'Pend', bg: 'bg-orange-500', text: 'text-white', border: 'border-l-orange-500' },
@@ -614,8 +614,8 @@ const AppointmentCalendar = () => {
                       };
                       const status = statusConfig[appointment.estado as keyof typeof statusConfig] || statusConfig.pendente;
                       const clientInfo = (appointment as any).clientes;
-                      const clientId = clientInfo?.id_manual || (appointment as any).id_cliente;
-                      
+                      const clientId = clientInfo?.id_manual;
+
                       return (
                         <div
                           key={`main-${appointment.id}-${index}`}
@@ -673,7 +673,7 @@ const AppointmentCalendar = () => {
                         </div>
                       );
                     })}
-                    
+
                     {/* Mostrar Disponibilidades - apenas desktop */}
                     {!isMobile && showAvailabilities && getDayAvailabilities(day).length > 0 && (
                       <div className="mt-1 space-y-0.5">
@@ -683,7 +683,7 @@ const AppointmentCalendar = () => {
                             className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 truncate cursor-help transition-all hover:bg-blue-100 dark:hover:bg-blue-900"
                             title={`${avail.hora_inicio} - ${avail.hora_fim}`}
                           >
-                            ID: {avail.clientes?.id_manual || avail.cliente_id} - {avail.clientes?.nome || 'Cliente'}
+                            {avail.clientes?.id_manual && `${avail.clientes.id_manual} - `}{avail.clientes?.nome || 'Cliente'}
                           </div>
                         ))}
                         {getDayAvailabilities(day).length > 2 && (
@@ -707,7 +707,7 @@ const AppointmentCalendar = () => {
       </div>
     );
   };
-  
+
   const renderDayView = () => {
     if (!selectedDate) return null;
 
@@ -726,7 +726,7 @@ const AppointmentCalendar = () => {
     );
   };
 
-    const renderWeekView = () => {
+  const renderWeekView = () => {
     const weekStart = startOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
     const weekEnd = endOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -744,70 +744,69 @@ const AppointmentCalendar = () => {
       />
     );
   };
-  
+
   const renderAgendaView = () => {
     const today = new Date();
     const nextSevenDays = eachDayOfInterval({
-        start: today,
-        end: addDays(today, 6),
+      start: today,
+      end: addDays(today, 6),
     });
 
     const upcomingAppointments = nextSevenDays.flatMap(day => {
-        const appointmentsForDay = getDayAppointments(day);
-        return appointmentsForDay.map(app => ({...app, day: day}));
+      const appointmentsForDay = getDayAppointments(day);
+      return appointmentsForDay.map(app => ({ ...app, day: day }));
     }).sort((a, b) => compareAsc(parseISO(a.data), parseISO(b.data)));
 
     return (
       <Card>
         <CardHeader>
-            <CardTitle className="text-xl text-[#265255]">Próximos 7 Dias</CardTitle>
+          <CardTitle className="text-xl text-[#265255]">Próximos 7 Dias</CardTitle>
         </CardHeader>
         <CardContent>
-            {upcomingAppointments.length > 0 ? (
-                <ul className="space-y-4">
-                    {upcomingAppointments.map((appointment, index) => {
-                        const showDateHeader = index === 0 || !isSameDay(parseISO(appointment.data), parseISO(upcomingAppointments[index - 1].data));
-                        return (
-                            <React.Fragment key={`${appointment.id}-${index}`}>
-                                {showDateHeader && (
-                                    <h3 className="text-lg font-semibold pt-4 text-[#265255] border-t mt-4 first:mt-0 first:border-t-0">
-                                        {format(appointment.day, "eeee, dd/MM/yyyy", { locale: pt })}
-                                    </h3>
-                                )}
-                                <li onClick={() => handleEventClick(appointment)} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}>
-                                     <div className="font-bold text-base">{format(parseISO(appointment.data), 'HH:mm')}</div>
-                                     <div className="flex-1 min-w-0">
-                                         <div className="flex items-center gap-2 flex-wrap">
-                                           {((appointment.clientes as any)?.id_manual || (appointment as any).id_cliente) && (
-                                             <span className="font-bold text-xs bg-white/90 text-gray-800 px-2 py-0.5 rounded shadow-sm">
-                                               ID: {(appointment.clientes as any)?.id_manual || (appointment as any).id_cliente}
-                                             </span>
-                                           )}
-                                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold shadow-sm ${
-                                             appointment.estado === 'realizado' ? 'bg-green-500 text-white' :
-                                             appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'bg-blue-500 text-white' :
-                                             appointment.estado === 'cancelado' ? 'bg-red-500 text-white' :
-                                             'bg-orange-500 text-white'
-                                           }`}>
-                                             {appointment.estado === 'realizado' ? 'Realizado' :
-                                              appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'Confirmado' :
-                                              appointment.estado === 'cancelado' ? 'Cancelado' : 'Pendente'}
-                                           </span>
-                                         </div>
-                                         <p className="font-semibold truncate">{appointment.clientes?.nome || appointment.titulo}</p>
-                                         <p className="text-sm opacity-80 capitalize">{appointment.tipo}</p>
-                                     </div>
-                                 </li>
-                            </React.Fragment>
-                        )
-                    })}
-                </ul>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2">Nenhum agendamento para os próximos 7 dias.</p>
-          </div>
-            )}
+          {upcomingAppointments.length > 0 ? (
+            <ul className="space-y-4">
+              {upcomingAppointments.map((appointment, index) => {
+                const showDateHeader = index === 0 || !isSameDay(parseISO(appointment.data), parseISO(upcomingAppointments[index - 1].data));
+                return (
+                  <React.Fragment key={`${appointment.id}-${index}`}>
+                    {showDateHeader && (
+                      <h3 className="text-lg font-semibold pt-4 text-[#265255] border-t mt-4 first:mt-0 first:border-t-0">
+                        {format(appointment.day, "eeee, dd/MM/yyyy", { locale: pt })}
+                      </h3>
+                    )}
+                    <li onClick={() => handleEventClick(appointment)} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}>
+                      <div className="font-bold text-base">{format(parseISO(appointment.data), 'HH:mm')}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(appointment.clientes as any)?.id_manual && (
+                            <span className="font-bold text-xs bg-white/90 text-gray-800 px-2 py-0.5 rounded shadow-sm">
+                              {(appointment.clientes as any)?.id_manual}
+                            </span>
+                          )}
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold shadow-sm ${appointment.estado === 'realizado' ? 'bg-green-500 text-white' :
+                              appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'bg-blue-500 text-white' :
+                                appointment.estado === 'cancelado' ? 'bg-red-500 text-white' :
+                                  'bg-orange-500 text-white'
+                            }`}>
+                            {appointment.estado === 'realizado' ? 'Realizado' :
+                              appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'Confirmado' :
+                                appointment.estado === 'cancelado' ? 'Cancelado' : 'Pendente'}
+                          </span>
+                        </div>
+                        <p className="font-semibold truncate">{appointment.clientes?.nome || appointment.titulo}</p>
+                        <p className="text-sm opacity-80 capitalize">{appointment.tipo}</p>
+                      </div>
+                    </li>
+                  </React.Fragment>
+                )
+              })}
+            </ul>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2">Nenhum agendamento para os próximos 7 dias.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -815,9 +814,9 @@ const AppointmentCalendar = () => {
 
   const renderCurrentView = () => {
     switch (currentView) {
-        case 'day':
+      case 'day':
         return renderDayView();
-        case 'week':
+      case 'week':
         return renderWeekView();
       case 'agenda':
         return renderAgendaView();
@@ -850,7 +849,7 @@ const AppointmentCalendar = () => {
               <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-[#3f9094]" />
               <h1 className="text-lg sm:text-xl font-medium text-[#265255]">Calendário</h1>
             </div>
-            
+
             {/* Navegação do mês - sempre visível */}
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')} className="h-8 w-8 hover:bg-gray-100 rounded-full">
@@ -869,7 +868,7 @@ const AppointmentCalendar = () => {
           <div className="flex items-center justify-between sm:justify-end gap-2">
             {/* Botões principais - desktop */}
             <div className="hidden md:flex items-center gap-2">
-              <Button 
+              <Button
                 onClick={() => openNewAppointmentDialog()}
                 className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white rounded-full px-4 py-2 font-medium shadow-sm"
               >
@@ -896,7 +895,7 @@ const AppointmentCalendar = () => {
               >
                 Hoje
               </Button>
-              <Button 
+              <Button
                 onClick={() => openNewAppointmentDialog()}
                 size="sm"
                 className="h-8 bg-[#3f9094] hover:bg-[#2d7a7e] text-white px-2"
@@ -952,11 +951,11 @@ const AppointmentCalendar = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-                {/* Sidebar */}
+        {/* Sidebar */}
         <aside className="w-64 bg-gray-50 border-r border-gray-200 p-4 space-y-4 overflow-y-auto hidden md:block">
           {renderMiniCalendar()}
-        <DayEventsPanel />
-          
+          <DayEventsPanel />
+
           {/* Legenda de Cores */}
           <div className="p-4 bg-white rounded-lg border border-gray-200">
             <h3 className="text-sm font-medium text-[#265255] mb-3">Tipos de Eventos</h3>
@@ -973,7 +972,7 @@ const AppointmentCalendar = () => {
                 <div className="w-4 h-4 bg-yellow-500 rounded"></div>
                 <span className="text-xs text-gray-700">Discussão</span>
               </div>
-      </div>
+            </div>
 
             <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Status de Eventos</h3>
             <div className="space-y-2">
@@ -1096,7 +1095,7 @@ const AppointmentCalendar = () => {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="hora"
@@ -1111,141 +1110,141 @@ const AppointmentCalendar = () => {
                   )}
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="id_cliente"
-                render={({ field }) => {
-                  const filteredClients = clients.filter(client => {
-                    if (!clientSearchQuery || clientSearchQuery.trim() === '') return true;
-                    const searchLower = clientSearchQuery.toLowerCase().trim();
+                <FormField
+                  control={form.control}
+                  name="id_cliente"
+                  render={({ field }) => {
+                    const filteredClients = clients.filter(client => {
+                      if (!clientSearchQuery || clientSearchQuery.trim() === '') return true;
+                      const searchLower = clientSearchQuery.toLowerCase().trim();
+                      return (
+                        (client.nome && client.nome.toLowerCase().includes(searchLower)) ||
+                        (client.id_manual && client.id_manual.toLowerCase().includes(searchLower)) ||
+                        (client.id && client.id.toString().includes(searchLower))
+                      );
+                    });
+
+                    const selectedClient = clients.find(c => c.id === field.value);
+                    const displayClients = clientSearchQuery ? filteredClients : clients;
+
+                    console.log('Total de clientes carregados:', clients.length);
+                    console.log('Clientes a exibir:', displayClients.length);
+
                     return (
-                      (client.nome && client.nome.toLowerCase().includes(searchLower)) ||
-                      (client.id_manual && client.id_manual.toLowerCase().includes(searchLower)) ||
-                      (client.id && client.id.toString().includes(searchLower))
-                    );
-                  });
+                      <FormItem>
+                        <FormLabel>Cliente (Opcional)</FormLabel>
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              placeholder={isLoadingClients ? "Carregando clientes..." : "🔍 Pesquisar por nome ou ID..."}
+                              value={clientSearchQuery}
+                              onChange={(e) => {
+                                setClientSearchQuery(e.target.value);
+                              }}
+                              disabled={isLoadingClients}
+                              className="w-full"
+                            />
+                            {isLoadingClients && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                              </div>
+                            )}
+                          </div>
 
-                  const selectedClient = clients.find(c => c.id === field.value);
-                  const displayClients = clientSearchQuery ? filteredClients : clients;
-
-                  console.log('Total de clientes carregados:', clients.length);
-                  console.log('Clientes a exibir:', displayClients.length);
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Cliente (Opcional)</FormLabel>
-                      <div className="space-y-2">
-                        <div className="relative">
-                          <Input
-                            type="text"
-                            placeholder={isLoadingClients ? "Carregando clientes..." : "🔍 Pesquisar por nome ou ID..."}
-                            value={clientSearchQuery}
-                            onChange={(e) => {
-                              setClientSearchQuery(e.target.value);
+                          <Select
+                            onValueChange={(value) => {
+                              console.log('Cliente selecionado no Select:', value);
+                              field.onChange(value === "null" ? null : parseInt(value));
+                              setClientSearchQuery('');
                             }}
+                            value={field.value?.toString() || "null"}
                             disabled={isLoadingClients}
-                            className="w-full"
-                          />
-                          {isLoadingClients && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={
+                                  isLoadingClients
+                                    ? "Carregando clientes..."
+                                    : selectedClient
+                                      ? `${selectedClient.id_manual ? `[${selectedClient.id_manual}]` : `[ID: ${selectedClient.id}]`} ${selectedClient.nome}`
+                                      : clientSearchQuery
+                                        ? `${displayClients.length} cliente(s) filtrado(s)`
+                                        : `Selecionar cliente (${clients.length} disponíveis)`
+                                } />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="max-h-[300px] overflow-y-auto">
+                              <SelectItem value="null">
+                                <span className="font-normal text-gray-600">Sem cliente associado</span>
+                              </SelectItem>
+                              {displayClients.length > 0 && displayClients.map(client => (
+                                <SelectItem key={client.id} value={client.id.toString()}>
+                                  {client.id_manual ? `[${client.id_manual}] ` : `[ID: ${client.id}] `}
+                                  {client.nome || 'Cliente sem nome'}
+                                </SelectItem>
+                              ))}
+                              {displayClients.length === 0 && clientSearchQuery && (
+                                <div className="px-2 py-3 text-center text-sm text-gray-500">
+                                  Nenhum cliente encontrado para "{clientSearchQuery}"
+                                </div>
+                              )}
+                              {clients.length === 0 && !clientSearchQuery && !isLoadingClients && (
+                                <div className="px-2 py-3 text-center text-sm text-gray-500">
+                                  Nenhum cliente cadastrado
+                                </div>
+                              )}
+                            </SelectContent>
+                          </Select>
+
+                          {selectedClient && (
+                            <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                              <span className="text-sm font-medium text-blue-900">
+                                ✓ {selectedClient.id_manual ? `[${selectedClient.id_manual}] ` : `[ID: ${selectedClient.id}] `}
+                                {selectedClient.nome}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  field.onChange(null);
+                                  setClientSearchQuery('');
+                                }}
+                                className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                              >
+                                ✕ Remover
+                              </button>
                             </div>
                           )}
+
+                          {!isLoadingClients && (
+                            <p className="text-xs text-gray-500">
+                              {clientSearchQuery ? (
+                                <>{filteredClients.length} de {clients.length} cliente(s) {filteredClients.length === 1 ? 'encontrado' : 'encontrados'}</>
+                              ) : (
+                                <>{clients.length} cliente(s) disponível{clients.length === 1 ? '' : 'eis'}</>
+                              )}
+                            </p>
+                          )}
                         </div>
-                        
-                        <Select 
-                          onValueChange={(value) => {
-                            console.log('Cliente selecionado no Select:', value);
-                            field.onChange(value === "null" ? null : parseInt(value));
-                            setClientSearchQuery('');
-                          }} 
-                          value={field.value?.toString() || "null"}
-                          disabled={isLoadingClients}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={
-                                isLoadingClients 
-                                  ? "Carregando clientes..." 
-                                  : selectedClient
-                                    ? `${selectedClient.id_manual ? `[${selectedClient.id_manual}]` : `[ID: ${selectedClient.id}]`} ${selectedClient.nome}`
-                                    : clientSearchQuery 
-                                      ? `${displayClients.length} cliente(s) filtrado(s)` 
-                                      : `Selecionar cliente (${clients.length} disponíveis)`
-                              } />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="max-h-[300px] overflow-y-auto">
-                            <SelectItem value="null">
-                              <span className="font-normal text-gray-600">Sem cliente associado</span>
-                            </SelectItem>
-                            {displayClients.length > 0 && displayClients.map(client => (
-                              <SelectItem key={client.id} value={client.id.toString()}>
-                                {client.id_manual ? `[${client.id_manual}] ` : `[ID: ${client.id}] `}
-                                {client.nome || 'Cliente sem nome'}
-                              </SelectItem>
-                            ))}
-                            {displayClients.length === 0 && clientSearchQuery && (
-                              <div className="px-2 py-3 text-center text-sm text-gray-500">
-                                Nenhum cliente encontrado para "{clientSearchQuery}"
-                              </div>
-                            )}
-                            {clients.length === 0 && !clientSearchQuery && !isLoadingClients && (
-                              <div className="px-2 py-3 text-center text-sm text-gray-500">
-                                Nenhum cliente cadastrado
-                              </div>
-                            )}
-                          </SelectContent>
-                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
 
-                        {selectedClient && (
-                          <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
-                            <span className="text-sm font-medium text-blue-900">
-                              ✓ {selectedClient.id_manual ? `[${selectedClient.id_manual}] ` : `[ID: ${selectedClient.id}] `}
-                              {selectedClient.nome}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                field.onChange(null);
-                                setClientSearchQuery('');
-                              }}
-                              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                            >
-                              ✕ Remover
-                            </button>
-                          </div>
-                        )}
-
-                        {!isLoadingClients && (
-                          <p className="text-xs text-gray-500">
-                            {clientSearchQuery ? (
-                              <>{filteredClients.length} de {clients.length} cliente(s) {filteredClients.length === 1 ? 'encontrado' : 'encontrados'}</>
-                            ) : (
-                              <>{clients.length} cliente(s) disponível{clients.length === 1 ? '' : 'eis'}</>
-                            )}
-                          </p>
-                        )}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <FormField
-                control={form.control}
-                name="tipo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="tipo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
+                        <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Tipo de agendamento" />
-                        </SelectTrigger>
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="sessão">Sessão</SelectItem>
@@ -1254,10 +1253,10 @@ const AppointmentCalendar = () => {
                           <SelectItem value="consulta inicial">Consulta Inicial</SelectItem>
                         </SelectContent>
                       </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <FormField
@@ -1267,11 +1266,11 @@ const AppointmentCalendar = () => {
                   <FormItem>
                     <FormLabel>Estado</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
+                      <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Estado do agendamento" />
                         </SelectTrigger>
-                    </FormControl>
+                      </FormControl>
                       <SelectContent>
                         <SelectItem value="pendente">Pendente</SelectItem>
                         <SelectItem value="confirmado">Confirmado</SelectItem>
@@ -1309,21 +1308,20 @@ const AppointmentCalendar = () => {
                         {/* Paleta de cores predefinidas */}
                         <div className="flex flex-wrap gap-2">
                           {[
-                            '#D50000', '#E67C73', '#F4511E', '#F6BF26', '#33B679', 
+                            '#D50000', '#E67C73', '#F4511E', '#F6BF26', '#33B679',
                             '#0B8043', '#039BE5', '#3F51B5', '#7986CB', '#8E24AA', '#616161'
                           ].map((color) => (
                             <button
                               key={color}
                               type="button"
-                              className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${
-                                field.value === color ? 'border-gray-800' : 'border-gray-300'
-                              }`}
+                              className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${field.value === color ? 'border-gray-800' : 'border-gray-300'
+                                }`}
                               style={{ backgroundColor: color }}
                               onClick={() => field.onChange(color)}
                             />
                           ))}
                         </div>
-                        
+
                         {/* Campo de cor personalizada */}
                         <div className="flex items-center gap-2">
                           <Input
@@ -1363,15 +1361,15 @@ const AppointmentCalendar = () => {
 
               <DialogFooter className="flex justify-between w-full">
                 <div>
-                {selectedAppointment && (
-                  <Button 
-                    type="button" 
-                    variant="destructive" 
-                    onClick={handleDeleteAppointment}
-                  >
-                    Eliminar
-                  </Button>
-                )}
+                  {selectedAppointment && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleDeleteAppointment}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
                 </div>
                 <div className="flex space-x-2">
                   <DialogClose asChild>
