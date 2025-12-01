@@ -192,6 +192,9 @@ const AppointmentCalendar = () => {
     hora: string;
     tipo: string;
     terapeuta?: string;
+    id_manual?: string;
+    estado?: string;
+    cor?: string;
     notas?: string;
     clientName?: string;
   }>) => {
@@ -204,18 +207,27 @@ const AppointmentCalendar = () => {
           id_cliente: null as number | null,
           tipo: apt.tipo as AppointmentType || 'sessão',
           notas: apt.notas || 'Importado automaticamente',
-          estado: 'pendente',
+          estado: apt.estado || 'pendente',
           terapeuta: apt.terapeuta || '',
-          cor: '#3B82F6'
+          cor: apt.cor || '#3B82F6'
         };
 
-        // Tentar encontrar cliente pelo nome se disponível
-        if (apt.clientName && clients) {
-          const matchingClient = clients.find(c =>
-            c.nome.toLowerCase().includes(apt.clientName!.toLowerCase())
-          );
-          if (matchingClient) {
-            appointmentData.id_cliente = matchingClient.id;
+        // Tentar encontrar cliente pelo ID manual primeiro, depois pelo nome
+        if (clients) {
+          if (apt.id_manual) {
+            const matchingClient = clients.find(c =>
+              c.id_manual?.toLowerCase() === apt.id_manual!.toLowerCase()
+            );
+            if (matchingClient) {
+              appointmentData.id_cliente = matchingClient.id;
+            }
+          } else if (apt.clientName) {
+            const matchingClient = clients.find(c =>
+              c.nome.toLowerCase().includes(apt.clientName!.toLowerCase())
+            );
+            if (matchingClient) {
+              appointmentData.id_cliente = matchingClient.id;
+            }
           }
         }
 
@@ -791,9 +803,9 @@ const AppointmentCalendar = () => {
                             </span>
                           )}
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold shadow-sm ${appointment.estado === 'realizado' ? 'bg-green-500 text-white' :
-                              appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'bg-blue-500 text-white' :
-                                appointment.estado === 'cancelado' ? 'bg-red-500 text-white' :
-                                  'bg-orange-500 text-white'
+                            appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'bg-blue-500 text-white' :
+                              appointment.estado === 'cancelado' ? 'bg-red-500 text-white' :
+                                'bg-orange-500 text-white'
                             }`}>
                             {appointment.estado === 'realizado' ? 'Realizado' :
                               appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'Confirmado' :

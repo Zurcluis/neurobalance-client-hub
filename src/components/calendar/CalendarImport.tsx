@@ -32,6 +32,9 @@ interface ParsedAppointment {
   hora: string;
   tipo: string;
   terapeuta?: string;
+  id_manual?: string;
+  estado?: string;
+  cor?: string;
   notas?: string;
   clientName?: string;
 }
@@ -72,7 +75,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
         const text = await selectedFile.text();
         setExtractedText(text);
         parseTextForAppointments(text);
-      } 
+      }
       // Para PDFs, tentar extrair texto básico
       else if (selectedFile.type === 'application/pdf') {
         // PDF precisa de processamento especial
@@ -102,14 +105,14 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
 
   const parseTextForAppointments = (text: string) => {
     const appointments: ParsedAppointment[] = [];
-    
+
     // Normalizar texto (substituir diferentes tipos de traços)
     const normalizedText = text
       .replace(/–/g, '-')  // en-dash
       .replace(/—/g, '-')  // em-dash
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n');
-    
+
     // Mapeamento de meses em português
     const monthMap: { [key: string]: string } = {
       'jan': '01', 'janeiro': '01',
@@ -132,7 +135,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
     };
 
     const lines = normalizedText.split('\n');
-    
+
     // Variáveis para acumular informação de um evento
     let currentDay = '';
     let currentMonth = '';
@@ -162,10 +165,10 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
       // ============================================
       // FORMATO GOOGLE CALENDAR
       // ============================================
-      
+
       // Padrão: Dia + Mês/Ano na mesma linha ou próximas
       // Exemplo: "12" seguido de "Nov. 2025, Sex"
-      
+
       // Linha é apenas um número (dia do mês) - formato Google Calendar
       const dayOnlyMatch = line.match(/^(\d{1,2})$/);
       if (dayOnlyMatch) {
@@ -207,7 +210,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
       // ============================================
       // FORMATO DATA COMPLETA
       // ============================================
-      
+
       // Padrão: DD/MM/YYYY com ou sem hora
       const fullDateMatch = line.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (fullDateMatch) {
@@ -215,17 +218,17 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
         if (currentDay && currentMonth && currentYear && (currentTime || currentTitle)) {
           saveCurrentEvent();
         }
-        
+
         currentDay = fullDateMatch[1];
         currentMonth = fullDateMatch[2].padStart(2, '0');
         currentYear = fullDateMatch[3];
-        
+
         // Verificar se há horário na mesma linha
         const timeInLine = line.match(/(\d{1,2}):(\d{2})/);
         if (timeInLine) {
           currentTime = `${timeInLine[1].padStart(2, '0')}:${timeInLine[2]}`;
         }
-        
+
         // Extrair título se houver mais texto
         let remainingText = line.replace(fullDateMatch[0], '');
         if (timeInLine) {
@@ -253,15 +256,15 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
       // ============================================
       // TÍTULO DO EVENTO
       // ============================================
-      
+
       // Se já temos um dia, esta linha pode ser o título
       if (currentDay && line.length > 0) {
         // Ignorar dias da semana abreviados
         const weekDayAbbrevs = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'sáb', 'dom',
-                                'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+          'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
         const cleanLine = line.toLowerCase().replace(/\./g, '').trim();
         const isWeekDay = weekDayAbbrevs.includes(cleanLine);
-        
+
         if (!isWeekDay) {
           // Se já tem título, é um novo evento com o mesmo título ou adicionar ao título
           if (currentTitle && currentTime) {
@@ -277,7 +280,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
         // ============================================
         // FORMATOS DE LINHA ÚNICA
         // ============================================
-        
+
         // "Nome - 03/12/2025 às 10:00" ou "Nome - 03/12/2025 10:00"
         const combinedMatch1 = line.match(/(.+?)\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(?:às?\s*)?(\d{1,2}):(\d{2})/i);
         if (combinedMatch1) {
@@ -364,14 +367,14 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
 
     // Remover duplicados baseado em data + hora + título
     const uniqueAppointments = appointments.filter((apt, index, self) =>
-      index === self.findIndex(a => 
+      index === self.findIndex(a =>
         a.data === apt.data && a.hora === apt.hora && a.titulo === apt.titulo
       )
     );
 
     console.log('Agendamentos parseados:', uniqueAppointments);
     setParsedAppointments(uniqueAppointments);
-    
+
     if (uniqueAppointments.length > 0) {
       setStep('confirm');
       toast.success(`${uniqueAppointments.length} agendamento(s) detectado(s)!`);
@@ -520,7 +523,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                 placeholder="Cole aqui o texto do Google Calendar, PDF ou documento...&#10;&#10;Formato Google Calendar:&#10;12&#10;Nov. 2025, Sex&#10;16:00 - 17:00&#10;Nome do Evento&#10;&#10;Ou formato simples:&#10;03/12/2025 10:00 - Sessão com João"
                 className="min-h-[120px] font-mono text-sm"
               />
-              <Button 
+              <Button
                 onClick={() => {
                   if (extractedText.trim()) {
                     parseTextForAppointments(extractedText);
@@ -546,7 +549,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                 Cole ou edite o texto abaixo e clique em "Analisar" para detectar agendamentos.
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Texto do documento</Label>
               <Textarea
@@ -619,7 +622,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Tipo</Label>
+                      <Label className="text-xs">Tipo de Sessão</Label>
                       <Select
                         value={apt.tipo}
                         onValueChange={(value) => updateAppointment(index, 'tipo', value)}
@@ -643,6 +646,50 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                         placeholder="Nome do terapeuta"
                         className="h-8 text-sm"
                       />
+                    </div>
+                    <div>
+                      <Label className="text-xs">ID Manual do Cliente</Label>
+                      <Input
+                        value={apt.id_manual || ''}
+                        onChange={(e) => updateAppointment(index, 'id_manual', e.target.value)}
+                        placeholder="ID manual"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Estado</Label>
+                      <Select
+                        value={apt.estado || 'pendente'}
+                        onValueChange={(value) => updateAppointment(index, 'estado', value)}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendente">Pendente</SelectItem>
+                          <SelectItem value="confirmado">Confirmado</SelectItem>
+                          <SelectItem value="cancelado">Cancelado</SelectItem>
+                          <SelectItem value="concluído">Concluído</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Cor</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          type="color"
+                          value={apt.cor || '#3B82F6'}
+                          onChange={(e) => updateAppointment(index, 'cor', e.target.value)}
+                          className="h-8 w-16 p-1"
+                        />
+                        <Input
+                          type="text"
+                          value={apt.cor || '#3B82F6'}
+                          onChange={(e) => updateAppointment(index, 'cor', e.target.value)}
+                          placeholder="#3B82F6"
+                          className="h-8 text-sm flex-1"
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
