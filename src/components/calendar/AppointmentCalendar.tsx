@@ -276,7 +276,28 @@ const AppointmentCalendar = () => {
 
     return appointments.filter(appointment => {
       const appointmentDate = parseISO(appointment.data);
-      return isSameDay(appointmentDate, day);
+      const isSameDate = isSameDay(appointmentDate, day);
+
+      // Se não há pesquisa, retorna todos os appointments do dia
+      if (!searchQuery || searchQuery.trim() === '') {
+        return isSameDate;
+      }
+
+      // Se não é do mesmo dia, não mostrar
+      if (!isSameDate) return false;
+
+      // Filtrar por pesquisa (case-insensitive)
+      const query = searchQuery.toLowerCase().trim();
+      const clientInfo = appointment.clientes;
+
+      // Buscar em: nome do cliente, ID manual, título, terapeuta, tipo
+      const matchClientName = clientInfo?.nome?.toLowerCase().includes(query);
+      const matchClientId = clientInfo?.id_manual?.toLowerCase().includes(query);
+      const matchTitle = appointment.titulo?.toLowerCase().includes(query);
+      const matchTherapist = appointment.terapeuta?.toLowerCase().includes(query);
+      const matchType = appointment.tipo?.toLowerCase().includes(query);
+
+      return matchClientName || matchClientId || matchTitle || matchTherapist || matchType;
     });
   };
 

@@ -75,151 +75,147 @@ const App = () => (
                         <SkipLinks />
                         <Suspense fallback={<LoadingFallback />}>
                           <Routes>
-                      {/* Admin Routes */}
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/auth/callback" element={<AuthCallback />} />
-                      <Route
-                        path="/"
-                        element={
-                          <ProtectedRoute>
-                            <Index />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/clients"
-                        element={
-                          <ProtectedRoute>
-                            <ClientsPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/clients/:clientId"
-                        element={
-                          <ProtectedRoute>
-                            <ClientDetailPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/calendar"
-                        element={
-                          <ProtectedRoute>
-                            <CalendarPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/monitoring"
-                        element={
-                          <ProtectedRoute>
-                            <MonitoringPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/finances"
-                        element={
-                          <ProtectedRoute>
-                            <FinancesPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/statistics"
-                        element={
-                          <ProtectedRoute>
-                            <StatisticsPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/investments"
-                        element={
-                          <ProtectedRoute>
-                            <InvestmentsPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/marketing-reports"
-                        element={
-                          <ProtectedRoute>
-                            <MarketingReportsPage />
-                          </ProtectedRoute>
-                        }
-                      />
+                            {/* Admin Routes */}
+                            <Route path="/login" element={<LoginPage />} />
+                            <Route path="/auth/callback" element={<AuthCallback />} />
+                            <Route
+                              path="/"
+                              element={
+                                <ProtectedRoute>
+                                  <Index />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/clients"
+                              element={
+                                <ProtectedRoute>
+                                  <ClientsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/clients/:clientId"
+                              element={
+                                <ProtectedRoute>
+                                  <ClientDetailPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/calendar"
+                              element={
+                                <ProtectedRoute>
+                                  <CalendarPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/monitoring"
+                              element={
+                                <ProtectedRoute>
+                                  <MonitoringPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/finances"
+                              element={
+                                <ProtectedRoute>
+                                  <FinancesPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/statistics"
+                              element={
+                                <ProtectedRoute>
+                                  <StatisticsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/investments"
+                              element={
+                                <ProtectedRoute>
+                                  <InvestmentsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/marketing-reports"
+                              element={
+                                <ProtectedRoute>
+                                  <MarketingReportsPage />
+                                </ProtectedRoute>
+                              }
+                            />
 
-                      <Route
-                        path="/admin-management"
-                        element={
-                          <ProtectedRoute>
-                            <AdminManagementPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      
-                      {/* Admin Routes */}
-                      <Route path="/admin-login" element={<AdminLoginPage />} />
-                                                <Route
-              path="/admin/clients"
-              element={
-                <AdminProtectedRoute requiredPermission="view_clients">
-                  <AdminClientsFullPage />
-                </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/clients/:clientId"
-              element={
-                <AdminProtectedRoute requiredPermission="view_clients">
-                  <AdminClientProfilePage />
-                </AdminProtectedRoute>
-              }
-            />
-                                    <Route 
-                    path="/admin/calendar" 
-                    element={
-                      <AdminProtectedRoute requiredPermission="view_calendar">
-                        <AdminCalendarFullPage />
-                      </AdminProtectedRoute>
-                    } 
-                  />
-                  
-                  <Route
-                    path="/admin/availability"
-                    element={
-                      <AdminProtectedRoute requiredPermission="view_clients">
-                        <AdminAvailabilityPage />
-                      </AdminProtectedRoute>
-                    }
-                  />
-                  
-                  {/* Marketing Routes */}
-                  <Route path="/marketing-login" element={<MarketingLoginPage />} />
-                  <Route
-                    path="/marketing"
-                    element={
-                      <MarketingProtectedRoute>
-                        <MarketingAreaPage />
-                      </MarketingProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/marketing/landing"
-                    element={
-                      <MarketingProtectedRoute>
-                        <MarketingLandingPage />
-                      </MarketingProtectedRoute>
-                    }
-                  />
-                  <Route path="/landing" element={<MarketingLandingPage />} />
-                  
-                  {/* Client Routes */}
-                  <Route path="/client-login" element={<ClientLoginPage />} />
-                  <Route path="/client-dashboard" element={<ClientDashboardPage />} />
-                  
+                            <Route
+                              path="/admin-management"
+                              element={
+                                <ProtectedRoute>
+                                  <AdminManagementPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Admin Routes */}
+                            <Route path="/admin-login" element={<AdminLoginPage />} />
+                            <Route
+                              path="/admin/clients"
+                              element={
+                                <AdminProtectedRoute requiredPermission="view_clients">
+                                  <AdminClientsFullPage />
+                                </AdminProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/admin/clients/:clientId"
+                              element={
+                                <AdminProtectedRoute requiredPermission="view_clients">
+                                  <AdminClientProfilePage />
+                                </AdminProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/admin/calendar"
+                              element={
+                                <AdminProtectedRoute requiredPermission="view_calendar">
+                                  <AdminCalendarFullPage />
+                                </AdminProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="/admin/availability"
+                              element={<AdminAvailabilityPage />}
+                            />
+
+                            {/* Marketing Routes */}
+                            <Route path="/marketing-login" element={<MarketingLoginPage />} />
+                            <Route
+                              path="/marketing"
+                              element={
+                                <MarketingProtectedRoute>
+                                  <MarketingAreaPage />
+                                </MarketingProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/marketing/landing"
+                              element={
+                                <MarketingProtectedRoute>
+                                  <MarketingLandingPage />
+                                </MarketingProtectedRoute>
+                              }
+                            />
+                            <Route path="/landing" element={<MarketingLandingPage />} />
+
+                            {/* Client Routes */}
+                            <Route path="/client-login" element={<ClientLoginPage />} />
+                            <Route path="/client-dashboard" element={<ClientDashboardPage />} />
+
                             {/* 404 Route */}
                             <Route path="*" element={<NotFound />} />
                           </Routes>
