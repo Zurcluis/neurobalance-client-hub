@@ -293,10 +293,71 @@ export const useMarketingTokens = () => {
         return { isValid: false };
     };
 
-    // Carregar tokens na montagem
-    useEffect(() => {
-        fetchTokens();
+    // Migrar tokens do localStorage para Supabase
+    const migrateLocalTokensToSupabase = useCallback(async (): Promise<number> => {
+        const savedTokensStr = localStorage.getItem('marketing_access_tokens');
+        if (!savedTokensStr) return 0;
+
+        try {
+            const savedTokens = JSON.parse(savedTokensStr);
+            let migratedCount = 0;
+
+            for (const token of savedTokens) {
+                // Verificar se já existe no Supabase
+                const { data: existing } = await supabase
+                    .from('marketing_access_tokens')
+                    .select('id')
+                    .eq('token', token.token)
+                    .single();
+
+                if (!existing) {
+                    // Token não existe, migrar
+                    const tokenToInsert = {
+                        token: token.token,
+                        name: token.name,
+                        email: token.email,
+                        role: token.role,
+                        validity_period: token.validity_period || token.validityPeriod || '7d',
+                        created_at: token.created_at || token.createdAt || new Date().toISOString(),
+                        expires_at: token.expires_at || token.expiresAt,
+                        created_by: token.created_by || token.createdBy || 'admin@neurobalance.pt',
+                        is_active: token.is_active !== undefined ? token.is_active : (token.isActive !== undefined ? token.isActive : true),
+                        usage_count: token.usage_count || token.usageCount || 0,
+                        last_used_at: token.last_used_at || token.lastUsedAt || null
+                    };
+
+                    const { error } = await supabase
+                        .from('marketing_access_tokens')
+                        .insert(tokenToInsert);
+
+                    if (!error) {
+                        migratedCount++;
+                    } else {
+                        console.error('Erro ao migrar token:', error);
+                    }
+                }
+            }
+
+            if (migratedCount > 0) {
+                await fetchTokens(); // Recarregar tokens
+            }
+
+            return migratedCount;
+        } catch (err) {
+            console.error('Erro na migração:', err);
+            return 0;
+        }
     }, [fetchTokens]);
+
+    // Carregar tokens na montagem e tentar migrar tokens locais
+    useEffect(() => {
+        const init = async () => {
+            await fetchTokens();
+            // Tentar migrar tokens locais automaticamente
+            await migrateLocalTokensToSupabase();
+        };
+        init();
+    }, [fetchTokens, migrateLocalTokensToSupabase]);
 
     return {
         tokens,
@@ -305,7 +366,8 @@ export const useMarketingTokens = () => {
         createToken,
         deleteToken,
         validateToken,
-        refreshTokens: fetchTokens
+        refreshTokens: fetchTokens,
+        migrateLocalTokens: migrateLocalTokensToSupabase
     };
 };
 

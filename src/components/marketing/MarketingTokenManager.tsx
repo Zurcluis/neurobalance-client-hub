@@ -16,7 +16,9 @@ import {
     Mail,
     ExternalLink,
     Shield,
-    Loader2
+    Loader2,
+    RefreshCw,
+    Upload
 } from 'lucide-react';
 import { VALIDITY_PERIODS } from '@/types/marketing-tokens';
 import { useMarketingTokens, MarketingAccessToken } from '@/hooks/useMarketingTokens';
@@ -24,9 +26,27 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const MarketingTokenManager = () => {
-    const { tokens, loading, createToken, deleteToken, refreshTokens } = useMarketingTokens();
+    const { tokens, loading, createToken, deleteToken, refreshTokens, migrateLocalTokens } = useMarketingTokens();
     const [copiedToken, setCopiedToken] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleSyncTokens = async () => {
+        setIsSyncing(true);
+        try {
+            const migratedCount = await migrateLocalTokens();
+            if (migratedCount > 0) {
+                toast.success(`${migratedCount} token(s) sincronizado(s) com sucesso!`);
+            } else {
+                toast.info('Nenhum token novo para sincronizar');
+            }
+            await refreshTokens();
+        } catch (error) {
+            toast.error('Erro ao sincronizar tokens');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const [formData, setFormData] = useState({
         name: '',
@@ -191,10 +211,37 @@ const MarketingTokenManager = () => {
             {/* Tokens Ativos */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-green-600" />
-                        Tokens Ativos ({getActiveTokens().length})
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                            <Shield className="h-5 w-5 text-green-600" />
+                            Tokens Ativos ({getActiveTokens().length})
+                        </CardTitle>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSyncTokens}
+                                disabled={isSyncing}
+                                title="Sincronizar tokens locais com o servidor"
+                            >
+                                {isSyncing ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Upload className="h-4 w-4" />
+                                )}
+                                <span className="ml-2 hidden sm:inline">Sincronizar</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => refreshTokens()}
+                                disabled={loading}
+                                title="Atualizar lista"
+                            >
+                                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     {getActiveTokens().length === 0 ? (
