@@ -122,7 +122,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             <p className="text-sm text-red-500">{errors.nome.message}</p>
           )}
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="id_manual" className="text-base">ID Manual <span className="text-red-500">*</span></Label>
           <Input
@@ -145,7 +145,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
           <Label htmlFor="telefone" className="text-base">Telefone</Label>
           <Input
             id="telefone"
-            type="tel"
+            type="text"
             {...register('telefone')}
             placeholder="Número de telefone"
             className="h-11 text-base"
@@ -239,7 +239,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             name="genero"
             rules={{}}
             render={({ field }) => (
-              <Select 
+              <Select
                 onValueChange={field.onChange}
                 value={field.value}
                 defaultValue={defaultValues.genero}
@@ -283,7 +283,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             name="tipo_contato"
             rules={{}}
             render={({ field }) => (
-              <Select 
+              <Select
                 onValueChange={field.onChange}
                 value={field.value}
                 defaultValue={defaultValues.tipo_contato || 'Lead'}
@@ -313,7 +313,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             name="como_conheceu"
             rules={{}}
             render={({ field }) => (
-              <Select 
+              <Select
                 onValueChange={field.onChange}
                 value={field.value}
                 defaultValue={defaultValues.como_conheceu || 'Anúncio'}
@@ -344,7 +344,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
           name="estado"
           rules={{}}
           render={({ field }) => (
-            <Select 
+            <Select
               onValueChange={(value: any) => {
                 field.onChange(value);
                 setStatusValue(value);
@@ -389,8 +389,8 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             min="0"
             {...register('numero_sessoes', {
               valueAsNumber: true,
-              validate: (value) => 
-                (value === undefined || value === null || isNaN(value) || value >= 0) || 
+              validate: (value) =>
+                (value === undefined || value === null || isNaN(value) || value >= 0) ||
                 'O número deve ser positivo'
             })}
             placeholder="Número de sessões"
@@ -400,10 +400,10 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             <p className="text-sm text-red-500">{errors.numero_sessoes.message}</p>
           )}
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="payment_type" className="text-base">Tipo de Pagamento</Label>
-          <Select 
+          <Select
             onValueChange={handlePaymentTypeChange}
             defaultValue="none"
           >
@@ -428,7 +428,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             control={control}
             name="responsavel"
             render={({ field }) => (
-              <Select 
+              <Select
                 onValueChange={field.onChange}
                 value={field.value || ""}
                 defaultValue={defaultValues.responsavel || ""}
@@ -458,7 +458,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             control={control}
             name="motivo"
             render={({ field }) => (
-              <Select 
+              <Select
                 onValueChange={field.onChange}
                 value={field.value || ""}
                 defaultValue={defaultValues.motivo || ""}
@@ -490,9 +490,9 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
             <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
               Atualizar Cliente
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               className="w-full sm:w-auto h-11"
               onClick={() => setResetConfirmOpen(true)}
             >

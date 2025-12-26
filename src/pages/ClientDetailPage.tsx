@@ -378,6 +378,7 @@ const ClientDetailPage = () => {
         // Atualização normal sem alterar o ID
         // Remover campos temporários que não existem no banco de dados
         const {
+          proxima_sessao,
           proxima_sessao_titulo,
           proxima_sessao_tipo,
           proxima_sessao_estado,
@@ -876,7 +877,7 @@ const ClientDetailPage = () => {
                 {/* Contact Info with copy buttons */}
                 <div className="flex flex-wrap items-center gap-3 mt-2">
                   <button
-                    onClick={() => copyToClipboard(client.email, 'Email')}
+                    onClick={() => copyToClipboard(client.email || '', 'Email')}
                     className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
                   >
                     <Mail className="h-3.5 w-3.5" />
@@ -884,7 +885,7 @@ const ClientDetailPage = () => {
                     <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                   <button
-                    onClick={() => copyToClipboard(client.telefone, 'Telefone')}
+                    onClick={() => copyToClipboard(client.telefone || '', 'Telefone')}
                     className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-[#3f9094] transition-colors group"
                   >
                     <Phone className="h-3.5 w-3.5" />
@@ -1058,8 +1059,8 @@ const ClientDetailPage = () => {
                 </div>
                 {client.proxima_sessao_estado && (
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${client.proxima_sessao_estado === 'confirmado' ? 'bg-green-100 text-green-700' :
-                      client.proxima_sessao_estado === 'pendente' ? 'bg-amber-100 text-amber-700' :
-                        'bg-gray-100 text-gray-700'
+                    client.proxima_sessao_estado === 'pendente' ? 'bg-amber-100 text-amber-700' :
+                      'bg-gray-100 text-gray-700'
                     }`}>
                     {client.proxima_sessao_estado}
                   </span>

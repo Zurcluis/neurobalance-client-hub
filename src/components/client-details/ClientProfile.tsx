@@ -58,11 +58,11 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
       age--;
     }
-    
+
     return age;
   };
 
@@ -135,7 +135,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                 {getStatusLabel(client.estado)}
               </Badge>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
               <div className="flex items-center text-xs sm:text-sm text-gray-600">
                 <Mail className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
@@ -163,7 +163,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
               </div>
             </div>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-2 mt-2 md:mt-0">
             <ClientPdfExport client={client} />
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
@@ -180,7 +180,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                     Edite as informações do cliente nos campos abaixo.
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...profileForm}>
                   <form onSubmit={profileForm.handleSubmit(handleSaveChanges)} className="space-y-3 sm:space-y-4 pb-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -196,7 +196,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="id_manual"
@@ -210,7 +210,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                         )}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
@@ -224,7 +224,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="telefone"
@@ -232,7 +232,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           <FormItem>
                             <FormLabel>Telefone</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input type="text" {...field} value={field.value || ''} />
                             </FormControl>
                           </FormItem>
                         )}
@@ -269,7 +269,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="motivo"
@@ -299,7 +299,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                         )}
                       />
                     </div>
-                    
+
                     <FormField
                       control={profileForm.control}
                       name="morada"
@@ -307,12 +307,12 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                         <FormItem>
                           <FormLabel>Morada</FormLabel>
                           <FormControl>
-                              <Textarea {...field} value={field.value || ''} />
+                            <Textarea {...field} value={field.value || ''} />
                           </FormControl>
                         </FormItem>
                       )}
                     />
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
@@ -339,7 +339,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                                 <CalendarComponent
                                   mode="single"
                                   selected={field.value ? new Date(field.value) : undefined}
-                                    onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : null)}
+                                  onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : null)}
                                   initialFocus
                                   className={cn("p-3 pointer-events-auto")}
                                 />
@@ -348,7 +348,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="data_entrada_clinica"
@@ -393,9 +393,9 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Género</FormLabel>
-                            <Select 
+                            <Select
                               onValueChange={field.onChange}
-                                defaultValue={field.value ? String(field.value) : ''}
+                              defaultValue={field.value ? String(field.value) : ''}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione o género" />
@@ -409,7 +409,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="estado"
@@ -445,7 +445,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                             <FormLabel>Tipo de Contacto</FormLabel>
                             <Select
                               onValueChange={field.onChange}
-                                defaultValue={field.value ? String(field.value) : ''}
+                              defaultValue={field.value ? String(field.value) : ''}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione o tipo de contacto" />
@@ -461,7 +461,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="como_conheceu"
@@ -470,7 +470,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                             <FormLabel>Como teve conhecimento</FormLabel>
                             <Select
                               onValueChange={field.onChange}
-                                value={field.value ? String(field.value) : ''}
+                              value={field.value ? String(field.value) : ''}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Como conheceu a clínica?" />
@@ -480,15 +480,15 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                                 <SelectItem value="Instagram">Instagram</SelectItem>
                                 <SelectItem value="Facebook">Facebook</SelectItem>
                                 <SelectItem value="Recomendação">Recomendação</SelectItem>
-                                  <SelectItem value="Website">Website</SelectItem>
-                                  <SelectItem value="Outro">Outro</SelectItem>
+                                <SelectItem value="Website">Website</SelectItem>
+                                <SelectItem value="Outro">Outro</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
                         )}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
@@ -497,17 +497,17 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           <FormItem>
                             <FormLabel>Número de Sessões</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                {...field} 
+                              <Input
+                                type="number"
+                                {...field}
                                 value={field.value || 0}
-                                onChange={(e) => field.onChange(Number(e.target.value))} 
+                                onChange={(e) => field.onChange(Number(e.target.value))}
                               />
                             </FormControl>
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="total_pago"
@@ -515,19 +515,19 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           <FormItem>
                             <FormLabel>Total Pago (€)</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
+                              <Input
+                                type="number"
                                 step="0.01"
-                                {...field} 
+                                {...field}
                                 value={field.value || 0}
-                                onChange={(e) => field.onChange(Number(e.target.value))} 
+                                onChange={(e) => field.onChange(Number(e.target.value))}
                               />
                             </FormControl>
                           </FormItem>
                         )}
                       />
                     </div>
-                    
+
                     <FormField
                       control={profileForm.control}
                       name="notas"
@@ -540,23 +540,23 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                         </FormItem>
                       )}
                     />
-                    
+
                     <DialogFooter className="pt-6 mt-6 border-t sticky bottom-0 bg-white">
                       <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={() => setIsProfileDialogOpen(false)}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsProfileDialogOpen(false)}
                           className="w-full sm:w-auto"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button 
-                        type="submit" 
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="submit"
                           className="bg-[#3A726D] hover:bg-[#265255] w-full sm:w-auto"
-                      >
-                        Guardar Alterações
-                      </Button>
+                        >
+                          Guardar Alterações
+                        </Button>
                       </div>
                     </DialogFooter>
                   </form>

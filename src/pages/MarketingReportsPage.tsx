@@ -27,6 +27,7 @@ import FileImporter from '@/components/shared/FileImporter';
 import { EmailSmsCampaignForm } from '@/components/marketing/EmailSmsCampaignForm';
 import { EmailSmsCampaignCard } from '@/components/marketing/EmailSmsCampaignCard';
 import LeadKanbanBoard from '@/components/marketing/LeadKanbanBoard';
+import { SmsAutomationSettings } from '@/components/marketing/SmsAutomationSettings';
 import {
   Plus,
   Search,
@@ -46,7 +47,8 @@ import {
   MapPin,
   LayoutGrid,
   List,
-  Kanban
+  Kanban,
+  Settings2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
@@ -751,7 +753,7 @@ const MarketingReportsPage = () => {
         {/* ⚙️ Ferramentas - Import, Export, Filtros Consolidados */}
         <TabsContent value="tools" className="space-y-6 mt-6">
           <Tabs defaultValue="import" className="w-full">
-            <TabsList className="grid w-full max-w-lg grid-cols-3">
+            <TabsList className="grid w-full max-w-2xl grid-cols-2 md:grid-cols-4">
               <TabsTrigger value="import" className="gap-2">
                 <Upload className="h-4 w-4" />
                 Importar
@@ -763,6 +765,10 @@ const MarketingReportsPage = () => {
               <TabsTrigger value="filters" className="gap-2">
                 <Filter className="h-4 w-4" />
                 Filtros
+              </TabsTrigger>
+              <TabsTrigger value="automation" className="gap-2 text-purple-600">
+                <Settings2 className="h-4 w-4" />
+                Automação
               </TabsTrigger>
             </TabsList>
 
@@ -797,6 +803,11 @@ const MarketingReportsPage = () => {
                 onClearFilters={handleClearFilters}
               />
             </TabsContent>
+
+            {/* Automação */}
+            <TabsContent value="automation" className="space-y-6 mt-4">
+              <SmsAutomationSettings />
+            </TabsContent>
           </Tabs>
         </TabsContent>
 
@@ -815,7 +826,7 @@ const MarketingReportsPage = () => {
                   Lista
                 </TabsTrigger>
               </TabsList>
-              
+
               <p className="text-sm text-gray-500">
                 Leads da Landing Page com gestão visual
               </p>

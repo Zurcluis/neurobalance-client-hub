@@ -2,16 +2,29 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Plus,
-  Filter,
+import {
+  Calendar as CalendarIcon,
+  Clock,
   Eye,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  Send,
+  Loader2
 } from 'lucide-react';
+import { useSms } from '@/hooks/useSms';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import AdminSidebar from '@/components/admin/AdminSidebar';
@@ -26,11 +39,16 @@ const AdminCalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pendente' | 'confirmado' | 'cancelado'>('all');
-  
+
   const { hasPermission } = useAdminAuth();
   const { appointments, isLoading: appointmentsLoading } = useAppointments();
   const { clients } = useClients();
+  const { sendManualSms, isSending } = useSms();
   const isMobile = useIsMobile();
+
+  const [isSmsDialogOpen, setIsSmsDialogOpen] = useState(false);
+  const [currentAppointment, setCurrentAppointment] = useState<any>(null);
+  const [smsMessage, setSmsMessage] = useState('');
 
   // Verificar permissões
   const canViewCalendar = hasPermission(ADMIN_PERMISSIONS.VIEW_CALENDAR);
@@ -42,7 +60,7 @@ const AdminCalendarPage = () => {
 
     // Filtrar por data baseado no modo de visualização
     if (viewMode === 'day') {
-      filtered = filtered.filter(apt => 
+      filtered = filtered.filter(apt =>
         isSameDay(parseISO(apt.data), selectedDate)
       );
     } else if (viewMode === 'week') {
@@ -59,7 +77,7 @@ const AdminCalendarPage = () => {
       filtered = filtered.filter(apt => apt.estado === statusFilter);
     }
 
-    return filtered.sort((a, b) => 
+    return filtered.sort((a, b) =>
       new Date(a.data).getTime() - new Date(b.data).getTime()
     );
   };
@@ -102,11 +120,37 @@ const AdminCalendarPage = () => {
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const increment = viewMode === 'day' ? 1 : 7;
-    setSelectedDate(prev => 
-      direction === 'next' 
+    setSelectedDate(prev =>
+      direction === 'next'
         ? addDays(prev, increment)
         : addDays(prev, -increment)
     );
+  };
+
+  const handleOpenSmsDialog = (appointment: any) => {
+    const client = clients.find(c => c.id === appointment.id_cliente);
+    if (!client?.telefone) {
+      toast.error('Este cliente não tem um número de telefone associado.');
+      return;
+    }
+
+    setCurrentAppointment(appointment);
+    const dateStr = format(parseISO(appointment.data), 'dd/MM');
+    const defaultMsg = `Olá ${client.nome}, lembrete da sua ${appointment.tipo || 'sessão'} amanhã (${dateStr}) às ${appointment.hora}. Confirme a sua presença.`;
+    setSmsMessage(defaultMsg);
+    setIsSmsDialogOpen(true);
+  };
+
+  const handleSendManualSms = async () => {
+    if (!currentAppointment || !smsMessage) return;
+
+    const client = clients.find(c => c.id === currentAppointment.id_cliente);
+    if (!client?.telefone) return;
+
+    const result = await sendManualSms(client.telefone, smsMessage, currentAppointment.id);
+    if (result.success) {
+      setIsSmsDialogOpen(false);
+    }
   };
 
   if (!canViewCalendar) {
@@ -147,7 +191,7 @@ const AdminCalendarPage = () => {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar />
-      
+
       <main className={cn(
         "flex-1 transition-all duration-300",
         isMobile ? "ml-0" : "ml-64"
@@ -235,7 +279,7 @@ const AdminCalendarPage = () => {
                 </div>
 
                 <div className="text-lg font-semibold text-slate-900">
-                  {viewMode === 'day' 
+                  {viewMode === 'day'
                     ? format(selectedDate, 'dd \'de\' MMMM \'de\' yyyy', { locale: pt })
                     : `Semana de ${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'dd/MM', { locale: pt })} a ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'dd/MM', { locale: pt })}`
                   }
@@ -340,7 +384,7 @@ const AdminCalendarPage = () => {
                               </div>
                             </Badge>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
                             <div className="flex items-center gap-2">
                               <CalendarIcon className="h-4 w-4" />
@@ -353,7 +397,7 @@ const AdminCalendarPage = () => {
                               <span>{appointment.hora}</span>
                             </div>
                           </div>
-                          
+
                           <div className="mt-2">
                             <p className="text-sm font-medium text-slate-700">
                               Cliente: {getClientName(appointment.id_cliente)}
@@ -370,9 +414,18 @@ const AdminCalendarPage = () => {
                             )}
                           </div>
                         </div>
-                        
+
                         {canManageAppointments && (
-                          <div className="ml-4">
+                          <div className="ml-4 flex flex-col gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenSmsDialog(appointment)}
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            >
+                              <MessageSquare className="h-4 w-4 mr-1" />
+                              SMS
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -404,6 +457,42 @@ const AdminCalendarPage = () => {
           </Card>
         </div>
       </main>
+
+      {/* SMS Dialog */}
+      <Dialog open={isSmsDialogOpen} onOpenChange={setIsSmsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Lembrete SMS</DialogTitle>
+            <DialogDescription>
+              Personalize a mensagem antes de enviar para o cliente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={smsMessage}
+              onChange={(e) => setSmsMessage(e.target.value)}
+              className="min-h-[120px]"
+              maxLength={160}
+            />
+            <p className="text-xs text-slate-500 mt-2 text-right">
+              {smsMessage.length}/160 caracteres
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSmsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSendManualSms}
+              disabled={isSending}
+              className="gap-2"
+            >
+              {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Enviar Agora
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

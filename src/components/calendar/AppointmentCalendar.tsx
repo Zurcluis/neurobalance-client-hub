@@ -37,7 +37,7 @@ import SmartScheduling from './SmartScheduling';
 import TimeGridView from './TimeGridView';
 import CalendarImport from './CalendarImport';
 
-type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'consulta inicial';
+type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'consulta inicial' | 'discussão de resultados';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
 type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
@@ -1012,7 +1012,11 @@ const AppointmentCalendar = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-                <span className="text-xs text-gray-700">Discussão</span>
+                <span className="text-xs text-gray-700">Discussão de Resultados</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 bg-blue-400 rounded"></div>
+                <span className="text-xs text-gray-700">Consulta Inicial</span>
               </div>
             </div>
 
@@ -1293,6 +1297,7 @@ const AppointmentCalendar = () => {
                           <SelectItem value="avaliação">Avaliação</SelectItem>
                           <SelectItem value="consulta">Consulta</SelectItem>
                           <SelectItem value="consulta inicial">Consulta Inicial</SelectItem>
+                          <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
