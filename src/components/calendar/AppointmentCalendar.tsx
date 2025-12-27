@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
+import { useSms } from '@/hooks/useSms';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
+import { Send, CheckCircle2, XCircle, Clock, MessageSquare } from 'lucide-react';
+import { Textarea } from '../ui/textarea';
 import {
   Dialog,
   DialogClose,
@@ -12,7 +18,6 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Textarea } from '../ui/textarea';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { addDays, format, isSameDay, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameMonth, compareAsc } from 'date-fns';
@@ -20,9 +25,8 @@ import { pt } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload } from 'lucide-react';
-import useAppointments from '@/hooks/useAppointments';
+import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
-import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { getAllHolidaysUntil2040, isHoliday } from '@/data/portugueseHolidays';
 import { Checkbox } from '../ui/checkbox';
@@ -40,15 +44,7 @@ import CalendarImport from './CalendarImport';
 type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'consulta inicial' | 'discussão de resultados';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
-type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
-  clientes: {
-    nome: string;
-    email: string;
-    telefone: string;
-    id_manual?: string;
-  } | null;
-  cor?: string | null;
-};
+
 
 interface AppointmentFormValues {
   titulo: string;
@@ -77,6 +73,136 @@ const AppointmentCalendar = () => {
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [clientAvailabilities, setClientAvailabilities] = useState<Record<number, any[]>>({});
   const [showAvailabilities, setShowAvailabilities] = useState(true);
+
+  const [smsPreviewOpen, setSmsPreviewOpen] = useState(false);
+  const [smsMessage, setSmsMessage] = useState('');
+
+  const { sendManualSms, isSending } = useSms();
+  const [isAutomationEnabled, setIsAutomationEnabled] = useState(false);
+  const [smsStatus, setSmsStatus] = useState<Record<number, { status: string; sid: string | null }>>({});
+
+  const supabase = useSupabaseClient();
+
+  // Carregar estado da automação
+  useEffect(() => {
+    const fetchAutomationState = async () => {
+      const { data } = await supabase
+        .from('app_configs')
+        .select('value')
+        .eq('key', 'sms_automation_enabled')
+        .maybeSingle();
+
+      if (data) setIsAutomationEnabled(!!data.value);
+    };
+    fetchAutomationState();
+  }, [supabase]);
+
+  // SMS Status tracking disabled - columns don't exist in client_notifications table
+  // To re-enable, add 'metadata', 'sms_status', 'sms_sid' columns to client_notifications
+  /*
+  useEffect(() => {
+    const fetchSmsStatuses = async () => {
+      if (appointments.length === 0) return;
+
+      try {
+        const appointmentIds = appointments.map(a => a.id);
+
+        const { data, error } = await supabase
+          .from('client_notifications')
+          .select('metadata, sms_status, sms_sid')
+          .eq('type', 'appointment');
+
+        if (error) {
+          console.warn('Erro ao carregar status SMS (ignorado):', error);
+          return;
+        }
+
+        if (data) {
+          const statuses: any = {};
+          data.forEach((n: any) => {
+            const aptId = n.metadata?.id_agendamento;
+            if (aptId && appointmentIds.includes(aptId)) {
+              statuses[aptId] = { status: n.sms_status, sid: n.sms_sid };
+            }
+          });
+          setSmsStatus(statuses);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar status SMS:', err);
+      }
+    };
+
+    fetchSmsStatuses();
+
+    const channel = supabase
+      .channel('sms-status-updates')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'client_notifications'
+      }, (payload) => {
+        const aptId = (payload.new as any).metadata?.id_agendamento;
+        if (aptId) {
+          setSmsStatus(prev => ({
+            ...prev,
+            [aptId]: { status: (payload.new as any).sms_status, sid: (payload.new as any).sms_sid }
+          }));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [appointments, supabase]);
+  */
+
+  const toggleAutomation = async (enabled: boolean) => {
+    setIsAutomationEnabled(enabled);
+    try {
+      await supabase
+        .from('app_configs')
+        .upsert({ key: 'sms_automation_enabled', value: enabled });
+      toast.success(`Automação de SMS ${enabled ? 'ativada' : 'desativada'}`);
+    } catch (err) {
+      toast.error("Erro ao atualizar automação");
+    }
+  };
+
+  const openSmsPreview = () => {
+    if (!selectedAppointment) return;
+
+    const client = (selectedAppointment as any).clientes;
+    if (!client) return;
+
+    // Gerar mensagem padrão com dados do agendamento
+    const apptDate = selectedAppointment.data ? format(parseISO(selectedAppointment.data), 'dd/MM/yyyy') : '';
+    const apptTime = selectedAppointment.hora || '';
+    const defaultMessage = `Olá ${client.nome || 'Estimado Cliente'},\n\nLembrete da sua sessão:\n📅 Data: ${apptDate}\n⏰ Hora: ${apptTime}\n\nNeuroBalance`;
+
+    setSmsMessage(defaultMessage);
+    setSmsPreviewOpen(true);
+  };
+
+  const handleSendManualSms = async () => {
+    if (!selectedAppointment) return;
+
+    const client = (selectedAppointment as any).clientes;
+    if (!client?.telefone) {
+      toast.error("Cliente sem número de telefone");
+      return;
+    }
+
+    const result = await sendManualSms(
+      client.telefone,
+      smsMessage,
+      selectedAppointment.id,
+      selectedAppointment.id_cliente || undefined
+    );
+
+    if (result.success) {
+      setSmsPreviewOpen(false);
+      toast.success('SMS enviado com sucesso!');
+    }
+  };
 
   const holidays = getAllHolidaysUntil2040();
 
@@ -177,11 +303,39 @@ const AppointmentCalendar = () => {
       setSelectedAppointment(null);
       setClientSearchQuery('');
       form.reset();
-      toast.success('Agendamento salvo com sucesso!');
+
+      // Mensagem diferenciada para criar vs atualizar
+      if (selectedAppointment) {
+        toast.success('✅ Agendamento atualizado com sucesso!');
+      } else {
+        toast.success('🎉 Novo agendamento criado!', {
+          description: `${baseData.titulo} - ${format(parseISO(baseData.data), 'dd/MM/yyyy', { locale: pt })} às ${baseData.hora}`,
+          duration: 4000
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao salvar agendamento:', error);
       const errorMessage = error?.message || 'Erro desconhecido ao salvar agendamento';
       toast.error(`Erro: ${errorMessage}`);
+    }
+  };
+
+  const handleEventDrop = async (appointment: Appointment, newDate: Date) => {
+    try {
+      const dataStr = format(newDate, 'yyyy-MM-dd');
+      const horaStr = format(newDate, 'HH:mm');
+
+      await updateAppointment(appointment.id, {
+        data: `${dataStr}T${horaStr}:00`,
+        hora: horaStr
+      });
+
+      toast.success('Agendamento movido com sucesso!', {
+        description: `${appointment.titulo} movido para ${format(newDate, "dd/MM 'às' HH:mm", { locale: pt })}`
+      });
+    } catch (error) {
+      console.error('Erro ao mover agendamento:', error);
+      toast.error('Erro ao mover agendamento');
     }
   };
 
@@ -625,6 +779,28 @@ const AppointmentCalendar = () => {
                     ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50' : ''}
                   `}
                   onClick={() => openNewAppointmentDialog(day)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('bg-[#d1e8e9]');
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove('bg-[#d1e8e9]');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('bg-[#d1e8e9]');
+                    const appointmentId = e.dataTransfer.getData('appointmentId');
+                    if (appointmentId) {
+                      const appointment = appointments.find(a => a.id.toString() === appointmentId);
+                      if (appointment) {
+                        // Na vista mensal, mantemos a hora original do agendamento
+                        const currentApptDate = parseISO(appointment.data);
+                        const newDate = new Date(day);
+                        newDate.setHours(currentApptDate.getHours(), currentApptDate.getMinutes());
+                        handleEventDrop(appointment, newDate);
+                      }
+                    }
+                  }}
                 >
                   <div className={`
                     font-medium text-right relative
@@ -663,6 +839,11 @@ const AppointmentCalendar = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEventClick(appointment);
+                          }}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('appointmentId', appointment.id.toString());
+                            e.dataTransfer.effectAllowed = 'move';
                           }}
                           className={`relative text-xs rounded cursor-pointer hover:opacity-80 transition-opacity border-l-4 ${status.border} ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${isMobile ? 'px-1 py-0.5' : 'px-1.5 py-0.5'}`}
                           style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
@@ -762,6 +943,7 @@ const AppointmentCalendar = () => {
         availabilities={clientAvailabilities}
         showAvailabilities={showAvailabilities}
         holidays={holidays}
+        onEventDrop={handleEventDrop}
       />
     );
   };
@@ -781,6 +963,7 @@ const AppointmentCalendar = () => {
         availabilities={clientAvailabilities}
         showAvailabilities={showAvailabilities}
         holidays={holidays}
+        onEventDrop={handleEventDrop}
       />
     );
   };
@@ -979,6 +1162,18 @@ const AppointmentCalendar = () => {
                     <Upload className="h-4 w-4 mr-2" />
                     Importar de Ficheiro
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <div className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 cursor-default">
+                    <div className="flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span className="text-sm">SMS Automático</span>
+                    </div>
+                    <Switch
+                      checked={isAutomationEnabled}
+                      onCheckedChange={toggleAutomation}
+                      className="scale-75"
+                    />
+                  </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <Settings className="h-4 w-4 mr-2" />
@@ -1407,7 +1602,7 @@ const AppointmentCalendar = () => {
               />
 
               <DialogFooter className="flex justify-between w-full">
-                <div>
+                <div className="flex gap-2">
                   {selectedAppointment && (
                     <Button
                       type="button"
@@ -1416,6 +1611,28 @@ const AppointmentCalendar = () => {
                     >
                       Eliminar
                     </Button>
+                  )}
+                  {selectedAppointment && (selectedAppointment as any).clientes?.telefone && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={openSmsPreview}
+                      className="gap-2"
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      Enviar SMS
+                    </Button>
+                  )}
+                  {selectedAppointment && smsStatus[selectedAppointment.id] && (
+                    <div className="flex items-center gap-1 text-[10px] text-gray-500 ml-2">
+                      {smsStatus[selectedAppointment.id].status === 'delivered' ? (
+                        <><CheckCircle2 className="h-3 w-3 text-green-500" /> Entregue</>
+                      ) : smsStatus[selectedAppointment.id].status === 'failed' || smsStatus[selectedAppointment.id].status === 'undelivered' ? (
+                        <><XCircle className="h-3 w-3 text-red-500" /> Falhou</>
+                      ) : (
+                        <><Clock className="h-3 w-3 text-amber-500" /> {smsStatus[selectedAppointment.id].status === 'sent' ? 'Enviado' : 'Pendente'}</>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="flex space-x-2">
@@ -1441,6 +1658,53 @@ const AppointmentCalendar = () => {
         onImport={handleImportAppointments}
         clients={clients || []}
       />
+
+      {/* Diálogo de pré-visualização de SMS */}
+      <Dialog open={smsPreviewOpen} onOpenChange={setSmsPreviewOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-[#3f9094]" />
+              Pré-visualização do SMS
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="text-sm text-gray-600">
+              <strong>Destinatário:</strong> {selectedAppointment && (selectedAppointment as any).clientes?.telefone}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sms-message">Mensagem</Label>
+              <Textarea
+                id="sms-message"
+                value={smsMessage}
+                onChange={(e) => setSmsMessage(e.target.value)}
+                className="min-h-[150px] resize-none"
+                placeholder="Escreva a sua mensagem..."
+              />
+              <p className="text-xs text-gray-500 text-right">
+                {smsMessage.length} caracteres
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSmsPreviewOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSendManualSms}
+              disabled={isSending || !smsMessage.trim()}
+              className="bg-[#3f9094] hover:bg-[#265255] gap-2"
+            >
+              {isSending ? (
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {isSending ? 'A enviar...' : 'Enviar SMS'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

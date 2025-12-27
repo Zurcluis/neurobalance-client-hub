@@ -9,6 +9,7 @@ interface ClientAuthContextType {
   loading: boolean;
   error: string | null;
   login: (request: ClientAuthRequest) => Promise<ClientAuthResponse>;
+  loginWithToken: (token: string) => Promise<ClientAuthResponse>;
   logout: () => void;
   refreshSession: () => Promise<boolean>;
   isAuthenticated: boolean;
@@ -178,13 +179,76 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
     }
   }, [supabase]);
 
+  // Função de login com Token (Magic Link)
+  const loginWithToken = useCallback(async (token: string): Promise<ClientAuthResponse> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error: rpcError } = await supabase.rpc<any, any>('validate_client_token', {
+        token_value: token
+      });
+
+      if (rpcError) throw rpcError;
+
+      if (data && Array.isArray(data) && data.length > 0) {
+        const clientData = data[0];
+
+        if (clientData.is_valid) {
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          const newSession: ClientSession = {
+            token: token,
+            clientId: clientData.client_id,
+            clientName: clientData.client_name,
+            clientEmail: clientData.client_email,
+            expiresAt,
+            isValid: true
+          };
+
+          setSession(newSession);
+          localStorage.setItem('client_session', JSON.stringify(newSession));
+
+          return {
+            success: true,
+            token: token,
+            client: {
+              id: clientData.client_id,
+              nome: clientData.client_name,
+              email: clientData.client_email
+            },
+            expiresAt
+          };
+        } else {
+          return {
+            success: false,
+            error: 'Link de acesso expirado ou inválido.'
+          };
+        }
+      }
+
+      return {
+        success: false,
+        error: 'Link de acesso inválido.'
+      };
+
+    } catch (error: any) {
+      logger.error('Erro no login com token:', error);
+      return {
+        success: false,
+        error: error.message || 'Erro ao validar link de acesso'
+      };
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
+
   // Função de logout
   const logout = useCallback(() => {
     setSession(null);
     localStorage.removeItem('client_session');
     setError(null);
     toast.success('Logout realizado com sucesso');
-  }, [supabase]);
+  }, []);
 
   // Função para atualizar sessão
   const refreshSession = useCallback(async (): Promise<boolean> => {
@@ -208,6 +272,7 @@ export const ClientAuthProvider = ({ children }: { children: React.ReactNode }) 
         loading,
         error,
         login,
+        loginWithToken,
         logout,
         refreshSession,
         isAuthenticated

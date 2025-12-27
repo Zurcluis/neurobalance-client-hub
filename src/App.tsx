@@ -43,6 +43,7 @@ const MarketingLandingPage = lazy(() => import("./pages/MarketingLandingPage"));
 const MarketingTokensPage = lazy(() => import("./pages/MarketingTokensPage"));
 const ClientTokensPage = lazy(() => import("./pages/ClientTokensPage"));
 const ClinicInfoPage = lazy(() => import("./pages/ClinicInfoPage"));
+const ConfirmAppointmentPage = lazy(() => import("./pages/ConfirmAppointmentPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -225,6 +226,9 @@ const App = () => (
 
                             {/* Clinic Info Page - Public */}
                             <Route path="/clinic-info" element={<ClinicInfoPage />} />
+
+                            {/* Appointment Confirmation - Public (SMS link) */}
+                            <Route path="/confirm/:token" element={<ConfirmAppointmentPage />} />
 
                             {/* Client Routes */}
                             <Route path="/client-login" element={<ClientLoginPage />} />

@@ -11,18 +11,19 @@ import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useSms } from '@/hooks/useSms';
 import { toast } from 'sonner';
-import { MessageSquare, Save, Settings2, Calendar, Send, Loader2, RotateCcw, Trash2 } from 'lucide-react';
+import { MessageSquare, Save, Calendar, Send, Loader2, RotateCcw } from 'lucide-react';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
+import SmsHistory from '@/components/sms/SmsHistory';
 
-const DEFAULT_SESSAO = 'Olá {apelido}, {nome}, lembrete da sua {tipo} {titulo} amanhã às {hora}. Confirme aqui: {link}';
-const DEFAULT_EVAL = 'Olá {apelido}, {nome}, lembrete da sua {tipo} {titulo} amanhã às {hora}. Confirme aqui: {link}';
+const DEFAULT_SESSAO = 'Olá {apelido}, lembrete da sua {tipo} amanhã às {hora}. Dashboard: {link}';
+const DEFAULT_EVAL = 'Olá {apelido}, lembrete da sua {tipo} amanhã às {hora}. Dashboard: {link}';
 
 export const SmsAutomationSettings: React.FC = () => {
     const supabase = useSupabaseClient();
     const { appointments, isLoading: appointmentsLoading } = useAppointments();
     const { sendManualSms, isSending } = useSms();
 
-    const [isEnabled, setIsEnabled] = useState(true);
+    const [isEnabled, setIsEnabled] = useState(false);
     const [sessionTemplate, setSessionTemplate] = useState(DEFAULT_SESSAO);
     const [evalTemplate, setEvalTemplate] = useState(DEFAULT_EVAL);
     const [isLoading, setIsLoading] = useState(false);
@@ -96,38 +97,60 @@ export const SmsAutomationSettings: React.FC = () => {
         return isWithinInterval(aptDate, { start: now, end: fortyEightHoursLater }) && apt.estado !== 'cancelado';
     });
 
-    const getMessageForApt = (apt: any) => {
-        const template = apt.tipo?.toLowerCase().includes('avaliação') ? evalTemplate : sessionTemplate;
-        if (!template) return '';
-
-        const fullNome = apt.clientes?.nome || 'Cliente';
-        const nomeParts = fullNome.trim().split(' ');
-        const apelido = nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : fullNome;
-
-        return template
-            .replace(/{nome}/g, fullNome)
-            .replace(/{apelido}/g, apelido)
-            .replace(/{tipo}/g, apt.tipo || 'Sessão')
-            .replace(/{titulo}/g, apt.titulo || 'Sessão')
-            .replace(/{hora}/g, apt.hora || '')
-            .replace(/{link}/g, `neurobalance.pt/c/${apt.id}`);
-    };
-
     const handleQuickSend = async (apt: any) => {
-        const message = getMessageForApt(apt);
         const phone = phoneEdits[apt.id] || apt.clientes?.telefone;
+        const clientId = apt.id_cliente || apt.clientes?.id;
 
         if (!phone) {
             toast.error('Este cliente não tem um número de telefone associado.');
             return;
         }
 
+        if (!clientId) {
+            toast.error('Não foi possível identificar o ID do cliente para gerar o link.');
+            return;
+        }
+
         setSendingIds(prev => ({ ...prev, [apt.id]: true }));
         try {
-            const result = await sendManualSms(phone, message, apt.id);
-            if (result.success) {
-                // Sucesso
+            // Gerar token de acesso (Magic Link)
+            const { data: token, error: tokenError } = await supabase.rpc('create_client_access_token', {
+                client_id: clientId,
+                expires_hours: 48 // 2 dias para o link do SMS
+            });
+
+            if (tokenError) {
+                console.error('Erro na RPC create_client_access_token:', tokenError);
+                throw tokenError;
             }
+
+            // Construir mensagem com o link do dashboard do cliente
+            const template = apt.tipo?.toLowerCase().includes('avaliação') ? evalTemplate : sessionTemplate;
+            if (!template) return;
+
+            const fullNome = apt.clientes?.nome || 'Cliente';
+            const nomeParts = fullNome.trim().split(' ');
+            const apelido = nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : fullNome;
+
+            // Link seguro com token para o login do cliente
+            const clientLink = `https://cms.neurobalance.pt/client-login?token=${token}`;
+
+            const message = template
+                .replace(/{nome}/g, fullNome)
+                .replace(/{apelido}/g, apelido)
+                .replace(/{tipo}/g, apt.tipo || 'Sessão')
+                .replace(/{titulo}/g, apt.titulo || 'Sessão')
+                .replace(/{hora}/g, apt.hora || '')
+                .replace(/{link}/g, clientLink);
+
+            // Enviar SMS
+            const result = await sendManualSms(phone, message, apt.id, clientId);
+            if (result.success) {
+                toast.success('SMS enviado com sucesso!');
+            }
+        } catch (error) {
+            console.error('Erro ao enviar SMS:', error);
+            toast.error('Erro ao enviar SMS');
         } finally {
             setSendingIds(prev => ({ ...prev, [apt.id]: false }));
         }
@@ -147,7 +170,14 @@ export const SmsAutomationSettings: React.FC = () => {
                                 <Switch
                                     id="sms-toggle"
                                     checked={isEnabled}
-                                    onCheckedChange={(val) => { setIsEnabled(val); setIsSaved(false); }}
+                                    onCheckedChange={(val) => {
+                                        if (val) {
+                                            const confirm = window.confirm('Tem a certeza que quer ativar a automação de SMS? As mensagens serão enviadas automaticamente para os clientes.');
+                                            if (!confirm) return;
+                                        }
+                                        setIsEnabled(val);
+                                        setIsSaved(false);
+                                    }}
                                 />
                                 <Label htmlFor="sms-toggle" className="cursor-pointer">
                                     Automação {isEnabled ? 'Ativa' : 'Pausada'}
@@ -191,7 +221,7 @@ export const SmsAutomationSettings: React.FC = () => {
                                     .replace(/{tipo}/g, 'Sessão')
                                     .replace(/{hora}/g, '10:00')
                                     .replace(/{titulo}/g, 'Fisioterapia')
-                                    .replace(/{link}/g, 'link.pt/xyz')}
+                                    .replace(/{link}/g, 'cms.neurobalance.pt/client-login')}
                             </div>
                         </TabsContent>
 
@@ -215,7 +245,7 @@ export const SmsAutomationSettings: React.FC = () => {
                                     .replace(/{tipo}/g, 'Avaliação')
                                     .replace(/{hora}/g, '15:30')
                                     .replace(/{titulo}/g, 'Avaliação Biomecânica')
-                                    .replace(/{link}/g, 'link.pt/abc')}
+                                    .replace(/{link}/g, 'cms.neurobalance.pt/client-login')}
                             </div>
                         </TabsContent>
                     </Tabs>
@@ -265,12 +295,12 @@ export const SmsAutomationSettings: React.FC = () => {
                                                 onChange={(e) => setPhoneEdits(prev => ({ ...prev, [apt.id]: e.target.value }))}
                                                 placeholder="Telemóvel"
                                             />
-                                            <p className="text-[11px] text-gray-500 flex items-center gap-1">
+                                            <div className="text-[11px] text-gray-500 flex items-center gap-1">
                                                 <Badge variant="secondary" className="px-1 py-0 h-4 text-[9px] uppercase">
                                                     {apt.tipo || 'Sessão'}
                                                 </Badge>
                                                 {format(parseISO(apt.data), 'dd/MM')} às {apt.hora}
-                                            </p>
+                                            </div>
                                         </div>
                                     </div>
                                     <Button
@@ -293,6 +323,9 @@ export const SmsAutomationSettings: React.FC = () => {
                     )}
                 </CardContent>
             </Card>
-        </div >
+
+            {/* Histórico de SMS */}
+            <SmsHistory />
+        </div>
     );
 };

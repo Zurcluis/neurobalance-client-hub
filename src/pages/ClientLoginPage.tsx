@@ -14,8 +14,8 @@ const ClientLoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const { login, isAuthenticated, loading } = useClientAuth();
+
+  const { login, loginWithToken, isAuthenticated, loading } = useClientAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -27,17 +27,40 @@ const ClientLoginPage = () => {
     }
   }, [isAuthenticated, loading, navigate, searchParams]);
 
-  // Verificar se há email nos parâmetros da URL
+  // Verificar se há token ou email nos parâmetros da URL
   useEffect(() => {
+    const tokenParam = searchParams.get('token');
     const emailParam = searchParams.get('email');
-    if (emailParam) {
+
+    if (tokenParam) {
+      handleTokenLogin(tokenParam);
+    } else if (emailParam) {
       setEmail(emailParam);
     }
   }, [searchParams]);
 
+  const handleTokenLogin = async (token: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await loginWithToken(token);
+      if (response.success) {
+        toast.success('Autenticado com sucesso via Magic Link!');
+        // O redirecionamento será feito pelo useEffect de isAuthenticated
+      } else {
+        setError(response.error || 'Link de acesso inválido');
+        toast.error(response.error || 'Link de acesso inválido');
+      }
+    } catch (err) {
+      setError('Erro ao processar link de acesso');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim()) {
       setError('Por favor, insira seu email');
       return;
@@ -53,7 +76,7 @@ const ClientLoginPage = () => {
 
     try {
       const response = await login({ email: email.trim() });
-      
+
       if (response.success) {
         toast.success('Login realizado com sucesso! Redirecionando...');
         // A navegação será feita pelo useEffect acima
@@ -87,15 +110,17 @@ const ClientLoginPage = () => {
         {/* Logo e Título */}
         <div className="text-center space-y-6">
           <div className="flex justify-center">
-            <img 
-              src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png" 
-              alt="NeuroBalance Logo" 
+            <img
+              src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+              alt="NeuroBalance Logo"
               className="h-20 w-auto"
             />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Portal do Cliente</h1>
-            <p className="mt-2 text-gray-600">Acesse seu dashboard pessoal</p>
+            <p className="mt-2 text-gray-600">
+              {searchParams.get('token') ? 'A autenticar o seu acesso...' : 'Acesse seu dashboard pessoal'}
+            </p>
           </div>
         </div>
 
@@ -103,11 +128,18 @@ const ClientLoginPage = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-semibold text-center text-gray-900">
-              Entrar
+              {searchParams.get('token') ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#3f9094]" />
+                  <span>Entrando...</span>
+                </div>
+              ) : 'Entrar'}
             </CardTitle>
-            <CardDescription className="text-center text-gray-600">
-              Insira seu email para acessar seu dashboard
-            </CardDescription>
+            {!searchParams.get('token') && (
+              <CardDescription className="text-center text-gray-600">
+                Insira seu email para acessar seu dashboard
+              </CardDescription>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (

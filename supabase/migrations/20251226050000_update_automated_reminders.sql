@@ -95,7 +95,8 @@ BEGIN
             message,
             type,
             is_read,
-            expires_at
+            expires_at,
+            metadata
         ) VALUES (
             v_appointment.id_cliente,
             CASE 
@@ -105,7 +106,8 @@ BEGIN
             v_message_body,
             'appointment',
             FALSE,
-            v_appointment.data + INTERVAL '1 day'
+            v_appointment.data + INTERVAL '1 day',
+            jsonb_build_object('id_agendamento', v_appointment.id, 'type', 'appointment')
         )
         RETURNING id INTO v_notification_id;
         

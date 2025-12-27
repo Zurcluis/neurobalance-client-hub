@@ -1,19 +1,13 @@
 -- =====================================================
--- Integração de SMS no Sistema de Notificações
+-- Unificação do Histórico de SMS e Notificações
 -- =====================================================
 
--- 1. Adicionar coluna para rastrear envio de SMS
-ALTER TABLE public.client_notifications 
-ADD COLUMN IF NOT EXISTS sms_sent BOOLEAN DEFAULT false;
-
--- 2. Função para disparar a Edge Function via pg_net
--- NOTA: Substitua 'SUA_PROJECT_REF' pela referência do seu projeto Supabase
--- Ou configure a variável de ambiente correspondente.
 CREATE OR REPLACE FUNCTION public.trigger_sms_notification()
 RETURNS TRIGGER AS $$
 DECLARE
     v_telefone TEXT;
-    v_service_key TEXT; -- Necessário para chamar a Edge Function se não for pública
+    v_history_id INTEGER;
+    v_id_agendamento INTEGER;
 BEGIN
     -- Apenas disparar SMS para notificações de agendamento (lembretes)
     IF NEW.type = 'appointment' AND NEW.title LIKE '%Lembrete%' THEN
@@ -23,10 +17,36 @@ BEGIN
         FROM public.clientes
         WHERE id = NEW.id_cliente;
 
+        -- Extrair ID do agendamento da mensagem se possível
+        BEGIN
+            v_id_agendamento := (regexp_matches(NEW.message, 'ID: ([0-9]+)'))[1]::integer;
+        EXCEPTION WHEN OTHERS THEN
+            v_id_agendamento := (NEW.metadata->>'id_agendamento')::integer;
+        END;
+
         -- Se o cliente tem telefone, disparar a Edge Function
         IF v_telefone IS NOT NULL AND v_telefone <> '' THEN
-            -- Chamada assíncrona usando pg_net
-            -- Certifique-se de que a extensão pg_net está habilitada
+            
+            -- 1. Criar entrada no sms_history para o lembrete automático
+            INSERT INTO public.sms_history (
+                id_cliente,
+                id_agendamento,
+                telefone,
+                mensagem,
+                tipo,
+                status,
+                metadata
+            ) VALUES (
+                NEW.id_cliente,
+                v_id_agendamento,
+                v_telefone,
+                NEW.message,
+                'lembrete',
+                'pending',
+                jsonb_build_object('id_notificacao', NEW.id)
+            ) RETURNING id INTO v_history_id;
+
+            -- 2. Chamada assíncrona usando pg_net
             PERFORM net.http_post(
                 url := 'https://' || current_setting('app.settings.project_ref', true) || '.supabase.co/functions/v1/send-sms-reminder',
                 headers := jsonb_build_object(
@@ -36,13 +56,16 @@ BEGIN
                 body := jsonb_build_object(
                     'to', v_telefone,
                     'message', NEW.message,
-                    'id_agendamento', (regexp_matches(NEW.message, 'ID: ([0-9]+)'))[1]::integer
+                    'id_agendamento', v_id_agendamento,
+                    'id_notificacao', NEW.id,
+                    'id_historico', v_history_id
                 )
             );
             
-            -- Marcar que o disparo foi solicitado
+            -- 3. Marcar que o disparo foi solicitado na notificação
             UPDATE public.client_notifications 
-            SET sms_sent = true 
+            SET sms_sent = true,
+                sms_status = 'sent'
             WHERE id = NEW.id;
         END IF;
     END IF;
@@ -50,15 +73,3 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- 3. Criar o Trigger
-DROP TRIGGER IF EXISTS on_notification_send_sms ON public.client_notifications;
-CREATE TRIGGER on_notification_send_sms
-AFTER INSERT ON public.client_notifications
-FOR EACH ROW
-EXECUTE FUNCTION public.trigger_sms_notification();
-
--- 4. Instruções para configurar as variáveis no Supabase SQL Editor:
--- ALTER DATABASE postgres SET "app.settings.project_ref" = 'sua-project-ref';
--- ALTER DATABASE postgres SET "app.settings.service_role_key" = 'sua-service-role-key';
--- NOTA: O service_role_key é necessário para autenticar a chamada interna.
