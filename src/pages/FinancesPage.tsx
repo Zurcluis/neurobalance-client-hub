@@ -12,6 +12,8 @@ import FiscalDeadlines from '@/components/finances/FiscalDeadlines';
 import SmartTaxCalculator from '@/components/finances/SmartTaxCalculator';
 import FinancialChatbot from '@/components/finances/FinancialChatbot';
 import LoanTracker from '@/components/finances/LoanTracker';
+import PaymentImport, { PaymentImportData } from '@/components/finances/PaymentImport';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
@@ -19,9 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowDownCircle, 
-  ArrowUpCircle, 
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   LayoutDashboard,
   ArrowLeftRight,
   BarChart3,
@@ -36,7 +38,8 @@ import {
   DollarSign,
   Download,
   Zap,
-  PiggyBank
+  PiggyBank,
+  Upload
 } from 'lucide-react';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePayments } from '@/hooks/usePayments';
@@ -50,6 +53,7 @@ const FinancesPage = () => {
   const [transactionTab, setTransactionTab] = useState<string>('income');
   const [analysisTab, setAnalysisTab] = useState<string>('monthly');
   const [taxTab, setTaxTab] = useState<string>('breakdown');
+  const [showImportModal, setShowImportModal] = useState(false);
   const currentYear = new Date().getFullYear();
 
   const { expenses, isLoading: isLoadingExpenses, fetchExpenses: refreshExpenses } = useExpenses();
@@ -59,7 +63,7 @@ const FinancesPage = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const { data, error } = await supabase
         .from('pagamentos')
         .select(`
@@ -69,29 +73,65 @@ const FinancesPage = () => {
           )
         `)
         .order('data', { ascending: false });
-      
+
       if (error) {
         console.error('Erro ao buscar pagamentos:', error);
         setError('Falha ao carregar pagamentos');
         toast.error('Erro ao carregar pagamentos');
         return;
       }
-      
+
       if (!data) {
         setPayments([]);
         return;
       }
-      
+
       const formattedPayments = data.map(payment => ({
         ...payment,
         cliente_nome: payment.clientes?.nome || 'Cliente Desconhecido'
       }));
-      
+
       setPayments(formattedPayments);
     } catch (err) {
       console.error('Erro ao carregar pagamentos:', err);
       setError('Falha ao carregar pagamentos');
       toast.error('Erro ao carregar pagamentos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImportPayments = async (importedPayments: PaymentImportData[]) => {
+    try {
+      setIsLoading(true);
+
+      const paymentsToInsert = importedPayments.map(p => ({
+        id_cliente: p.id_cliente,
+        data: p.data,
+        valor: p.valor_total,
+        descricao: p.descricao,
+        tipo: p.metodo_pagamento,
+        nif: p.nif_original,
+        tipo_servico: p.tipologia,
+        numero_fatura: p.numero_fatura,
+        valor_base: p.valor_base || 0,
+        valor_iva: p.valor_iva || 0,
+        retencao: p.retencao || 0,
+        estado: p.estado
+      }));
+
+      const { error } = await supabase
+        .from('pagamentos')
+        .insert(paymentsToInsert);
+
+      if (error) throw error;
+
+      toast.success(`${paymentsToInsert.length} pagamentos importados com sucesso!`);
+      setShowImportModal(false);
+      fetchPayments();
+    } catch (err: any) {
+      console.error('Erro ao importar pagamentos:', err);
+      toast.error('Falha ao importar pagamentos: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +164,7 @@ const FinancesPage = () => {
             </h1>
             <p className="text-gray-600 mt-1">Controle completo das suas finanças e obrigações fiscais</p>
           </div>
-          
+
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className="gap-2">
               <Download className="h-4 w-4" />
@@ -133,6 +173,15 @@ const FinancesPage = () => {
             <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90">
               <Plus className="h-4 w-4" />
               Nova Transação
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setShowImportModal(true)}
+            >
+              <Upload className="h-4 w-4" />
+              Importar
             </Button>
           </div>
         </div>
@@ -149,8 +198,8 @@ const FinancesPage = () => {
             <CardContent>
               <div className="flex flex-wrap gap-3">
                 {upcomingDeadlines.map((deadline, index) => (
-                  <Badge 
-                    key={index} 
+                  <Badge
+                    key={index}
                     variant={deadline.priority === 'high' ? 'destructive' : 'secondary'}
                     className="px-3 py-1.5"
                   >
@@ -194,7 +243,7 @@ const FinancesPage = () => {
               </Badge>
             </TabsTrigger>
           </TabsList>
-          
+
           {/* 📊 Visão Geral */}
           <TabsContent value="overview" className="space-y-6 mt-6">
             {/* Cards de Resumo - Maiores e Mais Visuais */}
@@ -285,7 +334,7 @@ const FinancesPage = () => {
                       Despesas
                     </TabsTrigger>
                   </TabsList>
-                  
+
                   <TabsContent value="income" className="mt-4">
                     {isLoading ? (
                       <div className="flex justify-center items-center h-64">
@@ -307,7 +356,7 @@ const FinancesPage = () => {
                       <FinancialReport initialPayments={payments} />
                     )}
                   </TabsContent>
-                  
+
                   <TabsContent value="expenses" className="mt-4">
                     <ExpenseManager onExpenseChange={refreshExpenses} />
                   </TabsContent>
@@ -334,11 +383,11 @@ const FinancesPage = () => {
                   Balanço Geral
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="monthly" className="mt-4">
                 <MonthlyAnalysis payments={paymentsData} expenses={expenses} />
               </TabsContent>
-              
+
               <TabsContent value="balance" className="mt-4">
                 <BalanceSheet payments={paymentsData} expenses={expenses} />
               </TabsContent>
@@ -362,15 +411,15 @@ const FinancesPage = () => {
                   Prazos
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="breakdown" className="mt-4">
                 <TaxBreakdown payments={paymentsData} expenses={expenses} year={currentYear} />
               </TabsContent>
-              
+
               <TabsContent value="reports" className="mt-4">
                 <FiscalReports payments={paymentsData} expenses={expenses} />
               </TabsContent>
-              
+
               <TabsContent value="deadlines" className="mt-4">
                 <FiscalDeadlines year={currentYear} />
               </TabsContent>
@@ -404,6 +453,15 @@ const FinancesPage = () => {
 
       {/* Chatbot Financeiro - Disponível em todas as abas */}
       <FinancialChatbot />
+
+      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <PaymentImport
+            onImportComplete={handleImportPayments}
+            onCancel={() => setShowImportModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };

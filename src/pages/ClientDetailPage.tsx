@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, CalendarPlus, CreditCard, User, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink, Key, Check, Loader2 } from 'lucide-react';
 import {
@@ -13,6 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { ClientDetailData, Session, Payment, ClientFile, ClientMood } from '@/types/client';
 import ClientProfile from '@/components/client-details/ClientProfile';
@@ -21,12 +21,13 @@ import ClientPayments from '@/components/client-details/ClientPayments';
 import ClientFiles from '@/components/client-details/ClientFiles';
 import ClientReports from '@/components/client-details/ClientReports';
 import ClientMoodTracker from '@/components/client-details/ClientMoodTracker';
-import { parseISO, format, isSameDay, isBefore, compareDesc, isAfter } from 'date-fns';
+import { parseISO, format, compareDesc, isAfter } from 'date-fns';
 import useClients from '@/hooks/useClients';
 import usePayments from '@/hooks/usePayments.tsx';
 import useAppointments from '@/hooks/useAppointments';
 import { supabase } from '@/integrations/supabase/client';
 import ClientDetailTabs from '@/components/client-details/ClientDetailTabs';
+import { syncAllSessions } from '@/scripts/syncSessions';
 
 // Interface para Appointments (pode ser movida para types)
 interface Appointment {
@@ -81,7 +82,6 @@ const ClientDetailPage = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [files, setFiles] = useState<ClientFile[]>([]);
   const [moods, setMoods] = useState<ClientMood[]>([]);
-  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMoods, setIsLoadingMoods] = useState(true);
@@ -126,6 +126,32 @@ const ClientDetailPage = () => {
     };
   }, []);
 
+  // Cálculos de métricas baseadas em sessões realizadas
+  const realizedSessionsCount = useMemo(() => {
+    if (!appointments || !clientId) return 0;
+    const now = new Date();
+    const countRealized = appointments.filter(app =>
+      app.id_cliente?.toString() === clientId &&
+      (app.estado === 'realizado' || (app.estado !== 'cancelado' && isAfter(now, parseISO(app.data))))
+    ).length;
+
+    return countRealized + (sessions?.length || 0);
+  }, [appointments, clientId, sessions]);
+
+  const paymentBreakdown = useMemo(() => {
+    const counts: Record<string, { count: number; total: number }> = {};
+    (payments || []).forEach(p => {
+      const desc = p.descricao || 'Outro';
+      if (!counts[desc]) {
+        counts[desc] = { count: 0, total: 0 };
+      }
+      counts[desc].count += 1;
+      counts[desc].total += p.valor;
+    });
+    return Object.entries(counts).sort((a, b) => b[1].count - a[1].count);
+  }, [payments]);
+
+
   // Carregar dados
   useEffect(() => {
     if (!isLoadingClients && clientId) {
@@ -135,10 +161,15 @@ const ClientDetailPage = () => {
         const clientToSet: ClientDetailData = {
           ...foundClient,
           genero: foundClient.genero as 'Homem' | 'Mulher' | 'Outro',
-          estado: foundClient.estado as 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'call',
+          estado: foundClient.estado as 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu' | 'call',
           tipo_contato: foundClient.tipo_contato as 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook',
           como_conheceu: foundClient.como_conheceu as 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação',
-          proxima_sessao: null
+          proxima_sessao: null,
+          nif: (foundClient as any).nif,
+          email: foundClient.email || undefined,
+          telefone: foundClient.telefone || undefined,
+          morada: foundClient.morada || undefined,
+          notas: foundClient.notas || undefined,
         };
         setClient(clientToSet);
       }
@@ -150,7 +181,7 @@ const ClientDetailPage = () => {
   useEffect(() => {
     if (!isLoadingAppointments && clientId) {
       const nextAppointment = findNextAppointment();
-      const formattedNextAppointment = formatNextAppointment(nextAppointment);
+      const formattedNextAppointment = formatNextAppointment(nextAppointment as unknown as DbAppointment | null);
 
       // Apenas atualizar se a sessão atual for diferente
       if (formattedNextAppointment !== null) {
@@ -264,8 +295,8 @@ const ClientDetailPage = () => {
         <h2 className="text-2xl font-bold text-red-500">Cliente Não Encontrado</h2>
         <p className="mt-2 mb-6">O cliente que procura não existe ou foi removido.</p>
         <Link to={isAdminContext ? "/admin/clients" : "/clients"}>
-          <Button>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar para Clientes
           </Button>
         </Link>
@@ -479,7 +510,7 @@ const ClientDetailPage = () => {
     });
   };
 
-  const addPayment = async (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
+  const handleAddPayment = async (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
     try {
       const newPayment = {
         id_cliente: parseInt(clientId as string, 10),
@@ -487,11 +518,21 @@ const ClientDetailPage = () => {
         valor: data.valor,
         descricao: data.descricao,
         tipo: data.tipo,
+        nif: data.nif,
+        tipo_servico: data.tipo_servico,
+        numero_fatura: data.numero_fatura,
+        valor_base: data.valor_base,
+        valor_iva: data.valor_iva,
+        retencao: data.retencao,
+        estado: data.estado,
         criado_em: new Date().toISOString()
       };
 
       await addPaymentToDb(newPayment);
-      updateClient({ total_pago: (client?.total_pago || 0) + data.valor });
+
+      updateClient({
+        total_pago: (client?.total_pago || 0) + data.valor
+      });
       toast.success('Pagamento adicionado com sucesso');
     } catch (error) {
       console.error("Erro ao adicionar pagamento:", error);
@@ -506,6 +547,7 @@ const ClientDetailPage = () => {
       if (!originalPayment) return;
 
       // Calcular diferença no valor para atualizar o total pago do cliente
+      // Calcular diferença no valor e nas sessões para atualizar o cliente
       const valueDifference = data.valor - originalPayment.valor;
 
       // Atualizar o pagamento no banco de dados
@@ -516,15 +558,24 @@ const ClientDetailPage = () => {
           valor: data.valor,
           descricao: data.descricao,
           tipo: data.tipo,
+          nif: data.nif,
+          tipo_servico: data.tipo_servico,
+          numero_fatura: data.numero_fatura,
+          valor_base: data.valor_base,
+          valor_iva: data.valor_iva,
+          retencao: data.retencao,
+          estado: data.estado,
           updated_at: new Date().toISOString()
         })
         .eq('id', paymentId);
 
       if (error) throw error;
 
-      // Atualizar o total pago no cliente
+      // Atualizar o cliente
       if (valueDifference !== 0) {
-        updateClient({ total_pago: (client?.total_pago || 0) + valueDifference });
+        updateClient({
+          total_pago: (client?.total_pago || 0) + valueDifference
+        });
       }
 
       toast.success('Pagamento atualizado com sucesso');
@@ -547,8 +598,9 @@ const ClientDetailPage = () => {
 
       if (error) throw error;
 
-      // Atualizar o total pago
-      updateClient({ total_pago: Math.max(0, (client?.total_pago || 0) - paymentToDelete.valor) });
+      updateClient({
+        total_pago: Math.max(0, (client?.total_pago || 0) - paymentToDelete.valor)
+      });
       toast.success('Pagamento eliminado com sucesso');
     } catch (error) {
       console.error("Erro ao eliminar pagamento:", error);
@@ -739,12 +791,13 @@ const ClientDetailPage = () => {
           client={client!}
           onUpdateClient={updateClient}
           onUpdateSession={handleUpdateSession}
+          paidSessionsCount={realizedSessionsCount}
         />;
       case 'payments':
         return <ClientPayments
           payments={payments as any[]}
           clientId={clientId!}
-          onAddPayment={addPayment}
+          onAddPayment={handleAddPayment}
           onDeletePayment={deletePayment}
           onEditPayment={editPayment}
         />;
@@ -779,9 +832,9 @@ const ClientDetailPage = () => {
     toast.success(`${label} copiado!`);
   };
 
-  // Calcular progresso das sessões
-  const sessionProgress = client.max_sessoes
-    ? Math.min(((client.numero_sessoes || 0) / client.max_sessoes) * 100, 100)
+  // Calcular progresso das sessões baseado nos pagamentos
+  const sessionProgressForUI = client?.max_sessoes
+    ? Math.min((realizedSessionsCount / client.max_sessoes) * 100, 100)
     : 0;
 
   // Função para obter iniciais do nome
@@ -834,7 +887,7 @@ const ClientDetailPage = () => {
                 variant="outline"
                 size="sm"
                 className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
-                onClick={() => setActiveTab('sessions')}
+                onClick={() => navigate(`/calendar?client=${client.id}`)}
               >
                 <CalendarPlus className="h-4 w-4 mr-1.5" />
                 Agendar
@@ -847,6 +900,43 @@ const ClientDetailPage = () => {
               >
                 <CreditCard className="h-4 w-4 mr-1.5" />
                 Pagamento
+              </Button>
+              {client.telefone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-purple-500/10 border-purple-500 text-purple-600 hover:bg-purple-500 hover:text-white"
+                  onClick={() => client.telefone && window.open(`https://wa.me/351${client.telefone.replace(/\D/g, '')}`, '_blank')}
+                >
+                  <Phone className="h-4 w-4 mr-1.5" />
+                  WhatsApp
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                onClick={async () => {
+                  const promise = syncAllSessions();
+                  toast.promise(promise, {
+                    loading: 'Sincronizando sessões...',
+                    success: 'Sessões sincronizadas com sucesso!',
+                    error: 'Erro ao sincronizar sessões.'
+                  });
+                  await promise;
+                }}
+              >
+                <TrendingUp className="h-4 w-4 mr-1.5" />
+                Sincronizar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                onClick={() => setActiveTab('profile')}
+              >
+                <User className="h-4 w-4 mr-1.5" />
+                Perfil
               </Button>
             </div>
           </div>
@@ -867,6 +957,19 @@ const ClientDetailPage = () => {
                   <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">
                     {client.nome}
                   </h1>
+                  <Badge variant="outline" className={`
+                    ${client.estado === 'ongoing' ? 'bg-green-100 text-green-700 border-green-200' :
+                      client.estado === 'thinking' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                        client.estado === 'finished' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                          client.estado === 'desistiu' ? 'bg-red-100 text-red-700 border-red-200' :
+                            'bg-gray-100 text-gray-700 border-gray-200'}
+                    px-2 py-0.5 rounded-full text-xs font-medium uppercase
+                  `}>
+                    {client.estado === 'ongoing' ? 'On Going' :
+                      client.estado === 'thinking' ? 'A Pensar' :
+                        client.estado === 'finished' ? 'Finalizado' :
+                          client.estado === 'desistiu' ? 'Desistiu' : client.estado}
+                  </Badge>
                   {client.id_manual && (
                     <span className="px-2 py-0.5 bg-[#3f9094]/20 text-[#3f9094] rounded-full text-xs font-medium">
                       ID: {client.id_manual}
@@ -976,7 +1079,7 @@ const ClientDetailPage = () => {
               variant="outline"
               size="sm"
               className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
-              onClick={() => setActiveTab('sessions')}
+              onClick={() => navigate(`/calendar?client=${client.id}`)}
             >
               <CalendarPlus className="h-4 w-4 mr-1.5" />
               Agendar
@@ -1003,37 +1106,60 @@ const ClientDetailPage = () => {
               <div className="p-2 rounded-lg bg-[#3f9094]/10">
                 <TrendingUp className="h-4 w-4 text-[#3f9094]" />
               </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Sessões</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Sessões Realizadas</span>
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {client.numero_sessoes || 0}
+              {realizedSessionsCount}
               {client.max_sessoes && (
                 <span className="text-sm font-normal text-gray-400">/{client.max_sessoes}</span>
               )}
             </p>
             {client.max_sessoes && (
               <div className="mt-2">
-                <Progress value={sessionProgress} className="h-1.5" />
-                <p className="text-[10px] text-gray-400 mt-1">{Math.round(sessionProgress)}% concluído</p>
+                <Progress value={sessionProgressForUI} className="h-1.5" />
+                <p className="text-[10px] text-gray-400 mt-1">{Math.round(sessionProgressForUI)}% concluído</p>
               </div>
             )}
+            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <p className="text-[10px] text-gray-400">Baseado em agendamentos realizados</p>
+            </div>
           </CardContent>
         </Card>
 
         {/* Total Pago Card */}
-        <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-lg bg-emerald-500/10">
-                <CreditCard className="h-4 w-4 text-emerald-500" />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-help">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 rounded-lg bg-emerald-500/10">
+                      <CreditCard className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Pago</span>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    €{(client.total_pago || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
+                  </p>
+                  <div className="mt-2 text-[10px] text-gray-400">
+                    {payments.length} pagamento(s) total
+                  </div>
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent className="w-64 p-3" side="bottom">
+              <div className="space-y-2">
+                <p className="font-bold text-xs border-b pb-1">Resumo de Pagamentos</p>
+                {paymentBreakdown.map(([desc, data]: [string, any]) => (
+                  <div key={desc} className="flex justify-between text-[11px]">
+                    <span className="truncate mr-2">{desc}:</span>
+                    <span className="font-medium whitespace-nowrap">{data.count}x ({data.total.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}€)</span>
+                  </div>
+                ))}
               </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Pago</span>
-            </div>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              €{(client.total_pago || 0).toLocaleString('pt-PT', { minimumFractionDigits: 0 })}
-            </p>
-          </CardContent>
-        </Card>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Próxima Sessão Card */}
         <Card className="col-span-2 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
@@ -1073,7 +1199,7 @@ const ClientDetailPage = () => {
                   variant="ghost"
                   size="sm"
                   className="text-[#3f9094] hover:bg-[#3f9094]/10"
-                  onClick={() => setActiveTab('sessions')}
+                  onClick={() => navigate(`/calendar?client=${client.id}`)}
                 >
                   <CalendarPlus className="h-4 w-4 mr-1" />
                   Agendar
