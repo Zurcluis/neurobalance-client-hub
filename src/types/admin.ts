@@ -13,6 +13,8 @@ export interface AdminSession {
 
 export interface AdminAuthRequest {
   email: string;
+  password?: string;
+  token?: string;
 }
 
 export interface AdminAuthResponse {

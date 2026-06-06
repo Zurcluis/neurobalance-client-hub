@@ -55,70 +55,70 @@ interface AdminToken {
 interface AdminTokenManagerProps {
   admins: Admin[];
   tokens: AdminToken[];
-  onTokenUpdate: (tokens: AdminToken[]) => void;
+  onCreateToken: (adminId: string, expirationDate: string) => Promise<AdminToken | null>;
+  onUpdateTokenStatus: (tokenId: string, isActive: boolean) => Promise<boolean>;
+  onDeleteToken: (tokenId: string) => Promise<boolean>;
 }
 
 const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   admins,
   tokens,
-  onTokenUpdate,
+  onCreateToken,
+  onUpdateTokenStatus,
+  onDeleteToken,
 }) => {
   const { t } = useLanguage();
   const [selectedAdminId, setSelectedAdminId] = useState<string>('');
   const [showTokens, setShowTokens] = useState<{ [key: string]: boolean }>({});
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  // Gerar token aleatório
-  const generateToken = () => {
-    const prefix = 'adm_tok_';
-    const randomString = Math.random().toString(36).substring(2, 15) + 
-                        Math.random().toString(36).substring(2, 15);
-    return prefix + randomString;
-  };
+  const [expirationOption, setExpirationOption] = useState<string>('30d');
 
   // Criar novo token
-  const handleCreateToken = (adminId: string, expirationDays: number = 30) => {
-    const newToken: AdminToken = {
-      id: Date.now().toString(),
-      admin_id: adminId,
-      token: generateToken(),
-      expires_at: new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000).toISOString(),
-      created_at: new Date().toISOString(),
-      is_active: true
-    };
+  const handleCreateToken = async (adminId: string) => {
+    let expiresAt = new Date();
+    switch (expirationOption) {
+      case '1h':
+        expiresAt.setHours(expiresAt.getHours() + 1);
+        break;
+      case '12h':
+        expiresAt.setHours(expiresAt.getHours() + 12);
+        break;
+      case '1d':
+        expiresAt.setDate(expiresAt.getDate() + 1);
+        break;
+      case '7d':
+        expiresAt.setDate(expiresAt.getDate() + 7);
+        break;
+      case '30d':
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        break;
+      case '6m':
+        expiresAt.setMonth(expiresAt.getMonth() + 6);
+        break;
+      case 'lifetime':
+        expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+        break;
+      default:
+        expiresAt.setDate(expiresAt.getDate() + 30);
+    }
 
-    const updatedTokens = [...tokens, newToken];
-    onTokenUpdate(updatedTokens);
-    setIsCreateDialogOpen(false);
-    setSelectedAdminId('');
-    toast.success('Token criado com sucesso!');
+    const success = await onCreateToken(adminId, expiresAt.toISOString());
+    if (success) {
+      setIsCreateDialogOpen(false);
+      setSelectedAdminId('');
+    }
   };
 
   // Renovar token
-  const handleRefreshToken = (tokenId: string) => {
-    const updatedTokens = tokens.map(token =>
-      token.id === tokenId
-        ? {
-            ...token,
-            token: generateToken(),
-            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            created_at: new Date().toISOString()
-          }
-        : token
-    );
-    onTokenUpdate(updatedTokens);
-    toast.success('Token renovado com sucesso!');
+  const handleRefreshToken = async (tokenId: string) => {
+    toast.error('Funcionalidade a ser implementada na base de dados.');
+    // Na base de dados, a renovação seria criar um novo token e desativar o antigo, ou estender a data.
   };
 
-  // Desativar token
-  const handleDeactivateToken = (tokenId: string) => {
-    const updatedTokens = tokens.map(token =>
-      token.id === tokenId
-        ? { ...token, is_active: false }
-        : token
-    );
-    onTokenUpdate(updatedTokens);
-    toast.success('Token desativado com sucesso!');
+  // Desativar / Ativar token
+  const handleToggleTokenStatus = async (tokenId: string, currentStatus: boolean) => {
+    await onUpdateTokenStatus(tokenId, !currentStatus);
   };
 
   // Gerar link de acesso administrativo
@@ -153,11 +153,9 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   };
 
   // Eliminar token
-  const handleDeleteToken = (tokenId: string) => {
+  const handleDeleteToken = async (tokenId: string) => {
     if (confirm('Tem certeza que deseja eliminar este token?')) {
-      const updatedTokens = tokens.filter(token => token.id !== tokenId);
-      onTokenUpdate(updatedTokens);
-      toast.success('Token eliminado com sucesso!');
+      await onDeleteToken(tokenId);
     }
   };
 
@@ -233,6 +231,24 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                         </div>
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Validade do Token</label>
+                <Select value={expirationOption} onValueChange={setExpirationOption}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a validade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1h">1 Hora</SelectItem>
+                    <SelectItem value="12h">12 Horas</SelectItem>
+                    <SelectItem value="1d">1 Dia</SelectItem>
+                    <SelectItem value="7d">1 Semana</SelectItem>
+                    <SelectItem value="30d">1 Mês</SelectItem>
+                    <SelectItem value="6m">6 Meses</SelectItem>
+                    <SelectItem value="lifetime">Vitalício</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -313,7 +329,11 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                       )}
                     </div>
                     
-                    <Badge variant={token.is_active && !isExpired ? "default" : "secondary"}>
+                    <Badge 
+                      variant={token.is_active && !isExpired ? "default" : "secondary"}
+                      className="cursor-pointer"
+                      onClick={() => handleToggleTokenStatus(token.id, token.is_active)}
+                    >
                       {token.is_active && !isExpired ? "Ativo" : "Inativo"}
                     </Badge>
                   </div>

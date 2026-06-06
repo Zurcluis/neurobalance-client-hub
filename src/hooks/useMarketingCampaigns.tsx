@@ -18,9 +18,9 @@ import {
 
 export const useMarketingCampaigns = () => {
 	const supabase = useSupabaseClient();
-	const [campaigns, setCampaigns] = useState < MarketingCampaign[] > ([]);
+	const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState < string | null > (null);
+	const [error, setError] = useState<string | null>(null);
 
 	const fetchCampaigns = useCallback(async (filters?: CampaignFilters) => {
 		setIsLoading(true);
@@ -81,7 +81,7 @@ export const useMarketingCampaigns = () => {
 		}
 	}, [supabase]);
 
-	const addCampaign = useCallback(async (campaign: Omit < MarketingCampaign, 'id' | 'created_at' | 'updated_at' > ) => {
+	const addCampaign = useCallback(async (campaign: Omit<MarketingCampaign, 'id' | 'created_at' | 'updated_at' | 'cpl' | 'cac' | 'taxa_conversao'>) => {
 		setIsLoading(true);
 		try {
 			// Calcular métricas derivadas
@@ -119,7 +119,7 @@ export const useMarketingCampaigns = () => {
 		}
 	}, [supabase]);
 
-	const updateCampaign = useCallback(async (id: string, updates: Partial < MarketingCampaign > ) => {
+	const updateCampaign = useCallback(async (id: string, updates: Partial<MarketingCampaign>) => {
 		setIsLoading(true);
 		try {
 			// Recalcular métricas se necessário
@@ -240,7 +240,7 @@ export const useMarketingCampaigns = () => {
 		};
 	}, []);
 
-	const getMonthlyReport = useCallback(async (mes: number, ano: number): Promise < MonthlyReport > => {
+	const getMonthlyReport = useCallback(async (mes: number, ano: number): Promise<MonthlyReport> => {
 		const currentMonthCampaigns = campaigns.filter(c => c.mes === mes && c.ano === ano);
 
 		// Buscar campanhas do mês anterior para comparação

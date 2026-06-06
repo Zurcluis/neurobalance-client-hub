@@ -17,6 +17,8 @@ export const useKeyboardShortcuts = (shortcuts: ShortcutConfig[]) => {
       for (const shortcut of shortcuts) {
         if (shortcut.disabled) continue;
 
+        if (!event.key || !shortcut.key) continue;
+
         const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
         const ctrlMatch = shortcut.ctrlKey ? event.ctrlKey : !event.ctrlKey;
         const shiftMatch = shortcut.shiftKey ? event.shiftKey : !event.shiftKey;
@@ -44,7 +46,8 @@ export const useKeyboardShortcuts = (shortcuts: ShortcutConfig[]) => {
 export const useGlobalKeyboardShortcuts = (
   onSearch?: () => void,
   onHelp?: () => void,
-  onNewClient?: () => void
+  onNewClient?: () => void,
+  onNavigate?: (path: string) => void
 ) => {
   const shortcuts: ShortcutConfig[] = [
     {
@@ -66,9 +69,39 @@ export const useGlobalKeyboardShortcuts = (
     },
     {
       key: 'n',
-      ctrlKey: true,
+      altKey: true,
       callback: () => onNewClient?.(),
-      description: 'Novo cliente',
+      description: 'Novo cliente (Alt+N)',
+    },
+    {
+      key: 'a',
+      altKey: true,
+      callback: () => onNavigate?.('/calendar?new=true'),
+      description: 'Novo agendamento (Alt+A)',
+    },
+    {
+      key: 'c',
+      altKey: true,
+      callback: () => onNavigate?.('/calendar'),
+      description: 'Calendário (Alt+C)',
+    },
+    {
+      key: 'p',
+      altKey: true,
+      callback: () => onNavigate?.('/clients'),
+      description: 'Clientes (Alt+P)',
+    },
+    {
+      key: 'f',
+      altKey: true,
+      callback: () => onNavigate?.('/finances'),
+      description: 'Finanças (Alt+F)',
+    },
+    {
+      key: 'd',
+      altKey: true,
+      callback: () => onNavigate?.('/dashboard'),
+      description: 'Dashboard (Alt+D)',
     },
     {
       key: 'Escape',

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from 'sonner';
-import { Database } from '@/types/supabase';
+import { Database } from '@/integrations/supabase/types';
+import { hashPassword } from './useAdminAuth';
 
 export type Admin = Database['public']['Tables']['admins']['Row'];
 export type NewAdmin = Database['public']['Tables']['admins']['Insert'];
@@ -15,6 +16,7 @@ export interface AdminFormData {
   contacto: string;
   role: 'admin' | 'assistant';
   ativo: boolean;
+  password?: string;
 }
 
 export const useAdmins = () => {
@@ -40,12 +42,20 @@ export const useAdmins = () => {
         }
     }, [supabase]);
 
-    const createAdmin = useCallback(async (newAdmin: NewAdmin) => {
+    const createAdmin = useCallback(async (formData: AdminFormData) => {
         try {
+            const { password, ...rest } = formData;
+            const insertData: any = { ...rest };
+            
+            if (password) {
+                insertData.password_hash = await hashPassword(password);
+            }
+
             const {
                 data,
                 error
-            } = await supabase.from('admins').insert(newAdmin).select();
+            } = await supabase.from('admins').insert(insertData).select();
+            
             if (error) throw error;
             setAdmins(prev => [...prev, ...data]);
             toast.success("Administrador adicionado com sucesso!");
@@ -57,12 +67,20 @@ export const useAdmins = () => {
         }
     }, [supabase]);
 
-    const updateAdmin = useCallback(async (id: string, updatedAdmin: UpdateAdmin) => {
+    const updateAdmin = useCallback(async (id: string, formData: AdminFormData) => {
         try {
+            const { password, ...rest } = formData;
+            const updateData: any = { ...rest };
+            
+            if (password) {
+                updateData.password_hash = await hashPassword(password);
+            }
+
             const {
                 data,
                 error
-            } = await supabase.from('admins').update(updatedAdmin).eq('id', id).select();
+            } = await supabase.from('admins').update(updateData).eq('id', id).select();
+            
             if (error) throw error;
             setAdmins(prev => prev.map(admin => admin.id === id ? data[0] : admin));
             toast.success("Administrador atualizado com sucesso!");

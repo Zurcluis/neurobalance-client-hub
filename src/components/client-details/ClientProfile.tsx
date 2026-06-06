@@ -1,14 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
-import { Calendar as CalendarIcon, Edit, User, Trash2, Mail, Phone, MapPin, Info, Calendar, CreditCard, FileText, HashIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar as CalendarIcon, Edit, User, Trash2, Mail, Phone, Info, Calendar, CreditCard, HashIcon, MessageSquare, CalendarPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { ClientDetailData } from '@/types/client';
-import { format, differenceInYears } from 'date-fns';
+import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -18,18 +19,20 @@ import { ptBR } from 'date-fns/locale';
 import { Database } from '@/integrations/supabase/types';
 import ClientPdfExport from './ClientPdfExport';
 
-type Client = Database['public']['Tables']['clientes']['Row'];
+
 
 interface ClientProfileProps {
   client: ClientDetailData;
   onUpdateClient: (data: Partial<ClientDetailData>) => void;
   onDeleteClient: () => void;
+  onOpenPaymentDialog?: () => void;
 }
 
-const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, onDeleteClient }) => {
+const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, onDeleteClient, onOpenPaymentDialog }) => {
+  const navigate = useNavigate();
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
-  const [isIdEditMode, setIsIdEditMode] = React.useState(false);
+
 
   const profileForm = useForm<ClientDetailData>({
     defaultValues: client,
@@ -81,7 +84,8 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'bg-gray-500';
     switch (status) {
       case 'ongoing':
         return 'bg-green-500';
@@ -98,7 +102,8 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string | undefined) => {
+    if (!status) return 'Desconhecido';
     switch (status) {
       case 'ongoing':
         return 'On Going';
@@ -122,55 +127,20 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho com informações principais e ações */}
-      <Card className="client-profile-card shadow-md hover:shadow-lg transition-shadow duration-300">
-        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between pb-2 gap-3 sm:gap-4">
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold truncate">
-                {client.nome}
-                {client.id_manual ? ` (ID: ${client.id_manual})` : ''}
-              </CardTitle>
-              <Badge className={`${getStatusColor(client.estado)} px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm`}>
-                {getStatusLabel(client.estado)}
-              </Badge>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
-              <div className="flex items-center text-xs sm:text-sm text-gray-600">
-                <Mail className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
-                <span className="truncate">{client.email}</span>
-              </div>
-              <div className="flex items-center text-xs sm:text-sm text-gray-600">
-                <Phone className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
-                <span className="truncate">{client.telefone}</span>
-              </div>
-              {client.data_nascimento && (
-                <div className="flex items-center text-xs sm:text-sm text-gray-600">
-                  <User className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
-                  <span>{calculateAge(client.data_nascimento)} anos</span>
-                </div>
-              )}
-              {client.data_entrada_clinica && (
-                <div className="flex items-center text-xs sm:text-sm text-gray-600">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
-                  <span>Entrada: {formatDate(client.data_entrada_clinica)}</span>
-                </div>
-              )}
-              <div className="flex items-center text-xs sm:text-sm text-gray-600">
-                <HashIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
-                <span>ID: {client.id}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 mt-2 md:mt-0">
-            <ClientPdfExport client={client} />
+      {/* Informações principais em cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Informações Pessoais */}
+        <Card className="client-profile-card shadow-md hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="card-header-gradient pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-xl font-semibold text-[#265255]">
+              <User className="h-5 w-5" />
+              Informações Pessoais
+            </CardTitle>
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" onClick={handleOpenEditModal} className="text-xs sm:text-sm">
-                  <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  <span className="hidden xs:inline">Editar Perfil</span>
+                <Button variant="ghost" size="sm" onClick={handleOpenEditModal} className="text-[#3f9094] hover:bg-[#3f9094]/10">
+                  <Edit className="h-4 w-4 mr-1.5" />
+                  Editar
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
@@ -242,6 +212,19 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
+                        name="nif"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>NIF</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ''} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
                         name="responsavel"
                         render={({ field }) => (
                           <FormItem>
@@ -269,7 +252,9 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
+                    </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="motivo"
@@ -292,6 +277,29 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                                 <SelectItem value="Problemas de Memória">Problemas de Memória</SelectItem>
                                 <SelectItem value="Depressão">Depressão</SelectItem>
                                 <SelectItem value="Alzheimer">Alzheimer</SelectItem>
+                                <SelectItem value="Outro">Outro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="genero"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Género</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value ? String(field.value) : ''}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o género" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Homem">Homem</SelectItem>
+                                <SelectItem value="Mulher">Mulher</SelectItem>
                                 <SelectItem value="Outro">Outro</SelectItem>
                               </SelectContent>
                             </Select>
@@ -389,29 +397,6 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
-                        name="genero"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Género</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value ? String(field.value) : ''}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o género" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Homem">Homem</SelectItem>
-                                <SelectItem value="Mulher">Mulher</SelectItem>
-                                <SelectItem value="Outro">Outro</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={profileForm.control}
                         name="estado"
                         render={({ field }) => (
                           <FormItem>
@@ -434,9 +419,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="tipo_contato"
@@ -461,7 +444,9 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
+                    </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
                         name="como_conheceu"
@@ -487,39 +472,18 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                           </FormItem>
                         )}
                       />
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
-                        name="numero_sessoes"
+                        name="max_sessoes"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Número de Sessões</FormLabel>
+                            <FormLabel>Máximo de Sessões</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 {...field}
-                                value={field.value || 0}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={profileForm.control}
-                        name="total_pago"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Total Pago (€)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...field}
-                                value={field.value || 0}
+                                value={field.value || 30}
                                 onChange={(e) => field.onChange(Number(e.target.value))}
                               />
                             </FormControl>
@@ -563,56 +527,38 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                 </Form>
               </DialogContent>
             </Dialog>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Informações principais em cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Informações Pessoais */}
-        <Card className="client-profile-card shadow-md hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="card-header-gradient pb-2">
-            <CardTitle className="flex items-center gap-2 text-xl font-semibold text-[#265255]">
-              <User className="h-5 w-5" />
-              Informações Pessoais
-            </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">ID Supabase:</span>
-                <span className="col-span-2 font-mono">{client.id}</span>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">NIF</span>
+                <span className="text-sm font-medium text-gray-900">{client.nif || 'Não informado'}</span>
               </div>
-              {client.id_manual && (
-                <div className="grid grid-cols-3 gap-1">
-                  <span className="font-medium text-gray-600">ID Manual:</span>
-                  <span className="col-span-2 font-mono">{client.id_manual}</span>
-                </div>
-              )}
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">Data de Nascimento:</span>
-                <span className="col-span-2">{formatDate(client.data_nascimento)}</span>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Data de Nascimento</span>
+                <span className="text-sm font-medium text-gray-900">{formatDate(client.data_nascimento)} {client.data_nascimento && `(${calculateAge(client.data_nascimento)} anos)`}</span>
               </div>
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">Género:</span>
-                <span className="col-span-2">{client.genero}</span>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Género</span>
+                <span className="text-sm font-medium text-gray-900">{client.genero}</span>
               </div>
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">Morada:</span>
-                <span className="col-span-2 break-words">{client.morada || 'Não informado'}</span>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Morada</span>
+                <span className="text-sm font-medium text-gray-900 break-words">{client.morada || 'Não informado'}</span>
               </div>
-              {client.responsavel && (
-                <div className="grid grid-cols-3 gap-1">
-                  <span className="font-medium text-gray-600">Responsável:</span>
-                  <span className="col-span-2">{client.responsavel}</span>
-                </div>
-              )}
-              {client.motivo && (
-                <div className="grid grid-cols-3 gap-1">
-                  <span className="font-medium text-gray-600">Motivo:</span>
-                  <span className="col-span-2">{client.motivo}</span>
-                </div>
-              )}
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Responsável</span>
+                <span className="text-sm font-medium text-gray-900">{client.responsavel || 'Próprio'}</span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Motivo da Consulta</span>
+                <span className="text-sm font-medium text-gray-900">{client.motivo || 'Não especificado'}</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -626,29 +572,29 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">Tipo de Contacto:</span>
-                <span className="col-span-2">{client.tipo_contato}</span>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tipo de Contacto</span>
+                <span className="text-sm font-medium text-gray-900">{client.tipo_contato}</span>
               </div>
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">Como Conheceu:</span>
-                <span className="col-span-2">{client.como_conheceu}</span>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Como Conheceu</span>
+                <span className="text-sm font-medium text-gray-900">{client.como_conheceu}</span>
               </div>
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">Número de Sessões:</span>
-                <span className="col-span-2">{client.numero_sessoes || 0}</span>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Data de Entrada</span>
+                <span className="text-sm font-medium text-gray-900">{formatDate(client.data_entrada_clinica)}</span>
               </div>
-              <div className="grid grid-cols-3 gap-1">
-                <span className="font-medium text-gray-600">Total Pago:</span>
-                <span className="col-span-2">{client.total_pago ? `€${client.total_pago.toFixed(2)}` : '€0.00'}</span>
-              </div>
-              {client.max_sessoes && (
-                <div className="grid grid-cols-3 gap-1">
-                  <span className="font-medium text-gray-600">Máximo de Sessões:</span>
-                  <span className="col-span-2">{client.max_sessoes}</span>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">IDs de Sistema</span>
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="secondary" className="text-[10px] font-mono">SUPABASE: {client.id}</Badge>
+                  {client.id_manual && <Badge variant="secondary" className="text-[10px] font-mono">MANUAL: {client.id_manual}</Badge>}
                 </div>
-              )}
+              </div>
             </div>
           </CardContent>
         </Card>

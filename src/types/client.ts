@@ -14,7 +14,7 @@ export const clientSchema = z.object({
   genero: z.enum(['Homem', 'Mulher', 'Outro']).optional(),
   morada: z.string().optional().or(z.literal('')),
   notas: z.string().optional(),
-  estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'desistiu']).optional(),
+  estado: z.enum(['ongoing', 'thinking', 'no-need', 'finished', 'desistiu', 'call']).optional(),
   tipo_contato: z.enum(['Lead', 'Contato', 'Email', 'Instagram', 'Facebook']).optional(),
   como_conheceu: z.enum(['Anúncio', 'Instagram', 'Facebook', 'Recomendação']).optional(),
   numero_sessoes: z.number().optional(),
@@ -28,8 +28,9 @@ export const clientSchema = z.object({
   updated_at: z.string().optional(),
   responsavel: z.string().nullable().optional(),
   motivo: z.string().nullable().optional(),
-  id_manual: z.string().min(1, 'ID Manual é obrigatório'),
+  id_manual: z.string().nullable().optional(),
   data_entrada_clinica: z.string().nullable().optional(),
+  nif: z.string().nullable().optional().or(z.literal('')),
 });
 
 export const newClientSchema = clientSchema.omit({ id: true, criado_em: true, updated_at: true });
@@ -43,6 +44,7 @@ export interface ClientDetailData extends z.infer<typeof clientSchema> {
   motivo?: string | null;
   id_manual?: string | null;
   data_entrada_clinica?: string | null;
+  nif?: string | null;
 }
 
 export interface Session {
@@ -74,6 +76,13 @@ export interface Payment {
   descricao: string;
   criado_em: string;
   updated_at: string;
+  nif?: string;
+  tipo_servico?: string;
+  numero_fatura?: string;
+  valor_base?: number;
+  valor_iva?: number;
+  retencao?: number;
+  estado?: string;
 }
 
 export interface ClientFile {

@@ -58,31 +58,31 @@ interface Appointment {
 
 // Estrutura de dados para o formulário de edição
 interface EditSessionFormData {
-    notes: string;
-    terapeuta?: string;
-    duration?: number;
-    filesToUpload?: FileList;
-    titulo?: string;
-    tipo?: string;
-    estado?: string;
+  notes: string;
+  terapeuta?: string;
+  duration?: number;
+  filesToUpload?: FileList;
+  titulo?: string;
+  tipo?: string;
+  estado?: string;
 }
 
 // Definição do tipo de arquivo para resolver incompatibilidade de tipos
 interface SessionFile {
-    name: string;
-    path: string;
-    uploadedAt: string;
+  name: string;
+  path: string;
+  uploadedAt: string;
 }
 
 // Estrutura unificada para renderizar sessões realizadas
 interface RealizedSessionView extends Omit<Session, 'arquivos'> {
-    isFromCalendar: boolean;
-    calendarTitle?: string;
-    status?: string;
-    sessionType?: string;
-    duration?: number;
-    arquivos: SessionFile[];
-    time?: string;
+  isFromCalendar: boolean;
+  calendarTitle?: string;
+  status?: string;
+  sessionType?: string;
+  duration?: number;
+  arquivos: SessionFile[];
+  time?: string;
 }
 
 interface ClientSessionsProps {
@@ -92,9 +92,10 @@ interface ClientSessionsProps {
   onUpdateClient: (client: ClientDetailData) => void;
   onUpdateSession: (session: Session) => void;
   client: ClientDetailData;
+  paidSessionsCount?: number;
 }
 
-const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClient, onUpdateSession }: ClientSessionsProps) => {
+const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClient, onUpdateSession, paidSessionsCount }: ClientSessionsProps) => {
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
   const [isMaxSessionsDialogOpen, setIsMaxSessionsDialogOpen] = useState(false);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
@@ -104,13 +105,13 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [syncProgress, setSyncProgress] = useState<boolean>(false);
   const lastUpdatedValueRef = useRef<number>(-1);
-  
+
   // Estados para filtragem e ordenação
   const [filterType, setFilterType] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchText, setSearchText] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  
+
   // Obter dados de agendamentos e a função refetch do hook
   const { appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useAppointments();
 
@@ -150,27 +151,27 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     // Filtrar agendamentos do cliente atual
     if (!isLoadingAppointments && appointments && client && client.id) {
       const clientAppointments = appointments.filter(apt => apt.id_cliente === client.id);
-    
+
       const now = new Date();
       // Separar agendamentos passados e futuros
       const pastAppointments = clientAppointments.filter(app => {
         try {
           const appDate = parseISO(app.data);
-          return !isNaN(appDate.getTime()) && 
-                 (isBefore(appDate, now) || app.estado === 'realizado');
+          return !isNaN(appDate.getTime()) &&
+            (isBefore(appDate, now) || app.estado === 'realizado');
         } catch (error) {
           console.error(`Erro ao processar data do agendamento ${app.id}: ${app.data}`, error);
           return false;
         }
       });
-      
+
       const futureAppointments = clientAppointments.filter(app => {
         try {
           const appDate = parseISO(app.data);
-          return !isNaN(appDate.getTime()) && 
-                 isAfter(appDate, now) && 
-                 app.estado !== 'realizado' && 
-                 app.estado !== 'cancelado';
+          return !isNaN(appDate.getTime()) &&
+            isAfter(appDate, now) &&
+            app.estado !== 'realizado' &&
+            app.estado !== 'cancelado';
         } catch (error) {
           console.error(`Erro ao processar data do agendamento ${app.id}: ${app.data}`, error);
           return false;
@@ -217,7 +218,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   // Processar arquivos de sessão para novo formato
   const processSessionFiles = (files: any[]): SessionFile[] => {
     if (!files) return [];
-    
+
     return files.map(file => {
       if (typeof file === 'string') {
         return {
@@ -231,8 +232,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   };
 
   const allRealizedSessions = useMemo((): RealizedSessionView[] => {
-    const manualSessionsView: RealizedSessionView[] = sessions.map(s => ({ 
-        ...s, 
+    const manualSessionsView: RealizedSessionView[] = sessions.map(s => ({
+      ...s,
       isFromCalendar: false,
       sessionType: s.type || 'Sessão Manual',
       duration: s.duracao,
@@ -243,15 +244,15 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
       const existingManualSession = sessions.find(s => s.id === app.id.toString());
       // Usar 'app.notas' diretamente, em vez de 'sessionNotes'
       const sessionNote = existingManualSession?.notes || app.notas || '';
-      
+
       // Formatar a hora do agendamento para garantir consistência
       const appDate = parseISO(app.data);
       const formattedTime = app.hora || format(appDate, 'HH:mm');
-      
+
       if (existingManualSession) {
-        return { 
-          ...existingManualSession, 
-          isFromCalendar: true, 
+        return {
+          ...existingManualSession,
+          isFromCalendar: true,
           calendarTitle: app.titulo,
           status: app.estado,
           sessionType: app.tipo,
@@ -277,22 +278,22 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
         };
       }
     });
-    
+
     const combined = [...manualSessionsView, ...pastCalendarSessionsView];
-    
+
     // Remova duplicatas, preferindo sempre a versão do calendário se tiver status "realizado"
     const uniqueSessions = combined.reduce((acc, current) => {
       const existingIndex = acc.findIndex(item => item.id === current.id);
-      
+
       if (existingIndex === -1) {
         // Se não existe, adiciona
         return [...acc, current];
       } else {
         const existing = acc[existingIndex];
-        
+
         // Se a sessão atual é do calendário e tem status "realizado", ou a existente não tem
-        if ((current.isFromCalendar && current.status === 'realizado') || 
-            (existing.isFromCalendar === false && current.isFromCalendar)) {
+        if ((current.isFromCalendar && current.status === 'realizado') ||
+          (existing.isFromCalendar === false && current.isFromCalendar)) {
           // Substitui a existente
           return acc.map((s, i) => i === existingIndex ? {
             ...s,
@@ -302,7 +303,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
             notes: existing.notes || current.notes,
           } : s);
         }
-        
+
         // Caso contrário, mantém a existente
         return acc;
       }
@@ -323,7 +324,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
       if (filterType !== 'all' && session.sessionType?.toLowerCase() !== filterType.toLowerCase()) {
         return false;
       }
-      
+
       // Filtro por status
       if (filterStatus !== 'all') {
         if (filterStatus === 'realizado' && session.status !== 'realizado') {
@@ -333,7 +334,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
           return false;
         }
       }
-      
+
       // Filtro por texto de busca
       if (searchText) {
         const searchLower = searchText.toLowerCase();
@@ -341,10 +342,10 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
         const matchesNotes = session.notes?.toLowerCase().includes(searchLower);
         const matchesTherapist = session.terapeuta?.toLowerCase().includes(searchLower);
         const matchesCalendarTitle = session.calendarTitle?.toLowerCase().includes(searchLower);
-        
+
         return matchesType || matchesNotes || matchesTherapist || matchesCalendarTitle;
       }
-      
+
       return true;
     });
   }, [allRealizedSessions, filterType, searchText, filterStatus]);
@@ -372,15 +373,17 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     const maxSessions = client.max_sessoes || 0;
     let completedPercentage = 0;
     if (maxSessions > 0) {
-       completedPercentage = (realizedCount / maxSessions) * 100;
+      // Se o paidSessionsCount for fornecido, usar esse valor para o progresso
+      const countToUse = paidSessionsCount !== undefined ? paidSessionsCount : realizedCount;
+      completedPercentage = (countToUse / maxSessions) * 100;
     }
     setCompletedSessionsPercentage(completedPercentage > 100 ? 100 : completedPercentage);
 
     // Atualização automática APENAS se sincProgress estiver ativado
     // E se nunca tivermos atualizado antes ou se o valor mudou desde a última atualização
-    if (syncProgress && 
-        client.numero_sessoes !== realizedCount && 
-        lastUpdatedValueRef.current !== realizedCount) {
+    if (syncProgress &&
+      client.numero_sessoes !== realizedCount &&
+      lastUpdatedValueRef.current !== realizedCount) {
       lastUpdatedValueRef.current = realizedCount;
       onUpdateClient({
         ...client,
@@ -410,28 +413,28 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   const handleDeleteSession = (sessionId: string) => {
     const sessionToDelete = sessions.find(s => s.id === sessionId);
     if (!sessionToDelete) {
-        toast.error("Não é possível eliminar sessões originadas no calendário.");
-        return;
+      toast.error("Não é possível eliminar sessões originadas no calendário.");
+      return;
     }
 
     const allSessions = loadFromStorage<Session[]>('sessions', []);
     const updatedSessions = allSessions.filter(session => session.id !== sessionId);
     saveToStorage('sessions', updatedSessions);
-    
+
     if (client.id) {
-    const clients = loadFromStorage<ClientDetailData[]>('clients', []);
+      const clients = loadFromStorage<ClientDetailData[]>('clients', []);
       const updatedClients = clients.map(c => {
         if (c.id === client.id) {
           return {
-            ...c, 
+            ...c,
             numero_sessoes: Math.max(0, (c.numero_sessoes || 0) - 1)
           };
         }
         return c;
       });
-    saveToStorage('clients', updatedClients);
+      saveToStorage('clients', updatedClients);
     }
-    
+
     toast.success("Sessão eliminada com sucesso");
     window.location.reload();
   };
@@ -456,10 +459,10 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
       toast.error("Erro: A sessão a editar não foi encontrada ou a ligação ao servidor falhou.");
       return;
     }
-  
+
     setIsUploading(true);
     let uploadedFilePaths: SessionFile[] = [];
-  
+
     // 1. Upload de ficheiros (se existirem)
     if (data.filesToUpload && data.filesToUpload.length > 0) {
       const files = Array.from(data.filesToUpload);
@@ -468,7 +471,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
         const { data: uploadData, error } = await supabase.storage
           .from('ficheiros')
           .upload(filePath, file, { upsert: true });
-  
+
         if (error) {
           console.error('Erro no upload:', error);
           toast.error(`Erro ao carregar ${file.name}: ${error.message}`);
@@ -485,9 +488,9 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
       const results = await Promise.all(uploadPromises);
       uploadedFilePaths = results.filter((r): r is SessionFile => r !== null);
     }
-  
+
     const updatedSessionFiles = [...(sessionToEdit.arquivos || []), ...uploadedFilePaths];
-  
+
     try {
       // 2. Unificar a atualização para sempre usar a tabela 'agendamentos'
       // A lista de "sessões" é na verdade uma vista dos agendamentos.
@@ -511,7 +514,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
           // esta estrutura pode precisar de ajuste. Por agora, vamos focar nos campos principais.
         })
         .eq('id', sessionId);
-  
+
       if (updateError) {
         throw updateError;
       }
@@ -540,7 +543,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
       refreshData();
       setSessionToEdit(null);
       setIsEditModalOpen(false);
-  
+
     } catch (error: any) {
       console.error("Erro ao atualizar sessão:", error);
       toast.error(`Falha ao atualizar sessão: ${error.message}`);
@@ -551,7 +554,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
 
   const getSessionTypeLabel = (type: string | undefined) => {
     if (!type) return 'N/A';
-    
+
     switch (type.toLowerCase()) {
       case 'sessão':
         return 'Neurofeedback';
@@ -566,14 +569,14 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
 
   const getSessionTypeOptions = () => {
     const uniqueTypes = new Set<string>();
-    
+
     // Coletar todos os tipos únicos de sessão
     allRealizedSessions.forEach(session => {
       if (session.sessionType) {
         uniqueTypes.add(session.sessionType.toLowerCase());
       }
     });
-    
+
     // Converter para array e ordenar
     return Array.from(uniqueTypes).sort();
   };
@@ -608,19 +611,18 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
               <div className="flex justify-between items-center">
                 <h4 className="text-sm font-medium">Progresso das Sessões</h4>
                 <span className="text-sm text-muted-foreground">
-                  <strong>{totalRealizedCount}</strong> de <strong>{client.max_sessoes}</strong> sessões realizadas
+                  <strong>{paidSessionsCount !== undefined ? paidSessionsCount : totalRealizedCount}</strong> de <strong>{client.max_sessoes}</strong> sessões pagas
                 </span>
               </div>
               <div className="relative w-full">
-                <Progress 
-                  value={completedSessionsPercentage} 
-                  className={`h-3 ${
-                    completedSessionsPercentage >= 100 ? 'bg-green-100' : 
+                <Progress
+                  value={completedSessionsPercentage}
+                  className={`h-3 ${completedSessionsPercentage >= 100 ? 'bg-green-100' :
                     completedSessionsPercentage >= 75 ? 'bg-emerald-100' :
-                    completedSessionsPercentage >= 50 ? 'bg-amber-100' :
-                    completedSessionsPercentage >= 25 ? 'bg-orange-100' :
-                    'bg-red-100'
-                  }`}
+                      completedSessionsPercentage >= 50 ? 'bg-amber-100' :
+                        completedSessionsPercentage >= 25 ? 'bg-orange-100' :
+                          'bg-red-100'
+                    }`}
                 />
                 {/* Marcadores de Metas */}
                 {Array.from({ length: Math.floor(client.max_sessoes / 5) }).map((_, i) => {
@@ -644,19 +646,19 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                 <span>{client.max_sessoes - totalRealizedCount} sessões restantes</span>
               </div>
               <div className="flex items-center justify-between space-x-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={syncSessionCount}
                   className="text-xs"
                 >
                   Sincronizar Contagem
                 </Button>
                 <div className="flex items-center gap-2">
-                  <Switch 
-                    id="sync-progress" 
-                    checked={syncProgress} 
-                    onCheckedChange={setSyncProgress} 
+                  <Switch
+                    id="sync-progress"
+                    checked={syncProgress}
+                    onCheckedChange={setSyncProgress}
                     className="switch-checked"
                   />
                   <Label htmlFor="sync-progress" className="text-xs cursor-pointer flex items-center gap-1">
@@ -703,12 +705,12 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                         <TableCell>{getSessionTypeLabel(appointment.tipo)}</TableCell>
                         <TableCell>
                           <div className={`px-2 py-1 rounded-full text-xs inline-block
-                            ${appointment.estado === 'confirmado' ? 'bg-green-100 text-green-800' : 
-                              appointment.estado === 'agendado' ? 'bg-blue-100 text-blue-800' : 
-                              appointment.estado === 'em_andamento' ? 'bg-amber-100 text-amber-800' :
-                              appointment.estado === 'pausado' ? 'bg-purple-100 text-purple-800' :
-                              appointment.estado === 'cancelado' ? 'bg-red-100 text-red-800' : 
-                              'bg-gray-100 text-gray-800'}`}>
+                            ${appointment.estado === 'confirmado' ? 'bg-green-100 text-green-800' :
+                              appointment.estado === 'agendado' ? 'bg-blue-100 text-blue-800' :
+                                appointment.estado === 'em_andamento' ? 'bg-amber-100 text-amber-800' :
+                                  appointment.estado === 'pausado' ? 'bg-purple-100 text-purple-800' :
+                                    appointment.estado === 'cancelado' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'}`}>
                             {appointment.estado.charAt(0).toUpperCase() + appointment.estado.slice(1)}
                           </div>
                         </TableCell>
@@ -737,7 +739,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
             onChange={(e) => setSearchText(e.target.value)}
             className="max-w-xs"
           />
-          
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-10">
@@ -751,7 +753,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                 <h4 className="font-medium">Filtrar por Tipo</h4>
                 <div className="grid gap-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <Button 
+                    <Button
                       variant={filterType === 'all' ? "default" : "outline"}
                       onClick={() => setFilterType('all')}
                       className="w-full"
@@ -759,7 +761,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                     >
                       Todos
                     </Button>
-                    
+
                     {getSessionTypeOptions().map(type => (
                       <Button
                         key={type}
@@ -773,10 +775,10 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                     ))}
                   </div>
                 </div>
-                
+
                 <h4 className="font-medium pt-2">Filtrar por Estado</h4>
                 <div className="grid grid-cols-3 gap-2">
-                  <Button 
+                  <Button
                     variant={filterStatus === 'all' ? "default" : "outline"}
                     onClick={() => setFilterStatus('all')}
                     className="w-full"
@@ -784,7 +786,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   >
                     Todos
                   </Button>
-                  <Button 
+                  <Button
                     variant={filterStatus === 'realizado' ? "default" : "outline"}
                     onClick={() => setFilterStatus('realizado')}
                     className="w-full"
@@ -792,7 +794,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   >
                     Realizadas
                   </Button>
-                  <Button 
+                  <Button
                     variant={filterStatus === 'nao_realizado' ? "default" : "outline"}
                     onClick={() => setFilterStatus('nao_realizado')}
                     className="w-full"
@@ -800,14 +802,14 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   >
                     Não Realizadas
                   </Button>
-            </div>
-          </div>
+                </div>
+              </div>
             </PopoverContent>
           </Popover>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             className="h-10"
             onClick={toggleSortOrder}
           >
@@ -824,9 +826,9 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
             )}
           </Button>
 
-                <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="h-10"
             onClick={refreshData}
           >
@@ -834,14 +836,14 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
             Atualizar
           </Button>
         </div>
-        
+
         <div className="flex gap-2">
           <Dialog open={isMaxSessionsDialogOpen} onOpenChange={setIsMaxSessionsDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <Clock className="h-4 w-4 mr-2" />
                 Número de Sessões
-                </Button>
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -859,10 +861,10 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                       <FormItem>
                         <FormLabel>Número Máximo</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            min="0"
+                            {...field}
                             onChange={e => field.onChange(parseInt(e.target.value))}
                           />
                         </FormControl>
@@ -877,15 +879,15 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
               </Form>
             </DialogContent>
           </Dialog>
-      
+
           <Dialog open={isCompleteDialogOpen} onOpenChange={setIsCompleteDialogOpen}>
-                             <DialogTrigger asChild>
+            <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <Check className="h-4 w-4 mr-2" />
                 Completar Processo
-                                 </Button>
-                             </DialogTrigger>
-                             <DialogContent>
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Completar Processo do Cliente</DialogTitle>
                 <DialogDescription>
@@ -898,11 +900,11 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                 </DialogClose>
                 <Button onClick={handleCompleteProcess}>Confirmar</Button>
               </DialogFooter>
-                             </DialogContent>
-                         </Dialog>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
-      
+
       <Card>
         <CardHeader className="px-6">
           <CardTitle className="flex items-center gap-2">
@@ -934,39 +936,39 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                     const sessionDate = parseISO(session.date);
                     const sessionTime = session.time || format(sessionDate, 'HH:mm');
                     const formattedDateTime = `${format(sessionDate, 'dd/MM/yyyy')} ${sessionTime}`;
-                    
+
                     return (
                       <TableRow key={session.id}>
                         <TableCell>{formattedDateTime}</TableCell>
                         <TableCell>
-                          {getSessionTypeLabel(session.sessionType)} 
-                          {session.calendarTitle && 
+                          {getSessionTypeLabel(session.sessionType)}
+                          {session.calendarTitle &&
                             <div className="text-xs text-gray-500 mt-1">{session.calendarTitle}</div>
                           }
                         </TableCell>
                         <TableCell>{session.terapeuta || "Não definido"}</TableCell>
                         <TableCell>
-                          {session.duration ? 
-                            `${Math.floor(session.duration / 3600)}h ${Math.floor((session.duration % 3600) / 60)}m` : 
+                          {session.duration ?
+                            `${Math.floor(session.duration / 3600)}h ${Math.floor((session.duration % 3600) / 60)}m` :
                             "N/A"
                           }
                         </TableCell>
                         <TableCell>
                           <div className={`px-2 py-1 rounded-full text-xs inline-block 
-                            ${session.status === 'realizado' ? 'bg-green-100 text-green-800' : 
-                              session.status === 'agendado' ? 'bg-blue-100 text-blue-800' : 
-                              session.status === 'em_andamento' ? 'bg-amber-100 text-amber-800' :
-                              session.status === 'pausado' ? 'bg-purple-100 text-purple-800' :
-                              session.status === 'cancelado' ? 'bg-red-100 text-red-800' : 
-                              'bg-gray-100 text-gray-800'}`}>
+                            ${session.status === 'realizado' ? 'bg-green-100 text-green-800' :
+                              session.status === 'agendado' ? 'bg-blue-100 text-blue-800' :
+                                session.status === 'em_andamento' ? 'bg-amber-100 text-amber-800' :
+                                  session.status === 'pausado' ? 'bg-purple-100 text-purple-800' :
+                                    session.status === 'cancelado' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'}`}>
                             {session.status ? (session.status.charAt(0).toUpperCase() + session.status.slice(1)) : "N/A"}
                           </div>
                         </TableCell>
                         <TableCell>
                           {session.notes ? (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => viewSessionNotes(session)}
                               className="h-8 px-2"
                             >
@@ -979,41 +981,41 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                     <Button 
-                        size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-8 w-8 p-0"
-                        onClick={() => setSessionToEdit(session)}
-                     >
-                        <Edit className="h-4 w-4" />
+                              onClick={() => setSessionToEdit(session)}
+                            >
+                              <Edit className="h-4 w-4" />
                               <span className="sr-only">Editar</span>
                             </Button>
-                            
+
                             {!session.isFromCalendar && (
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
                                 onClick={() => handleDeleteSession(session.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
                                 <span className="sr-only">Eliminar</span>
-                     </Button>
+                              </Button>
                             )}
-                  </div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
-          </div>
-        ) : (
+            </div>
+          ) : (
             <div className="p-6 text-center">
               <p>Nenhuma sessão encontrada.</p>
               {(searchText || filterType !== 'all' || filterStatus !== 'all') ? (
-                <Button 
-                  variant="link" 
+                <Button
+                  variant="link"
                   onClick={() => {
                     setSearchText('');
                     setFilterType('all');
@@ -1023,22 +1025,22 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   Limpar filtros
                 </Button>
               ) : null}
-          </div>
-        )}
-      </CardContent>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Modal de Edição de Sessão */}
       <Dialog open={isEditModalOpen} onOpenChange={(open) => !open && setSessionToEdit(null)}>
         <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
+          <DialogHeader>
             <DialogTitle>Editar Sessão</DialogTitle>
             <DialogDescription>
               Atualize as informações da sessão selecionada.
             </DialogDescription>
-              </DialogHeader>
-              <Form {...editSessionForm}>
-                  <form onSubmit={editSessionForm.handleSubmit(handleSaveEdit)} className="space-y-4">
+          </DialogHeader>
+          <Form {...editSessionForm}>
+            <form onSubmit={editSessionForm.handleSubmit(handleSaveEdit)} className="space-y-4">
               {sessionToEdit?.isFromCalendar && (
                 <>
                   <FormField
@@ -1056,7 +1058,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   />
                 </>
               )}
-              
+
               <FormField
                 control={editSessionForm.control}
                 name="tipo"
@@ -1064,8 +1066,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   <FormItem>
                     <FormLabel>Tipo</FormLabel>
                     <FormControl>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         value={field.value || ''}
                       >
                         <SelectTrigger className="h-10">
@@ -1082,7 +1084,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={editSessionForm.control}
                 name="estado"
@@ -1090,8 +1092,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   <FormItem>
                     <FormLabel>Estado</FormLabel>
                     <FormControl>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         value={field.value || ''}
                       >
                         <SelectTrigger className="h-10">
@@ -1109,7 +1111,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={editSessionForm.control}
                 name="terapeuta"
@@ -1190,7 +1192,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                           onClick={() => {
                             const updatedFiles = [...sessionToEdit.arquivos];
                             updatedFiles.splice(index, 1);
-                            setSessionToEdit({...sessionToEdit, arquivos: updatedFiles});
+                            setSessionToEdit({ ...sessionToEdit, arquivos: updatedFiles });
                           }}
                           className="ml-auto hover:text-red-500"
                         >
@@ -1202,13 +1204,13 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                 </div>
               )}
 
-                      <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setSessionToEdit(null)}>Cancelar</Button>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setSessionToEdit(null)}>Cancelar</Button>
                 <Button type="submit" disabled={isUploading}>
                   {isUploading && <span className="animate-spin mr-2">⏳</span>}
                   Guardar
                 </Button>
-                      </DialogFooter>
+              </DialogFooter>
             </form>
           </Form>
         </DialogContent>

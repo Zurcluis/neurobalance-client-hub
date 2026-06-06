@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from "./Sidebar";
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { useGlobalKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -11,20 +13,28 @@ interface PageLayoutProps {
 const PageLayout = ({ children, showBreadcrumbs = true }: PageLayoutProps) => {
   const isMobile = useIsMobile();
   const { isPortrait } = useScreenSize();
+  const navigate = useNavigate();
+
+  // Registar atalhos de teclado globais
+  useGlobalKeyboardShortcuts(
+    undefined, // onSearch
+    undefined, // onHelp
+    () => navigate('/clients?new=true'), // onNewClient
+    (path: string) => navigate(path) // onNavigate
+  );
 
   return (
     <div className="flex min-h-screen bg-[#E6ECEA] dark:bg-gray-900">
       <Sidebar />
-      <main 
+      <main
         id="main-content"
         tabIndex={-1}
         role="main"
         aria-label="Conteúdo principal"
-        className={`flex-1 transition-all duration-300 focus:outline-none ${
-          isMobile 
-            ? `pt-20 px-4 pb-8 ${isPortrait ? 'pb-safe' : ''}` 
+        className={`flex-1 transition-all duration-300 focus:outline-none ${isMobile
+            ? `pt-20 px-4 pb-8 ${isPortrait ? 'pb-safe' : ''}`
             : 'p-8 ml-64'
-        }`}
+          }`}
       >
         <div className="max-w-[1600px] mx-auto">
           {showBreadcrumbs && !isMobile && (

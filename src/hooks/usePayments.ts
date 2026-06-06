@@ -10,6 +10,13 @@ type Payment = {
   tipo: string;
   descricao: string;
   cliente_nome?: string;
+  nif?: string;
+  tipo_servico?: string;
+  numero_fatura?: string;
+  valor_base?: number;
+  valor_iva?: number;
+  retencao?: number;
+  estado?: string;
 };
 
 type PaymentWithClient = Payment & {
@@ -27,29 +34,29 @@ const ensurePaymentsTable = async (supabase: any) => {
       .from('pagamentos')
       .select('id')
       .limit(1);
-    
+
     // Se receber um erro indicando que a tabela não existe (código 42P01)
     if (checkError && checkError.code === '42P01') {
       console.log('Tabela de pagamentos não existe - verificando acesso admin');
-      
+
       // Verificar se o cliente tem outras tabelas existentes
       const { data: tablesData, error: tablesError } = await supabase
         .from('clientes')
         .select('id')
         .limit(1);
-      
+
       if (tablesError) {
         console.error('Sem permissões suficientes para acessar tabelas:', tablesError);
         toast.error('Sem permissões para acessar o banco de dados');
         return false;
       }
-      
+
       // Se chegamos aqui, o problema é específico da tabela de pagamentos
       toast.error('A tabela de pagamentos não existe no banco de dados');
       console.error('É necessário criar a tabela de pagamentos no painel do Supabase');
       return false;
     }
-    
+
     return true; // Tabela existe
   } catch (err) {
     console.error('Erro ao verificar tabela de pagamentos:', err);
@@ -66,28 +73,28 @@ export const createSamplePayment = async (supabase: any) => {
     if (!tableExists) {
       return null;
     }
-    
+
     console.log('Criando pagamento de exemplo para teste...');
-    
+
     // Verificar se existem clientes
     const { data: clients, error: clientError } = await supabase
       .from('clientes')
       .select('id')
       .limit(1);
-    
+
     if (clientError) {
       console.error('Erro ao verificar clientes:', clientError);
       return null;
     }
-    
+
     if (!clients || clients.length === 0) {
       console.log('Nenhum cliente encontrado para criar pagamento de teste');
       toast.error('Não há clientes para associar um pagamento de teste');
       return null;
     }
-    
+
     const clientId = clients[0].id;
-    
+
     // Criar pagamento de teste
     const samplePayment = {
       id_cliente: clientId,
@@ -96,21 +103,21 @@ export const createSamplePayment = async (supabase: any) => {
       tipo: 'Dinheiro',
       descricao: 'Pagamento de teste'
     };
-    
+
     const { data, error } = await supabase
       .from('pagamentos')
       .insert(samplePayment)
       .select();
-    
+
     if (error) {
       console.error('Erro ao criar pagamento de teste:', error);
       toast.error('Erro ao criar pagamento de teste: ' + error.message);
       return null;
     }
-    
+
     console.log('Pagamento de teste criado com sucesso:', data);
     toast.success('Pagamento de teste criado para demonstração');
-    
+
     return data[0];
   } catch (err) {
     console.error('Erro ao criar pagamento de teste:', err);
@@ -130,13 +137,13 @@ export function usePayments() {
       console.log('Iniciando carregamento de pagamentos...');
       setIsLoading(true);
       setError(null);
-      
+
       // Garantir que a tabela existe
       const tableExists = await ensurePaymentsTable(supabase);
       if (!tableExists) {
         throw new Error('Falha ao acessar tabela de pagamentos');
       }
-      
+
       // Buscar pagamentos
       const { data, error: paymentError } = await supabase
         .from('pagamentos')
@@ -148,39 +155,39 @@ export function usePayments() {
           )
         `)
         .order('data', { ascending: false });
-      
+
       if (paymentError) {
         console.error('Erro ao buscar pagamentos:', paymentError);
         throw new Error('Erro ao carregar pagamentos: ' + paymentError.message);
       }
-      
+
       console.log('Resposta do Supabase (pagamentos):', data);
-      
+
       if (!data || data.length === 0) {
         console.log('Nenhum pagamento encontrado no banco de dados');
         setPayments([]);
         return;
       }
-      
+
       // Log do primeiro pagamento para debug
       if (data.length > 0) {
         console.log('Primeiro pagamento (raw):', data[0]);
         console.log('Cliente do primeiro pagamento:', data[0].clientes);
       }
-      
+
       const formattedPayments = data.map((payment: PaymentWithClient) => {
         const clienteNome = payment.clientes?.nome || 'Cliente Desconhecido';
         const clienteIdManual = payment.clientes?.id_manual || null;
-        
+
         console.log(`Pagamento ${payment.id} - cliente_id_manual:`, clienteIdManual);
-        
+
         return {
           ...payment,
           cliente_nome: clienteNome,
           cliente_id_manual: clienteIdManual
         };
       });
-      
+
       console.log('Pagamentos formatados:', formattedPayments.length);
       console.log('Primeiro pagamento formatado:', formattedPayments[0]);
       setPayments(formattedPayments);
@@ -195,7 +202,7 @@ export function usePayments() {
 
   useEffect(() => {
     fetchPayments();
-    
+
     // Configurar escuta em tempo real para atualizações
     const channel = supabase
       .channel('payment-changes')
@@ -208,7 +215,7 @@ export function usePayments() {
         }
       )
       .subscribe();
-    
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -217,26 +224,26 @@ export function usePayments() {
   const addPayment = async (newPayment: Omit<Payment, 'id' | 'cliente_nome'>) => {
     try {
       console.log('Adicionando novo pagamento:', newPayment);
-      
+
       // Garantir que a tabela existe
       const tableExists = await ensurePaymentsTable(supabase);
       if (!tableExists) {
         throw new Error('Falha ao acessar tabela de pagamentos');
       }
-      
+
       const { data, error } = await supabase
         .from('pagamentos')
         .insert(newPayment)
         .select('*')
         .single();
-      
+
       if (error) {
         console.error('Erro ao inserir pagamento:', error);
         throw error;
       }
-      
+
       toast.success('Pagamento registrado com sucesso');
-      
+
       // Atualizar lista de pagamentos
       fetchPayments();
       return data;

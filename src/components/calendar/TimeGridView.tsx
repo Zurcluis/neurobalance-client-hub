@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { format, addHours, startOfDay, isSameDay, parseISO, addDays, subDays } from 'date-fns';
+import { format, isSameDay, parseISO, addDays, subDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { Database } from '@/integrations/supabase/types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
+import { Appointment } from '@/hooks/useAppointments';
 
-type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
-  clientes: {
-    nome: string;
-    email: string;
-    telefone: string;
-  } | null;
-  cor?: string;
-};
+
 
 interface TimeGridViewProps {
   days: Date[];
@@ -24,6 +17,7 @@ interface TimeGridViewProps {
   availabilities?: Record<number, any[]>;
   showAvailabilities?: boolean;
   holidays?: any[];
+  onEventDrop?: (appointment: Appointment, newDate: Date) => void;
 }
 
 const TimeGridView: React.FC<TimeGridViewProps> = ({
@@ -36,6 +30,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
   availabilities = {},
   showAvailabilities = false,
   holidays = [],
+  onEventDrop,
 }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -104,6 +99,36 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
     onTimeSlotClick(clickedDate);
   };
 
+  const handleDragStart = (e: React.DragEvent, appointment: Appointment) => {
+    e.dataTransfer.setData('appointmentId', appointment.id.toString());
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('bg-[#d1e8e9]');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove('bg-[#d1e8e9]');
+  };
+
+  const handleDrop = (e: React.DragEvent, day: Date, hour: number) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-[#d1e8e9]');
+
+    const appointmentId = e.dataTransfer.getData('appointmentId');
+    if (appointmentId && onEventDrop) {
+      const appointment = appointments.find(a => a.id.toString() === appointmentId);
+      if (appointment) {
+        const newDate = new Date(day);
+        newDate.setHours(hour, 0, 0, 0);
+        onEventDrop(appointment, newDate);
+      }
+    }
+  };
+
   const navigateDay = (direction: 'prev' | 'next') => {
     const increment = isDailyView ? 1 : 7;
     const newDate = direction === 'prev' ? subDays(currentDate, increment) : addDays(currentDate, increment);
@@ -165,8 +190,8 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
               {format(day, 'EEE', { locale: pt }).substring(0, 3)}
             </div>
             <div className={`text-2xl font-normal ${isSameDay(day, new Date())
-                ? 'bg-[#3f9094] text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto'
-                : 'text-gray-900'
+              ? 'bg-[#3f9094] text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto'
+              : 'text-gray-900'
               }`}>
               {format(day, 'd')}
             </div>
@@ -210,6 +235,9 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                   key={dayIndex}
                   className="border-r border-gray-200 last:border-r-0 p-1 cursor-pointer hover:bg-[#e6f2f3] transition-colors relative min-h-[60px]"
                   onClick={() => handleTimeSlotClick(day, hour)}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, day, hour)}
                 >
                   {/* Feriados - mostrar apenas na primeira hora */}
                   {dayHoliday && (
@@ -223,6 +251,8 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                     <div
                       key={appointmentIndex}
                       className="text-xs p-1 mb-1 rounded cursor-pointer hover:shadow-md transition-shadow"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, appointment)}
                       style={{
                         backgroundColor: (appointment as any).cor || '#3B82F6',
                         color: 'white'

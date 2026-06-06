@@ -38,11 +38,13 @@ interface AdminToken {
   is_active: boolean;
 }
 
+import { useAdminTokens } from '@/hooks/useAdminTokens';
+
 const AdminManagementPage = () => {
   const { t } = useLanguage();
   const { 
     admins, 
-    isLoading, 
+    isLoading: isAdminsLoading, 
     error, 
     createAdmin, 
     updateAdmin, 
@@ -50,34 +52,18 @@ const AdminManagementPage = () => {
     getAdminStats 
   } = useAdmins();
   
-  const [adminTokens, setAdminTokens] = useState<AdminToken[]>([]);
+  const {
+    tokens: adminTokens,
+    isLoading: isTokensLoading,
+    createToken,
+    updateTokenStatus,
+    deleteToken
+  } = useAdminTokens();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
   const [activeTab, setActiveTab] = useState('admins');
-
-  // Dados mock para tokens (implementar depois)
-  useEffect(() => {
-    const mockTokens: AdminToken[] = [
-      {
-        id: '1',
-        admin_id: '1',
-        token: 'adm_tok_1234567890abcdef',
-        expires_at: '2025-01-20T23:59:59Z',
-        created_at: '2024-12-20T10:00:00Z',
-        is_active: true
-      },
-      {
-        id: '2',
-        admin_id: '2',
-        token: 'adm_tok_fedcba0987654321',
-        expires_at: '2025-01-15T23:59:59Z',
-        created_at: '2024-12-15T15:30:00Z',
-        is_active: true
-      }
-    ];
-    setAdminTokens(mockTokens);
-  }, []);
 
   // Filtrar administrativas
   const filteredAdmins = admins.filter(admin =>
@@ -130,7 +116,7 @@ const AdminManagementPage = () => {
     }
   };
 
-  if (isLoading) {
+  if (isAdminsLoading || isTokensLoading) {
     return (
       <PageLayout>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -351,7 +337,9 @@ const AdminManagementPage = () => {
             <AdminTokenManager 
               admins={admins}
               tokens={adminTokens}
-              onTokenUpdate={setAdminTokens}
+              onCreateToken={createToken}
+              onUpdateTokenStatus={updateTokenStatus}
+              onDeleteToken={deleteToken}
             />
           </TabsContent>
         </Tabs>

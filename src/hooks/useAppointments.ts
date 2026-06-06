@@ -1,18 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
-type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
+export type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
   clientes: {
     nome: string;
     email: string;
     telefone: string;
-  };
+    id_manual?: string;
+  } | null;
 };
 
-type NewAppointment = Omit<Database['public']['Tables']['agendamentos']['Insert'], 'id' | 'criado_em' | 'updated_at'>;
-type UpdateAppointment = Partial<NewAppointment>;
+export type NewAppointment = Omit<Database['public']['Tables']['agendamentos']['Insert'], 'id' | 'criado_em' | 'updated_at'>;
+
 
 export function useAppointments() {
   const supabase = useSupabaseClient();
@@ -21,33 +23,34 @@ export function useAppointments() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAppointments = useCallback(async () => {
-      try {
-        setIsLoading(true);
-        const { data, error: supabaseError } = await supabase
-          .from('agendamentos')
-          .select(`
+    try {
+      setIsLoading(true);
+      const { data, error: supabaseError } = await supabase
+        .from('agendamentos')
+        .select(`
             *,
             clientes (
               nome,
               email,
-              telefone
+              telefone,
+              id_manual
             )
           `)
-          .order('data', { ascending: true });
+        .order('data', { ascending: true });
 
-        if (supabaseError) {
-          throw supabaseError;
-        }
-
-        setAppointments(data as Appointment[]);
-        setError(null);
-      } catch (err) {
-        setError('Error loading appointments');
-        console.error('Error loading appointments:', err);
-        toast.error('Failed to load appointments');
-      } finally {
-        setIsLoading(false);
+      if (supabaseError) {
+        throw supabaseError;
       }
+
+      setAppointments(data as Appointment[]);
+      setError(null);
+    } catch (err) {
+      setError('Error loading appointments');
+      console.error('Error loading appointments:', err);
+      toast.error('Failed to load appointments');
+    } finally {
+      setIsLoading(false);
+    }
   }, [supabase]);
 
   // Load appointments from Supabase
@@ -101,10 +104,10 @@ export function useAppointments() {
         console.error('Erro do Supabase:', error);
         throw new Error(error.message || 'Erro ao inserir agendamento na base de dados');
       }
-      
+
       const newAppointment = data as Appointment;
       setAppointments(prev => [...prev, newAppointment]);
-      
+
       toast.success('Agendamento adicionado com sucesso');
       return data;
     } catch (error: any) {
@@ -155,26 +158,27 @@ export function useAppointments() {
           clientes (
             nome,
             email,
-            telefone
+            telefone,
+            id_manual
           )
         `)
         .eq('id', id)
         .maybeSingle();
 
       if (selectError) throw selectError;
-      
+
       if (data) {
         // Atualizar o agendamento no estado local com os dados do cliente
         const updatedAppointment = data as Appointment;
-        setAppointments(prev => prev.map(app => 
+        setAppointments(prev => prev.map(app =>
           app.id === id ? updatedAppointment : app
         ));
-        
+
         toast.success('Agendamento atualizado com sucesso');
         return data;
       } else {
         // Se não encontrou, atualizar localmente mesmo assim
-        setAppointments(prev => prev.map(app => 
+        setAppointments(prev => prev.map(app =>
           app.id === id ? { ...app, ...updateData } : app
         ));
         toast.success('Agendamento atualizado com sucesso');

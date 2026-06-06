@@ -4,7 +4,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, CalendarPlus, CreditCard, User, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink, Key, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, CreditCard, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink, Key, Check, Loader2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -887,15 +887,6 @@ const ClientDetailPage = () => {
                 variant="outline"
                 size="sm"
                 className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
-                onClick={() => navigate(`/calendar?client=${client.id}`)}
-              >
-                <CalendarPlus className="h-4 w-4 mr-1.5" />
-                Agendar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
                 onClick={() => setActiveTab('payments')}
               >
                 <CreditCard className="h-4 w-4 mr-1.5" />
@@ -928,15 +919,6 @@ const ClientDetailPage = () => {
               >
                 <TrendingUp className="h-4 w-4 mr-1.5" />
                 Sincronizar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-gray-300 text-gray-700 hover:bg-gray-100"
-                onClick={() => setActiveTab('profile')}
-              >
-                <User className="h-4 w-4 mr-1.5" />
-                Perfil
               </Button>
             </div>
           </div>
@@ -1075,15 +1057,6 @@ const ClientDetailPage = () => {
 
           {/* Quick Actions - Mobile */}
           <div className="flex sm:hidden items-center gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
-              onClick={() => navigate(`/calendar?client=${client.id}`)}
-            >
-              <CalendarPlus className="h-4 w-4 mr-1.5" />
-              Agendar
-            </Button>
             <Button
               variant="outline"
               size="sm"

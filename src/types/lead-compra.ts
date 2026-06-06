@@ -1,7 +1,7 @@
 export interface LeadCompra {
   id: string;
   nome: string;
-  email: string;
+  email?: string;
   telefone: string;
   idade: number;
   genero: 'Masculino' | 'Feminino' | 'Outro';
@@ -77,7 +77,7 @@ export const TIPOS = ['Compra', 'Lead'] as const;
 
 export const STATUS_OPTIONS = [
   'Iniciou Neurofeedback',
-  'Não vai avançar', 
+  'Não vai avançar',
   'Vão marcar consulta mais à frente',
   'Vai iniciar NFB mas ainda não marcou primeira consulta',
   'Continuam Neurofeedback',

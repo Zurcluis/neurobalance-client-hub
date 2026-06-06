@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Shield, Eye, EyeOff, Users } from 'lucide-react';
+import { Loader2, Mail, Shield, Eye, EyeOff, Lock } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { toast } from 'sonner';
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +20,15 @@ const AdminLoginPage = () => {
   const { login, isAuthenticated, loading } = useAdminAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const tokenParam = searchParams.get('token');
 
-  // Redirecionar se já estiver autenticado
+  // Redirecionar se já estiver autenticado (mas não se houver tokenParam na URL, para permitir fazer login noutra conta)
   useEffect(() => {
-    if (isAuthenticated && !loading) {
+    if (isAuthenticated && !loading && !tokenParam) {
       const redirectTo = searchParams.get('redirect') || '/admin/clients';
       navigate(redirectTo, { replace: true });
     }
-  }, [isAuthenticated, loading, navigate, searchParams]);
+  }, [isAuthenticated, loading, navigate, searchParams, tokenParam]);
 
   // Verificar se há email nos parâmetros da URL
   useEffect(() => {
@@ -39,12 +42,17 @@ const AdminLoginPage = () => {
     e.preventDefault();
     
     if (!email.trim()) {
-      setError('Por favor, insira seu email');
+      setError('Por favor, insira o seu e-mail.');
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Por favor, insira um email válido');
+      setError('Por favor, insira um e-mail válido.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Por favor, insira a sua palavra-passe.');
       return;
     }
 
@@ -52,11 +60,16 @@ const AdminLoginPage = () => {
     setError(null);
 
     try {
-      const response = await login({ email: email.trim() });
+      const response = await login({
+        email: email.trim(),
+        password: password.trim(),
+        token: tokenParam || undefined
+      });
       
       if (response.success) {
         toast.success('Login administrativo realizado com sucesso!');
-        // A navegação será feita pelo useEffect acima
+        const redirectTo = searchParams.get('redirect') || '/admin/clients';
+        navigate(redirectTo, { replace: true });
       } else {
         setError(response.error || 'Erro ao fazer login');
         toast.error(response.error || 'Erro ao fazer login');
@@ -75,7 +88,7 @@ const AdminLoginPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-[#3f9094] mx-auto mb-4" />
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600">A carregar...</p>
         </div>
       </div>
     );
@@ -106,7 +119,10 @@ const AdminLoginPage = () => {
               Acesso Administrativo
             </CardTitle>
             <CardDescription className="text-center text-gray-600">
-              Insira seu email administrativo para acessar o sistema
+              {tokenParam 
+                ? 'Link de acesso detetado. Insira o e-mail e palavra-passe correspondente.'
+                : 'Insira o seu e-mail e palavra-passe para aceder ao sistema.'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -116,15 +132,23 @@ const AdminLoginPage = () => {
               </Alert>
             )}
 
+            {tokenParam && (
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded text-xs text-teal-800 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-teal-600 flex-shrink-0" />
+                <span>Link de acesso seguro ativo.</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* E-mail */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email Administrativo</Label>
+                <Label htmlFor="email">E-mail Administrativo</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@neurobalance.pt"
+                    placeholder="nome@neurobalance.pt"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 h-12 border-slate-300 focus:border-slate-500"
@@ -134,15 +158,40 @@ const AdminLoginPage = () => {
                 </div>
               </div>
 
+              {/* Palavra-passe */}
+              <div className="space-y-2">
+                <Label htmlFor="password">Palavra-passe</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10 h-12 border-slate-300 focus:border-slate-500"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
               <Button
                 type="submit"
-                className="w-full h-12 bg-[#3f9094] hover:bg-[#2d7a7e] text-white font-medium"
+                className="w-full h-12 bg-[#3f9094] hover:bg-[#2d7a7e] text-white font-medium mt-2"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Entrando...
+                    A entrar...
                   </div>
                 ) : (
                   'Entrar no Sistema'
@@ -174,17 +223,17 @@ const AdminLoginPage = () => {
             {/* Seção de Ajuda */}
             {showHelp && (
               <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="font-semibold text-slate-900 mb-2">Como acessar o sistema:</h3>
+                <h3 className="font-semibold text-slate-900 mb-2">Como aceder ao sistema:</h3>
                 <ul className="text-sm text-slate-700 space-y-1">
-                  <li>• Use seu email administrativo cadastrado</li>
-                  <li>• Verifique se o email está correto</li>
-                  <li>• Entre em contato com o administrador principal se necessário</li>
-                  <li>• Certifique-se de que sua conta está ativa</li>
+                  <li>• Utilize o e-mail administrativo registado.</li>
+                  <li>• Insira a palavra-passe correspondente definida no perfil.</li>
+                  <li>• Se estiver a usar um link de acesso gerado por token, certifique-se de introduzir a palavra-passe correta da sua conta.</li>
+                  <li>• Se necessário, contacte o administrador principal para redefinir as suas credenciais.</li>
                 </ul>
                 <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                  <p className="text-xs text-blue-700">
-                    <Shield className="h-4 w-4 inline mr-1" />
-                    Sistema seguro com autenticação por tokens temporários
+                  <p className="text-xs text-blue-700 flex items-center gap-1.5">
+                    <Shield className="h-4 w-4 flex-shrink-0" />
+                    <span>Acesso seguro com encriptação e tokens de sessão temporários.</span>
                   </p>
                 </div>
               </div>
@@ -197,7 +246,7 @@ const AdminLoginPage = () => {
           <p>
             Acesso restrito a pessoal autorizado.{' '}
             <span className="text-slate-600 font-medium">
-              Todas as ações são registradas.
+              Todas as ações são registadas.
             </span>
           </p>
         </div>

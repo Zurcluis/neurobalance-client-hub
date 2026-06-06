@@ -250,7 +250,7 @@ const MarketingReportsPage = () => {
     return calculateMetrics(filteredCampaigns);
   }, [filteredCampaigns, calculateMetrics]);
 
-  const handleSubmitCampaign = async (data: Omit<MarketingCampaign, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSubmitCampaign = async (data: Omit<MarketingCampaign, 'id' | 'created_at' | 'updated_at' | 'cpl' | 'cac' | 'taxa_conversao'>) => {
     try {
       if (editingCampaign) {
         await updateCampaign(editingCampaign.id, data);
@@ -553,7 +553,6 @@ const MarketingReportsPage = () => {
               Analytics de Leads
             </h3>
             <LeadCompraDashboard
-              leads={filteredLeads}
               statistics={statistics || {
                 totalRegistos: 0,
                 comprasRegistadas: 0,

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -11,13 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { CalendarIcon } from "lucide-react";
-import { cn } from '@/lib/utils';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { format } from 'date-fns';
-import { useIsMobile } from '@/hooks/use-mobile';
 import DOMPurify from 'dompurify';
 
 export interface ClientFormData {
@@ -42,8 +38,11 @@ export interface ClientFormData {
 
 interface ClientFormProps {
   onSubmit: (data: ClientFormData) => void;
+  onCancel?: () => void;
   defaultValues?: Partial<ClientFormData>;
   isEditing?: boolean;
+  suggestedId?: string;
+  isSubmitting?: boolean;
 }
 
 // Update payment types array
@@ -55,7 +54,7 @@ const paymentTypes = [
   { id: 'session', label: 'Sessão Individual Neurofeedback', value: 55 }
 ];
 
-const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientFormProps) => {
+const ClientForm = ({ onSubmit, onCancel, defaultValues = {}, isEditing = false, isSubmitting = false }: ClientFormProps) => {
   const { register, handleSubmit, formState: { errors }, control, setValue } = useForm<ClientFormData>({
     defaultValues: {
       tipo_contato: 'Lead',
@@ -71,11 +70,21 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
   const [clinicEntryDate, setClinicEntryDate] = useState<Date | null>(
     defaultValues.data_entrada_clinica ? new Date(defaultValues.data_entrada_clinica) : null
   );
-  const [statusValue, setStatusValue] = useState<'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu'>(
-    defaultValues.estado || 'ongoing'
-  );
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  const isMobile = useIsMobile();
+
+  // Calcular se é menor de idade
+  const calculateAge = (date: Date | null): number | null => {
+    if (!date) return null;
+    const today = new Date();
+    let age = today.getFullYear() - date.getFullYear();
+    const monthDiff = today.getMonth() - date.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const age = calculateAge(birthDate);
+  const isMinor = age !== null && age < 18;
 
   // Add payment type change handler
   const handlePaymentTypeChange = (value: string) => {
@@ -325,6 +334,8 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
                   <SelectItem value="Anúncio">Anúncio</SelectItem>
                   <SelectItem value="Instagram">Instagram</SelectItem>
                   <SelectItem value="Facebook">Facebook</SelectItem>
+                  <SelectItem value="Google">Google</SelectItem>
+                  <SelectItem value="Website">Website</SelectItem>
                   <SelectItem value="Recomendação">Recomendação</SelectItem>
                   <SelectItem value="Flyer">Flyer</SelectItem>
                 </SelectContent>
@@ -345,10 +356,7 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
           rules={{}}
           render={({ field }) => (
             <Select
-              onValueChange={(value: any) => {
-                field.onChange(value);
-                setStatusValue(value);
-              }}
+              onValueChange={field.onChange}
               value={field.value}
               defaultValue={defaultValues.estado || 'ongoing'}
             >
@@ -422,35 +430,40 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="responsavel" className="text-base">Responsável</Label>
-          <Controller
-            control={control}
-            name="responsavel"
-            render={({ field }) => (
-              <Select
-                onValueChange={field.onChange}
-                value={field.value || ""}
-                defaultValue={defaultValues.responsavel || ""}
-              >
-                <SelectTrigger className="h-11 text-base">
-                  <SelectValue placeholder="Selecione o responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pai">Pai</SelectItem>
-                  <SelectItem value="Mãe">Mãe</SelectItem>
-                  <SelectItem value="Tio">Tio</SelectItem>
-                  <SelectItem value="Tia">Tia</SelectItem>
-                  <SelectItem value="Avô">Avô</SelectItem>
-                  <SelectItem value="Avó">Avó</SelectItem>
-                  <SelectItem value="Madrinha">Madrinha</SelectItem>
-                  <SelectItem value="Padrinho">Padrinho</SelectItem>
-                  <SelectItem value="Outro">Outro</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
+        {/* Mostrar campo Responsável apenas para menores de idade */}
+        {(isMinor || !birthDate) && (
+          <div className="space-y-2">
+            <Label htmlFor="responsavel" className="text-base">
+              Responsável {isMinor && <span className="text-xs text-gray-500">(menor de idade)</span>}
+            </Label>
+            <Controller
+              control={control}
+              name="responsavel"
+              render={({ field }) => (
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || ""}
+                  defaultValue={defaultValues.responsavel || ""}
+                >
+                  <SelectTrigger className="h-11 text-base">
+                    <SelectValue placeholder="Selecione o responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pai">Pai</SelectItem>
+                    <SelectItem value="Mãe">Mãe</SelectItem>
+                    <SelectItem value="Tio">Tio</SelectItem>
+                    <SelectItem value="Tia">Tia</SelectItem>
+                    <SelectItem value="Avô">Avô</SelectItem>
+                    <SelectItem value="Avó">Avó</SelectItem>
+                    <SelectItem value="Madrinha">Madrinha</SelectItem>
+                    <SelectItem value="Padrinho">Padrinho</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="motivo" className="text-base">Motivo</Label>
@@ -494,14 +507,15 @@ const ClientForm = ({ onSubmit, defaultValues = {}, isEditing = false }: ClientF
               type="button"
               variant="outline"
               className="w-full sm:w-auto h-11"
-              onClick={() => setResetConfirmOpen(true)}
+              onClick={onCancel}
             >
               Cancelar
             </Button>
           </>
         ) : (
-          <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
-            Adicionar Cliente
+          <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11 gap-2">
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'A guardar...' : 'Adicionar Cliente'}
           </Button>
         )}
       </div>

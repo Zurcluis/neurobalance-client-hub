@@ -62,9 +62,9 @@ export function useClients() {
           id_cliente: newClient.id,
           data: new Date().toISOString(),
           valor: client.total_pago,
-          descricao: client.total_pago === 85 ? 'Avaliação Inicial' : 
-                    client.total_pago === 400 ? 'Pack Mensal Neurofeedback' : 
-                    client.total_pago === 55 ? 'Sessão Individual Neurofeedback' : 'Pagamento Inicial',
+          descricao: client.total_pago === 85 ? 'Avaliação Inicial' :
+            client.total_pago === 400 ? 'Pack Mensal Neurofeedback' :
+              client.total_pago === 55 ? 'Sessão Individual Neurofeedback' : 'Pagamento Inicial',
           tipo: 'Multibanco',
           criado_em: new Date().toISOString()
         };
@@ -133,11 +133,25 @@ export function useClients() {
   // Search clients
   const searchClients = useCallback((query: string) => {
     const searchTerm = query.toLowerCase();
-    return clients.filter(client => 
+    return clients.filter(client =>
       client.nome.toLowerCase().includes(searchTerm) ||
       (client.email && client.email.toLowerCase().includes(searchTerm)) ||
       (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm))
     );
+  }, [clients]);
+
+  // Gerar próximo ID disponível (formato NB-XXX)
+  const generateNextId = useCallback(() => {
+    const prefix = 'NB-';
+    const existingIds = clients
+      .map(c => c.id_manual)
+      .filter(id => id && id.startsWith(prefix))
+      .map(id => parseInt(id!.replace(prefix, ''), 10))
+      .filter(num => !isNaN(num));
+
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const nextNum = maxId + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
   }, [clients]);
 
   return {
@@ -148,6 +162,7 @@ export function useClients() {
     updateClient,
     deleteClient,
     searchClients,
+    generateNextId,
     refresh: loadClients
   };
 }

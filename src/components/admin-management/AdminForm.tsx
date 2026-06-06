@@ -27,11 +27,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { UserCog, Mail, User, Shield, Calendar, MapPin, Phone } from 'lucide-react';
+import { UserCog, Mail, User, Shield, Calendar, MapPin, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 
-// Schema de validação
-const adminSchema = z.object({
+// Schema de validação dinâmico
+const getAdminSchema = (isEdit: boolean) => z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
   data_nascimento: z.string().min(1, 'Data de nascimento é obrigatória').refine((date) => {
@@ -51,9 +51,12 @@ const adminSchema = z.object({
     required_error: 'Selecione um tipo de acesso',
   }),
   ativo: z.boolean().default(true),
+  password: isEdit
+    ? z.string().optional().refine(val => !val || val.length >= 6, 'A palavra-passe deve ter pelo menos 6 caracteres')
+    : z.string().min(6, 'A palavra-passe deve ter pelo menos 6 caracteres'),
 });
 
-type AdminFormData = z.infer<typeof adminSchema>;
+type AdminFormData = z.infer<ReturnType<typeof getAdminSchema>>;
 
 interface AdminFormProps {
   open: boolean;
@@ -69,8 +72,10 @@ const AdminForm: React.FC<AdminFormProps> = ({
   onSubmit,
 }) => {
   const { t } = useLanguage();
+  const [showPassword, setShowPassword] = React.useState(false);
+  
   const form = useForm<AdminFormData>({
-    resolver: zodResolver(adminSchema),
+    resolver: zodResolver(getAdminSchema(!!admin)),
     defaultValues: {
       nome: admin?.nome || '',
       email: admin?.email || '',
@@ -79,6 +84,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
       contacto: admin?.contacto || '',
       role: admin?.role || 'assistant',
       ativo: admin?.ativo ?? true,
+      password: '',
     },
   });
 
@@ -93,8 +99,10 @@ const AdminForm: React.FC<AdminFormProps> = ({
         contacto: admin.contacto,
         role: admin.role,
         ativo: admin.ativo,
+        password: '',
       });
-    } else {
+    } else if (open) {
+      // Only reset to empty when opening for a new admin
       form.reset({
         nome: '',
         email: '',
@@ -103,15 +111,16 @@ const AdminForm: React.FC<AdminFormProps> = ({
         contacto: '',
         role: 'assistant',
         ativo: true,
+        password: '',
       });
     }
-  }, [admin, form]);
+  }, [admin, form, open]);
 
   const handleSubmit = (data: AdminFormData) => {
     console.log('AdminForm handleSubmit chamado com dados:', data);
     try {
       onSubmit(data);
-      form.reset();
+      setShowPassword(false);
     } catch (error) {
       console.error('Erro na submissão do formulário:', error);
     }
@@ -119,6 +128,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
 
   const handleClose = () => {
     form.reset();
+    setShowPassword(false);
     onOpenChange(false);
   };
 
@@ -248,6 +258,38 @@ const AdminForm: React.FC<AdminFormProps> = ({
               )}
             />
 
+            {/* Palavra-passe */}
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Palavra-passe {admin && <span className="text-xs text-gray-500">(deixe em branco para manter)</span>}
+                  </FormLabel>
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder={admin ? "••••••••" : "Introduza a palavra-passe"}
+                        className="pr-10"
+                        {...field}
+                      />
+                    </FormControl>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Tipo de Acesso */}
             <FormField
               control={form.control}
@@ -327,13 +369,9 @@ const AdminForm: React.FC<AdminFormProps> = ({
               <Button
                 type="button"
                 onClick={() => {
-                  console.log('Botão clicado, valores do formulário:', form.getValues());
-                  console.log('Erros do formulário:', form.formState.errors);
-                  form.handleSubmit(handleSubmit, (errors) => {
-                    console.log('Erros de validação no botão:', errors);
-                  })();
+                  form.handleSubmit(handleSubmit)();
                 }}
-                className="flex-1 bg-[#3f9094] hover:bg-[#2d7a7e]"
+                className="flex-1 bg-[#3f9094] hover:bg-[#2d7a7e] text-white"
               >
                 {admin ? t('update') : t('add')}
               </Button>
