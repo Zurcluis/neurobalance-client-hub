@@ -20,6 +20,8 @@ import { Link } from 'react-router-dom';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import { ADMIN_PERMISSIONS } from '@/types/admin';
 import PageLayout from '@/components/layout/PageLayout';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ClinicFloorPlanPage from './ClinicFloorPlanPage';
 
 const AdminDashboardPage = () => {
   const { session, hasPermission } = useAdminAuth();
@@ -81,8 +83,15 @@ const AdminDashboardPage = () => {
           </div>
         </div>
 
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="mb-4 bg-white border border-slate-200">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="floor-plan">Planta da Clínica</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="overview" className="space-y-6 mt-0">
+            {/* Estatísticas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-700">
@@ -208,6 +217,11 @@ const AdminDashboardPage = () => {
             </CardContent>
           </Card>
         </div>
+        </TabsContent>
+        <TabsContent value="floor-plan" className="mt-0">
+          <ClinicFloorPlanPage isEmbedded={true} />
+        </TabsContent>
+        </Tabs>
       </div>
     </PageLayout>
   );

@@ -44,6 +44,7 @@ const MarketingTokensPage = lazy(() => import("./pages/MarketingTokensPage"));
 const ClientTokensPage = lazy(() => import("./pages/ClientTokensPage"));
 const ClinicInfoPage = lazy(() => import("./pages/ClinicInfoPage"));
 const ConfirmAppointmentPage = lazy(() => import("./pages/ConfirmAppointmentPage"));
+const ClinicFloorPlanPage = lazy(() => import("./pages/ClinicFloorPlanPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -194,6 +195,15 @@ const App = () => (
                             <Route
                               path="/admin/availability"
                               element={<AdminAvailabilityPage />}
+                            />
+
+                            <Route
+                              path="/admin/floor-plan"
+                              element={
+                                <ProtectedRoute>
+                                  <ClinicFloorPlanPage />
+                                </ProtectedRoute>
+                              }
                             />
 
                             {/* Marketing Routes */}

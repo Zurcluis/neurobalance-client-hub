@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Users, Home, Menu, X, LogOut, Settings, User, Shield, ChevronLeft } from 'lucide-react';
+import { Calendar, Users, Home, Menu, X, LogOut, Settings, User, Shield, ChevronLeft, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -45,6 +45,11 @@ const AdminSidebar = () => {
       icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, 
       path: '/admin/calendar',
       permission: ADMIN_PERMISSIONS.VIEW_CALENDAR
+    },
+    { 
+      name: 'Planta da Clínica', 
+      icon: <Map className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, 
+      path: '/admin/floor-plan',
     },
   ];
 
