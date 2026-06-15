@@ -49,8 +49,6 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
         ready.push({ lead, type: 'landing', priority: 'high' });
       } else if (lead.status === 'Vai Iniciar') {
         ready.push({ lead, type: 'landing', priority: 'high' });
-      } else if (lead.status === 'Iniciou Neurofeedback') {
-        ready.push({ lead, type: 'landing', priority: 'medium' });
       }
     });
 
@@ -58,8 +56,7 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
     compraLeads.forEach(lead => {
       if (lead.tipo === 'Compra' || 
           (lead as any).status === 'Marcaram avaliação' ||
-          (lead as any).status === 'Falta resultados da avaliação' ||
-          (lead as any).status === 'Iniciou Neurofeedback') {
+          (lead as any).status === 'Falta resultados da avaliação') {
         // Verificar se tem valor pago (indica conversão)
         if (lead.valor_pago > 0) {
           ready.push({ lead, type: 'compra', priority: 'medium' });

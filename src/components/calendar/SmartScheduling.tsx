@@ -3,10 +3,10 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
-import { Mic, MicOff, Calendar, Clock, User, MapPin, Loader2, CheckCircle, AlertCircle, Edit, Trash2, X } from 'lucide-react';
+import { Mic, MicOff, Calendar, Loader2, CheckCircle, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../ui/badge';
-import { format, parse, eachDayOfInterval, startOfMonth, endOfMonth, addDays, isBefore, isAfter, addWeeks, startOfDay, parseISO, isValid, nextSaturday, nextSunday, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday } from 'date-fns';
+import { format, eachDayOfInterval, endOfMonth, addDays, nextSaturday, nextSunday, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import useClients from '@/hooks/useClients';
 import useAppointments from '@/hooks/useAppointments';
@@ -52,12 +52,20 @@ const SmartScheduling: React.FC = () => {
     switch (type.toLowerCase()) {
       case 'avaliação':
       case 'avaliação inicial':
-        return '#8B5CF6';
-      case 'sessão':
+        return '#d8b4fe'; // purple-300
       case 'neurofeedback':
-        return '#3B82F6';
+        return '#93c5fd'; // blue-300
+      case 'discussão de resultados':
+      case 'discussão':
+        return '#facc15'; // yellow-400
+      case 'ioga':
+      case 'yoga':
+        return '#86efac'; // green-300
+      case 'ofes':
+        return '#ef4444'; // red-500
+      case 'sessão':
+        return '#3f9094';
       case 'consulta':
-      case 'consulta inicial':
         return '#EAB308';
       case 'reunião':
       case 'reuniao':
@@ -72,7 +80,7 @@ const SmartScheduling: React.FC = () => {
       case 'workshop':
         return '#EC4899';
       default:
-        return '#3B82F6';
+        return '#3f9094';
     }
   };
 
@@ -85,13 +93,13 @@ const SmartScheduling: React.FC = () => {
       recognitionInstance.interimResults = false;
       recognitionInstance.lang = 'pt-PT';
       
-      recognitionInstance.onresult = (event) => {
+      recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         setTextInput(transcript);
         setIsListening(false);
       };
       
-      recognitionInstance.onerror = (event) => {
+      recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Erro no reconhecimento de voz:', event.error);
         setIsListening(false);
         toast.error('Erro no reconhecimento de voz. Tente novamente.');
@@ -201,7 +209,7 @@ const SmartScheduling: React.FC = () => {
     // Padrões de regex expandidos para extrair informações
     const patterns = {
       // Tipos de agendamento expandidos
-      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta|consultas|neurofeedback|reunião|reuniao|pagamento|follow-up|seguimento|terapia|workshop)/i,
+      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta|consultas|neurofeedback|discussão de resultados|discussão|ioga|yoga|ofes|reunião|reuniao|pagamento|follow-up|seguimento|terapia|workshop)/i,
       
       // Dias da semana
       days: /(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo|seg|ter|qua|qui|sex|sab|dom)/gi,
@@ -336,7 +344,7 @@ const SmartScheduling: React.FC = () => {
         startDate: new Date(),
         endDate,
         recurring: !isRelativeDate,
-        specificDate,
+        specificDate: specificDate ?? undefined,
         isRelativeDate
       };
     } catch (error) {
@@ -504,8 +512,12 @@ const SmartScheduling: React.FC = () => {
   };
 
   const getTypeColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'avaliação': return 'bg-purple-100 text-purple-800';
+    const t = type.toLowerCase();
+    if (t.includes('avaliação')) return 'bg-blue-100 text-blue-800';
+    if (t.includes('neurofeedback') || t.includes('discussão')) return 'bg-yellow-100 text-yellow-800';
+    if (t.includes('ioga') || t.includes('yoga')) return 'bg-green-100 text-green-800';
+    if (t.includes('ofes')) return 'bg-red-100 text-red-800';
+    switch (t) {
       case 'sessão': return 'bg-[#e6f2f3] text-[#3f9094]';
       case 'consulta': return 'bg-yellow-100 text-yellow-800';
       case 'reunião': return 'bg-red-100 text-red-800';
@@ -653,7 +665,7 @@ const SmartScheduling: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {schedulePreview.slice(0, 10).map((appointment, index) => (
+                  {schedulePreview.slice(0, 10).map((appointment) => (
                     <div key={appointment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       {appointment.isEditing ? (
                         <div className="flex-1 space-y-2">
@@ -699,6 +711,10 @@ const SmartScheduling: React.FC = () => {
                                   <SelectItem value="sessão">Sessão</SelectItem>
                                   <SelectItem value="avaliação">Avaliação</SelectItem>
                                   <SelectItem value="consulta">Consulta</SelectItem>
+                                  <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
+                                  <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
+                                  <SelectItem value="ioga">Ioga</SelectItem>
+                                  <SelectItem value="ofes">OFES</SelectItem>
                                   <SelectItem value="reunião">Reunião</SelectItem>
                                   <SelectItem value="pagamento">Pagamento</SelectItem>
                                   <SelectItem value="follow-up">Follow-up</SelectItem>

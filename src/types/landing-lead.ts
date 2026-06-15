@@ -5,10 +5,23 @@ export interface LandingLead {
   telefone: string;
   status: LandingLeadStatus;
   origem: string;
+  morada?: string;
   observacoes?: string;
   created_at: string;
   updated_at?: string;
 }
+
+export const LANDING_LEAD_ORIGEM = [
+  'Instagram',
+  'TikTok',
+  'Facebook',
+  'Site',
+  'Anúncios',
+  'Recomendação',
+  'Pesquisa na internet'
+] as const;
+
+export type LandingLeadOrigem = typeof LANDING_LEAD_ORIGEM[number];
 
 export const LANDING_LEAD_STATUS = [
   'Novo',

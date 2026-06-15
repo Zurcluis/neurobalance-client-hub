@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -20,10 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Upload, FileText, Image, File, Calendar, Clock, User, Loader2, Check, X, Sparkles } from 'lucide-react';
+import { Upload, FileText, Image, File, Calendar, Loader2, Check, X, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, parse, isValid } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface ParsedAppointment {
@@ -43,7 +41,6 @@ interface CalendarImportProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (appointments: ParsedAppointment[]) => Promise<void>;
-  clients: { id: number; nome: string }[];
 }
 
 const ACCEPTED_FILE_TYPES = '.pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.gif';
@@ -51,8 +48,7 @@ const ACCEPTED_FILE_TYPES = '.pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.gif';
 export const CalendarImport: React.FC<CalendarImportProps> = ({
   isOpen,
   onClose,
-  onImport,
-  clients
+  onImport
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState('');
@@ -634,7 +630,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                           <SelectItem value="sessão">Sessão</SelectItem>
                           <SelectItem value="avaliação">Avaliação</SelectItem>
                           <SelectItem value="consulta">Consulta</SelectItem>
-                          <SelectItem value="consulta inicial">Consulta Inicial</SelectItem>
+                          <SelectItem value="ioga">Yoga / Ioga</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

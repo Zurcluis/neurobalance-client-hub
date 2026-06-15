@@ -1,0 +1,1 @@
+const i=r=>{if(!r||r.trim()==="")return"";const t=r.trim().split(/\s+/);return t.length===1?t[0]:t.length===2?t.join(" "):`${t[0]} ${t[t.length-1]}`},e=r=>{if(!r||r.trim()==="")return"?";const t=r.trim().split(/\s+/);if(t.length===1)return t[0].substring(0,2).toUpperCase();const n=t[0].charAt(0),s=t[t.length-1].charAt(0);return`${n}${s}`.toUpperCase()};export{e as a,i as g};

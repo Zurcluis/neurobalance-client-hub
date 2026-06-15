@@ -27,7 +27,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload } from 'lucide-react';
 import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
-import { Database } from '@/integrations/supabase/types';
+
 import { getAllHolidaysUntil2040, isHoliday } from '@/data/portugueseHolidays';
 import { Checkbox } from '../ui/checkbox';
 import {
@@ -41,7 +41,7 @@ import SmartScheduling from './SmartScheduling';
 import TimeGridView from './TimeGridView';
 import CalendarImport from './CalendarImport';
 
-type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'consulta inicial' | 'discussão de resultados';
+type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
 
@@ -79,7 +79,7 @@ const AppointmentCalendar = () => {
 
   const { sendManualSms, isSending } = useSms();
   const [isAutomationEnabled, setIsAutomationEnabled] = useState(false);
-  const [smsStatus, setSmsStatus] = useState<Record<number, { status: string; sid: string | null }>>({});
+  const [smsStatus] = useState<Record<number, { status: string; sid: string }>>({});
 
   const supabase = useSupabaseClient();
 
@@ -503,22 +503,23 @@ const AppointmentCalendar = () => {
     }
   };
 
-  const getAppointmentTypeColor = (type: AppointmentType, customColor?: string | null) => {
+  const getAppointmentTypeColor = (type: AppointmentType | string, customColor?: string | null) => {
     if (customColor) {
       return `text-white border-none`;
     }
 
-    switch (type) {
-      case 'avaliação':
-        return 'bg-purple-500 text-white';
-      case 'sessão':
-        return 'bg-[#3f9094] text-white';
-      case 'consulta':
-        return 'bg-yellow-500 text-white';
-      case 'consulta inicial':
-        return 'bg-[#3f9094] text-white';
-      default:
-        return 'bg-[#3f9094] text-white';
+    const t = (type || '').toLowerCase();
+    
+    if (t.includes('avaliação')) return 'bg-purple-300 text-purple-900 border-none';
+    if (t.includes('neurofeedback')) return 'bg-blue-300 text-blue-900 border-none';
+    if (t.includes('discussão')) return 'bg-yellow-400 text-yellow-900 border-none';
+    if (t.includes('ioga') || t.includes('yoga')) return 'bg-green-300 text-green-900 border-none';
+    if (t.includes('ofes')) return 'bg-red-500 text-white border-none';
+
+    switch (t) {
+      case 'sessão': return 'bg-[#3f9094] text-white border-none';
+      case 'consulta': return 'bg-yellow-500 text-white border-none';
+      default: return 'bg-[#3f9094] text-white border-none';
     }
   };
 
@@ -1198,20 +1199,20 @@ const AppointmentCalendar = () => {
             <h3 className="text-sm font-medium text-[#265255] mb-3">Tipos de Eventos</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                <div className="w-4 h-4 bg-purple-300 rounded"></div>
                 <span className="text-xs text-gray-700">Avaliação</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-[#3f9094] rounded"></div>
+                <div className="w-4 h-4 bg-blue-300 rounded"></div>
                 <span className="text-xs text-gray-700">Neurofeedback</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                <div className="w-4 h-4 bg-yellow-400 rounded"></div>
                 <span className="text-xs text-gray-700">Discussão de Resultados</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-blue-400 rounded"></div>
-                <span className="text-xs text-gray-700">Consulta Inicial</span>
+                <div className="w-4 h-4 bg-green-300 rounded"></div>
+                <span className="text-xs text-gray-700">Yoga / Ioga</span>
               </div>
             </div>
 
@@ -1491,8 +1492,10 @@ const AppointmentCalendar = () => {
                           <SelectItem value="sessão">Sessão</SelectItem>
                           <SelectItem value="avaliação">Avaliação</SelectItem>
                           <SelectItem value="consulta">Consulta</SelectItem>
-                          <SelectItem value="consulta inicial">Consulta Inicial</SelectItem>
                           <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
+                          <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
+                          <SelectItem value="ioga">Yoga / Ioga</SelectItem>
+                          <SelectItem value="ofes">OFES</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1656,7 +1659,6 @@ const AppointmentCalendar = () => {
         isOpen={isImportDialogOpen}
         onClose={() => setIsImportDialogOpen(false)}
         onImport={handleImportAppointments}
-        clients={clients || []}
       />
 
       {/* Diálogo de pré-visualização de SMS */}

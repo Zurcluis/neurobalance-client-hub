@@ -1,8 +1,6 @@
-import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { parseISO, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
 
 interface Appointment {
@@ -11,7 +9,7 @@ interface Appointment {
   date: string;
   clientName: string;
   clientId: string;
-  type: 'sessão' | 'avaliação' | 'consulta';
+  type: string;
   confirmed?: boolean;
 }
 
@@ -24,28 +22,27 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
   const { isPortrait } = useScreenSize();
   
   const getAppointmentTypeLabel = (type: string) => {
-    switch (type) {
-      case 'avaliação':
-        return 'Avaliação';
-      case 'sessão':
-        return 'Neurofeedback';
-      case 'consulta':
-        return 'Discussão';
-      default:
-        return type;
-    }
+    if (!type) return 'Sessão';
+    const t = type.toLowerCase();
+    if (t === 'discussão de resultados') return 'Discussão';
+    if (t === 'ioga' || t === 'yoga') return 'Yoga';
+    return type.charAt(0).toUpperCase() + type.slice(1);
   };
   
   const getAppointmentTypeColor = (type: string) => {
-    switch (type) {
-      case 'avaliação':
-        return 'bg-[#9e50b3] text-white';
-      case 'sessão':
-        return 'bg-[#1088c4] text-white';
-      case 'consulta':
-        return 'bg-[#ecc249] text-white';
-      default:
-        return 'bg-gray-200 text-gray-800';
+    if (!type) return 'bg-[#3f9094] text-white border-none';
+    const t = type.toLowerCase();
+    
+    if (t.includes('avaliação')) return 'bg-purple-300 text-purple-900 border-none';
+    if (t.includes('neurofeedback')) return 'bg-blue-300 text-blue-900 border-none';
+    if (t.includes('discussão')) return 'bg-yellow-400 text-yellow-900 border-none';
+    if (t.includes('ioga') || t.includes('yoga')) return 'bg-green-300 text-green-900 border-none';
+    if (t.includes('ofes')) return 'bg-red-500 text-white border-none';
+    
+    switch (t) {
+      case 'sessão': return 'bg-[#3f9094] text-white border-none';
+      case 'consulta': return 'bg-yellow-500 text-white border-none';
+      default: return 'bg-gray-200 text-gray-800 border-none';
     }
   };
   

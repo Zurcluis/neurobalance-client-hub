@@ -1,51 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   User,
   Calendar,
   CreditCard,
-  MessageSquare,
   Bell,
   LogOut,
   Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
-  Phone,
-  Mail,
-  MapPin,
   CalendarDays,
   Euro,
   Activity,
   TrendingUp,
-  Settings,
-  Menu,
-  X,
-  Sparkles,
   ArrowRight
 } from 'lucide-react';
-import { useClientAuth, useClientData, useClientMessages, useClientNotifications } from '@/hooks/useClientAuth';
+import { useClientAuth, useClientData, useClientNotifications } from '@/hooks/useClientAuth';
 import { toast } from 'sonner';
-import { format, parseISO, isAfter, isBefore } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ClientAppointments from '@/components/client-dashboard/ClientAppointments';
 import ClientPayments from '@/components/client-dashboard/ClientPayments';
-import ClientChat from '@/components/client-dashboard/ClientChat';
 import ClientProfile from '@/components/client-dashboard/ClientProfile';
 import ClientNotifications from '@/components/client-dashboard/ClientNotifications';
-import { ClientAvailabilityManager, ClientAvailabilityCalendar } from '@/components/availability';
+import { ClientAvailabilityCalendar } from '@/components/availability';
 import { NotificationPanel } from '@/components/availability/NotificationPanel';
 import { cn } from '@/lib/utils';
 
 const ClientDashboardPage = () => {
   const { session, logout, isAuthenticated, loading: authLoading } = useClientAuth();
   const { clientData, loading: clientLoading } = useClientData();
-  const { messages, unreadCount: unreadMessages = 0 } = useClientMessages();
+  // Chat removido temporariamente: const { messages, unreadCount: unreadMessages = 0 } = useClientMessages();
   const { notifications, unreadCount: unreadNotifications = 0 } = useClientNotifications();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -110,6 +98,21 @@ const ClientDashboardPage = () => {
     if (hour < 18) return 'Boa tarde';
     return 'Boa noite';
   };
+
+  const MENU_ITEMS: Array<{ id: string; icon: any; label: string; bgColor: string; iconColor: string; badge?: number }> = [
+    { id: 'overview', icon: Activity, label: 'Visão Geral', bgColor: 'bg-violet-100', iconColor: 'text-violet-600' },
+    { id: 'profile', icon: User, label: 'Perfil', bgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
+    { id: 'appointments', icon: Calendar, label: 'Agendamentos', bgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
+    { id: 'availability', icon: Clock, label: 'Minha Disponibilidade', bgColor: 'bg-amber-100', iconColor: 'text-amber-600' },
+    { id: 'payments', icon: CreditCard, label: 'Pagamentos', bgColor: 'bg-rose-100', iconColor: 'text-rose-600' },
+  ];
+
+  const MOBILE_MENU_ITEMS: Array<{ id: string; icon: any; label: string; badge?: number }> = [
+    { id: 'overview', icon: Activity, label: 'Início' },
+    { id: 'appointments', icon: Calendar, label: 'Agenda' },
+    { id: 'availability', icon: Clock, label: 'Disp.' },
+    { id: 'payments', icon: CreditCard, label: 'Pagam.' },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-cyan-50/20 touch-manipulation">
@@ -254,14 +257,7 @@ const ClientDashboardPage = () => {
           </div>
 
           <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-            {[
-              { id: 'overview', icon: Activity, label: 'Visão Geral', bgColor: 'bg-violet-100', iconColor: 'text-violet-600' },
-              { id: 'profile', icon: User, label: 'Perfil', bgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
-              { id: 'appointments', icon: Calendar, label: 'Agendamentos', bgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
-              { id: 'availability', icon: Clock, label: 'Minha Disponibilidade', bgColor: 'bg-amber-100', iconColor: 'text-amber-600' },
-              { id: 'payments', icon: CreditCard, label: 'Pagamentos', bgColor: 'bg-rose-100', iconColor: 'text-rose-600' },
-              // { id: 'chat', icon: MessageSquare, label: 'Chat', bgColor: 'bg-indigo-100', iconColor: 'text-indigo-600', badge: unreadMessages },
-            ].map((item) => (
+            {MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
                 onClick={() => {
@@ -411,6 +407,21 @@ const ClientDashboardPage = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Aviso de Última Sessão do Pack (Visão Cliente) */}
+                {clientData.max_sessoes > 0 && (clientData.max_sessoes - clientData.numero_sessoes === 1) && (
+                  <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-200/50 rounded-2xl p-4 sm:p-5 flex items-start gap-3 sm:gap-4 shadow-sm">
+                    <div className="bg-white/60 p-2 rounded-xl shrink-0">
+                      <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-amber-900 text-sm sm:text-base">Última sessão do pack!</h4>
+                      <p className="text-xs sm:text-sm text-amber-800/80 mt-1 font-medium">
+                        Atenção: Falta apenas 1 sessão para concluir o seu pack atual. Fale com a nossa equipa para preparar a renovação.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Resumo Rápido */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -586,13 +597,7 @@ const ClientDashboardPage = () => {
 
         {/* Navigation Items */}
         <div className="relative flex justify-around items-center h-16 px-2">
-          {[
-            { id: 'overview', icon: Activity, label: 'Início' },
-            { id: 'appointments', icon: Calendar, label: 'Agenda' },
-            { id: 'availability', icon: Clock, label: 'Disp.' },
-            { id: 'payments', icon: CreditCard, label: 'Pagam.' },
-            // { id: 'chat', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
-          ].map((item) => (
+          {MOBILE_MENU_ITEMS.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}

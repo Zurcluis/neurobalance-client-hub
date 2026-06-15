@@ -9,8 +9,26 @@ type Payment = Database['public']['Tables']['pagamentos']['Row'] & {
     id_manual: string;
   } | null;
 };
-type NewPayment = Database['public']['Tables']['pagamentos']['Insert'];
-type UpdatePayment = Database['public']['Tables']['pagamentos']['Update'];
+type NewPayment = Database['public']['Tables']['pagamentos']['Insert'] & {
+  nif?: string;
+  tipo_servico?: string;
+  numero_fatura?: string;
+  valor_base?: number;
+  valor_iva?: number;
+  retencao?: number;
+  estado?: string;
+  updated_at?: string;
+};
+type UpdatePayment = Database['public']['Tables']['pagamentos']['Update'] & {
+  nif?: string;
+  tipo_servico?: string;
+  numero_fatura?: string;
+  valor_base?: number;
+  valor_iva?: number;
+  retencao?: number;
+  estado?: string;
+  updated_at?: string;
+};
 
 export function usePayments(clientId?: number) {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -72,10 +90,10 @@ export function usePayments(clientId?: number) {
       }
 
       setPayments(prev => [...prev, data]);
-      toast.success('Payment added successfully');
+      toast.success('Pagamento adicionado com sucesso');
     } catch (err) {
-      console.error('Error adding payment:', err);
-      toast.error('Failed to add payment');
+      console.error('Erro ao adicionar pagamento:', err);
+      toast.error('Falha ao adicionar pagamento');
     }
   }, []);
 
@@ -96,10 +114,10 @@ export function usePayments(clientId?: number) {
       setPayments(prev => prev.map(payment => 
         payment.id === id ? data : payment
       ));
-      toast.success('Payment updated successfully');
+      toast.success('Pagamento atualizado com sucesso');
     } catch (err) {
-      console.error('Error updating payment:', err);
-      toast.error('Failed to update payment');
+      console.error('Erro ao atualizar pagamento:', err);
+      toast.error('Falha ao atualizar pagamento');
     }
   }, []);
 
@@ -116,10 +134,10 @@ export function usePayments(clientId?: number) {
       }
 
       setPayments(prev => prev.filter(payment => payment.id !== id));
-      toast.success('Payment deleted successfully');
+      toast.success('Pagamento eliminado com sucesso');
     } catch (err) {
-      console.error('Error deleting payment:', err);
-      toast.error('Failed to delete payment');
+      console.error('Erro ao eliminar pagamento:', err);
+      toast.error('Falha ao eliminar pagamento');
     }
   }, []);
 

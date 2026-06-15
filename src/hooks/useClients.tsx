@@ -133,11 +133,17 @@ export function useClients() {
   // Search clients
   const searchClients = useCallback((query: string) => {
     const searchTerm = query.toLowerCase();
-    return clients.filter(client =>
-      client.nome.toLowerCase().includes(searchTerm) ||
-      (client.email && client.email.toLowerCase().includes(searchTerm)) ||
-      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm))
-    );
+    return clients.filter(client => {
+      const c = client as any;
+      return (
+        client.nome.toLowerCase().includes(searchTerm) ||
+        (client.email && client.email.toLowerCase().includes(searchTerm)) ||
+        (client.telefone && client.telefone.toLowerCase().includes(searchTerm)) ||
+        (c.nif && c.nif.toLowerCase().includes(searchTerm)) ||
+        (client.id && client.id.toString().includes(searchTerm)) ||
+        (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm))
+      );
+    });
   }, [clients]);
 
   // Gerar próximo ID disponível (formato NB-XXX)

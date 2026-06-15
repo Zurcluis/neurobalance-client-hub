@@ -22,7 +22,6 @@ import { toast } from 'sonner';
 import { NotificationBar } from '@/components/notifications/NotificationBar';
 import { DatabaseManagerDialog } from '@/components/dashboard/DatabaseManagerDialog';
 import { KeyboardShortcutsDialog } from '@/components/accessibility/KeyboardShortcutsDialog';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -35,7 +34,6 @@ const Sidebar = () => {
   const { isPortrait } = useScreenSize();
   const { t } = useLanguage();
   const { signOut } = useAuth();
-  const { session: adminSession, logout: adminLogout } = useAdminAuth();
 
   // Get communication type from localStorage if exists
   useEffect(() => {
@@ -47,11 +45,7 @@ const Sidebar = () => {
 
   const handleLogout = async () => {
     try {
-      if (adminSession) {
-        adminLogout();
-      } else {
-        await signOut();
-      }
+      await signOut();
       toast.success('Successfully logged out');
       navigate('/login');
     } catch (error) {
@@ -73,14 +67,6 @@ const Sidebar = () => {
     { name: 'Ficha Técnica', icon: <FileText className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clinic-info' },
     { name: t('administrative'), icon: <UserCog className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin-management' },
   ];
-
-  const visibleMenuItems = adminSession?.role === 'assistant' 
-    ? menuItems.filter(item => 
-        item.name === t('clients') || 
-        item.name === t('calendar') || 
-        item.name === 'Planta da Clínica'
-      )
-    : menuItems;
 
   const communicationItems = [
     { name: t('messages'), icon: <MessageSquare className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'sms' },
@@ -118,7 +104,7 @@ const Sidebar = () => {
           {!isCollapsed && (
             <div className="text-center">
               <h1 className="font-bold text-lg text-[#3A726D] dark:text-[#E6ECEA]">NeuroBalance</h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Área Administrativa</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Plataforma Principal</p>
             </div>
           )}
           <Button
@@ -131,27 +117,6 @@ const Sidebar = () => {
           >
             {isCollapsed ? <Menu aria-hidden="true" /> : <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />}
           </Button>
-        </div>
-      )}
-
-      {!isMobile && adminSession && (
-        <div className="flex flex-col items-center mb-6 px-2">
-          <div className={cn(
-            "flex items-center gap-3 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300",
-            isCollapsed ? "p-2 justify-center" : "px-4 p-3"
-          )}>
-            <div className="bg-[#3A726D] rounded-full p-2 text-white shrink-0">
-              <User className="h-5 w-5" />
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{adminSession.adminName}</span>
-                <span className="text-xs font-medium text-[#3A726D] bg-[#3A726D]/10 px-2 py-0.5 rounded-full w-fit mt-0.5">
-                  {adminSession.role === 'admin' ? 'Administrador' : 'Assistente'}
-                </span>
-              </div>
-            )}
-          </div>
         </div>
       )}
 
@@ -182,7 +147,7 @@ const Sidebar = () => {
           "space-y-1",
           isMobile && "space-y-2"
         )}>
-          {visibleMenuItems.map((item) => (
+          {menuItems.map((item) => (
             <li key={item.name}>
               <Link
                 to={item.path}

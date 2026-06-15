@@ -1,18 +1,12 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { UserPlus, Mail, Phone, Calendar, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { UserPlus, Mail, Phone, CheckCircle2, ArrowRight } from 'lucide-react';
 import { LandingLead } from '@/types/landing-lead';
 import { LeadCompra } from '@/types/lead-compra';
-import { toast } from 'sonner';
-import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import ClientForm, { ClientFormData } from './ClientForm';
 
 interface ConvertLeadDialogProps {
   open: boolean;
@@ -33,7 +27,7 @@ export interface ConvertedClientData {
   notas: string;
   estado: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu';
   tipo_contato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
-  como_conheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação' | 'Flyer';
+  como_conheceu: 'Instagram' | 'TikTok' | 'Facebook' | 'Site' | 'Anúncios' | 'Recomendação' | 'Pesquisa na internet' | 'Flyer';
   numero_sessoes: number;
   total_pago: number;
   max_sessoes: number;
@@ -52,58 +46,62 @@ const ConvertLeadDialog: React.FC<ConvertLeadDialogProps> = ({
   onConvert,
   isLoading = false
 }) => {
-  const [formData, setFormData] = useState<Partial<ConvertedClientData>>({});
-  const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [step, setStep] = useState<'review' | 'complete'>('review');
 
-  // Reset form when lead changes
+  // React to reset step when opened
   React.useEffect(() => {
-    if (lead) {
-      const initialData: Partial<ConvertedClientData> = {
-        nome: lead.nome,
-        email: lead.email,
-        telefone: lead.telefone,
-        estado: 'ongoing',
-        tipo_contato: 'Lead',
-        como_conheceu: 'Anúncio',
-        numero_sessoes: 0,
-        total_pago: leadType === 'compra' ? (lead as LeadCompra).valor_pago || 0 : 0,
-        max_sessoes: 0,
-        id_manual: '',
-        notas: leadType === 'landing' 
-          ? (lead as LandingLead).observacoes || ''
-          : (lead as LeadCompra).observacoes || '',
-      };
-
-      // Map gender from LeadCompra
-      if (leadType === 'compra') {
-        const leadCompra = lead as LeadCompra;
-        if (leadCompra.genero === 'Masculino') initialData.genero = 'Homem';
-        else if (leadCompra.genero === 'Feminino') initialData.genero = 'Mulher';
-        else initialData.genero = 'Outro';
-        
-        initialData.morada = leadCompra.cidade || '';
-      }
-
-      setFormData(initialData);
+    if (open) {
       setStep('review');
     }
-  }, [lead, leadType]);
+  }, [open]);
 
-  const handleInputChange = (field: keyof ConvertedClientData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  const defaultValues = React.useMemo(() => {
+    if (!lead) return {};
+    
+    const initialData: Partial<ClientFormData> = {
+      nome: lead.nome,
+      email: lead.email,
+      telefone: lead.telefone,
+      estado: 'ongoing',
+      tipo_contato: 'Lead',
+      como_conheceu: (leadType === 'landing' ? (lead as LandingLead).origem : 'Instagram') as any,
+      numero_sessoes: 0,
+      total_pago: leadType === 'compra' ? (lead as LeadCompra).valor_pago || 0 : 0,
+      max_sessoes: 0,
+      id_manual: '',
+      notas: leadType === 'landing' 
+        ? (lead as LandingLead).observacoes || ''
+        : (lead as LeadCompra).observacoes || '',
+      data_entrada_clinica: new Date(),
+    };
 
-  const handleConvert = async () => {
-    if (!formData.id_manual) {
-      toast.error('O ID Manual é obrigatório');
-      return;
+    if (leadType === 'compra') {
+      const leadCompra = lead as LeadCompra;
+      if (leadCompra.genero === 'Masculino') initialData.genero = 'Homem';
+      else if (leadCompra.genero === 'Feminino') initialData.genero = 'Mulher';
+      else initialData.genero = 'Outro';
+      
+      initialData.morada = leadCompra.cidade || '';
+    } else {
+      const landingLead = lead as LandingLead;
+      initialData.morada = landingLead.morada || '';
     }
 
+    return initialData;
+  }, [lead, leadType]);
+
+  const handleConvert = async (data: ClientFormData) => {
     try {
       await onConvert({
-        ...formData,
-        data_nascimento: birthDate,
+        ...data,
+        email: data.email || '',
+        notas: data.notas || '',
+        numero_sessoes: data.numero_sessoes || 0,
+        total_pago: data.total_pago || 0,
+        max_sessoes: data.max_sessoes || 0,
+        responsavel: data.responsavel || null,
+        motivo: data.motivo || null,
+        id_manual: data.id_manual || '',
         lead_id: lead?.id,
         lead_type: leadType,
       } as ConvertedClientData);
@@ -146,7 +144,7 @@ const ConvertLeadDialog: React.FC<ConvertLeadDialogProps> = ({
               Cliente Criado com Sucesso!
             </h3>
             <p className="text-gray-600">
-              {formData.nome} foi adicionado à lista de clientes.
+              {lead.nome} foi adicionado à lista de clientes.
             </p>
           </div>
         ) : (
@@ -202,152 +200,16 @@ const ConvertLeadDialog: React.FC<ConvertLeadDialogProps> = ({
               </CardContent>
             </Card>
 
-            {/* Form Fields */}
-            <div className="space-y-4 mt-4">
-              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800">
-                  Complete os campos obrigatórios para criar o perfil do cliente.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="id_manual" className="text-sm font-medium">
-                    ID Manual <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="id_manual"
-                    value={formData.id_manual || ''}
-                    onChange={(e) => handleInputChange('id_manual', e.target.value)}
-                    placeholder="Ex: NB001"
-                    className="h-10"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="genero" className="text-sm font-medium">Género</Label>
-                  <Select
-                    value={formData.genero}
-                    onValueChange={(value) => handleInputChange('genero', value)}
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Homem">Homem</SelectItem>
-                      <SelectItem value="Mulher">Mulher</SelectItem>
-                      <SelectItem value="Outro">Outro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Data de Nascimento</Label>
-                  <DatePicker
-                    selected={birthDate}
-                    onChange={(date) => setBirthDate(date)}
-                    showMonthDropdown
-                    showYearDropdown
-                    dropdownMode="select"
-                    dateFormat="dd/MM/yyyy"
-                    placeholderText="Selecione a data"
-                    wrapperClassName="w-full"
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Morada</Label>
-                  <Input
-                    value={formData.morada || ''}
-                    onChange={(e) => handleInputChange('morada', e.target.value)}
-                    placeholder="Morada completa"
-                    className="h-10"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Motivo</Label>
-                  <Select
-                    value={formData.motivo || ''}
-                    onValueChange={(value) => handleInputChange('motivo', value)}
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Selecione o motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PHDA">PHDA</SelectItem>
-                      <SelectItem value="PEA">PEA</SelectItem>
-                      <SelectItem value="Insónias">Insónias</SelectItem>
-                      <SelectItem value="Ansiedade">Ansiedade</SelectItem>
-                      <SelectItem value="Problemas de Memória">Problemas de Memória</SelectItem>
-                      <SelectItem value="Depressão">Depressão</SelectItem>
-                      <SelectItem value="Alzheimer">Alzheimer</SelectItem>
-                      <SelectItem value="Sobredotado">Sobredotado</SelectItem>
-                      <SelectItem value="Atraso no Desenvolvimento">Atraso no Desenvolvimento</SelectItem>
-                      <SelectItem value="Outro">Outro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Como Conheceu</Label>
-                  <Select
-                    value={formData.como_conheceu}
-                    onValueChange={(value: any) => handleInputChange('como_conheceu', value)}
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Anúncio">Anúncio</SelectItem>
-                      <SelectItem value="Instagram">Instagram</SelectItem>
-                      <SelectItem value="Facebook">Facebook</SelectItem>
-                      <SelectItem value="Recomendação">Recomendação</SelectItem>
-                      <SelectItem value="Flyer">Flyer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Notas/Observações</Label>
-                <Textarea
-                  value={formData.notas || ''}
-                  onChange={(e) => handleInputChange('notas', e.target.value)}
-                  placeholder="Observações sobre o cliente..."
-                  className="min-h-[80px] resize-none"
-                />
-              </div>
+            {/* Form Fields using ClientForm */}
+            <div className="mt-4 border-t pt-4">
+              <ClientForm 
+                onSubmit={handleConvert} 
+                onCancel={() => onOpenChange(false)} 
+                defaultValues={defaultValues}
+                isSubmitting={isLoading}
+                isEditing={false}
+              />
             </div>
-
-            <DialogFooter className="mt-6 gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleConvert}
-                disabled={isLoading || !formData.id_manual}
-                className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    A converter...
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Converter para Cliente
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
           </>
         )}
       </DialogContent>

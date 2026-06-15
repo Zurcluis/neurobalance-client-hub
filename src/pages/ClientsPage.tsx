@@ -1,25 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
 import ClientCard from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import ClientImport from '@/components/clients/ClientImport';
 import ConvertLeadDialog, { ConvertedClientData } from '@/components/clients/ConvertLeadDialog';
 import LeadsReadyForConversion from '@/components/clients/LeadsReadyForConversion';
 import { 
-  Plus, Search, Upload, X, Calendar, Filter, ChevronDown, ChevronUp, Download, 
-  Users, TrendingUp, BarChart3, Target, PieChart, User, Key, MessageSquare,
-  AlertCircle, Clock, Zap, SlidersHorizontal, UserPlus, Minimize2, Maximize2
+  Plus, Search, Upload, X, ChevronDown, ChevronUp, Download, 
+  Users, TrendingUp, BarChart3, Target, PieChart, Key, MessageSquare,
+  AlertCircle, Clock, SlidersHorizontal
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useClients from '@/hooks/useClients';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
-import { ClientDetailData } from '@/types/client';
+import { useLeadCompra } from '@/hooks/useLeadCompra';
 import { LandingLead } from '@/types/landing-lead';
 import { LeadCompra } from '@/types/lead-compra';
 import { Database } from '@/integrations/supabase/types';
@@ -27,17 +27,16 @@ import { format, parseISO, isValid, subMonths, subDays, isAfter, isBefore, diffe
 import { ptBR } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import useAppointments from '@/hooks/useAppointments';
 import usePayments from '@/hooks/usePayments';
 import ClientTokenManager from '@/components/admin/ClientTokenManager';
 import AdminChatPanel from '@/components/admin/AdminChatPanel';
+import ClientsLeadsTab from '@/components/clients/ClientsLeadsTab';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 type DatePeriod = 'all' | 'month' | 'quarter' | 'halfyear' | 'year' | 'custom';
@@ -63,7 +62,7 @@ const ClientsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [activeDialog, setActiveDialog] = useState<'form' | 'import'>('form');
+  const [, ] = useState<'form' | 'import'>('form');
   const [datePeriod, setDatePeriod] = useState<DatePeriod>('all');
   const [dateRange, setDateRange] = useState<DateRange>({ 
     from: undefined, 
@@ -84,12 +83,27 @@ const ClientsPage = () => {
   const [selectedLeadType, setSelectedLeadType] = useState<'landing' | 'compra'>('landing');
   const [isConverting, setIsConverting] = useState(false);
   
-  // Hook para atualizar status de landing leads após conversão
+  // Hook para atualizar status de landing leads e lead compra após conversão
   const { updateLeadStatus } = useLandingLeads();
+  const { updateLead: updateLeadCompraStatus } = useLeadCompra();
   
   // Estados para controlar cards colapsáveis
   const [isAlertsExpanded, setIsAlertsExpanded] = useState(true);
-  const [isLeadsExpanded, setIsLeadsExpanded] = useState(true);
+  const [, ] = useState(true);
+
+  // Escutar evento de conversão vindo do Kanban
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { lead, type } = (e as CustomEvent).detail;
+      setSelectedLead(lead);
+      setSelectedLeadType(type || 'compra');
+      setConvertDialogOpen(true);
+      // Navegar para o tab de leads se necessário
+      setActiveTab('leads');
+    };
+    window.addEventListener('openConvertLeadDialog', handler);
+    return () => window.removeEventListener('openConvertLeadDialog', handler);
+  }, []);
 
   // Filtros avançados
   const filteredAndSortedClients = useMemo(() => {
@@ -234,7 +248,7 @@ const ClientsPage = () => {
     // Distribuição por status
     const statusDistribution = filteredAndSortedClients.reduce((acc, client) => {
       const status = client.estado || 'ongoing';
-      const statusLabels = {
+      const statusLabels: Record<string, string> = {
         ongoing: 'Em Andamento',
         thinking: 'Pensando',
         'no-need': 'Sem Necessidade',
@@ -289,8 +303,8 @@ const ClientsPage = () => {
 
     // Próximas sessões (próximos 7 dias)
     const upcomingSessions = appointments.filter(apt => {
-      if (!apt.data_hora) return false;
-      const aptDate = parseISO(apt.data_hora);
+      if (!apt.data) return false;
+      const aptDate = parseISO(apt.data);
       const today = new Date();
       const sevenDaysLater = addDays(today, 7);
       return isAfter(aptDate, today) && isBefore(aptDate, sevenDaysLater);
@@ -443,6 +457,8 @@ const ClientsPage = () => {
       // Se for landing lead, atualizar o status para "Iniciou Neurofeedback"
       if (clientData.lead_type === 'landing' && clientData.lead_id) {
         await updateLeadStatus(clientData.lead_id, 'Iniciou Neurofeedback');
+      } else if (clientData.lead_type === 'compra' && clientData.lead_id) {
+        await updateLeadCompraStatus(clientData.lead_id, { status: 'Iniciou Neurofeedback' });
       }
 
       toast.success('Lead convertida em cliente com sucesso!');
@@ -630,7 +646,7 @@ const ClientsPage = () => {
 
         {/* Tabs Principais - Reorganizadas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Visão Geral</span>
@@ -646,6 +662,10 @@ const ClientsPage = () => {
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="leads" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Leads</span>
             </TabsTrigger>
           </TabsList>
 
@@ -736,7 +756,7 @@ const ClientsPage = () => {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {clientAnalytics.statusDistribution.map((entry, index) => (
+                          {clientAnalytics.statusDistribution.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#E6ECEA'][index % 5]} />
                           ))}
                         </Pie>
@@ -959,7 +979,7 @@ const ClientsPage = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
-                      placeholder="Pesquisar clientes por nome, email ou telefone..."
+                      placeholder="Pesquisar por nome, email, telefone, NIF ou ID..."
                       className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -1039,6 +1059,11 @@ const ClientsPage = () => {
           <TabsContent value="chat" className="space-y-6 mt-6">
             <AdminChatPanel />
           </TabsContent>
+
+          {/* 🎯 Leads */}
+          <TabsContent value="leads" className="space-y-6 mt-6">
+            <ClientsLeadsTab />
+          </TabsContent>
         </Tabs>
       
       {/* Dialogs */}
@@ -1062,7 +1087,7 @@ const ClientsPage = () => {
               Importe múltiplos clientes de um arquivo CSV ou JSON
             </DialogDescription>
           </DialogHeader>
-          <ClientImport onImport={handleImportClients} />
+          <ClientImport onImportComplete={handleImportClients} />
         </DialogContent>
       </Dialog>
 
