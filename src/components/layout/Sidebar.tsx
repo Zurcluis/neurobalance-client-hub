@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target, Clock, FileText, Map } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target, Clock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
 import {
@@ -58,7 +58,6 @@ const Sidebar = () => {
     { name: t('dashboard'), icon: <Home className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/' },
     { name: t('clients'), icon: <User className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clients' },
     { name: t('calendar'), icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/calendar' },
-    { name: 'Planta da Clínica', icon: <Map className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin/floor-plan' },
     { name: 'Disponibilidades', icon: <Clock className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin/availability' },
     { name: t('finances'), icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
     { name: t('investments'), icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
@@ -104,7 +103,7 @@ const Sidebar = () => {
           {!isCollapsed && (
             <div className="text-center">
               <h1 className="font-bold text-lg text-[#3A726D] dark:text-[#E6ECEA]">NeuroBalance</h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Plataforma Principal</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Client Management</p>
             </div>
           )}
           <Button

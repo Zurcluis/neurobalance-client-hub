@@ -112,9 +112,6 @@ export const useLeadCompra = () => {
 			if (error) throw error;
 
 			setLeads(prev => [data, ...prev]);
-			// Broadcast event so other hook instances update immediately
-			window.dispatchEvent(new CustomEvent('leadCompraAdded', { detail: data }));
-			
 			toast.success('Lead/Compra adicionado com sucesso!');
 			return data;
 		} catch (err) {
@@ -129,7 +126,8 @@ export const useLeadCompra = () => {
 	const updateLead = useCallback(async (id: string, updates: Partial < LeadCompra > ) => {
 		setIsLoading(true);
 		try {
-			const payload = updates as any;
+			// Enquanto a coluna 'status' não existir na tabela, evitar enviar para o Supabase
+			const { status: _statusIgnored, ...payload } = updates as any;
 			const {
 				data,
 				error
@@ -145,9 +143,6 @@ export const useLeadCompra = () => {
 			setLeads(prev => prev.map(lead =>
 				lead.id === id ? data : lead
 			));
-			// Broadcast event
-			window.dispatchEvent(new CustomEvent('leadCompraUpdated', { detail: data }));
-			
 			toast.success('Lead/Compra atualizado com sucesso!');
 			return data;
 		} catch (err) {
@@ -156,31 +151,6 @@ export const useLeadCompra = () => {
 			throw err;
 		} finally {
 			setIsLoading(false);
-		}
-	}, [supabase]);
-
-	const updateLeadStatus = useCallback(async (id: string, newStatus: LeadCompra['status']) => {
-		try {
-			const { error } = await supabase
-				.from('lead_compra')
-				.update({ 
-					status: newStatus,
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', id);
-
-			if (error) throw error;
-
-			setLeads(prev => prev.map(lead =>
-				lead.id === id ? { ...lead, status: newStatus, updated_at: new Date().toISOString() } : lead
-			));
-
-			window.dispatchEvent(new CustomEvent('leadCompraUpdated', { detail: { id, status: newStatus } }));
-			toast.success('Status atualizado!');
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar status';
-			toast.error(errorMessage);
-			throw err;
 		}
 	}, [supabase]);
 
@@ -197,9 +167,6 @@ export const useLeadCompra = () => {
 			if (error) throw error;
 
 			setLeads(prev => prev.filter(lead => lead.id !== id));
-			// Broadcast event
-			window.dispatchEvent(new CustomEvent('leadCompraDeleted', { detail: { id } }));
-			
 			toast.success('Lead/Compra removido com sucesso!');
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Erro ao remover lead';
@@ -382,37 +349,9 @@ export const useLeadCompra = () => {
 		}
 	}, [leads, calculateStatistics]);
 
-	// Carregar dados iniciais e escutar eventos
+	// Carregar dados iniciais
 	useEffect(() => {
 		fetchLeads();
-
-		const handleAdd = (e: Event) => {
-			const { detail } = e as CustomEvent<LeadCompra>;
-			setLeads(prev => {
-				if (prev.some(lead => lead.id === detail.id)) return prev;
-				return [detail, ...prev];
-			});
-		};
-
-		const handleUpdate = (e: Event) => {
-			const { detail } = e as CustomEvent<LeadCompra>;
-			setLeads(prev => prev.map(lead => lead.id === detail.id ? detail : lead));
-		};
-
-		const handleDelete = (e: Event) => {
-			const { detail } = e as CustomEvent<{ id: string }>;
-			setLeads(prev => prev.filter(lead => lead.id !== detail.id));
-		};
-
-		window.addEventListener('leadCompraAdded', handleAdd);
-		window.addEventListener('leadCompraUpdated', handleUpdate);
-		window.addEventListener('leadCompraDeleted', handleDelete);
-
-		return () => {
-			window.removeEventListener('leadCompraAdded', handleAdd);
-			window.removeEventListener('leadCompraUpdated', handleUpdate);
-			window.removeEventListener('leadCompraDeleted', handleDelete);
-		};
 	}, [fetchLeads]);
 
 	return {
@@ -423,7 +362,6 @@ export const useLeadCompra = () => {
 		fetchLeads,
 		addLead,
 		updateLead,
-		updateLeadStatus,
 		deleteLead,
 		importLeads,
 		calculateStatistics,

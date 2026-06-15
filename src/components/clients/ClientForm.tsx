@@ -26,7 +26,7 @@ export interface ClientFormData {
   notas?: string;
   estado: 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu';
   tipo_contato: 'Lead' | 'Contato' | 'Email' | 'Instagram' | 'Facebook';
-  como_conheceu: 'Instagram' | 'TikTok' | 'Facebook' | 'Site' | 'Anúncios' | 'Recomendação' | 'Pesquisa na internet' | 'Flyer';
+  como_conheceu: 'Anúncio' | 'Instagram' | 'Facebook' | 'Recomendação';
   numero_sessoes?: number;
   total_pago?: number;
   max_sessoes?: number;
@@ -58,7 +58,7 @@ const ClientForm = ({ onSubmit, onCancel, defaultValues = {}, isEditing = false,
   const { register, handleSubmit, formState: { errors }, control, setValue } = useForm<ClientFormData>({
     defaultValues: {
       tipo_contato: 'Lead',
-      como_conheceu: 'Instagram',
+      como_conheceu: 'Anúncio',
       estado: 'ongoing',
       ...defaultValues,
       data_nascimento: defaultValues.data_nascimento ? new Date(defaultValues.data_nascimento) : null,
@@ -331,13 +331,12 @@ const ClientForm = ({ onSubmit, onCancel, defaultValues = {}, isEditing = false,
                   <SelectValue placeholder="Selecione como conheceu" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Anúncio">Anúncio</SelectItem>
                   <SelectItem value="Instagram">Instagram</SelectItem>
-                  <SelectItem value="TikTok">TikTok</SelectItem>
                   <SelectItem value="Facebook">Facebook</SelectItem>
-                  <SelectItem value="Site">Site</SelectItem>
-                  <SelectItem value="Anúncios">Anúncios</SelectItem>
+                  <SelectItem value="Google">Google</SelectItem>
+                  <SelectItem value="Website">Website</SelectItem>
                   <SelectItem value="Recomendação">Recomendação</SelectItem>
-                  <SelectItem value="Pesquisa na internet">Pesquisa na internet</SelectItem>
                   <SelectItem value="Flyer">Flyer</SelectItem>
                 </SelectContent>
               </Select>

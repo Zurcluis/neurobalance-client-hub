@@ -29,7 +29,17 @@ import { supabase } from '@/integrations/supabase/client';
 import ClientDetailTabs from '@/components/client-details/ClientDetailTabs';
 import { syncAllSessions } from '@/scripts/syncSessions';
 
-// Interface para Appointments foi removida porque não é mais usada
+// Interface para Appointments (pode ser movida para types)
+interface Appointment {
+  id: string;
+  title: string;
+  clientName: string;
+  clientId: string;
+  type: string; // Campo tipo é importante aqui
+  notes: string;
+  date: string;
+  confirmed: boolean;
+}
 
 // Tipo para os agendamentos vindos do Supabase
 type DbAppointment = {
@@ -64,7 +74,7 @@ const ClientDetailPage = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { clients, isLoading: isLoadingClients, updateClient: updateClientInDb, deleteClient: deleteClientFromDb } = useClients();
-  const { payments, addPayment: addPaymentToDb, updatePayment: updatePaymentInDb, deletePayment: deletePaymentInDb } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
+  const { payments, isLoading: isLoadingPayments, addPayment: addPaymentToDb } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
   const { appointments, isLoading: isLoadingAppointments } = useAppointments();
 
   // Estados
@@ -74,7 +84,7 @@ const ClientDetailPage = () => {
   const [moods, setMoods] = useState<ClientMood[]>([]);
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(true);
-  const [, setIsLoadingMoods] = useState(true);
+  const [isLoadingMoods, setIsLoadingMoods] = useState(true);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
   const [activeToken, setActiveToken] = useState<string | null>(null);
@@ -540,8 +550,10 @@ const ClientDetailPage = () => {
       // Calcular diferença no valor e nas sessões para atualizar o cliente
       const valueDifference = data.valor - originalPayment.valor;
 
-      // Atualizar o pagamento no banco de dados e localmente
-      await updatePaymentInDb(paymentId, {
+      // Atualizar o pagamento no banco de dados
+      const { error } = await supabase
+        .from('pagamentos')
+        .update({
           data: data.data,
           valor: data.valor,
           descricao: data.descricao,
@@ -554,7 +566,10 @@ const ClientDetailPage = () => {
           retencao: data.retencao,
           estado: data.estado,
           updated_at: new Date().toISOString()
-      });
+        })
+        .eq('id', paymentId);
+
+      if (error) throw error;
 
       // Atualizar o cliente
       if (valueDifference !== 0) {
@@ -575,8 +590,13 @@ const ClientDetailPage = () => {
       const paymentToDelete = payments.find(p => p.id === paymentId);
       if (!paymentToDelete) return;
 
-      // Atualizar no banco de dados e localmente
-      await deletePaymentInDb(paymentId);
+      // Usando Supabase diretamente
+      const { error } = await supabase
+        .from('pagamentos')
+        .delete()
+        .eq('id', paymentId);
+
+      if (error) throw error;
 
       updateClient({
         total_pago: Math.max(0, (client?.total_pago || 0) - paymentToDelete.valor)

@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calculator, X, Edit, Download, Filter } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -83,10 +82,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
     toast.success('Ficheiro CSV exportado com sucesso');
   };
 
-  const initialDefaultBase = 85 / 1.23;
-  const initialDefaultIva = initialDefaultBase * 0.23;
-
-  const paymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'> & { com_iva?: boolean }>({
+  const paymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>>({
     defaultValues: {
       data: new Date().toISOString().split('T')[0],
       valor: 85,
@@ -95,17 +91,35 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
       nif: '',
       tipo_servico: 'Serviços',
       numero_fatura: '',
-      valor_base: Number(initialDefaultBase.toFixed(2)),
-      valor_iva: Number(initialDefaultIva.toFixed(2)),
+      valor_base: 0,
+      valor_iva: 0,
       retencao: 0,
-      estado: 'pago',
-      com_iva: true
+      estado: 'pago'
     }
   });
 
+  // Efeito para cálculo automático de valores
+  useEffect(() => {
+    const subscription = paymentForm.watch((value, { name, type }) => {
+      if (name === 'valor_base') {
+        const base = Number(value.valor_base) || 0;
+        const iva = base * 0.23;
+        const ret = Number(paymentForm.getValues('retencao')) || 0;
 
+        paymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
+        paymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+      }
+      if (name === 'retencao') {
+        const base = Number(paymentForm.getValues('valor_base')) || 0;
+        const iva = Number(paymentForm.getValues('valor_iva')) || 0;
+        const ret = Number(value.retencao) || 0;
+        paymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [paymentForm.watch, paymentForm.setValue, paymentForm.getValues]);
 
-  const editPaymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'> & { com_iva?: boolean }>({
+  const editPaymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>>({
     defaultValues: {
       data: new Date().toISOString().split('T')[0],
       valor: 0,
@@ -117,8 +131,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
       valor_base: 0,
       valor_iva: 0,
       retencao: 0,
-      estado: 'pago',
-      com_iva: true
+      estado: 'pago'
     }
   });
 
@@ -134,29 +147,37 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
   const onSubmit = (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
     onAddPayment(data);
     setIsPaymentDialogOpen(false);
-    
-    const resetBase = 85 / 1.23;
-    const resetIva = resetBase * 0.23;
     paymentForm.reset({
       data: new Date().toISOString().split('T')[0],
       valor: 85,
       descricao: 'Avaliação Inicial',
-      tipo: 'Multibanco',
-      nif: '',
-      tipo_servico: 'Serviços',
-      numero_fatura: '',
-      valor_base: Number(resetBase.toFixed(2)),
-      valor_iva: Number(resetIva.toFixed(2)),
-      retencao: 0,
-      estado: 'pago',
-      com_iva: true
+      tipo: 'Multibanco'
     });
     toast.success('Pagamento registado com sucesso');
   };
 
 
 
+  // Efeito para cálculo automático de valores no formulário de EDIÇÃO
+  useEffect(() => {
+    const subscription = editPaymentForm.watch((value, { name, type }) => {
+      if (name === 'valor_base') {
+        const base = Number(value.valor_base) || 0;
+        const iva = base * 0.23;
+        const ret = Number(editPaymentForm.getValues('retencao')) || 0;
 
+        editPaymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
+        editPaymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+      }
+      if (name === 'retencao') {
+        const base = Number(editPaymentForm.getValues('valor_base')) || 0;
+        const iva = Number(editPaymentForm.getValues('valor_iva')) || 0;
+        const ret = Number(value.retencao) || 0;
+        editPaymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [editPaymentForm.watch, editPaymentForm.setValue, editPaymentForm.getValues]);
 
   const onEditSubmit = (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
     if (paymentToEdit && onEditPayment) {
@@ -170,7 +191,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
   const handleEditPayment = (payment: Payment) => {
     setPaymentToEdit(payment);
     editPaymentForm.reset({
-      data: payment.data ? payment.data.split('T')[0] : '',
+      data: payment.data,
       valor: payment.valor,
       descricao: payment.descricao,
       tipo: payment.tipo,
@@ -180,8 +201,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
       valor_base: payment.valor_base || 0,
       valor_iva: payment.valor_iva || 0,
       retencao: payment.retencao || 0,
-      estado: payment.estado || 'pago',
-      com_iva: (payment.valor_iva || 0) > 0
+      estado: payment.estado || 'pago'
     });
     setIsEditDialogOpen(true);
   };
@@ -438,7 +458,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipologia</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || 'Serviços'}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || 'Serviços'}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione..." />
@@ -457,37 +477,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg space-y-4 border border-gray-100">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <FormField
-                    control={paymentForm.control}
-                    name="com_iva"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col justify-center items-start pt-2">
-                        <FormLabel className="text-xs mb-2">Com IVA (23%)</FormLabel>
-                        <FormControl>
-                          <Switch
-                            className="data-[state=checked]:bg-green-500"
-                            checked={field.value}
-                            onCheckedChange={(checked) => {
-                              field.onChange(checked);
-                              const total = Number(paymentForm.getValues('valor')) || 0;
-                              const ret = Number(paymentForm.getValues('retencao')) || 0;
-                              if (checked) {
-                                const base = (total + ret) / 1.23;
-                                const iva = base * 0.23;
-                                paymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                                paymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-                              } else {
-                                const base = total + ret;
-                                paymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                                paymentForm.setValue('valor_iva', 0);
-                              }
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                <div className="grid grid-cols-3 gap-3">
                   <FormField
                     control={paymentForm.control}
                     name="valor_base"
@@ -500,17 +490,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                             type="number"
                             step="0.01"
                             className="bg-white"
-                            onChange={(e) => {
-                              const valStr = e.target.value;
-                              const val = valStr === '' ? '' : Number(valStr);
-                              field.onChange(val);
-                              const numVal = Number(valStr) || 0;
-                              const hasIva = paymentForm.getValues('com_iva');
-                              const iva = hasIva ? numVal * 0.23 : 0;
-                              const ret = Number(paymentForm.getValues('retencao')) || 0;
-                              paymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-                              paymentForm.setValue('valor', Number((numVal + iva - ret).toFixed(2)));
-                            }}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
                           />
                         </FormControl>
                       </FormItem>
@@ -521,7 +501,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                     name="valor_iva"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">IVA (€)</FormLabel>
+                        <FormLabel className="text-xs">IVA (23%)</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -546,15 +526,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                             type="number"
                             step="0.01"
                             className="bg-white"
-                            onChange={(e) => {
-                              const valStr = e.target.value;
-                              const val = valStr === '' ? '' : Number(valStr);
-                              field.onChange(val);
-                              const numVal = Number(valStr) || 0;
-                              const base = Number(paymentForm.getValues('valor_base')) || 0;
-                              const iva = Number(paymentForm.getValues('valor_iva')) || 0;
-                              paymentForm.setValue('valor', Number((base + iva - numVal).toFixed(2)));
-                            }}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
                           />
                         </FormControl>
                       </FormItem>
@@ -577,13 +549,14 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                           // Set base value if standard type
                           const selectedType = paymentTypes.find(t => t.id === value);
                           if (selectedType && selectedType.id !== 'partial') {
-                            const total = selectedType.value;
-                            const hasIva = paymentForm.getValues('com_iva');
-                            const base = hasIva ? total / 1.23 : total;
-                            const iva = hasIva ? base * 0.23 : 0;
+                            // Assume o valor total já inclui IVA, então reverse calc?
+                            // Ou definimos que os valores dos packs são BASE?
+                            // O utilizador disse "Base, IVA, Total". 
+                            // Vou assumir que ao selecionar o pack, preenchemos o TOTAL e calcula para trás ou preenchemos a BASE?
+                            // Vamos preencher a BASE = Valor / 1.23 para facilitar ou deixar o user meter?
+                            // Simplificacao: Selecionar pack preenche valor_base = valor / 1.23
+                            const base = selectedType.value / 1.23;
                             paymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                            paymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-                            paymentForm.setValue('valor', total);
                           }
                         }}
                       >
@@ -618,18 +591,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                           type="number"
                           step="0.01"
                           className="font-bold text-lg bg-green-50 text-green-700 border-green-200"
-                          onChange={(e) => {
-                            const valStr = e.target.value;
-                            const val = valStr === '' ? '' : Number(valStr);
-                            field.onChange(val);
-                            const numVal = Number(valStr) || 0;
-                            const hasIva = paymentForm.getValues('com_iva');
-                            const ret = Number(paymentForm.getValues('retencao')) || 0;
-                            const base = hasIva ? (numVal + ret) / 1.23 : (numVal + ret);
-                            const iva = hasIva ? base * 0.23 : 0;
-                            paymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                            paymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-                          }}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -643,7 +605,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                   render={({ field }) => (
                     <FormItem className="w-[200px]">
                       <FormLabel>Método</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder={field.value} />
@@ -740,7 +702,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipologia</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || 'Serviços'}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || 'Serviços'}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione..." />
@@ -759,37 +721,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg space-y-4 border border-gray-100">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <FormField
-                    control={editPaymentForm.control}
-                    name="com_iva"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col justify-center items-start pt-2">
-                        <FormLabel className="text-xs mb-2">Com IVA (23%)</FormLabel>
-                        <FormControl>
-                          <Switch
-                            className="data-[state=checked]:bg-green-500"
-                            checked={field.value}
-                            onCheckedChange={(checked) => {
-                              field.onChange(checked);
-                              const total = Number(editPaymentForm.getValues('valor')) || 0;
-                              const ret = Number(editPaymentForm.getValues('retencao')) || 0;
-                              if (checked) {
-                                const base = (total + ret) / 1.23;
-                                const iva = base * 0.23;
-                                editPaymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                                editPaymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-                              } else {
-                                const base = total + ret;
-                                editPaymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                                editPaymentForm.setValue('valor_iva', 0);
-                              }
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                <div className="grid grid-cols-3 gap-3">
                   <FormField
                     control={editPaymentForm.control}
                     name="valor_base"
@@ -802,17 +734,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                             type="number"
                             step="0.01"
                             className="bg-white"
-                            onChange={(e) => {
-                              const valStr = e.target.value;
-                              const val = valStr === '' ? '' : Number(valStr);
-                              field.onChange(val);
-                              const numVal = Number(valStr) || 0;
-                              const hasIva = editPaymentForm.getValues('com_iva');
-                              const iva = hasIva ? numVal * 0.23 : 0;
-                              const ret = Number(editPaymentForm.getValues('retencao')) || 0;
-                              editPaymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-                              editPaymentForm.setValue('valor', Number((numVal + iva - ret).toFixed(2)));
-                            }}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
                           />
                         </FormControl>
                       </FormItem>
@@ -823,7 +745,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                     name="valor_iva"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">IVA (€)</FormLabel>
+                        <FormLabel className="text-xs">IVA (23%)</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -848,15 +770,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                             type="number"
                             step="0.01"
                             className="bg-white"
-                            onChange={(e) => {
-                              const valStr = e.target.value;
-                              const val = valStr === '' ? '' : Number(valStr);
-                              field.onChange(val);
-                              const numVal = Number(valStr) || 0;
-                              const base = Number(editPaymentForm.getValues('valor_base')) || 0;
-                              const iva = Number(editPaymentForm.getValues('valor_iva')) || 0;
-                              editPaymentForm.setValue('valor', Number((base + iva - numVal).toFixed(2)));
-                            }}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
                           />
                         </FormControl>
                       </FormItem>
@@ -892,18 +806,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                           type="number"
                           step="0.01"
                           className="font-bold text-lg bg-green-50 text-green-700 border-green-200"
-                          onChange={(e) => {
-                            const valStr = e.target.value;
-                            const val = valStr === '' ? '' : Number(valStr);
-                            field.onChange(val);
-                            const numVal = Number(valStr) || 0;
-                            const hasIva = editPaymentForm.getValues('com_iva');
-                            const ret = Number(editPaymentForm.getValues('retencao')) || 0;
-                            const base = hasIva ? (numVal + ret) / 1.23 : (numVal + ret);
-                            const iva = hasIva ? base * 0.23 : 0;
-                            editPaymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                            editPaymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-                          }}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
                         />
                       </FormControl>
                     </FormItem>
@@ -916,7 +819,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                   render={({ field }) => (
                     <FormItem className="w-[200px]">
                       <FormLabel>Método</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder={field.value} />

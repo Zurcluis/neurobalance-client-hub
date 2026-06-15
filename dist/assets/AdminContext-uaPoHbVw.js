@@ -1,0 +1,1 @@
+import{r as e,j as s}from"./index-DHv5W3vM.js";const n=e.createContext({isAdminContext:!1}),x=()=>e.useContext(n),a=({children:t,isAdminContext:o=!1})=>s.jsx(n.Provider,{value:{isAdminContext:o},children:t});export{a as A,x as u};

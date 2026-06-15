@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client'; // Importar diretamente
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Check, Edit, FileText, Trash2, Filter, Clock, SortAsc, SortDesc, Clipboard, RefreshCw, Link2Off, AlertCircle } from 'lucide-react';
+import { Calendar, Check, Edit, FileText, Trash2, Upload, Filter, Clock, SortAsc, SortDesc, FileType, Clipboard, RefreshCw, Link2Off } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +13,7 @@ import { ClientDetailData, Session } from '@/types/client';
 import { Progress } from '@/components/ui/progress';
 import { parseISO, isBefore, format, compareDesc, isAfter } from 'date-fns';
 import { toast } from 'sonner';
+import { ptBR } from 'date-fns/locale';
 import {
   Popover,
   PopoverContent,
@@ -34,10 +34,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import useAppointments, { Appointment } from '@/hooks/useAppointments';
+import useAppointments from '@/hooks/useAppointments';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
+// Interface para representar um agendamento do calendário
+interface Appointment {
+  id: number;
+  titulo: string;
+  data: string;
+  hora: string;
+  id_cliente: number;
+  tipo: string;
+  notas: string;
+  estado: string;
+  terapeuta?: string;
+  clientes: {
+    nome: string;
+    email: string;
+    telefone: string;
+  };
+}
 
 // Estrutura de dados para o formulário de edição
 interface EditSessionFormData {
@@ -78,13 +95,14 @@ interface ClientSessionsProps {
   paidSessionsCount?: number;
 }
 
-const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }: ClientSessionsProps) => {
+const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClient, onUpdateSession, paidSessionsCount }: ClientSessionsProps) => {
+  const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
   const [isMaxSessionsDialogOpen, setIsMaxSessionsDialogOpen] = useState(false);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [sessionToEdit, setSessionToEdit] = useState<RealizedSessionView | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [refreshTrigger] = useState<number>(0);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [syncProgress, setSyncProgress] = useState<boolean>(false);
   const lastUpdatedValueRef = useRef<number>(-1);
 
@@ -97,6 +115,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
   // Obter dados de agendamentos e a função refetch do hook
   const { appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useAppointments();
 
+  const sessionForm = useForm<Session>();
   const maxSessionsForm = useForm<{ maxSessions: number }>({
     defaultValues: { maxSessions: client.max_sessoes || 0 }
   });
@@ -236,7 +255,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
           isFromCalendar: true,
           calendarTitle: app.titulo,
           status: app.estado,
-          sessionType: app.tipo ?? undefined,
+          sessionType: app.tipo,
           notes: sessionNote,
           terapeuta: app.terapeuta ?? existingManualSession.terapeuta,
           arquivos: processSessionFiles(existingManualSession.arquivos || []),
@@ -254,7 +273,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
           isFromCalendar: true,
           calendarTitle: app.titulo || '',
           status: app.estado || '',
-          sessionType: app.tipo ?? undefined,
+          sessionType: app.tipo || '',
           time: formattedTime // Adicionar o campo time para garantir consistência
         };
       }
@@ -442,6 +461,35 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
     }
 
     setIsUploading(true);
+    let uploadedFilePaths: SessionFile[] = [];
+
+    // 1. Upload de ficheiros (se existirem)
+    if (data.filesToUpload && data.filesToUpload.length > 0) {
+      const files = Array.from(data.filesToUpload);
+      const uploadPromises = files.map(async (file) => {
+        const filePath = `sessoes/${sessionToEdit.id}/${file.name}`;
+        const { data: uploadData, error } = await supabase.storage
+          .from('ficheiros')
+          .upload(filePath, file, { upsert: true });
+
+        if (error) {
+          console.error('Erro no upload:', error);
+          toast.error(`Erro ao carregar ${file.name}: ${error.message}`);
+          return null;
+        } else if (uploadData) {
+          return {
+            name: file.name,
+            path: uploadData.path,
+            uploadedAt: new Date().toISOString(),
+          };
+        }
+        return null;
+      });
+      const results = await Promise.all(uploadPromises);
+      uploadedFilePaths = results.filter((r): r is SessionFile => r !== null);
+    }
+
+    const updatedSessionFiles = [...(sessionToEdit.arquivos || []), ...uploadedFilePaths];
 
     try {
       // 2. Unificar a atualização para sempre usar a tabela 'agendamentos'
@@ -506,10 +554,17 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
 
   const getSessionTypeLabel = (type: string | undefined) => {
     if (!type) return 'N/A';
-    const t = type.toLowerCase();
-    if (t === 'discussão de resultados') return 'Discussão';
-    if (t === 'ioga' || t === 'yoga') return 'Yoga';
-    return type.charAt(0).toUpperCase() + type.slice(1);
+
+    switch (type.toLowerCase()) {
+      case 'sessão':
+        return 'Neurofeedback';
+      case 'avaliação':
+        return 'Avaliação';
+      case 'consulta':
+        return 'Discussão';
+      default:
+        return type;
+    }
   };
 
   const getSessionTypeOptions = () => {
@@ -549,7 +604,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
 
   return (
     <div className="space-y-6">
-      {(client.max_sessoes || 0) > 0 && (
+      {client.max_sessoes > 0 && (
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-3">
@@ -570,10 +625,10 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                     }`}
                 />
                 {/* Marcadores de Metas */}
-                {Array.from({ length: Math.floor((client.max_sessoes || 0) / 5) }).map((_, i) => {
+                {Array.from({ length: Math.floor(client.max_sessoes / 5) }).map((_, i) => {
                   const milestone = (i + 1) * 5;
-                  if (milestone < (client.max_sessoes || 0)) {
-                    const leftPosition = (milestone / (client.max_sessoes || 1)) * 100;
+                  if (milestone < client.max_sessoes) {
+                    const leftPosition = (milestone / client.max_sessoes) * 100;
                     return (
                       <div
                         key={milestone}
@@ -588,7 +643,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
               </div>
               <div className="flex justify-between items-center text-xs text-gray-500">
                 <span>{Math.round(completedSessionsPercentage)}% concluído</span>
-                <span>{(client.max_sessoes || 0) - totalRealizedCount} sessões restantes</span>
+                <span>{client.max_sessoes - totalRealizedCount} sessões restantes</span>
               </div>
               <div className="flex items-center justify-between space-x-2 pt-2">
                 <Button
@@ -615,17 +670,6 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Aviso de Última Sessão do Pack */}
-      {(client.max_sessoes || 0) > 0 && ((client.max_sessoes || 0) - (paidSessionsCount !== undefined ? paidSessionsCount : totalRealizedCount) === 1) && (
-        <Alert className="bg-amber-50 border-amber-200 text-amber-800">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800 font-semibold">Atenção: Última Sessão do Pack</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            Falta apenas 1 sessão para concluir este pack. Considere avisar o cliente ou preparar a renovação.
-          </AlertDescription>
-        </Alert>
       )}
 
       {/* Nova seção: Próximos Agendamentos */}
@@ -658,7 +702,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                       <TableRow key={appointment.id}>
                         <TableCell>{formattedDateTime}</TableCell>
                         <TableCell>{appointment.titulo}</TableCell>
-                        <TableCell>{getSessionTypeLabel(appointment.tipo ?? undefined)}</TableCell>
+                        <TableCell>{getSessionTypeLabel(appointment.tipo)}</TableCell>
                         <TableCell>
                           <div className={`px-2 py-1 rounded-full text-xs inline-block
                             ${appointment.estado === 'confirmado' ? 'bg-green-100 text-green-800' :
@@ -1135,22 +1179,20 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                 )}
               />
 
-              {(sessionToEdit?.arquivos?.length || 0) > 0 && (
+              {sessionToEdit?.arquivos?.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium mb-2">Ficheiros existentes:</h4>
                   <div className="max-h-[100px] overflow-y-auto space-y-1 border rounded-md p-2">
-                    {sessionToEdit?.arquivos?.map((file, index) => (
+                    {sessionToEdit.arquivos.map((file, index) => (
                       <div key={index} className="text-sm flex items-center gap-2">
                         <FileText className="h-4 w-4 text-gray-500" />
                         <span>{typeof file === 'string' ? (file as string).split('/').pop() : file.name}</span>
                         <button
                           type="button"
                           onClick={() => {
-                            if (sessionToEdit) {
-                              const updatedFiles = [...(sessionToEdit.arquivos || [])];
-                              updatedFiles.splice(index, 1);
-                              setSessionToEdit({ ...sessionToEdit, arquivos: updatedFiles } as any);
-                            }
+                            const updatedFiles = [...sessionToEdit.arquivos];
+                            updatedFiles.splice(index, 1);
+                            setSessionToEdit({ ...sessionToEdit, arquivos: updatedFiles });
                           }}
                           className="ml-auto hover:text-red-500"
                         >

@@ -1,1 +1,0 @@
-import{p as a,X as r,Y as s,q as i}from"./PieChart-Dv9d5YES.js";import{A as x}from"./Area-TRmFOtbh.js";var o=a({chartName:"AreaChart",GraphicalChild:x,axisComponents:[{axisType:"xAxis",AxisComp:r},{axisType:"yAxis",AxisComp:s}],formatAxisMap:i});export{o as A};

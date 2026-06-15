@@ -30,32 +30,6 @@ export const useLandingLeads = () => {
     }
   }, []);
 
-  const addLead = useCallback(async (leadData: Omit<LandingLead, 'id' | 'created_at' | 'updated_at'>) => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('landing_leads')
-        .insert([leadData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Broadcast an event so other instances of the hook can update their local state immediately
-      window.dispatchEvent(new CustomEvent('landingLeadAdded', { detail: data }));
-      
-      toast.success('Lead adicionado com sucesso!');
-      return data;
-    } catch (err: any) {
-      console.error('Erro detalhado do Supabase:', JSON.stringify(err, null, 2));
-      const errorMessage = err?.message || 'Erro ao adicionar lead';
-      toast.error(`Erro: ${errorMessage}`);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const updateLeadStatus = useCallback(async (id: string, newStatus: LandingLeadStatus) => {
     try {
       const { error } = await supabase
@@ -71,8 +45,6 @@ export const useLandingLeads = () => {
       setLeads(prev => prev.map(lead =>
         lead.id === id ? { ...lead, status: newStatus, updated_at: new Date().toISOString() } : lead
       ));
-
-      window.dispatchEvent(new CustomEvent('landingLeadUpdated', { detail: { id, status: newStatus, updated_at: new Date().toISOString() } }));
 
       toast.success('Status atualizado!');
     } catch (err) {
@@ -98,8 +70,6 @@ export const useLandingLeads = () => {
         lead.id === id ? { ...lead, ...updates, updated_at: new Date().toISOString() } : lead
       ));
 
-      window.dispatchEvent(new CustomEvent('landingLeadUpdated', { detail: { id, ...updates, updated_at: new Date().toISOString() } }));
-
       toast.success('Lead atualizado!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar lead';
@@ -118,9 +88,6 @@ export const useLandingLeads = () => {
       if (error) throw error;
 
       setLeads(prev => prev.filter(lead => lead.id !== id));
-
-      window.dispatchEvent(new CustomEvent('landingLeadDeleted', { detail: { id } }));
-
       toast.success('Lead removido!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao remover lead';
@@ -143,12 +110,8 @@ export const useLandingLeads = () => {
         { event: '*', schema: 'public', table: 'landing_leads' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            const newLead = payload.new as LandingLead;
-            setLeads(prev => {
-              if (prev.some(lead => lead.id === newLead.id)) return prev;
-              setTimeout(() => toast.info('Novo lead recebido!'), 0);
-              return [newLead, ...prev];
-            });
+            setLeads(prev => [payload.new as LandingLead, ...prev]);
+            toast.info('Novo lead recebido!');
           } else if (payload.eventType === 'UPDATE') {
             setLeads(prev => prev.map(lead =>
               lead.id === payload.new.id ? payload.new as LandingLead : lead
@@ -160,35 +123,8 @@ export const useLandingLeads = () => {
       )
       .subscribe();
 
-    const handleLocalAdd = (e: Event) => {
-      const customEvent = e as CustomEvent<LandingLead>;
-      setLeads(prev => {
-        if (prev.some(lead => lead.id === customEvent.detail.id)) return prev;
-        return [customEvent.detail, ...prev];
-      });
-    };
-
-    const handleLocalUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<Partial<LandingLead> & { id: string }>;
-      setLeads(prev => prev.map(lead =>
-        lead.id === customEvent.detail.id ? { ...lead, ...customEvent.detail } : lead
-      ));
-    };
-
-    const handleLocalDelete = (e: Event) => {
-      const customEvent = e as CustomEvent<{ id: string }>;
-      setLeads(prev => prev.filter(lead => lead.id !== customEvent.detail.id));
-    };
-
-    window.addEventListener('landingLeadAdded', handleLocalAdd);
-    window.addEventListener('landingLeadUpdated', handleLocalUpdate);
-    window.addEventListener('landingLeadDeleted', handleLocalDelete);
-
     return () => {
       supabase.removeChannel(channel);
-      window.removeEventListener('landingLeadAdded', handleLocalAdd);
-      window.removeEventListener('landingLeadUpdated', handleLocalUpdate);
-      window.removeEventListener('landingLeadDeleted', handleLocalDelete);
     };
   }, []);
 
@@ -197,7 +133,6 @@ export const useLandingLeads = () => {
     isLoading,
     error,
     fetchLeads,
-    addLead,
     updateLeadStatus,
     updateLead,
     deleteLead
