@@ -1,25 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
 import ClientCard from '@/components/clients/ClientCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import ClientForm, { ClientFormData } from '@/components/clients/ClientForm';
 import ClientImport from '@/components/clients/ClientImport';
 import ConvertLeadDialog, { ConvertedClientData } from '@/components/clients/ConvertLeadDialog';
 import LeadsReadyForConversion from '@/components/clients/LeadsReadyForConversion';
+import ClientsLeadsTab from '@/components/clients/ClientsLeadsTab';
 import { 
-  Plus, Search, Upload, X, Calendar, Filter, ChevronDown, ChevronUp, Download, 
-  Users, TrendingUp, BarChart3, Target, PieChart, User, Key, MessageSquare,
-  AlertCircle, Clock, Zap, SlidersHorizontal, UserPlus, Minimize2, Maximize2
+  Plus, Search, Upload, X, ChevronDown, ChevronUp, Download, 
+  Users, TrendingUp, BarChart3, Target, PieChart, Key, MessageSquare,
+  AlertCircle, Clock, SlidersHorizontal
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useClients from '@/hooks/useClients';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
-import { ClientDetailData } from '@/types/client';
 import { LandingLead } from '@/types/landing-lead';
 import { LeadCompra } from '@/types/lead-compra';
 import { Database } from '@/integrations/supabase/types';
@@ -27,13 +27,11 @@ import { format, parseISO, isValid, subMonths, subDays, isAfter, isBefore, diffe
 import { ptBR } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import useAppointments from '@/hooks/useAppointments';
 import usePayments from '@/hooks/usePayments';
 import ClientTokenManager from '@/components/admin/ClientTokenManager';
@@ -63,7 +61,6 @@ const ClientsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [activeDialog, setActiveDialog] = useState<'form' | 'import'>('form');
   const [datePeriod, setDatePeriod] = useState<DatePeriod>('all');
   const [dateRange, setDateRange] = useState<DateRange>({ 
     from: undefined, 
@@ -89,7 +86,6 @@ const ClientsPage = () => {
   
   // Estados para controlar cards colapsáveis
   const [isAlertsExpanded, setIsAlertsExpanded] = useState(true);
-  const [isLeadsExpanded, setIsLeadsExpanded] = useState(true);
 
   // Filtros avançados
   const filteredAndSortedClients = useMemo(() => {
@@ -241,7 +237,7 @@ const ClientsPage = () => {
         finished: 'Finalizado',
         call: 'Ligar'
       };
-      const label = statusLabels[status] || status;
+      const label = statusLabels[status as keyof typeof statusLabels] || status;
       acc[label] = (acc[label] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -289,8 +285,8 @@ const ClientsPage = () => {
 
     // Próximas sessões (próximos 7 dias)
     const upcomingSessions = appointments.filter(apt => {
-      if (!apt.data_hora) return false;
-      const aptDate = parseISO(apt.data_hora);
+      if (!apt.data) return false;
+      const aptDate = parseISO(apt.data);
       const today = new Date();
       const sevenDaysLater = addDays(today, 7);
       return isAfter(aptDate, today) && isBefore(aptDate, sevenDaysLater);
@@ -630,7 +626,7 @@ const ClientsPage = () => {
 
         {/* Tabs Principais - Reorganizadas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Visão Geral</span>
@@ -638,6 +634,10 @@ const ClientsPage = () => {
             <TabsTrigger value="clients" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Clientes</span>
+            </TabsTrigger>
+            <TabsTrigger value="leads" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Leads</span>
             </TabsTrigger>
             <TabsTrigger value="tokens" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
@@ -736,7 +736,7 @@ const ClientsPage = () => {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {clientAnalytics.statusDistribution.map((entry, index) => (
+                          {clientAnalytics.statusDistribution.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#E6ECEA'][index % 5]} />
                           ))}
                         </Pie>
@@ -1039,6 +1039,11 @@ const ClientsPage = () => {
           <TabsContent value="chat" className="space-y-6 mt-6">
             <AdminChatPanel />
           </TabsContent>
+
+          {/* 🎯 Leads */}
+          <TabsContent value="leads" className="space-y-6 mt-6">
+            <ClientsLeadsTab />
+          </TabsContent>
         </Tabs>
       
       {/* Dialogs */}
@@ -1062,7 +1067,7 @@ const ClientsPage = () => {
               Importe múltiplos clientes de um arquivo CSV ou JSON
             </DialogDescription>
           </DialogHeader>
-          <ClientImport onImport={handleImportClients} />
+          <ClientImport onImportComplete={handleImportClients} />
         </DialogContent>
       </Dialog>
 

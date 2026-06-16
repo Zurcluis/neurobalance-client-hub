@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import DashboardOverview from '@/components/dashboard/DashboardOverview';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,18 +8,15 @@ import {
   Plus, 
   Calendar, 
   Users, 
-  Euro, 
-  TrendingUp,
   Clock,
   Target,
-  Zap,
   ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAppointments from '@/hooks/useAppointments';
 import { parseISO, isToday, isTomorrow, addDays, isBefore, isAfter } from 'date-fns';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import LeadsReadyForConversion from '@/components/clients/LeadsReadyForConversion';
+import { toast } from 'sonner';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -29,18 +26,18 @@ const Index = () => {
   const quickMetrics = useMemo(() => {
     const now = new Date();
     const todayAppts = appointments.filter(apt => {
-      if (!apt.data_hora) return false;
-      return isToday(parseISO(apt.data_hora));
+      if (!apt.data) return false;
+      return isToday(parseISO(apt.data));
     });
 
     const tomorrowAppts = appointments.filter(apt => {
-      if (!apt.data_hora) return false;
-      return isTomorrow(parseISO(apt.data_hora));
+      if (!apt.data) return false;
+      return isTomorrow(parseISO(apt.data));
     });
 
     const upcomingAppts = appointments.filter(apt => {
-      if (!apt.data_hora) return false;
-      const aptDate = parseISO(apt.data_hora);
+      if (!apt.data) return false;
+      const aptDate = parseISO(apt.data);
       const sevenDaysLater = addDays(now, 7);
       return isAfter(aptDate, now) && isBefore(aptDate, sevenDaysLater);
     });
@@ -100,6 +97,14 @@ const Index = () => {
             </Button>
           </div>
         </div>
+
+        {/* Notificação de Leads para Conversão */}
+        <LeadsReadyForConversion 
+          onConvertLead={() => {
+            navigate('/clients');
+            toast.info('Pode converter a lead diretamente na página de clientes.');
+          }} 
+        />
 
         {/* Alertas Rápidos */}
         {(quickMetrics.todayCount > 0 || quickMetrics.tomorrowCount > 0 || quickMetrics.pendingCount > 0) && (

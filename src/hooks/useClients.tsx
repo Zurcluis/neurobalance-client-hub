@@ -37,10 +37,37 @@ export function useClients() {
     }
   }, [supabase]);
 
-  // Initial load
+  // Initial load and Realtime setup
   useEffect(() => {
     loadClients();
-  }, [loadClients]);
+
+    const channelId = Math.random().toString(36).substring(2, 9);
+    const channel = supabase
+      .channel(`clientes_changes_${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clientes' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setClients(prev => {
+              if (prev.some(c => c.id === payload.new.id)) return prev;
+              return [...prev, payload.new as Client].sort((a, b) => a.nome.localeCompare(b.nome));
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setClients(prev => prev.map(c =>
+              c.id === payload.new.id ? (payload.new as Client) : c
+            ).sort((a, b) => a.nome.localeCompare(b.nome)));
+          } else if (payload.eventType === 'DELETE') {
+            setClients(prev => prev.filter(c => c.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadClients, supabase]);
 
   // Add new client
   const addClient = useCallback(async (client: NewClient) => {
@@ -112,6 +139,14 @@ export function useClients() {
   // Delete client
   const deleteClient = useCallback(async (id: number) => {
     try {
+      // 1. Get the client details first (before we delete them) so we have their email, telefone, and nome
+      const { data: clientToDelete } = await supabase
+        .from('clientes')
+        .select('nome, email, telefone')
+        .eq('id', id)
+        .maybeSingle();
+
+      // 2. Delete the client from the database
       const { error: deleteError } = await supabase
         .from('clientes')
         .delete()
@@ -121,14 +156,32 @@ export function useClients() {
         throw deleteError;
       }
 
-      // Refresh the clients list
-      await loadClients();
-      toast.success('Client deleted successfully');
+      // 3. Immediately update local client state
+      setClients(prev => prev.filter(c => c.id !== id));
+      toast.success('Cliente eliminado com sucesso!');
+
+      // 4. Delete corresponding leads in landing_leads & lead_compra
+      if (clientToDelete) {
+        const email = clientToDelete.email?.trim();
+        const telefone = clientToDelete.telefone?.trim();
+        const nome = clientToDelete.nome?.trim();
+
+        if (email) {
+          await supabase.from('landing_leads').delete().eq('email', email);
+          await supabase.from('lead_compra').delete().eq('email', email);
+        } else if (telefone) {
+          await supabase.from('landing_leads').delete().eq('telefone', telefone);
+          await supabase.from('lead_compra').delete().eq('telefone', telefone);
+        } else if (nome) {
+          await supabase.from('landing_leads').delete().eq('nome', nome);
+          await supabase.from('lead_compra').delete().eq('nome', nome);
+        }
+      }
     } catch (err) {
       console.error('Error deleting client:', err);
-      toast.error('Failed to delete client');
+      toast.error('Erro ao eliminar cliente');
     }
-  }, [loadClients, supabase]);
+  }, [supabase]);
 
   // Search clients
   const searchClients = useCallback((query: string) => {

@@ -30,6 +30,28 @@ export const useLandingLeads = () => {
     }
   }, []);
 
+  const addLead = useCallback(async (leadData: Omit<LandingLead, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('landing_leads')
+        .insert([leadData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Note: we don't need to manually setLeads here if the realtime subscription is active
+      // but doing it for immediate UI feedback is common
+      setLeads(prev => [data as LandingLead, ...prev]);
+      toast.success('Lead adicionado com sucesso!');
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar lead';
+      toast.error(errorMessage);
+      throw err;
+    }
+  }, []);
+
   const updateLeadStatus = useCallback(async (id: string, newStatus: LandingLeadStatus) => {
     try {
       const { error } = await supabase
@@ -103,8 +125,9 @@ export const useLandingLeads = () => {
 
   // Configurar subscription para atualizações em tempo real
   useEffect(() => {
+    const channelId = Math.random().toString(36).substring(2, 9);
     const channel = supabase
-      .channel('landing_leads_changes')
+      .channel(`landing_leads_changes_${channelId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'landing_leads' },
@@ -133,6 +156,7 @@ export const useLandingLeads = () => {
     isLoading,
     error,
     fetchLeads,
+    addLead,
     updateLeadStatus,
     updateLead,
     deleteLead

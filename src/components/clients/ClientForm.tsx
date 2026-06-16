@@ -198,6 +198,9 @@ const ClientForm = ({ onSubmit, onCancel, defaultValues = {}, isEditing = false,
                 showMonthDropdown
                 showYearDropdown
                 dropdownMode="select"
+                scrollableYearDropdown
+                yearDropdownItemNumber={120}
+                maxDate={new Date()}
                 dateFormat="dd/MM/yyyy"
                 placeholderText="Selecione a data"
                 wrapperClassName="w-full"
@@ -226,6 +229,8 @@ const ClientForm = ({ onSubmit, onCancel, defaultValues = {}, isEditing = false,
                 showMonthDropdown
                 showYearDropdown
                 dropdownMode="select"
+                scrollableYearDropdown
+                yearDropdownItemNumber={20}
                 dateFormat="dd/MM/yyyy"
                 placeholderText="Selecione a data"
                 wrapperClassName="w-full"

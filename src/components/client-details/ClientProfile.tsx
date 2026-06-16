@@ -1,8 +1,7 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar as CalendarIcon, Edit, User, Trash2, Mail, Phone, Info, Calendar, CreditCard, HashIcon, MessageSquare, CalendarPlus } from 'lucide-react';
+import { Edit, User, Trash2, Info } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,13 +10,8 @@ import { useForm } from 'react-hook-form';
 import { ClientDetailData } from '@/types/client';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { ptBR } from 'date-fns/locale';
-import { Database } from '@/integrations/supabase/types';
-import ClientPdfExport from './ClientPdfExport';
 
 
 
@@ -25,11 +19,9 @@ interface ClientProfileProps {
   client: ClientDetailData;
   onUpdateClient: (data: Partial<ClientDetailData>) => void;
   onDeleteClient: () => void;
-  onOpenPaymentDialog?: () => void;
 }
 
-const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, onDeleteClient, onOpenPaymentDialog }) => {
-  const navigate = useNavigate();
+const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, onDeleteClient }) => {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
 
@@ -55,10 +47,11 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
     setIsProfileDialogOpen(true);
   };
 
-  const calculateAge = (birthDate: string | null) => {
+  const calculateAge = (birthDate: string | null | undefined) => {
     if (!birthDate) return null;
     const today = new Date();
     const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return null;
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
 
@@ -69,7 +62,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
     return age;
   };
 
-  const formatDate = (date: string | null) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return 'Não informado';
     try {
       const dateObj = new Date(date);
@@ -81,42 +74,6 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
     } catch (error) {
       console.error('Erro ao formatar data:', error);
       return 'Data inválida';
-    }
-  };
-
-  const getStatusColor = (status: string | undefined) => {
-    if (!status) return 'bg-gray-500';
-    switch (status) {
-      case 'ongoing':
-        return 'bg-green-500';
-      case 'thinking':
-        return 'bg-yellow-500';
-      case 'no-need':
-        return 'bg-red-500';
-      case 'finished':
-        return 'bg-blue-500';
-      case 'call':
-        return 'bg-purple-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
-  const getStatusLabel = (status: string | undefined) => {
-    if (!status) return 'Desconhecido';
-    switch (status) {
-      case 'ongoing':
-        return 'On Going';
-      case 'thinking':
-        return 'Thinking';
-      case 'no-need':
-        return 'No Need';
-      case 'finished':
-        return 'Finished';
-      case 'call':
-        return 'Call';
-      default:
-        return status;
     }
   };
 
@@ -325,72 +282,139 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                       <FormField
                         control={profileForm.control}
                         name="data_nascimento"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Data de Nascimento</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-full justify-start text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(new Date(field.value), 'dd/MM/yyyy') : <span>Selecione uma data</span>}
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <CalendarComponent
-                                  mode="single"
-                                  selected={field.value ? new Date(field.value) : undefined}
-                                  onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : null)}
-                                  initialFocus
-                                  className={cn("p-3 pointer-events-auto")}
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const parseDate = (val: string | null | undefined) => {
+                            if (!val) return { day: '', month: '', year: '' };
+                            const d = new Date(val);
+                            if (isNaN(d.getTime())) return { day: '', month: '', year: '' };
+                            return {
+                              day: String(d.getUTCDate()),
+                              month: String(d.getUTCMonth() + 1),
+                              year: String(d.getUTCFullYear()),
+                            };
+                          };
+                          const parsed = parseDate(field.value);
+                          const updateDate = (part: 'day' | 'month' | 'year', val: string) => {
+                            const current = parseDate(field.value);
+                            const updated = { ...current, [part]: val };
+                            const { day, month, year } = updated;
+                            if (day && month && year && year.length === 4) {
+                              const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                              const d = new Date(dateStr);
+                              if (!isNaN(d.getTime())) field.onChange(dateStr);
+                            } else if (!day && !month && !year) {
+                              field.onChange(null);
+                            }
+                          };
+                          return (
+                            <FormItem>
+                              <FormLabel>Data de Nascimento</FormLabel>
+                              <div className="grid grid-cols-3 gap-2">
+                                <Select
+                                  value={parsed.day}
+                                  onValueChange={(v) => updateDate('day', v)}
+                                >
+                                  <SelectTrigger><SelectValue placeholder="Dia" /></SelectTrigger>
+                                  <SelectContent className="max-h-60">
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                      <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={parsed.month}
+                                  onValueChange={(v) => updateDate('month', v)}
+                                >
+                                  <SelectTrigger><SelectValue placeholder="Mês" /></SelectTrigger>
+                                  <SelectContent>
+                                    {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((m, i) => (
+                                      <SelectItem key={i+1} value={String(i+1)}>{m}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={parsed.year}
+                                  onValueChange={(v) => updateDate('year', v)}
+                                >
+                                  <SelectTrigger><SelectValue placeholder="Ano" /></SelectTrigger>
+                                  <SelectContent className="max-h-60">
+                                    {Array.from({ length: 120 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </FormItem>
+                          );
+                        }}
                       />
 
                       <FormField
                         control={profileForm.control}
                         name="data_entrada_clinica"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Data de Entrada na Clínica</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-full justify-start text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(new Date(field.value), 'dd/MM/yyyy') : <span>Selecione uma data</span>}
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <CalendarComponent
-                                  mode="single"
-                                  selected={field.value ? new Date(field.value) : undefined}
-                                  onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : null)}
-                                  initialFocus
-                                  disabled={(date) => date > new Date()}
-                                  className={cn("p-3 pointer-events-auto")}
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const parseDate = (val: string | null | undefined) => {
+                            if (!val) return { day: '', month: '', year: '' };
+                            const d = new Date(val);
+                            if (isNaN(d.getTime())) return { day: '', month: '', year: '' };
+                            return {
+                              day: String(d.getUTCDate()),
+                              month: String(d.getUTCMonth() + 1),
+                              year: String(d.getUTCFullYear()),
+                            };
+                          };
+                          const parsed = parseDate(field.value);
+                          const updateDate = (part: 'day' | 'month' | 'year', val: string) => {
+                            const current = parseDate(field.value);
+                            const updated = { ...current, [part]: val };
+                            const { day, month, year } = updated;
+                            if (day && month && year && year.length === 4) {
+                              const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                              const d = new Date(dateStr);
+                              if (!isNaN(d.getTime())) field.onChange(dateStr);
+                            }
+                          };
+                          return (
+                            <FormItem>
+                              <FormLabel>Data de Entrada na Clínica</FormLabel>
+                              <div className="grid grid-cols-3 gap-2">
+                                <Select
+                                  value={parsed.day}
+                                  onValueChange={(v) => updateDate('day', v)}
+                                >
+                                  <SelectTrigger><SelectValue placeholder="Dia" /></SelectTrigger>
+                                  <SelectContent className="max-h-60">
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                      <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={parsed.month}
+                                  onValueChange={(v) => updateDate('month', v)}
+                                >
+                                  <SelectTrigger><SelectValue placeholder="Mês" /></SelectTrigger>
+                                  <SelectContent>
+                                    {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((m, i) => (
+                                      <SelectItem key={i+1} value={String(i+1)}>{m}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={parsed.year}
+                                  onValueChange={(v) => updateDate('year', v)}
+                                >
+                                  <SelectTrigger><SelectValue placeholder="Ano" /></SelectTrigger>
+                                  <SelectContent className="max-h-60">
+                                    {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
 

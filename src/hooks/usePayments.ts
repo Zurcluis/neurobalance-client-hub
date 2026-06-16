@@ -204,8 +204,9 @@ export function usePayments() {
     fetchPayments();
 
     // Configurar escuta em tempo real para atualizações
+    const channelId = Math.random().toString(36).substring(2, 9);
     const channel = supabase
-      .channel('payment-changes')
+      .channel(`payment-changes_${channelId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pagamentos' },

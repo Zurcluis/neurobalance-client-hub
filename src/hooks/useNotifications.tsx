@@ -202,9 +202,11 @@ export const useNotifications = () => {
   useEffect(() => {
     fetchNotifications();
 
+    const uniqueId = Math.random().toString(36).substring(2, 9);
+
     // Configurar real-time para mensagens
     const chatSubscription = supabase
-      .channel('notifications_chat')
+      .channel(`notifications_chat_${uniqueId}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'client_messages' },
         () => fetchNotifications()
@@ -213,7 +215,7 @@ export const useNotifications = () => {
 
     // Configurar real-time para marcações
     const appointmentSubscription = supabase
-      .channel('notifications_appointments')
+      .channel(`notifications_appointments_${uniqueId}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'agendamentos' },
         () => fetchNotifications()
@@ -222,7 +224,7 @@ export const useNotifications = () => {
 
     // Configurar real-time para confirmações de marcações
     const confirmationSubscription = supabase
-      .channel('notifications_appointment_confirmations')
+      .channel(`notifications_appointment_confirmations_${uniqueId}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'appointment_confirmations' },
         () => fetchNotifications()
@@ -231,7 +233,7 @@ export const useNotifications = () => {
 
     // Configurar real-time para sessões ativas (marcos de sessões)
     const sessionsSubscription = supabase
-      .channel('notifications_sessions')
+      .channel(`notifications_sessions_${uniqueId}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'sessoes_ativas' },
         () => fetchNotifications()
@@ -240,7 +242,7 @@ export const useNotifications = () => {
 
     // Configurar real-time para marcos de sessões
     const milestonesSubscription = supabase
-      .channel('notifications_milestones')
+      .channel(`notifications_milestones_${uniqueId}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'session_milestones' },
         () => fetchNotifications()
@@ -251,11 +253,11 @@ export const useNotifications = () => {
     const interval = setInterval(fetchNotifications, 30000);
 
     return () => {
-      chatSubscription.unsubscribe();
-      appointmentSubscription.unsubscribe();
-      confirmationSubscription.unsubscribe();
-      sessionsSubscription.unsubscribe();
-      milestonesSubscription.unsubscribe();
+      supabase.removeChannel(chatSubscription);
+      supabase.removeChannel(appointmentSubscription);
+      supabase.removeChannel(confirmationSubscription);
+      supabase.removeChannel(sessionsSubscription);
+      supabase.removeChannel(milestonesSubscription);
       clearInterval(interval);
     };
   }, []);
