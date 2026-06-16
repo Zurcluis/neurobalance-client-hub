@@ -5,6 +5,16 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Appointment } from '@/hooks/useAppointments';
 
+const isLightColor = (hex: string): boolean => {
+  if (!hex || hex.length < 6) return false;
+  const c = hex.startsWith('#') ? hex.slice(1) : hex;
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return yiq >= 128;
+};
+
 
 
 interface TimeGridViewProps {
@@ -255,7 +265,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                       onDragStart={(e) => handleDragStart(e, appointment)}
                       style={{
                         backgroundColor: (appointment as any).cor || '#3B82F6',
-                        color: 'white'
+                        color: isLightColor((appointment as any).cor || '#3B82F6') ? '#111827' : 'white'
                       }}
                       onClick={(e) => {
                         e.stopPropagation();

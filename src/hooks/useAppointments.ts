@@ -53,10 +53,27 @@ export function useAppointments() {
     }
   }, [supabase]);
 
-  // Load appointments from Supabase
+  // Load appointments and subscribe to real-time changes
   useEffect(() => {
     fetchAppointments();
-  }, [fetchAppointments]);
+
+    const channelId = Math.random().toString(36).substring(2, 9);
+    const channel = supabase
+      .channel(`agendamentos-changes_${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'agendamentos' },
+        () => {
+          console.log('Alterações detectadas na tabela agendamentos');
+          fetchAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchAppointments, supabase]);
 
   // Add new appointment
   const addAppointment = useCallback(async (appointment: {
@@ -113,6 +130,65 @@ export function useAppointments() {
     } catch (error: any) {
       console.error('Erro ao adicionar agendamento:', error);
       const errorMsg = error?.message || 'Erro desconhecido ao adicionar agendamento';
+      toast.error(`Erro: ${errorMsg}`);
+      throw error;
+    }
+  }, [supabase]);
+
+  // Add multiple appointments (batch)
+  const addAppointmentsBatch = useCallback(async (appointmentsList: Array<{
+    titulo: string;
+    data: string;
+    hora: string;
+    id_cliente: number | null;
+    tipo: string;
+    notas?: string;
+    estado: string;
+    terapeuta?: string;
+    cor?: string;
+  }>) => {
+    try {
+      const inserts = appointmentsList.map(apt => ({
+        titulo: apt.titulo,
+        data: apt.data,
+        hora: apt.hora,
+        id_cliente: apt.id_cliente,
+        tipo: apt.tipo,
+        notas: apt.notas || '',
+        estado: apt.estado,
+        terapeuta: apt.terapeuta || '',
+        cor: apt.cor || '#3B82F6'
+      }));
+
+      console.log('Inserindo lote de agendamentos:', inserts);
+
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .insert(inserts)
+        .select(`
+          *,
+          clientes (
+            id,
+            id_manual,
+            nome,
+            email,
+            telefone
+          )
+        `);
+
+      if (error) {
+        console.error('Erro do Supabase ao inserir lote:', error);
+        throw new Error(error.message || 'Erro ao inserir lote de agendamentos na base de dados');
+      }
+
+      const newAppointments = data as Appointment[];
+      setAppointments(prev => [...prev, ...newAppointments]);
+
+      toast.success(`${inserts.length} agendamentos adicionados com sucesso`);
+      return data;
+    } catch (error: any) {
+      console.error('Erro ao adicionar lote de agendamentos:', error);
+      const errorMsg = error?.message || 'Erro desconhecido ao adicionar lote de agendamentos';
       toast.error(`Erro: ${errorMsg}`);
       throw error;
     }
@@ -217,6 +293,7 @@ export function useAppointments() {
     isLoading,
     error,
     addAppointment,
+    addAppointmentsBatch,
     updateAppointment,
     deleteAppointment,
     refetch: fetchAppointments,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, MessageCircle, Calendar, Trophy, X, Check, CheckCheck } from 'lucide-react';
+import { Bell, MessageCircle, Calendar, Trophy, X, Check, CheckCheck, AlertTriangle, PackageX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,10 @@ const getNotificationIcon = (type: Notification['type']) => {
       return <Calendar className="h-4 w-4 text-orange-500" />;
     case 'session_milestone':
       return <Trophy className="h-4 w-4 text-green-500" />;
+    case 'pack_ending':
+      return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+    case 'pack_exhausted':
+      return <PackageX className="h-4 w-4 text-red-500" />;
     default:
       return <Bell className="h-4 w-4" />;
   }
@@ -31,6 +35,10 @@ const getNotificationColor = (type: Notification['type']) => {
       return 'border-l-orange-500';
     case 'session_milestone':
       return 'border-l-green-500';
+    case 'pack_ending':
+      return 'border-l-amber-500';
+    case 'pack_exhausted':
+      return 'border-l-red-500';
     default:
       return 'border-l-gray-500';
   }

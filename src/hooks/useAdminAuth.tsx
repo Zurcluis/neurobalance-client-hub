@@ -114,12 +114,6 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
       setSession(updatedSession);
       localStorage.setItem('admin_session', JSON.stringify(updatedSession));
 
-      // Atualizar data de último uso do token
-      await supabase
-        .from('admin_access_tokens')
-        .update({ last_used_at: new Date().toISOString() } as any)
-        .eq('token', token);
-
       return true;
     } catch (error) {
       console.error('Erro ao validar token:', error);
@@ -228,11 +222,8 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
         localStorage.setItem('admin_session', JSON.stringify(newSession));
         toast.success(`Bem-vindo(a), ${admin.nome}!`);
 
-        // Atualizar último uso do token e último login do admin
-        await Promise.all([
-          supabase.from('admin_access_tokens').update({ last_used_at: new Date().toISOString() } as any).eq('token', request.token),
-          supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id)
-        ]);
+        // Atualizar data de último login do admin
+        await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
 
         return {
           success: true,

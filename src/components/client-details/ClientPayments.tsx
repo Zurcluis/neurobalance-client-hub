@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { Payment } from '@/types/client';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { format, subDays, startOfMonth, isAfter, parseISO } from 'date-fns';
 
@@ -34,8 +35,6 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [paymentToEdit, setPaymentToEdit] = useState<Payment | null>(null);
   const [filterPeriod, setFilterPeriod] = useState<'all' | '30days' | 'thisMonth'>('all');
-  const [isPartialPayment, setIsPartialPayment] = useState(false);
-  const [expectedAmount, setExpectedAmount] = useState(0);
 
   // Filtrar pagamentos por período
   const filteredPayments = useMemo(() => {
@@ -82,7 +81,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
     toast.success('Ficheiro CSV exportado com sucesso');
   };
 
-  const paymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>>({
+  const paymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'> & { com_iva?: boolean }>({
     defaultValues: {
       data: new Date().toISOString().split('T')[0],
       valor: 85,
@@ -91,35 +90,70 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
       nif: '',
       tipo_servico: 'Serviços',
       numero_fatura: '',
-      valor_base: 0,
-      valor_iva: 0,
+      valor_base: 69.11,
+      valor_iva: 15.89,
       retencao: 0,
-      estado: 'pago'
+      estado: 'pago',
+      com_iva: true
     }
   });
 
   // Efeito para cálculo automático de valores
   useEffect(() => {
-    const subscription = paymentForm.watch((value, { name, type }) => {
-      if (name === 'valor_base') {
-        const base = Number(value.valor_base) || 0;
-        const iva = base * 0.23;
-        const ret = Number(paymentForm.getValues('retencao')) || 0;
+    const subscription = paymentForm.watch((value, { name }) => {
+      if (!name) return;
 
-        paymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-        paymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+      const comIva = !!value.com_iva;
+      const ret = Number(value.retencao) || 0;
+
+      if (name === 'valor_base' || name === 'com_iva') {
+        const base = Number(value.valor_base) || 0;
+        const iva = comIva ? Number((base * 0.23).toFixed(2)) : 0;
+        const targetValor = Number((base + iva - ret).toFixed(2));
+
+        if (paymentForm.getValues('valor_iva') !== iva) {
+          paymentForm.setValue('valor_iva', iva, { shouldValidate: true });
+        }
+        if (paymentForm.getValues('valor') !== targetValor) {
+          paymentForm.setValue('valor', targetValor, { shouldValidate: true });
+        }
       }
+
+      if (name === 'valor') {
+        const total = Number(value.valor) || 0;
+        if (comIva) {
+          const base = Number((total / 1.23).toFixed(2));
+          const iva = Number((total - base).toFixed(2));
+
+          if (paymentForm.getValues('valor_base') !== base) {
+            paymentForm.setValue('valor_base', base, { shouldValidate: true });
+          }
+          if (paymentForm.getValues('valor_iva') !== iva) {
+            paymentForm.setValue('valor_iva', iva, { shouldValidate: true });
+          }
+        } else {
+          if (paymentForm.getValues('valor_base') !== total) {
+            paymentForm.setValue('valor_base', total, { shouldValidate: true });
+          }
+          if (paymentForm.getValues('valor_iva') !== 0) {
+            paymentForm.setValue('valor_iva', 0, { shouldValidate: true });
+          }
+        }
+      }
+
       if (name === 'retencao') {
-        const base = Number(paymentForm.getValues('valor_base')) || 0;
-        const iva = Number(paymentForm.getValues('valor_iva')) || 0;
-        const ret = Number(value.retencao) || 0;
-        paymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+        const base = Number(value.valor_base) || 0;
+        const iva = Number(value.valor_iva) || 0;
+        const targetValor = Number((base + iva - ret).toFixed(2));
+        if (paymentForm.getValues('valor') !== targetValor) {
+          paymentForm.setValue('valor', targetValor, { shouldValidate: true });
+        }
       }
     });
     return () => subscription.unsubscribe();
-  }, [paymentForm.watch, paymentForm.setValue, paymentForm.getValues]);
+  }, [paymentForm.watch, paymentForm.setValue]);
 
-  const editPaymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>>({
+  const editPaymentForm = useForm<Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'> & { com_iva?: boolean }>({
     defaultValues: {
       data: new Date().toISOString().split('T')[0],
       valor: 0,
@@ -131,7 +165,8 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
       valor_base: 0,
       valor_iva: 0,
       retencao: 0,
-      estado: 'pago'
+      estado: 'pago',
+      com_iva: true
     }
   });
 
@@ -144,44 +179,86 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
     }
   };
 
-  const onSubmit = (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
-    onAddPayment(data);
+  const onSubmit = (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'> & { com_iva?: boolean }) => {
+    const { com_iva, ...paymentData } = data;
+    onAddPayment(paymentData);
     setIsPaymentDialogOpen(false);
     paymentForm.reset({
       data: new Date().toISOString().split('T')[0],
       valor: 85,
       descricao: 'Avaliação Inicial',
-      tipo: 'Multibanco'
+      tipo: 'Multibanco',
+      nif: '',
+      tipo_servico: 'Serviços',
+      numero_fatura: '',
+      valor_base: 69.11,
+      valor_iva: 15.89,
+      retencao: 0,
+      estado: 'pago',
+      com_iva: true
     });
     toast.success('Pagamento registado com sucesso');
   };
 
-
-
   // Efeito para cálculo automático de valores no formulário de EDIÇÃO
   useEffect(() => {
-    const subscription = editPaymentForm.watch((value, { name, type }) => {
-      if (name === 'valor_base') {
-        const base = Number(value.valor_base) || 0;
-        const iva = base * 0.23;
-        const ret = Number(editPaymentForm.getValues('retencao')) || 0;
+    const subscription = editPaymentForm.watch((value, { name }) => {
+      if (!name) return;
 
-        editPaymentForm.setValue('valor_iva', Number(iva.toFixed(2)));
-        editPaymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+      const comIva = !!value.com_iva;
+      const ret = Number(value.retencao) || 0;
+
+      if (name === 'valor_base' || name === 'com_iva') {
+        const base = Number(value.valor_base) || 0;
+        const iva = comIva ? Number((base * 0.23).toFixed(2)) : 0;
+        const targetValor = Number((base + iva - ret).toFixed(2));
+
+        if (editPaymentForm.getValues('valor_iva') !== iva) {
+          editPaymentForm.setValue('valor_iva', iva, { shouldValidate: true });
+        }
+        if (editPaymentForm.getValues('valor') !== targetValor) {
+          editPaymentForm.setValue('valor', targetValor, { shouldValidate: true });
+        }
       }
+
+      if (name === 'valor') {
+        const total = Number(value.valor) || 0;
+        if (comIva) {
+          const base = Number((total / 1.23).toFixed(2));
+          const iva = Number((total - base).toFixed(2));
+
+          if (editPaymentForm.getValues('valor_base') !== base) {
+            editPaymentForm.setValue('valor_base', base, { shouldValidate: true });
+          }
+          if (editPaymentForm.getValues('valor_iva') !== iva) {
+            editPaymentForm.setValue('valor_iva', iva, { shouldValidate: true });
+          }
+        } else {
+          if (editPaymentForm.getValues('valor_base') !== total) {
+            editPaymentForm.setValue('valor_base', total, { shouldValidate: true });
+          }
+          if (editPaymentForm.getValues('valor_iva') !== 0) {
+            editPaymentForm.setValue('valor_iva', 0, { shouldValidate: true });
+          }
+        }
+      }
+
       if (name === 'retencao') {
-        const base = Number(editPaymentForm.getValues('valor_base')) || 0;
-        const iva = Number(editPaymentForm.getValues('valor_iva')) || 0;
-        const ret = Number(value.retencao) || 0;
-        editPaymentForm.setValue('valor', Number((base + iva - ret).toFixed(2)));
+        const base = Number(value.valor_base) || 0;
+        const iva = Number(value.valor_iva) || 0;
+        const targetValor = Number((base + iva - ret).toFixed(2));
+        if (editPaymentForm.getValues('valor') !== targetValor) {
+          editPaymentForm.setValue('valor', targetValor, { shouldValidate: true });
+        }
       }
     });
     return () => subscription.unsubscribe();
-  }, [editPaymentForm.watch, editPaymentForm.setValue, editPaymentForm.getValues]);
+  }, [editPaymentForm.watch, editPaymentForm.setValue]);
 
-  const onEditSubmit = (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'>) => {
+  const onEditSubmit = (data: Omit<Payment, 'id' | 'id_cliente' | 'criado_em' | 'updated_at'> & { com_iva?: boolean }) => {
     if (paymentToEdit && onEditPayment) {
-      onEditPayment(paymentToEdit.id, data);
+      const { com_iva, ...paymentData } = data;
+      onEditPayment(paymentToEdit.id, paymentData);
       setIsEditDialogOpen(false);
       setPaymentToEdit(null);
       toast.success('Pagamento atualizado com sucesso');
@@ -190,6 +267,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
 
   const handleEditPayment = (payment: Payment) => {
     setPaymentToEdit(payment);
+    const comIva = (payment.valor_iva || 0) > 0;
     editPaymentForm.reset({
       data: payment.data,
       valor: payment.valor,
@@ -201,7 +279,8 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
       valor_base: payment.valor_base || 0,
       valor_iva: payment.valor_iva || 0,
       retencao: payment.retencao || 0,
-      estado: payment.estado || 'pago'
+      estado: payment.estado || 'pago',
+      com_iva: comIva
     });
     setIsEditDialogOpen(true);
   };
@@ -477,6 +556,24 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg space-y-4 border border-gray-100">
+                <FormField
+                  control={paymentForm.control}
+                  name="com_iva"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-medium cursor-pointer">
+                        Aplicar IVA (23%)
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-3 gap-3">
                   <FormField
                     control={paymentForm.control}
@@ -544,20 +641,7 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
                     <div className="flex gap-2">
                       <Select
                         onValueChange={(value) => {
-                          setIsPartialPayment(value === 'partial');
                           handlePaymentTypeChange(value, paymentForm);
-                          // Set base value if standard type
-                          const selectedType = paymentTypes.find(t => t.id === value);
-                          if (selectedType && selectedType.id !== 'partial') {
-                            // Assume o valor total já inclui IVA, então reverse calc?
-                            // Ou definimos que os valores dos packs são BASE?
-                            // O utilizador disse "Base, IVA, Total". 
-                            // Vou assumir que ao selecionar o pack, preenchemos o TOTAL e calcula para trás ou preenchemos a BASE?
-                            // Vamos preencher a BASE = Valor / 1.23 para facilitar ou deixar o user meter?
-                            // Simplificacao: Selecionar pack preenche valor_base = valor / 1.23
-                            const base = selectedType.value / 1.23;
-                            paymentForm.setValue('valor_base', Number(base.toFixed(2)));
-                          }
                         }}
                       >
                         <SelectTrigger className="w-[180px]">
@@ -721,6 +805,24 @@ const ClientPayments = ({ payments, clientId, onAddPayment, onDeletePayment, onE
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg space-y-4 border border-gray-100">
+                <FormField
+                  control={editPaymentForm.control}
+                  name="com_iva"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-medium cursor-pointer">
+                        Aplicar IVA (23%)
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-3 gap-3">
                   <FormField
                     control={editPaymentForm.control}

@@ -17,7 +17,7 @@ export function usePayments(clientId?: number) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load payments from Supabase
+  // Load payments from Supabase and subscribe to real-time changes
   useEffect(() => {
     const loadPayments = async () => {
       try {
@@ -47,23 +47,51 @@ export function usePayments(clientId?: number) {
         setPayments(data);
         setError(null);
       } catch (err) {
-        setError('Error loading payments');
-        console.error('Error loading payments:', err);
-        toast.error('Failed to load payments');
+        setError('Erro ao carregar pagamentos');
+        console.error('Erro ao carregar pagamentos:', err);
+        toast.error('Falha ao carregar pagamentos');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadPayments();
+
+    // Configurar escuta em tempo real para atualizações
+    const channelId = Math.random().toString(36).substring(2, 9);
+    let filterString = '';
+    if (clientId) {
+      filterString = `id_cliente=eq.${clientId}`;
+    }
+    const channel = supabase
+      .channel(`client-payment-changes_${channelId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'pagamentos',
+          filter: filterString || undefined
+        },
+        () => {
+          console.log('Alterações detectadas na tabela pagamentos (cliente específica)');
+          loadPayments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [clientId]);
 
   // Add new payment
   const addPayment = useCallback(async (payment: NewPayment) => {
     try {
+      const { com_iva, ...paymentToInsert } = payment as any;
       const { data, error: insertError } = await supabase
         .from('pagamentos')
-        .insert([payment])
+        .insert([paymentToInsert])
         .select()
         .single();
 
@@ -72,19 +100,20 @@ export function usePayments(clientId?: number) {
       }
 
       setPayments(prev => [...prev, data]);
-      toast.success('Payment added successfully');
+      toast.success('Pagamento adicionado com sucesso');
     } catch (err) {
-      console.error('Error adding payment:', err);
-      toast.error('Failed to add payment');
+      console.error('Erro ao adicionar pagamento:', err);
+      toast.error('Falha ao adicionar pagamento');
     }
   }, []);
 
   // Update payment
   const updatePayment = useCallback(async (id: number, updates: UpdatePayment) => {
     try {
+      const { com_iva, ...updatesToApply } = updates as any;
       const { data, error: updateError } = await supabase
         .from('pagamentos')
-        .update(updates)
+        .update(updatesToApply)
         .eq('id', id)
         .select()
         .single();
@@ -96,10 +125,10 @@ export function usePayments(clientId?: number) {
       setPayments(prev => prev.map(payment => 
         payment.id === id ? data : payment
       ));
-      toast.success('Payment updated successfully');
+      toast.success('Pagamento atualizado com sucesso');
     } catch (err) {
-      console.error('Error updating payment:', err);
-      toast.error('Failed to update payment');
+      console.error('Erro ao atualizar pagamento:', err);
+      toast.error('Falha ao atualizar pagamento');
     }
   }, []);
 
@@ -116,10 +145,10 @@ export function usePayments(clientId?: number) {
       }
 
       setPayments(prev => prev.filter(payment => payment.id !== id));
-      toast.success('Payment deleted successfully');
+      toast.success('Pagamento eliminado com sucesso');
     } catch (err) {
-      console.error('Error deleting payment:', err);
-      toast.error('Failed to delete payment');
+      console.error('Erro ao eliminar pagamento:', err);
+      toast.error('Falha ao eliminar pagamento');
     }
   }, []);
 

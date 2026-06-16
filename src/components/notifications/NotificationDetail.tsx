@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Calendar, Trophy, User, Clock, CheckCircle } from 'lucide-react';
+import { MessageCircle, Calendar, Trophy, User, Clock, CheckCircle, AlertTriangle, PackageX, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -26,6 +26,10 @@ const getNotificationIcon = (type: Notification['type']) => {
       return <Calendar className="h-6 w-6 text-orange-500" />;
     case 'session_milestone':
       return <Trophy className="h-6 w-6 text-green-500" />;
+    case 'pack_ending':
+      return <AlertTriangle className="h-6 w-6 text-amber-500" />;
+    case 'pack_exhausted':
+      return <PackageX className="h-6 w-6 text-red-500" />;
     default:
       return <User className="h-6 w-6" />;
   }
@@ -239,6 +243,50 @@ export const NotificationDetail = ({
           </div>
         );
 
+      case 'pack_ending':
+        return (
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleNavigateToClient}
+              className="flex-1"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Ver Cliente
+            </Button>
+          </div>
+        );
+
+      case 'pack_exhausted':
+        return (
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => {
+                if (notification.client_id) {
+                  navigate(`/clients/${notification.client_id}`);
+                  onClose();
+                  // Navegar para a tab de pagamentos após navegação
+                  setTimeout(() => {
+                    const paymentsTab = document.querySelector('[data-value="payments"]') as HTMLElement;
+                    if (paymentsTab) paymentsTab.click();
+                  }, 500);
+                }
+              }}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              Registar Novo Pagamento
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleNavigateToClient}
+              className="flex-1"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Ver Cliente
+            </Button>
+          </div>
+        );
+
       default:
         return (
           <Button onClick={handleNavigateToClient} className="w-full">
@@ -303,6 +351,58 @@ export const NotificationDetail = ({
                   <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                     Este é um bom momento para dar feedback ao cliente sobre seu progresso.
                   </p>
+                </div>
+              )}
+
+              {notification.type === 'pack_ending' && notification.metadata?.pack_sessions_used != null && (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Pack quase esgotado
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400 mb-1">
+                      <span>Sessões utilizadas</span>
+                      <span>{notification.metadata.pack_sessions_used}/{notification.metadata.pack_sessions_max}</span>
+                    </div>
+                    <div className="w-full bg-amber-200 dark:bg-amber-900 rounded-full h-2">
+                      <div 
+                        className="bg-amber-500 h-2 rounded-full transition-all"
+                        style={{ width: `${Math.min(((notification.metadata.pack_sessions_used || 0) / (notification.metadata.pack_sessions_max || 1)) * 100, 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Restam {(notification.metadata.pack_sessions_max || 0) - (notification.metadata.pack_sessions_used || 0)} sessão(ões) no pack.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {notification.type === 'pack_exhausted' && notification.metadata?.pack_sessions_used != null && (
+                <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                    <PackageX className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Pack esgotado — próxima sessão fora do pack
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs text-red-600 dark:text-red-400 mb-1">
+                      <span>Sessões realizadas</span>
+                      <span>{notification.metadata.pack_sessions_used}/{notification.metadata.pack_sessions_max}</span>
+                    </div>
+                    <div className="w-full bg-red-200 dark:bg-red-900 rounded-full h-2">
+                      <div 
+                        className="bg-red-500 h-2 rounded-full"
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                      O cliente já utilizou todas as sessões do pack. Considere registar um novo pagamento de pack.
+                    </p>
+                  </div>
                 </div>
               )}
             </CardContent>

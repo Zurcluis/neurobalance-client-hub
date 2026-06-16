@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
 import ClientCard from '@/components/clients/ClientCard';
@@ -13,7 +14,7 @@ import ClientsLeadsTab from '@/components/clients/ClientsLeadsTab';
 import { 
   Plus, Search, Upload, X, ChevronDown, ChevronUp, Download, 
   Users, TrendingUp, BarChart3, Target, PieChart, Key, MessageSquare,
-  AlertCircle, Clock, SlidersHorizontal
+  AlertCircle, Clock, SlidersHorizontal, Bell, BellOff, AlertTriangle, CheckCircle
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
@@ -45,8 +46,19 @@ interface DateRange {
   to: Date | undefined;
 }
 
+interface GlobalNotification {
+  id: string;
+  clientId: number;
+  clientName: string;
+  type: 'pack_exhausted' | 'pack_ending' | 'treatment_ending' | 'treatment_finished';
+  title: string;
+  message: string;
+  severity: 'danger' | 'warning' | 'info';
+}
+
 const ClientsPage = () => {
   const { isAdminContext } = useAdminContext();
+  const navigate = useNavigate();
   const { 
     clients, 
     isLoading, 
@@ -169,18 +181,21 @@ const ClientsPage = () => {
       switch (sortBy) {
         case 'name':
           return a.nome.localeCompare(b.nome);
-        case 'date':
+        case 'date': {
           const dateA = a.criado_em ? new Date(a.criado_em).getTime() : 0;
           const dateB = b.criado_em ? new Date(b.criado_em).getTime() : 0;
           return dateB - dateA;
-        case 'sessions':
+        }
+        case 'sessions': {
           const sessionsA = appointments.filter(apt => apt.id_cliente === a.id).length;
           const sessionsB = appointments.filter(apt => apt.id_cliente === b.id).length;
           return sessionsB - sessionsA;
-        case 'revenue':
+        }
+        case 'revenue': {
           const revenueA = payments.filter(pay => pay.id_cliente === a.id).reduce((sum, pay) => sum + (pay.valor || 0), 0);
           const revenueB = payments.filter(pay => pay.id_cliente === b.id).reduce((sum, pay) => sum + (pay.valor || 0), 0);
           return revenueB - revenueA;
+        }
         default:
           return 0;
       }
@@ -315,6 +330,82 @@ const ClientsPage = () => {
     finished: filteredAndSortedClients.filter(client => client.estado === 'finished'),
     desistiu: filteredAndSortedClients.filter(client => client.estado === 'desistiu'),
   }), [filteredAndSortedClients]);
+
+  // Cálculo de todas as notificações de todos os clientes
+  const allNotifications = useMemo(() => {
+    const list: GlobalNotification[] = [];
+    if (!clients || !payments || !appointments) return list;
+
+    clients.forEach(client => {
+      // 1. Sessões realizadas
+      const now = new Date();
+      const countRealized = appointments.filter(app =>
+        app.id_cliente === client.id &&
+        (app.estado === 'realizado' || (app.estado !== 'cancelado' && isAfter(now, parseISO(app.data))))
+      ).length;
+
+      // 2. Packs mensais
+      const clientPayments = payments.filter(p => p.id_cliente === client.id);
+      const monthlyPayments = clientPayments.filter(p =>
+        p.descricao?.toLowerCase().includes('pack') ||
+        p.descricao?.toLowerCase().includes('mensal')
+      );
+
+      if (monthlyPayments.length > 0) {
+        const totalPackSessions = monthlyPayments.length * 8;
+        
+        if (countRealized >= totalPackSessions) {
+          list.push({
+            id: `pack_exhausted_${client.id}_${totalPackSessions}`,
+            clientId: client.id,
+            clientName: client.nome,
+            type: 'pack_exhausted',
+            title: 'Pack Esgotado',
+            message: `${client.nome} já realizou ${countRealized} sessões (Limite do pack: ${totalPackSessions}). A próxima sessão será fora do pack.`,
+            severity: 'danger'
+          });
+        } else if (totalPackSessions - countRealized <= 2) {
+          list.push({
+            id: `pack_ending_${client.id}_${totalPackSessions}`,
+            clientId: client.id,
+            clientName: client.nome,
+            type: 'pack_ending',
+            title: 'Pack a Terminar',
+            message: `${client.nome} tem apenas ${totalPackSessions - countRealized} sessões restantes no pack (realizou ${countRealized} de ${totalPackSessions}).`,
+            severity: 'warning'
+          });
+        }
+      }
+
+      // 3. Fim do tratamento
+      if (client.max_sessoes && client.max_sessoes > 0) {
+        const remaining = client.max_sessoes - countRealized;
+        if (remaining > 0 && remaining <= 5) {
+          list.push({
+            id: `treatment_ending_${client.id}_${client.max_sessoes}`,
+            clientId: client.id,
+            clientName: client.nome,
+            type: 'treatment_ending',
+            title: 'Tratamento a Terminar',
+            message: `${client.nome} tem apenas ${remaining} sessões restantes no plano de tratamento (${countRealized}/${client.max_sessoes} realizadas).`,
+            severity: 'warning'
+          });
+        } else if (remaining <= 0) {
+          list.push({
+            id: `treatment_finished_${client.id}_${client.max_sessoes}`,
+            clientId: client.id,
+            clientName: client.nome,
+            type: 'treatment_finished',
+            title: 'Tratamento Concluído',
+            message: `O plano de tratamento indicado de ${client.max_sessoes} sessões para ${client.nome} foi concluído (${countRealized} sessões realizadas).`,
+            severity: 'info'
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [clients, payments, appointments]);
 
   const handleAddClient = async (data: ClientFormData) => {
     try {
@@ -626,7 +717,7 @@ const ClientsPage = () => {
 
         {/* Tabs Principais - Reorganizadas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 h-auto md:h-10">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Visão Geral</span>
@@ -646,6 +737,15 @@ const ClientsPage = () => {
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2 relative">
+              <Bell className="h-4 w-4" />
+              <span className="hidden sm:inline">Notificações</span>
+              {allNotifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white animate-pulse">
+                  {allNotifications.length}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -1043,6 +1143,72 @@ const ClientsPage = () => {
           {/* 🎯 Leads */}
           <TabsContent value="leads" className="space-y-6 mt-6">
             <ClientsLeadsTab />
+          </TabsContent>
+
+          {/* 🔔 Notificações Globais */}
+          <TabsContent value="notifications" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-[#3f9094]" />
+                  Painel Geral de Notificações
+                </CardTitle>
+                <CardDescription>
+                  Alertas consolidados sobre todos os clientes (packs e plano de tratamento)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {allNotifications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="p-3 rounded-full bg-green-50 text-green-500 mb-3 w-14 h-14 flex items-center justify-center mx-auto dark:bg-green-950/20">
+                      <BellOff className="h-8 w-8" />
+                    </div>
+                    <h3 className="text-xl font-medium mb-1 dark:text-gray-200">Sem notificações ativas</h3>
+                    <p className="text-gray-500 text-sm max-w-sm mx-auto">
+                      Todos os clientes encontram-se com os packs e planos de tratamento regularizados.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {allNotifications.map(notif => (
+                      <Card key={notif.id} className={`p-4 border-l-4 shadow-sm hover:shadow-md transition-shadow ${
+                        notif.severity === 'danger' ? 'bg-red-50/50 border-l-red-500 text-red-950 dark:bg-red-950/10 dark:text-red-200' :
+                        notif.severity === 'warning' ? 'bg-amber-50/50 border-l-amber-500 text-amber-950 dark:bg-amber-950/10 dark:text-amber-200' :
+                        'bg-blue-50/50 border-l-blue-500 text-blue-950 dark:bg-blue-950/10 dark:text-blue-200'
+                      }`}>
+                        <div className="flex justify-between items-start gap-4 flex-wrap sm:flex-nowrap">
+                          <div className="flex gap-3">
+                            <div className="mt-0.5 flex-shrink-0">
+                              {notif.severity === 'danger' && <AlertTriangle className="h-5 w-5 text-red-500" />}
+                              {notif.severity === 'warning' && <AlertCircle className="h-5 w-5 text-amber-500" />}
+                              {notif.severity === 'info' && <CheckCircle className="h-5 w-5 text-blue-500" />}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-semibold text-base text-gray-900 dark:text-white">{notif.title}</h4>
+                                <Badge variant="outline" className="text-xs bg-white font-medium border-gray-200 text-gray-700">
+                                  {notif.clientName}
+                                </Badge>
+                              </div>
+                              <p className="text-sm mt-1.5 text-gray-700 dark:text-gray-300">{notif.message}</p>
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="bg-white border-gray-200 hover:bg-gray-50 flex-shrink-0 w-full sm:w-auto"
+                            onClick={() => navigate(isAdminContext ? `/admin/clients/${notif.clientId}` : `/clients/${notif.clientId}`)}
+                          >
+                            <Users className="h-3.5 w-3.5 mr-1.5" />
+                            Ver Cliente
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       

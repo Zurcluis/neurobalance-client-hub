@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface Notification {
   id: string;
-  type: 'chat' | 'appointment' | 'session_milestone';
+  type: 'chat' | 'appointment' | 'session_milestone' | 'pack_exhausted' | 'pack_ending';
   title: string;
   message: string;
   client_id?: string;
@@ -17,6 +17,8 @@ export interface Notification {
     message_id?: string;
     milestone_id?: string;
     sessions_completed?: number;
+    pack_sessions_used?: number;
+    pack_sessions_max?: number;
   };
 }
 
@@ -59,6 +61,18 @@ export const useNotifications = () => {
 
       // Buscar marcos de sessões não processados
       const { data: sessionMilestones } = await supabase.rpc('get_session_milestones' as any);
+
+      // Buscar clientes com packs (max_sessoes > 0) para notificações de pack
+      const { data: clientsWithPacks } = await supabase
+        .from('clientes')
+        .select('id, nome, max_sessoes, numero_sessoes')
+        .gt('max_sessoes', 0);
+
+      // Buscar contagens reais de sessões realizadas por cliente (agendamentos realizados)
+      const { data: realizedAppointments } = await supabase
+        .from('agendamentos')
+        .select('id_cliente')
+        .eq('estado', 'realizado');
 
       const allNotifications: Notification[] = [];
 
@@ -121,6 +135,66 @@ export const useNotifications = () => {
               sessions_completed: milestone.sessions_count
             }
           });
+        });
+      }
+
+      // Processar notificações de pack de sessões
+      if (clientsWithPacks && clientsWithPacks.length > 0) {
+        // Contar sessões realizadas por cliente
+        const sessionCountByClient: Record<number, number> = {};
+        if (realizedAppointments) {
+          realizedAppointments.forEach((apt: any) => {
+            const cId = apt.id_cliente;
+            if (cId) {
+              sessionCountByClient[cId] = (sessionCountByClient[cId] || 0) + 1;
+            }
+          });
+        }
+
+        clientsWithPacks.forEach((client: any) => {
+          const maxSessions = client.max_sessoes || 0;
+          const usedSessions = sessionCountByClient[client.id] || client.numero_sessoes || 0;
+          const remaining = maxSessions - usedSessions;
+
+          // Chave de dismiss para evitar notificações repetidas
+          const dismissKeyExhausted = `pack_notif_dismissed_exhausted_${client.id}_${maxSessions}`;
+          const dismissKeyEnding = `pack_notif_dismissed_ending_${client.id}_${maxSessions}`;
+          const isDismissedExhausted = localStorage.getItem(dismissKeyExhausted) === 'true';
+          const isDismissedEnding = localStorage.getItem(dismissKeyEnding) === 'true';
+
+          if (remaining <= 0 && !isDismissedExhausted) {
+            // Pack esgotado — a próxima sessão será fora do pack
+            allNotifications.push({
+              id: `pack_exhausted_${client.id}_${maxSessions}`,
+              type: 'pack_exhausted',
+              title: 'Pack de sessões esgotado',
+              message: `${client.nome} já realizou ${usedSessions} de ${maxSessions} sessões do pack. A próxima sessão será fora do pack.`,
+              client_id: client.id?.toString(),
+              client_name: client.nome,
+              created_at: new Date().toISOString(),
+              read: false,
+              metadata: {
+                pack_sessions_used: usedSessions,
+                pack_sessions_max: maxSessions
+              }
+            });
+          } else if (remaining > 0 && remaining <= 2 && !isDismissedEnding) {
+            // Pack a terminar — faltam 1 ou 2 sessões
+            allNotifications.push({
+              id: `pack_ending_${client.id}_${maxSessions}`,
+              type: 'pack_ending',
+              title: 'Pack de sessões a terminar',
+              message: `${client.nome} tem apenas ${remaining} sessão(ões) restante(s) no pack (${usedSessions}/${maxSessions}).`,
+              client_id: client.id?.toString(),
+              client_name: client.nome,
+              created_at: new Date().toISOString(),
+              read: false,
+              metadata: {
+                pack_sessions_used: usedSessions,
+                pack_sessions_max: maxSessions
+              }
+            });
+          }
         });
       }
 
@@ -192,10 +266,20 @@ export const useNotifications = () => {
   };
 
   const deleteNotification = async (notificationId: string) => {
+    // Se for notificação de pack, persistir dismiss no localStorage
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification) {
+      if (notification.type === 'pack_exhausted' && notification.client_id && notification.metadata?.pack_sessions_max) {
+        localStorage.setItem(`pack_notif_dismissed_exhausted_${notification.client_id}_${notification.metadata.pack_sessions_max}`, 'true');
+      } else if (notification.type === 'pack_ending' && notification.client_id && notification.metadata?.pack_sessions_max) {
+        localStorage.setItem(`pack_notif_dismissed_ending_${notification.client_id}_${notification.metadata.pack_sessions_max}`, 'true');
+      }
+    }
+
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
     setUnreadCount(prev => {
-      const notification = notifications.find(n => n.id === notificationId);
-      return notification && !notification.read ? Math.max(0, prev - 1) : prev;
+      const notif = notifications.find(n => n.id === notificationId);
+      return notif && !notif.read ? Math.max(0, prev - 1) : prev;
     });
   };
 

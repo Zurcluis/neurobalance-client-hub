@@ -4,7 +4,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, CalendarPlus, CreditCard, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink, Key, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, CreditCard, TrendingUp, Clock, Phone, Mail, Copy, ExternalLink, Key, Check, Loader2, Bell, BellOff, AlertTriangle, AlertCircle, CheckCircle, Calendar } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -58,6 +58,14 @@ type DbAppointment = {
   };
 };
 
+interface ClientNotification {
+  id: string;
+  type: 'pack_exhausted' | 'pack_ending' | 'treatment_ending' | 'treatment_finished';
+  title: string;
+  message: string;
+  severity: 'danger' | 'warning' | 'info';
+}
+
 // Função para carregar dados do localStorage
 const loadFromStorage = <T extends unknown>(key: string, defaultValue: T): T => {
   const storedData = localStorage.getItem(key);
@@ -74,7 +82,7 @@ const ClientDetailPage = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { clients, isLoading: isLoadingClients, updateClient: updateClientInDb, deleteClient: deleteClientFromDb } = useClients();
-  const { payments, isLoading: isLoadingPayments, addPayment: addPaymentToDb } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
+  const { payments, isLoading: isLoadingPayments, addPayment: addPaymentToDb, updatePayment: updatePaymentInDb, deletePayment: deletePaymentInDb } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
   const { appointments, isLoading: isLoadingAppointments } = useAppointments();
 
   // Estados
@@ -137,6 +145,63 @@ const ClientDetailPage = () => {
 
     return countRealized + (sessions?.length || 0);
   }, [appointments, clientId, sessions]);
+
+  const clientNotifications = useMemo(() => {
+    const list: ClientNotification[] = [];
+    if (!client || !payments || !appointments) return list;
+
+    // 1. Notificações relacionadas com packs
+    const monthlyPayments = payments.filter(p =>
+      p.descricao?.toLowerCase().includes('pack') ||
+      p.descricao?.toLowerCase().includes('mensal')
+    );
+
+    if (monthlyPayments.length > 0) {
+      const totalPackSessions = monthlyPayments.length * 8;
+      
+      if (realizedSessionsCount >= totalPackSessions) {
+        list.push({
+          id: `pack_exhausted_${clientId}_${totalPackSessions}`,
+          type: 'pack_exhausted',
+          title: 'Pack de Sessões Esgotado',
+          message: `O limite do pack de ${totalPackSessions} sessões foi atingido (realizou ${realizedSessionsCount} sessões). A próxima sessão será fora do pack.`,
+          severity: 'danger'
+        });
+      } else if (totalPackSessions - realizedSessionsCount <= 2) {
+        list.push({
+          id: `pack_ending_${clientId}_${totalPackSessions}`,
+          type: 'pack_ending',
+          title: 'Pack de Sessões a Terminar',
+          message: `Restam apenas ${totalPackSessions - realizedSessionsCount} sessões para esgotar o pack (realizou ${realizedSessionsCount} de ${totalPackSessions} sessões).`,
+          severity: 'warning'
+        });
+      }
+    }
+
+    // 2. Notificações relacionadas com fim de tratamento
+    if (client.max_sessoes && client.max_sessoes > 0) {
+      const remaining = client.max_sessoes - realizedSessionsCount;
+      if (remaining > 0 && remaining <= 5) {
+        list.push({
+          id: `treatment_ending_${clientId}_${client.max_sessoes}`,
+          type: 'treatment_ending',
+          title: 'Tratamento a Terminar',
+          message: `Faltam apenas ${remaining} sessões para concluir o plano de tratamento indicado (${realizedSessionsCount}/${client.max_sessoes} sessões realizadas).`,
+          severity: 'warning'
+        });
+      } else if (remaining <= 0) {
+        list.push({
+          id: `treatment_finished_${clientId}_${client.max_sessoes}`,
+          type: 'treatment_finished',
+          title: 'Tratamento Concluído',
+          message: `O plano de tratamento indicado de ${client.max_sessoes} sessões foi concluído (${realizedSessionsCount} sessões realizadas).`,
+          severity: 'info'
+        });
+      }
+    }
+
+    return list;
+  }, [client, payments, appointments, realizedSessionsCount, clientId]);
 
   const paymentBreakdown = useMemo(() => {
     const counts: Record<string, { count: number; total: number }> = {};
@@ -547,29 +612,10 @@ const ClientDetailPage = () => {
       if (!originalPayment) return;
 
       // Calcular diferença no valor para atualizar o total pago do cliente
-      // Calcular diferença no valor e nas sessões para atualizar o cliente
       const valueDifference = data.valor - originalPayment.valor;
 
-      // Atualizar o pagamento no banco de dados
-      const { error } = await supabase
-        .from('pagamentos')
-        .update({
-          data: data.data,
-          valor: data.valor,
-          descricao: data.descricao,
-          tipo: data.tipo,
-          nif: data.nif,
-          tipo_servico: data.tipo_servico,
-          numero_fatura: data.numero_fatura,
-          valor_base: data.valor_base,
-          valor_iva: data.valor_iva,
-          retencao: data.retencao,
-          estado: data.estado,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', paymentId);
-
-      if (error) throw error;
+      // Atualizar o pagamento usando o hook
+      await updatePaymentInDb(paymentId, data);
 
       // Atualizar o cliente
       if (valueDifference !== 0) {
@@ -577,8 +623,6 @@ const ClientDetailPage = () => {
           total_pago: (client?.total_pago || 0) + valueDifference
         });
       }
-
-      toast.success('Pagamento atualizado com sucesso');
     } catch (error) {
       console.error("Erro ao editar pagamento:", error);
       toast.error("Erro ao editar pagamento");
@@ -590,18 +634,12 @@ const ClientDetailPage = () => {
       const paymentToDelete = payments.find(p => p.id === paymentId);
       if (!paymentToDelete) return;
 
-      // Usando Supabase diretamente
-      const { error } = await supabase
-        .from('pagamentos')
-        .delete()
-        .eq('id', paymentId);
-
-      if (error) throw error;
+      // Eliminar o pagamento usando o hook
+      await deletePaymentInDb(paymentId);
 
       updateClient({
         total_pago: Math.max(0, (client?.total_pago || 0) - paymentToDelete.valor)
       });
-      toast.success('Pagamento eliminado com sucesso');
     } catch (error) {
       console.error("Erro ao eliminar pagamento:", error);
       toast.error("Erro ao eliminar pagamento");
@@ -811,6 +849,69 @@ const ClientDetailPage = () => {
           onSubmitMood={handleAddMood}
           moods={moods}
         />;
+      case 'notifications':
+        return (
+          <div className="space-y-4">
+            {clientNotifications.length === 0 ? (
+              <Card className="glassmorphism p-6 text-center">
+                <div className="flex flex-col items-center justify-center py-6">
+                  <div className="p-3 rounded-full bg-green-50 text-green-500 mb-3 dark:bg-green-950/20">
+                    <BellOff className="h-8 w-8" />
+                  </div>
+                  <h3 className="font-semibold text-gray-700 text-lg dark:text-gray-200">Sem Notificações</h3>
+                  <p className="text-gray-500 text-sm mt-1 max-w-sm">O cliente está com o plano de tratamento e packs regularizados.</p>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {clientNotifications.map(notif => (
+                  <Card key={notif.id} className={`p-4 border-l-4 shadow-sm hover:shadow-md transition-shadow ${
+                    notif.severity === 'danger' ? 'bg-red-50/50 border-red-500 text-red-950 dark:bg-red-950/10 dark:text-red-200' :
+                    notif.severity === 'warning' ? 'bg-amber-50/50 border-amber-500 text-amber-950 dark:bg-amber-950/10 dark:text-amber-200' :
+                    'bg-blue-50/50 border-blue-500 text-blue-950 dark:bg-blue-950/10 dark:text-blue-200'
+                  }`}>
+                    <div className="flex gap-3">
+                      <div className="mt-0.5 flex-shrink-0">
+                        {notif.severity === 'danger' && <AlertTriangle className="h-5 w-5 text-red-500" />}
+                        {notif.severity === 'warning' && <AlertCircle className="h-5 w-5 text-amber-500" />}
+                        {notif.severity === 'info' && <CheckCircle className="h-5 w-5 text-blue-500" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-base text-gray-900 dark:text-white">{notif.title}</h4>
+                        <p className="text-sm mt-1 text-gray-700 dark:text-gray-300">{notif.message}</p>
+                        
+                        <div className="mt-3 flex gap-2">
+                          {notif.type.startsWith('pack') && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className={notif.severity === 'danger' ? 'border-red-200 hover:bg-red-50 dark:border-red-800' : 'border-amber-200 hover:bg-amber-50 dark:border-amber-800'}
+                              onClick={() => setActiveTab('payments')}
+                            >
+                              <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                              Ir para Pagamentos
+                            </Button>
+                          )}
+                          {notif.type.startsWith('treatment') && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="border-amber-200 hover:bg-amber-50 dark:border-amber-800"
+                              onClick={() => setActiveTab('sessions')}
+                            >
+                              <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                              Ir para Sessões
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        );
       default:
         return <ClientProfile client={client!} onUpdateClient={updateClient} onDeleteClient={handleDeleteClient} />;
     }
@@ -823,7 +924,14 @@ const ClientDetailPage = () => {
     { id: 'payments', label: 'Pagamentos', content: null },
     { id: 'files', label: 'Ficheiros', content: null },
     { id: 'reports', label: 'Relatórios', content: null },
-    { id: 'mood', label: 'Estado Emocional', content: null }
+    { id: 'mood', label: 'Estado Emocional', content: null },
+    {
+      id: 'notifications',
+      label: clientNotifications.length > 0 
+        ? `Notificações (${clientNotifications.length})` 
+        : 'Notificações',
+      content: null
+    }
   ];
 
   // Helper function para copiar texto
@@ -881,45 +989,63 @@ const ClientDetailPage = () => {
               </Button>
             </Link>
 
-            {/* Quick Actions - Desktop */}
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {/* Sininho de Notificações - Sempre Visível */}
               <Button
-                variant="outline"
-                size="sm"
-                className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
-                onClick={() => setActiveTab('payments')}
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 hover:text-[#3f9094] hover:bg-[#3f9094]/10"
+                onClick={() => setActiveTab('notifications')}
+                title="Notificações"
               >
-                <CreditCard className="h-4 w-4 mr-1.5" />
-                Pagamento
+                <Bell className="h-5 w-5" />
+                {clientNotifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white animate-pulse">
+                    {clientNotifications.length}
+                  </span>
+                )}
               </Button>
-              {client.telefone && (
+
+              {/* Quick Actions - Desktop */}
+              <div className="hidden sm:flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-purple-500/10 border-purple-500 text-purple-600 hover:bg-purple-500 hover:text-white"
-                  onClick={() => client.telefone && window.open(`https://wa.me/351${client.telefone.replace(/\D/g, '')}`, '_blank')}
+                  className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
+                  onClick={() => setActiveTab('payments')}
                 >
-                  <Phone className="h-4 w-4 mr-1.5" />
-                  WhatsApp
+                  <CreditCard className="h-4 w-4 mr-1.5" />
+                  Pagamento
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
-                onClick={async () => {
-                  const promise = syncAllSessions();
-                  toast.promise(promise, {
-                    loading: 'Sincronizando sessões...',
-                    success: 'Sessões sincronizadas com sucesso!',
-                    error: 'Erro ao sincronizar sessões.'
-                  });
-                  await promise;
-                }}
-              >
-                <TrendingUp className="h-4 w-4 mr-1.5" />
-                Sincronizar
-              </Button>
+                {client.telefone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-purple-500/10 border-purple-500 text-purple-600 hover:bg-purple-500 hover:text-white"
+                    onClick={() => client.telefone && window.open(`https://wa.me/351${client.telefone.replace(/\D/g, '')}`, '_blank')}
+                  >
+                    <Phone className="h-4 w-4 mr-1.5" />
+                    WhatsApp
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                  onClick={async () => {
+                    const promise = syncAllSessions();
+                    toast.promise(promise, {
+                      loading: 'Sincronizando sessões...',
+                      success: 'Sessões sincronizadas com sucesso!',
+                      error: 'Erro ao sincronizar sessões.'
+                    });
+                    await promise;
+                  }}
+                >
+                  <TrendingUp className="h-4 w-4 mr-1.5" />
+                  Sincronizar
+                </Button>
+              </div>
             </div>
           </div>
 

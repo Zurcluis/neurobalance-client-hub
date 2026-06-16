@@ -24,7 +24,7 @@ import { addDays, format, isSameDay, parseISO, startOfMonth, endOfMonth, startOf
 import { pt } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload } from 'lucide-react';
+import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy } from 'lucide-react';
 import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
 
@@ -59,7 +59,7 @@ interface AppointmentFormValues {
 }
 
 const AppointmentCalendar = () => {
-  const { appointments, isLoading: isLoadingAppointments, addAppointment, updateAppointment, deleteAppointment } = useAppointments();
+  const { appointments, isLoading: isLoadingAppointments, addAppointment, addAppointmentsBatch, updateAppointment, deleteAppointment } = useAppointments();
   const { clients, isLoading: isLoadingClients } = useClients();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -73,6 +73,9 @@ const AppointmentCalendar = () => {
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [clientAvailabilities, setClientAvailabilities] = useState<Record<number, any[]>>({});
   const [showAvailabilities, setShowAvailabilities] = useState(true);
+  
+  const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly'>('none');
+  const [recurrenceCount, setRecurrenceCount] = useState<number>(8);
 
   const [smsPreviewOpen, setSmsPreviewOpen] = useState(false);
   const [smsMessage, setSmsMessage] = useState('');
@@ -216,13 +219,16 @@ const AppointmentCalendar = () => {
       notas: '',
       estado: 'pendente',
       terapeuta: '',
-      cor: '#3B82F6'
+      cor: '#3f9094'
     },
   });
 
   const openNewAppointmentDialog = (date?: Date) => {
     setSelectedAppointment(null);
     const today = date || new Date();
+
+    setRecurrenceType('none');
+    setRecurrenceCount(8);
 
     form.reset({
       titulo: '',
@@ -233,7 +239,7 @@ const AppointmentCalendar = () => {
       notas: '',
       estado: 'pendente',
       terapeuta: '',
-      cor: '#3B82F6'
+      cor: '#3f9094'
     });
 
     setIsDialogOpen(true);
@@ -241,6 +247,7 @@ const AppointmentCalendar = () => {
 
   const handleEventClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
+    setRecurrenceType('none');
     form.reset({
       titulo: appointment.titulo,
       data: format(parseISO(appointment.data), 'yyyy-MM-dd'),
@@ -250,7 +257,7 @@ const AppointmentCalendar = () => {
       notas: appointment.notas || '',
       estado: appointment.estado,
       terapeuta: appointment.terapeuta || '',
-      cor: appointment.cor || '#3B82F6'
+      cor: appointment.cor || '#3f9094'
     });
     setIsDialogOpen(true);
   };
@@ -274,13 +281,11 @@ const AppointmentCalendar = () => {
 
       const baseData = {
         titulo: data.titulo || 'Novo Agendamento',
-        data: `${data.data}T${data.hora}:00`,
-        hora: data.hora,
         tipo: data.tipo,
         notas: data.notas || '',
         estado: data.estado,
         terapeuta: data.terapeuta || '',
-        cor: data.cor || '#3B82F6'
+        cor: data.cor || '#3f9094'
       };
 
       console.log('Dados a serem enviados:', { ...baseData, id_cliente: clientId });
@@ -289,30 +294,55 @@ const AppointmentCalendar = () => {
         // updateAppointment expects id_cliente?: number (undefined when no client)
         await updateAppointment(selectedAppointment.id, {
           ...baseData,
+          data: `${data.data}T${data.hora}:00`,
+          hora: data.hora,
           id_cliente: clientId === null ? undefined : clientId
         });
+        toast.success('✅ Agendamento atualizado com sucesso!');
       } else {
-        // addAppointment expects id_cliente: number | null
-        await addAppointment({
-          ...baseData,
-          id_cliente: clientId
-        });
+        if (recurrenceType !== 'none') {
+          // Criar múltiplos agendamentos (recorrência)
+          const appointmentsList = [];
+          const count = recurrenceCount || 1;
+
+          for (let i = 0; i < count; i++) {
+            let targetDate = parseISO(`${data.data}T${data.hora}:00`);
+            if (recurrenceType === 'daily') {
+              targetDate = addDays(targetDate, i);
+            } else if (recurrenceType === 'weekly') {
+              targetDate = addDays(targetDate, i * 7);
+            }
+
+            const dateStr = format(targetDate, 'yyyy-MM-dd');
+            appointmentsList.push({
+              ...baseData,
+              data: `${dateStr}T${data.hora}:00`,
+              hora: data.hora,
+              id_cliente: clientId
+            });
+          }
+
+          await addAppointmentsBatch(appointmentsList);
+        } else {
+          // addAppointment expects id_cliente: number | null
+          await addAppointment({
+            ...baseData,
+            data: `${data.data}T${data.hora}:00`,
+            hora: data.hora,
+            id_cliente: clientId
+          });
+          toast.success('🎉 Novo agendamento criado!', {
+            description: `${baseData.titulo} - ${format(parseISO(`${data.data}T${data.hora}:00`), 'dd/MM/yyyy', { locale: pt })} às ${baseData.hora}`,
+            duration: 4000
+          });
+        }
       }
 
       setIsDialogOpen(false);
       setSelectedAppointment(null);
       setClientSearchQuery('');
+      setRecurrenceType('none');
       form.reset();
-
-      // Mensagem diferenciada para criar vs atualizar
-      if (selectedAppointment) {
-        toast.success('✅ Agendamento atualizado com sucesso!');
-      } else {
-        toast.success('🎉 Novo agendamento criado!', {
-          description: `${baseData.titulo} - ${format(parseISO(baseData.data), 'dd/MM/yyyy', { locale: pt })} às ${baseData.hora}`,
-          duration: 4000
-        });
-      }
     } catch (error: any) {
       console.error('Erro ao salvar agendamento:', error);
       const errorMessage = error?.message || 'Erro desconhecido ao salvar agendamento';
@@ -503,9 +533,19 @@ const AppointmentCalendar = () => {
     }
   };
 
+  const isLightColor = (hex: string): boolean => {
+    if (!hex || hex.length < 6) return false;
+    const c = hex.startsWith('#') ? hex.slice(1) : hex;
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return yiq >= 128;
+  };
+
   const getAppointmentTypeColor = (type: AppointmentType | string, customColor?: string | null) => {
     if (customColor) {
-      return `text-white border-none`;
+      return isLightColor(customColor) ? 'text-gray-900 border-none font-medium' : 'text-white border-none';
     }
 
     const t = (type || '').toLowerCase();
@@ -998,7 +1038,11 @@ const AppointmentCalendar = () => {
                         {format(appointment.day, "eeee, dd/MM/yyyy", { locale: pt })}
                       </h3>
                     )}
-                    <li onClick={() => handleEventClick(appointment)} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType)} ${getAppointmentStatusColor(appointment.estado)}`}>
+                    <li 
+                      onClick={() => handleEventClick(appointment)} 
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${getAppointmentStatusColor(appointment.estado)}`}
+                      style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
+                    >
                       <div className="font-bold text-base">{format(parseISO(appointment.data), 'HH:mm')}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1482,7 +1526,22 @@ const AppointmentCalendar = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          let autoColor = '#3f9094';
+                          const t = val.toLowerCase();
+                          if (t.includes('avaliação')) autoColor = '#D8B4FE';
+                          else if (t.includes('neurofeedback')) autoColor = '#93C5FD';
+                          else if (t.includes('discussão')) autoColor = '#FACC15';
+                          else if (t.includes('ioga') || t.includes('yoga')) autoColor = '#86EFAC';
+                          else if (t.includes('ofes')) autoColor = '#EF4444';
+                          else if (t.includes('sessão')) autoColor = '#3f9094';
+                          else if (t.includes('consulta')) autoColor = '#EAB308';
+                          form.setValue('cor', autoColor);
+                        }}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Tipo de agendamento" />
@@ -1553,16 +1612,22 @@ const AppointmentCalendar = () => {
                         {/* Paleta de cores predefinidas */}
                         <div className="flex flex-wrap gap-2">
                           {[
-                            '#D50000', '#E67C73', '#F4511E', '#F6BF26', '#33B679',
-                            '#0B8043', '#039BE5', '#3F51B5', '#7986CB', '#8E24AA', '#616161'
-                          ].map((color) => (
+                            { hex: '#D8B4FE', name: 'Avaliação' },
+                            { hex: '#93C5FD', name: 'Neurofeedback' },
+                            { hex: '#FACC15', name: 'Discussão de Resultados' },
+                            { hex: '#86EFAC', name: 'Yoga / Ioga' },
+                            { hex: '#3f9094', name: 'Sessão' },
+                            { hex: '#EAB308', name: 'Consulta' },
+                            { hex: '#EF4444', name: 'OFES' }
+                          ].map((colorObj) => (
                             <button
-                              key={color}
+                              key={colorObj.hex}
                               type="button"
-                              className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${field.value === color ? 'border-gray-800' : 'border-gray-300'
+                              title={colorObj.name}
+                              className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${field.value === colorObj.hex ? 'border-gray-800 ring-2 ring-offset-2 ring-gray-400' : 'border-gray-300'
                                 }`}
-                              style={{ backgroundColor: color }}
-                              onClick={() => field.onChange(color)}
+                              style={{ backgroundColor: colorObj.hex }}
+                              onClick={() => field.onChange(colorObj.hex)}
                             />
                           ))}
                         </div>
@@ -1579,7 +1644,7 @@ const AppointmentCalendar = () => {
                             type="text"
                             value={field.value}
                             onChange={(e) => field.onChange(e.target.value)}
-                            placeholder="#3B82F6"
+                            placeholder="#3f9094"
                             className="flex-1"
                           />
                         </div>
@@ -1589,6 +1654,44 @@ const AppointmentCalendar = () => {
                   </FormItem>
                 )}
               />
+
+              {!selectedAppointment && (
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-medium text-gray-700">Repetir Agendamento</Label>
+                    <Select
+                      value={recurrenceType}
+                      onValueChange={(val: any) => setRecurrenceType(val)}
+                    >
+                      <SelectTrigger className="w-[180px] h-9">
+                        <SelectValue placeholder="Não repetir" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não repetir</SelectItem>
+                        <SelectItem value="daily">Diariamente</SelectItem>
+                        <SelectItem value="weekly">Semanalmente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {recurrenceType !== 'none' && (
+                    <div className="flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <Label className="text-sm text-gray-600">Total de agendamentos a marcar:</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={2}
+                          max={50}
+                          value={recurrenceCount}
+                          onChange={(e) => setRecurrenceCount(Math.max(2, Number(e.target.value)))}
+                          className="w-20 h-9 text-center"
+                        />
+                        <span className="text-xs text-gray-500">sessões</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <FormField
                 control={form.control}
@@ -1613,6 +1716,20 @@ const AppointmentCalendar = () => {
                       onClick={handleDeleteAppointment}
                     >
                       Eliminar
+                    </Button>
+                  )}
+                  {selectedAppointment && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedAppointment(null);
+                        toast.info("Cópia do agendamento carregada. Selecione a nova data/hora e clique em 'Criar'.");
+                      }}
+                      className="gap-2"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Duplicar
                     </Button>
                   )}
                   {selectedAppointment && (selectedAppointment as any).clientes?.telefone && (
