@@ -19,8 +19,12 @@ import { SmsAutomationSettings } from '@/components/marketing/SmsAutomationSetti
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useAppointments from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
-import { parseISO, isToday, isFuture, isPast, startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
+import { isToday, isFuture, isPast, startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalISO } from '@/utils/dateUtils';
+
+const parseISO = parseLocalISO;
+
 
 const CalendarPage = () => {
   const { appointments, isLoading } = useAppointments();

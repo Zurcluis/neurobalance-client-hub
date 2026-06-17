@@ -14,9 +14,13 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAppointments from '@/hooks/useAppointments';
-import { parseISO, isToday, isTomorrow, addDays, isBefore, isAfter } from 'date-fns';
+import { isToday, isTomorrow, addDays, isBefore, isAfter } from 'date-fns';
+import { parseLocalISO } from '@/utils/dateUtils';
 import LeadsReadyForConversion from '@/components/clients/LeadsReadyForConversion';
 import { toast } from 'sonner';
+
+const parseISO = parseLocalISO;
+
 
 const Index = () => {
   const navigate = useNavigate();

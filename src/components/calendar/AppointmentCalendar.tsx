@@ -20,13 +20,17 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { addDays, format, isSameDay, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameMonth, compareAsc } from 'date-fns';
+import { addDays, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameMonth, compareAsc } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy } from 'lucide-react';
 import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
+import { parseLocalISO } from '@/utils/dateUtils';
+
+const parseISO = parseLocalISO;
+
 
 import { getAllHolidaysUntil2040, isHoliday } from '@/data/portugueseHolidays';
 import { Checkbox } from '../ui/checkbox';
@@ -332,7 +336,7 @@ const AppointmentCalendar = () => {
             id_cliente: clientId
           });
           toast.success('🎉 Novo agendamento criado!', {
-            description: `${baseData.titulo} - ${format(parseISO(`${data.data}T${data.hora}:00`), 'dd/MM/yyyy', { locale: pt })} às ${baseData.hora}`,
+            description: `${baseData.titulo} - ${format(parseISO(`${data.data}T${data.hora}:00`), 'dd/MM/yyyy', { locale: pt })} às ${data.hora}`,
             duration: 4000
           });
         }
@@ -1353,359 +1357,364 @@ const AppointmentCalendar = () => {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="titulo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Título</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Título do agendamento" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Scrollable Container for Fields */}
+              <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-4 scrollbar-thin">
                 <FormField
                   control={form.control}
-                  name="data"
+                  name="titulo"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Data</FormLabel>
+                      <FormLabel>Título</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input {...field} placeholder="Título do agendamento" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="hora"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hora</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="id_cliente"
-                  render={({ field }) => {
-                    const filteredClients = clients.filter(client => {
-                      if (!clientSearchQuery || clientSearchQuery.trim() === '') return true;
-                      const searchLower = clientSearchQuery.toLowerCase().trim();
-                      return (
-                        (client.nome && client.nome.toLowerCase().includes(searchLower)) ||
-                        (client.id_manual && client.id_manual.toLowerCase().includes(searchLower)) ||
-                        (client.id && client.id.toString().includes(searchLower))
-                      );
-                    });
-
-                    const selectedClient = clients.find(c => c.id === field.value);
-                    const displayClients = clientSearchQuery ? filteredClients : clients;
-
-                    console.log('Total de clientes carregados:', clients.length);
-                    console.log('Clientes a exibir:', displayClients.length);
-
-                    return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="data"
+                    render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Cliente (Opcional)</FormLabel>
-                        <div className="space-y-2">
-                          <div className="relative">
-                            <Input
-                              type="text"
-                              placeholder={isLoadingClients ? "Carregando clientes..." : "🔍 Pesquisar por nome ou ID..."}
-                              value={clientSearchQuery}
-                              onChange={(e) => {
-                                setClientSearchQuery(e.target.value);
-                              }}
-                              disabled={isLoadingClients}
-                              className="w-full"
-                            />
-                            {isLoadingClients && (
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                              </div>
-                            )}
-                          </div>
-
-                          <Select
-                            onValueChange={(value) => {
-                              console.log('Cliente selecionado no Select:', value);
-                              field.onChange(value === "null" ? null : parseInt(value));
-                              setClientSearchQuery('');
-                            }}
-                            value={field.value?.toString() || "null"}
-                            disabled={isLoadingClients}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder={
-                                  isLoadingClients
-                                    ? "Carregando clientes..."
-                                    : selectedClient
-                                      ? `${selectedClient.id_manual ? `[${selectedClient.id_manual}]` : `[ID: ${selectedClient.id}]`} ${selectedClient.nome}`
-                                      : clientSearchQuery
-                                        ? `${displayClients.length} cliente(s) filtrado(s)`
-                                        : `Selecionar cliente (${clients.length} disponíveis)`
-                                } />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="max-h-[300px] overflow-y-auto">
-                              <SelectItem value="null">
-                                <span className="font-normal text-gray-600">Sem cliente associado</span>
-                              </SelectItem>
-                              {displayClients.length > 0 && displayClients.map(client => (
-                                <SelectItem key={client.id} value={client.id.toString()}>
-                                  {client.id_manual ? `[${client.id_manual}] ` : `[ID: ${client.id}] `}
-                                  {client.nome || 'Cliente sem nome'}
-                                </SelectItem>
-                              ))}
-                              {displayClients.length === 0 && clientSearchQuery && (
-                                <div className="px-2 py-3 text-center text-sm text-gray-500">
-                                  Nenhum cliente encontrado para "{clientSearchQuery}"
-                                </div>
-                              )}
-                              {clients.length === 0 && !clientSearchQuery && !isLoadingClients && (
-                                <div className="px-2 py-3 text-center text-sm text-gray-500">
-                                  Nenhum cliente cadastrado
-                                </div>
-                              )}
-                            </SelectContent>
-                          </Select>
-
-                          {selectedClient && (
-                            <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
-                              <span className="text-sm font-medium text-blue-900">
-                                ✓ {selectedClient.id_manual ? `[${selectedClient.id_manual}] ` : `[ID: ${selectedClient.id}] `}
-                                {selectedClient.nome}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  field.onChange(null);
-                                  setClientSearchQuery('');
-                                }}
-                                className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                              >
-                                ✕ Remover
-                              </button>
-                            </div>
-                          )}
-
-                          {!isLoadingClients && (
-                            <p className="text-xs text-gray-500">
-                              {clientSearchQuery ? (
-                                <>{filteredClients.length} de {clients.length} cliente(s) {filteredClients.length === 1 ? 'encontrado' : 'encontrados'}</>
-                              ) : (
-                                <>{clients.length} cliente(s) disponível{clients.length === 1 ? '' : 'eis'}</>
-                              )}
-                            </p>
-                          )}
-                        </div>
+                        <FormLabel>Data</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
-                    );
-                  }}
-                />
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="hora"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="id_cliente"
+                    render={({ field }) => {
+                      const filteredClients = clients.filter(client => {
+                        if (!clientSearchQuery || clientSearchQuery.trim() === '') return true;
+                        const searchLower = clientSearchQuery.toLowerCase().trim();
+                        return (
+                          (client.nome && client.nome.toLowerCase().includes(searchLower)) ||
+                          (client.id_manual && client.id_manual.toLowerCase().includes(searchLower)) ||
+                          (client.id && client.id.toString().includes(searchLower))
+                        );
+                      });
+
+                      const selectedClient = clients.find(c => c.id === field.value);
+                      const displayClients = clientSearchQuery ? filteredClients : clients;
+
+                      console.log('Total de clientes carregados:', clients.length);
+                      console.log('Clientes a exibir:', displayClients.length);
+
+                      return (
+                        <FormItem>
+                          <FormLabel>Cliente (Opcional)</FormLabel>
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                placeholder={isLoadingClients ? "Carregando clientes..." : "🔍 Pesquisar por nome ou ID..."}
+                                value={clientSearchQuery}
+                                onChange={(e) => {
+                                  setClientSearchQuery(e.target.value);
+                                }}
+                                disabled={isLoadingClients}
+                                className="w-full"
+                              />
+                              {isLoadingClients && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                                </div>
+                              )}
+                            </div>
+
+                            <Select
+                              onValueChange={(value) => {
+                                console.log('Cliente selecionado no Select:', value);
+                                field.onChange(value === "null" ? null : parseInt(value));
+                                setClientSearchQuery('');
+                              }}
+                              value={field.value?.toString() || "null"}
+                              disabled={isLoadingClients}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={
+                                    isLoadingClients
+                                      ? "Carregando clientes..."
+                                      : selectedClient
+                                        ? `${selectedClient.id_manual ? `[${selectedClient.id_manual}]` : `[ID: ${selectedClient.id}]`} ${selectedClient.nome}`
+                                        : clientSearchQuery
+                                          ? `${displayClients.length} cliente(s) filtrado(s)`
+                                          : `Selecionar cliente (${clients.length} disponíveis)`
+                                  } />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="max-h-[300px] overflow-y-auto">
+                                <SelectItem value="null">
+                                  <span className="font-normal text-gray-600">Sem cliente associado</span>
+                                </SelectItem>
+                                {displayClients.length > 0 && displayClients.map(client => (
+                                  <SelectItem key={client.id} value={client.id.toString()}>
+                                    {client.id_manual ? `[${client.id_manual}] ` : `[ID: ${client.id}] `}
+                                    {client.nome || 'Cliente sem nome'}
+                                  </SelectItem>
+                                ))}
+                                {displayClients.length === 0 && clientSearchQuery && (
+                                  <div className="px-2 py-3 text-center text-sm text-gray-500">
+                                    Nenhum cliente encontrado para "{clientSearchQuery}"
+                                  </div>
+                                )}
+                                {clients.length === 0 && !clientSearchQuery && !isLoadingClients && (
+                                  <div className="px-2 py-3 text-center text-sm text-gray-500">
+                                    Nenhum cliente cadastrado
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
+
+                            {selectedClient && (
+                              <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                                <span className="text-sm font-medium text-blue-900">
+                                  ✓ {selectedClient.id_manual ? `[${selectedClient.id_manual}] ` : `[ID: ${selectedClient.id}] `}
+                                  {selectedClient.nome}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(null);
+                                    setClientSearchQuery('');
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                >
+                                  ✕ Remover
+                                </button>
+                              </div>
+                            )}
+
+                            {!isLoadingClients && (
+                              <p className="text-xs text-gray-500">
+                                {clientSearchQuery ? (
+                                  <>{filteredClients.length} de {clients.length} cliente(s) {filteredClients.length === 1 ? 'encontrado' : 'encontrados'}</>
+                                ) : (
+                                  <>{clients.length} cliente(s) disponível{clients.length === 1 ? '' : 'eis'}</>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="tipo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo</FormLabel>
+                        <Select
+                          onValueChange={(val) => {
+                            field.onChange(val);
+                            let autoColor = '#3f9094';
+                            const t = val.toLowerCase();
+                            if (t.includes('avaliação')) autoColor = '#D8B4FE';
+                            else if (t.includes('neurofeedback')) autoColor = '#93C5FD';
+                            else if (t.includes('discussão')) autoColor = '#FACC15';
+                            else if (t.includes('ioga') || t.includes('yoga')) autoColor = '#86EFAC';
+                            else if (t.includes('ofes')) autoColor = '#EF4444';
+                            else if (t.includes('sessão')) autoColor = '#3f9094';
+                            else if (t.includes('consulta')) autoColor = '#EAB308';
+                            form.setValue('cor', autoColor);
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Tipo de agendamento" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="sessão">Sessão</SelectItem>
+                            <SelectItem value="avaliação">Avaliação</SelectItem>
+                            <SelectItem value="consulta">Consulta</SelectItem>
+                            <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
+                            <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
+                            <SelectItem value="ioga">Yoga / Ioga</SelectItem>
+                            <SelectItem value="ofes">OFES</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="estado"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estado</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Estado do agendamento" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pendente">Pendente</SelectItem>
+                            <SelectItem value="confirmado">Confirmado</SelectItem>
+                            <SelectItem value="cancelado">Cancelado</SelectItem>
+                            <SelectItem value="realizado">Realizado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="terapeuta"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Terapeuta</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Nome do terapeuta" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
-                  name="tipo"
+                  name="cor"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo</FormLabel>
+                      <FormLabel>Cor</FormLabel>
+                      <FormControl>
+                        <div className="space-y-3">
+                          {/* Paleta de cores predefinidas */}
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { hex: '#D8B4FE', name: 'Avaliação' },
+                              { hex: '#93C5FD', name: 'Neurofeedback' },
+                              { hex: '#FACC15', name: 'Discussão de Resultados' },
+                              { hex: '#86EFAC', name: 'Yoga / Ioga' },
+                              { hex: '#3f9094', name: 'Sessão' },
+                              { hex: '#EAB308', name: 'Consulta' },
+                              { hex: '#EF4444', name: 'OFES' }
+                            ].map((colorObj) => (
+                              <button
+                                key={colorObj.hex}
+                                type="button"
+                                title={colorObj.name}
+                                className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${field.value === colorObj.hex ? 'border-gray-800 ring-2 ring-offset-2 ring-gray-400' : 'border-gray-300'
+                                  }`}
+                                style={{ backgroundColor: colorObj.hex }}
+                                onClick={() => field.onChange(colorObj.hex)}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Campo de cor personalizada */}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="color"
+                              value={field.value}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              className="w-12 h-8 p-0 border-0"
+                            />
+                            <Input
+                              type="text"
+                              value={field.value}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              placeholder="#3f9094"
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {!selectedAppointment && (
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-medium text-gray-700">Repetir Agendamento</Label>
                       <Select
-                        onValueChange={(val) => {
-                          field.onChange(val);
-                          let autoColor = '#3f9094';
-                          const t = val.toLowerCase();
-                          if (t.includes('avaliação')) autoColor = '#D8B4FE';
-                          else if (t.includes('neurofeedback')) autoColor = '#93C5FD';
-                          else if (t.includes('discussão')) autoColor = '#FACC15';
-                          else if (t.includes('ioga') || t.includes('yoga')) autoColor = '#86EFAC';
-                          else if (t.includes('ofes')) autoColor = '#EF4444';
-                          else if (t.includes('sessão')) autoColor = '#3f9094';
-                          else if (t.includes('consulta')) autoColor = '#EAB308';
-                          form.setValue('cor', autoColor);
-                        }}
-                        value={field.value}
+                        value={recurrenceType}
+                        onValueChange={(val: any) => setRecurrenceType(val)}
                       >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Tipo de agendamento" />
-                          </SelectTrigger>
-                        </FormControl>
+                        <SelectTrigger className="w-[180px] h-9">
+                          <SelectValue placeholder="Não repetir" />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sessão">Sessão</SelectItem>
-                          <SelectItem value="avaliação">Avaliação</SelectItem>
-                          <SelectItem value="consulta">Consulta</SelectItem>
-                          <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
-                          <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
-                          <SelectItem value="ioga">Yoga / Ioga</SelectItem>
-                          <SelectItem value="ofes">OFES</SelectItem>
+                          <SelectItem value="none">Não repetir</SelectItem>
+                          <SelectItem value="daily">Diariamente</SelectItem>
+                          <SelectItem value="weekly">Semanalmente</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {recurrenceType !== 'none' && (
+                      <div className="flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Label className="text-sm text-gray-600">Total de agendamentos a marcar:</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={2}
+                            max={50}
+                            value={recurrenceCount}
+                            onChange={(e) => setRecurrenceCount(Math.max(2, Number(e.target.value)))}
+                            className="w-20 h-9 text-center"
+                          />
+                          <span className="text-xs text-gray-500">sessões</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="notas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notas</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Notas adicionais" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="estado"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Estado do agendamento" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="pendente">Pendente</SelectItem>
-                        <SelectItem value="confirmado">Confirmado</SelectItem>
-                        <SelectItem value="cancelado">Cancelado</SelectItem>
-                        <SelectItem value="realizado">Realizado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="terapeuta"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Terapeuta</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Nome do terapeuta" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="cor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cor</FormLabel>
-                    <FormControl>
-                      <div className="space-y-3">
-                        {/* Paleta de cores predefinidas */}
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { hex: '#D8B4FE', name: 'Avaliação' },
-                            { hex: '#93C5FD', name: 'Neurofeedback' },
-                            { hex: '#FACC15', name: 'Discussão de Resultados' },
-                            { hex: '#86EFAC', name: 'Yoga / Ioga' },
-                            { hex: '#3f9094', name: 'Sessão' },
-                            { hex: '#EAB308', name: 'Consulta' },
-                            { hex: '#EF4444', name: 'OFES' }
-                          ].map((colorObj) => (
-                            <button
-                              key={colorObj.hex}
-                              type="button"
-                              title={colorObj.name}
-                              className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${field.value === colorObj.hex ? 'border-gray-800 ring-2 ring-offset-2 ring-gray-400' : 'border-gray-300'
-                                }`}
-                              style={{ backgroundColor: colorObj.hex }}
-                              onClick={() => field.onChange(colorObj.hex)}
-                            />
-                          ))}
-                        </div>
-
-                        {/* Campo de cor personalizada */}
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="color"
-                            value={field.value}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            className="w-12 h-8 p-0 border-0"
-                          />
-                          <Input
-                            type="text"
-                            value={field.value}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            placeholder="#3f9094"
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {!selectedAppointment && (
-                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="font-medium text-gray-700">Repetir Agendamento</Label>
-                    <Select
-                      value={recurrenceType}
-                      onValueChange={(val: any) => setRecurrenceType(val)}
-                    >
-                      <SelectTrigger className="w-[180px] h-9">
-                        <SelectValue placeholder="Não repetir" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Não repetir</SelectItem>
-                        <SelectItem value="daily">Diariamente</SelectItem>
-                        <SelectItem value="weekly">Semanalmente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {recurrenceType !== 'none' && (
-                    <div className="flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <Label className="text-sm text-gray-600">Total de agendamentos a marcar:</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min={2}
-                          max={50}
-                          value={recurrenceCount}
-                          onChange={(e) => setRecurrenceCount(Math.max(2, Number(e.target.value)))}
-                          className="w-20 h-9 text-center"
-                        />
-                        <span className="text-xs text-gray-500">sessões</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <FormField
-                control={form.control}
-                name="notas"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notas</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="Notas adicionais" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <DialogFooter className="flex justify-between w-full">
                 <div className="flex gap-2">

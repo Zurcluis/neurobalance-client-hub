@@ -1,51 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   User,
   Calendar,
   CreditCard,
-  MessageSquare,
   Bell,
   LogOut,
   Clock,
   CheckCircle,
-  XCircle,
-  AlertCircle,
-  Phone,
-  Mail,
-  MapPin,
   CalendarDays,
   Euro,
   Activity,
   TrendingUp,
-  Settings,
-  Menu,
-  X,
-  Sparkles,
   ArrowRight
 } from 'lucide-react';
-import { useClientAuth, useClientData, useClientMessages, useClientNotifications } from '@/hooks/useClientAuth';
+import { useClientAuth, useClientData, useClientNotifications } from '@/hooks/useClientAuth';
 import { toast } from 'sonner';
-import { format, parseISO, isAfter, isBefore } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalISO } from '@/utils/dateUtils';
+
+const parseISO = parseLocalISO;
+
 import ClientAppointments from '@/components/client-dashboard/ClientAppointments';
 import ClientPayments from '@/components/client-dashboard/ClientPayments';
-import ClientChat from '@/components/client-dashboard/ClientChat';
+// import ClientChat from '@/components/client-dashboard/ClientChat';
 import ClientProfile from '@/components/client-dashboard/ClientProfile';
 import ClientNotifications from '@/components/client-dashboard/ClientNotifications';
-import { ClientAvailabilityManager, ClientAvailabilityCalendar } from '@/components/availability';
+import { ClientAvailabilityCalendar } from '@/components/availability';
 import { NotificationPanel } from '@/components/availability/NotificationPanel';
 import { cn } from '@/lib/utils';
 
 const ClientDashboardPage = () => {
   const { session, logout, isAuthenticated, loading: authLoading } = useClientAuth();
   const { clientData, loading: clientLoading } = useClientData();
-  const { messages, unreadCount: unreadMessages = 0 } = useClientMessages();
+  // const { messages, unreadCount: unreadMessages = 0 } = useClientMessages();
   const { notifications, unreadCount: unreadNotifications = 0 } = useClientNotifications();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -254,14 +246,14 @@ const ClientDashboardPage = () => {
           </div>
 
           <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-            {[
+            {([
               { id: 'overview', icon: Activity, label: 'Visão Geral', bgColor: 'bg-violet-100', iconColor: 'text-violet-600' },
               { id: 'profile', icon: User, label: 'Perfil', bgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
               { id: 'appointments', icon: Calendar, label: 'Agendamentos', bgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
               { id: 'availability', icon: Clock, label: 'Minha Disponibilidade', bgColor: 'bg-amber-100', iconColor: 'text-amber-600' },
               { id: 'payments', icon: CreditCard, label: 'Pagamentos', bgColor: 'bg-rose-100', iconColor: 'text-rose-600' },
               // { id: 'chat', icon: MessageSquare, label: 'Chat', bgColor: 'bg-indigo-100', iconColor: 'text-indigo-600', badge: unreadMessages },
-            ].map((item) => (
+            ] as { id: string; icon: any; label: string; bgColor: string; iconColor: string; badge?: number }[]).map((item) => (
               <button
                 key={item.id}
                 onClick={() => {
@@ -586,13 +578,13 @@ const ClientDashboardPage = () => {
 
         {/* Navigation Items */}
         <div className="relative flex justify-around items-center h-16 px-2">
-          {[
+          {([
             { id: 'overview', icon: Activity, label: 'Início' },
             { id: 'appointments', icon: Calendar, label: 'Agenda' },
             { id: 'availability', icon: Clock, label: 'Disp.' },
             { id: 'payments', icon: CreditCard, label: 'Pagam.' },
             // { id: 'chat', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
-          ].map((item) => (
+          ] as { id: string; icon: any; label: string; badge?: number }[]).map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}

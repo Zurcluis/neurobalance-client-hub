@@ -32,8 +32,12 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { ADMIN_PERMISSIONS } from '@/types/admin';
 import useAppointments from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
-import { format, parseISO, startOfDay, endOfDay, isSameDay, addDays, startOfWeek, endOfWeek } from 'date-fns';
+import { format, startOfDay, endOfDay, isSameDay, addDays, startOfWeek, endOfWeek } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { parseLocalISO } from '@/utils/dateUtils';
+
+const parseISO = parseLocalISO;
+
 
 const AdminCalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());

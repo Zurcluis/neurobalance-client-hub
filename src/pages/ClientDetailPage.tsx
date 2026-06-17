@@ -21,7 +21,9 @@ import ClientPayments from '@/components/client-details/ClientPayments';
 import ClientFiles from '@/components/client-details/ClientFiles';
 import ClientReports from '@/components/client-details/ClientReports';
 import ClientMoodTracker from '@/components/client-details/ClientMoodTracker';
-import { parseISO, format, compareDesc, isAfter } from 'date-fns';
+import { format, compareDesc, isAfter } from 'date-fns';
+import { parseLocalISO } from '@/utils/dateUtils';
+const parseISO = parseLocalISO;
 import useClients from '@/hooks/useClients';
 import usePayments from '@/hooks/usePayments.tsx';
 import useAppointments from '@/hooks/useAppointments';
@@ -466,7 +468,28 @@ const ClientDetailPage = () => {
           ...updateData
         } = data;
 
-        await updateClientInDb(parseInt(clientId, 10), updateData);
+        // Obter chaves de colunas da base de dados através do registro local do cliente
+        const rawClient = clients.find(c => c.id?.toString() === clientId);
+        const databaseKeys = rawClient ? Object.keys(rawClient) : [];
+
+        // Filtro de colunas permitidas e existentes na base de dados
+        const cleanUpdateData: any = {};
+        const allowedColumns = [
+          'nome', 'email', 'telefone', 'data_nascimento', 'genero', 'morada', 
+          'notas', 'estado', 'tipo_contato', 'como_conheceu', 'numero_sessoes', 
+          'total_pago', 'max_sessoes', 'responsavel', 'motivo', 'id_manual', 
+          'profissao', 'data_entrada_clinica', 'nif'
+        ];
+
+        Object.keys(updateData).forEach(key => {
+          const isAllowed = allowedColumns.includes(key);
+          const existsInDb = databaseKeys.length === 0 || databaseKeys.includes(key);
+          if (isAllowed && existsInDb) {
+            cleanUpdateData[key] = (updateData as any)[key];
+          }
+        });
+
+        await updateClientInDb(parseInt(clientId, 10), cleanUpdateData);
         setClient(prevClient => {
           if (!prevClient) return null;
           const updatedClient = { ...prevClient, ...data };

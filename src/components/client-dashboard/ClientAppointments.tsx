@@ -12,15 +12,18 @@ import {
   XCircle, 
   AlertCircle, 
   MessageSquare,
-  MapPin,
   User,
   Phone,
   Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format, parseISO, isAfter, isBefore, addHours } from 'date-fns';
+import { format, isAfter, isBefore, addHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalISO } from '@/utils/dateUtils';
+
+const parseISO = parseLocalISO;
+
 import { 
   AppointmentWithConfirmation, 
   APPOINTMENT_STATUS_LABELS, 
@@ -39,7 +42,7 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
   const [error, setError] = useState<string | null>(null);
   const [confirmingAppointment, setConfirmingAppointment] = useState<number | null>(null);
   const [confirmationNotes, setConfirmationNotes] = useState('');
-  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithConfirmation | null>(null);
+
 
   // Carregar agendamentos
   useEffect(() => {
@@ -129,7 +132,6 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
       
       // Limpar estados
       setConfirmationNotes('');
-      setSelectedAppointment(null);
     } catch (error: any) {
       console.error('Erro ao confirmar agendamento:', error);
       toast.error(error.message || 'Erro ao processar confirmação');
@@ -274,7 +276,6 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
                             <Button 
                               size="sm" 
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={() => setSelectedAppointment(appointment)}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
                               Confirmar
@@ -315,7 +316,6 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
                                   variant="outline"
                                   onClick={() => {
                                     setConfirmationNotes('');
-                                    setSelectedAppointment(null);
                                   }}
                                 >
                                   Cancelar
@@ -331,7 +331,6 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
                               size="sm" 
                               variant="outline"
                               className="text-red-600 border-red-600 hover:bg-red-50"
-                              onClick={() => setSelectedAppointment(appointment)}
                             >
                               <XCircle className="h-4 w-4 mr-1" />
                               Cancelar
@@ -372,7 +371,6 @@ const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId }) => 
                                   variant="outline"
                                   onClick={() => {
                                     setConfirmationNotes('');
-                                    setSelectedAppointment(null);
                                   }}
                                 >
                                   Manter Agendamento

@@ -133,6 +133,7 @@ export function useClients() {
     } catch (err) {
       console.error('Error updating client:', err);
       toast.error('Failed to update client');
+      throw err;
     }
   }, [loadClients, supabase]);
 

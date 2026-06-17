@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { format, isSameDay, parseISO, addDays, subDays } from 'date-fns';
+import { format, isSameDay, addDays, subDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { parseLocalISO } from '@/utils/dateUtils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Appointment } from '@/hooks/useAppointments';
@@ -62,7 +63,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
 
   const getAppointmentsForDayAndHour = (day: Date, hour: number) => {
     return appointments.filter(appointment => {
-      const appointmentDate = parseISO(appointment.data);
+      const appointmentDate = parseLocalISO(appointment.data);
       const appointmentHour = appointmentDate.getHours();
       return isSameDay(appointmentDate, day) && appointmentHour === hour;
     });
