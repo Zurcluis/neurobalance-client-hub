@@ -29,17 +29,6 @@ import { supabase } from '@/integrations/supabase/client';
 import ClientDetailTabs from '@/components/client-details/ClientDetailTabs';
 import { syncAllSessions } from '@/scripts/syncSessions';
 
-// Interface para Appointments (pode ser movida para types)
-interface Appointment {
-  id: string;
-  title: string;
-  clientName: string;
-  clientId: string;
-  type: string; // Campo tipo é importante aqui
-  notes: string;
-  date: string;
-  confirmed: boolean;
-}
 
 // Tipo para os agendamentos vindos do Supabase
 type DbAppointment = {
@@ -67,13 +56,13 @@ interface ClientNotification {
 }
 
 // Função para carregar dados do localStorage
-const loadFromStorage = <T extends unknown>(key: string, defaultValue: T): T => {
+const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
   const storedData = localStorage.getItem(key);
   return storedData ? JSON.parse(storedData) : defaultValue;
 };
 
 // Função para salvar dados no localStorage
-const saveToStorage = <T extends unknown>(key: string, data: T): void => {
+const saveToStorage = <T,>(key: string, data: T): void => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
@@ -82,7 +71,7 @@ const ClientDetailPage = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { clients, isLoading: isLoadingClients, updateClient: updateClientInDb, deleteClient: deleteClientFromDb } = useClients();
-  const { payments, isLoading: isLoadingPayments, addPayment: addPaymentToDb, updatePayment: updatePaymentInDb, deletePayment: deletePaymentInDb } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
+  const { payments, addPayment: addPaymentToDb, updatePayment: updatePaymentInDb, deletePayment: deletePaymentInDb } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
   const { appointments, isLoading: isLoadingAppointments } = useAppointments();
 
   // Estados
@@ -92,7 +81,6 @@ const ClientDetailPage = () => {
   const [moods, setMoods] = useState<ClientMood[]>([]);
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMoods, setIsLoadingMoods] = useState(true);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
   const [activeToken, setActiveToken] = useState<string | null>(null);
@@ -298,7 +286,6 @@ const ClientDetailPage = () => {
   useEffect(() => {
     if (clientId) {
       const fetchMoods = async () => {
-        setIsLoadingMoods(true);
         try {
           // Tentar carregar do Supabase primeiro
           const { data: supabaseMoods, error } = await supabase
@@ -334,8 +321,6 @@ const ClientDetailPage = () => {
         } catch (error) {
           console.error('Erro ao carregar estados emocionais:', error);
           toast.error('Falha ao carregar registros de humor');
-        } finally {
-          setIsLoadingMoods(false);
         }
       };
 
