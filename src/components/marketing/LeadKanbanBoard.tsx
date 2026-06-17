@@ -263,7 +263,6 @@ const LeadKanbanBoard: React.FC = () => {
       'Contactado': [],
       'Agendou Avaliação': [],
       'Avaliação Realizada': [],
-      'Vai Iniciar': [],
       'Iniciou Neurofeedback': [],
       'Não Avança': [],
     };

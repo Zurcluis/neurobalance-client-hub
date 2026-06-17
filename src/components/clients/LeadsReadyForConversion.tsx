@@ -43,11 +43,9 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
   const readyLeads = useMemo<ReadyLead[]>(() => {
     const ready: ReadyLead[] = [];
 
-    // Landing leads com avaliação realizada ou vai iniciar
+    // Landing leads com avaliação realizada
     landingLeads.forEach(lead => {
       if (lead.status === 'Avaliação Realizada') {
-        ready.push({ lead, type: 'landing', priority: 'high' });
-      } else if (lead.status === 'Vai Iniciar') {
         ready.push({ lead, type: 'landing', priority: 'high' });
       }
     });
@@ -95,7 +93,6 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
       const landingLead = lead.lead as LandingLead;
       const statusColors: Record<string, string> = {
         'Avaliação Realizada': 'bg-green-100 text-green-800 border-green-200',
-        'Vai Iniciar': 'bg-blue-100 text-blue-800 border-blue-200',
         'Iniciou Neurofeedback': 'bg-purple-100 text-purple-800 border-purple-200',
       };
       return (
