@@ -6,6 +6,10 @@
 
 /* Responsividade global */
 @layer base {
+  html {
+    zoom: 90%;
+  }
+
   * {
     @apply border-border;
   }
