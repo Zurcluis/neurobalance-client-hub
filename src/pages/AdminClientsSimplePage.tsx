@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import AdminSidebar from '@/components/admin/AdminSidebar';
@@ -87,8 +87,10 @@ const AdminClientsSimplePage = () => {
     const matchesSearch = 
       (client.nome && client.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (client.telefone && client.telefone.includes(searchTerm)) ||
-      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm.toLowerCase()));
+      (client.telefone && client.telefone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.id && client.id.toString().includes(searchTerm)) ||
+      ((client as any).nif && (client as any).nif.toLowerCase().includes(searchTerm.toLowerCase()));
     
     return matchesSearch;
   });
@@ -214,7 +216,7 @@ const AdminClientsSimplePage = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Pesquisar por nome, email, telefone ou ID manual..."
+                placeholder="Pesquisar por nome, contacto, NIF ou ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"

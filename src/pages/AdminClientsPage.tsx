@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Filter,
   UserPlus,
   Edit,
   Trash2,
@@ -29,6 +28,7 @@ import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import ClientForm from '@/components/clients/ClientForm';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const AdminClientsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,12 +88,14 @@ const AdminClientsPage = () => {
     const matchesSearch = 
       client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (client.telefone && client.telefone.includes(searchTerm)) ||
-      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm.toLowerCase()));
+      (client.telefone && client.telefone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      client.id.toString().includes(searchTerm) ||
+      ((client as any).nif && (client as any).nif.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && client.ativo) ||
-      (statusFilter === 'inactive' && !client.ativo);
+      (statusFilter === 'active' && (client.estado === 'ongoing' || !client.estado)) ||
+      (statusFilter === 'inactive' && client.estado !== 'ongoing' && client.estado);
     
     return matchesSearch && matchesStatus;
   });
@@ -199,7 +201,7 @@ const AdminClientsPage = () => {
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-slate-900">
-                      {clients.filter(c => c.ativo).length}
+                      {clients.filter(c => c.estado === 'ongoing' || !c.estado).length}
                     </p>
                     <p className="text-sm text-slate-600">Ativos</p>
                   </div>
@@ -215,7 +217,7 @@ const AdminClientsPage = () => {
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-slate-900">
-                      {clients.filter(c => !c.ativo).length}
+                      {clients.filter(c => c.estado !== 'ongoing' && c.estado).length}
                     </p>
                     <p className="text-sm text-slate-600">Inativos</p>
                   </div>
@@ -232,7 +234,7 @@ const AdminClientsPage = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
-                      placeholder="Pesquisar por nome, email, telefone ou ID manual..."
+                      placeholder="Pesquisar por nome, contacto, NIF ou ID..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 w-full sm:w-80"
@@ -269,8 +271,8 @@ const AdminClientsPage = () => {
                           {getFirstAndLastName(client.nome)}
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-2">
-                          <Badge variant={client.ativo ? "default" : "secondary"}>
-                            {client.ativo ? "Ativo" : "Inativo"}
+                          <Badge variant={(client.estado === 'ongoing' || !client.estado) ? "default" : "secondary"}>
+                            {(client.estado === 'ongoing' || !client.estado) ? "Ativo" : "Inativo"}
                           </Badge>
                         </div>
                       </div>
@@ -301,7 +303,7 @@ const AdminClientsPage = () => {
 
                     <div className="pt-3 border-t border-slate-200">
                       <div className="text-xs text-slate-500 mb-2">
-                        Registado em {format(parseISO(client.created_at), 'dd/MM/yyyy', { locale: pt })}
+                        Registado em {format(parseISO(client.criado_em), 'dd/MM/yyyy', { locale: pt })}
                       </div>
                       
                       <div className="flex gap-2">
@@ -384,12 +386,27 @@ const AdminClientsPage = () => {
       </main>
 
       {/* Formulário de Cliente */}
-      <ClientForm
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        client={editingClient}
-        onSubmit={editingClient ? handleUpdateClient : handleAddClient}
-      />
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingClient ? 'Editar Cliente' : 'Adicionar Novo Cliente'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingClient ? 'Edite os dados do cliente abaixo.' : 'Preencha os dados abaixo para adicionar um novo cliente.'}
+            </DialogDescription>
+          </DialogHeader>
+          <ClientForm
+            defaultValues={editingClient || {}}
+            isEditing={!!editingClient}
+            onSubmit={editingClient ? handleUpdateClient : handleAddClient}
+            onCancel={() => {
+              setIsFormOpen(false);
+              setEditingClient(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

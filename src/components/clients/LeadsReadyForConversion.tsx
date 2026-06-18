@@ -11,7 +11,6 @@ import {
   Calendar, 
   ArrowRight,
   Sparkles,
-  CheckCircle2,
   Clock,
   Target,
   ChevronUp,
@@ -161,7 +160,7 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
           <CardContent className="pt-0">
             <ScrollArea className="w-full">
               <div className="flex gap-4 pb-4">
-                {readyLeads.slice(0, 6).map((readyLead, index) => (
+                {readyLeads.slice(0, 6).map((readyLead) => (
                   <Card 
                     key={`${readyLead.type}-${readyLead.lead.id}`}
                     className="min-w-[280px] max-w-[300px] flex-shrink-0 hover:shadow-lg transition-all duration-200 hover:border-[#3f9094]/30 group"

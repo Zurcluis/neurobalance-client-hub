@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import { useLeadCompra } from '@/hooks/useLeadCompra';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
 import { LeadCompra, LeadCompraFilters } from '@/types/lead-compra';
-import { LandingLead } from '@/types/landing-lead';
 import LeadKanbanBoard from '@/components/marketing/LeadKanbanBoard';
 import LeadCompraForm from '@/components/lead-compra/LeadCompraForm';
 import { LandingLeadForm } from '@/components/marketing/LandingLeadForm';
@@ -22,7 +21,6 @@ export default function ClientsLeadsTab() {
   const {
     leads,
     isLoading: leadsLoading,
-    fetchLeads,
     addLead,
     updateLead,
     deleteLead,
@@ -49,6 +47,7 @@ export default function ClientsLeadsTab() {
       filtered = filtered.filter(lead =>
         lead.nome?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
         lead.email?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
+        lead.telefone?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
         lead.cidade?.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
         lead.origem_campanha?.toLowerCase().includes(leadSearchTerm.toLowerCase())
       );
@@ -209,7 +208,7 @@ export default function ClientsLeadsTab() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar leads..."
+                  placeholder="Pesquisar por nome, contacto ou email..."
                   value={leadSearchTerm}
                   onChange={(e) => setLeadSearchTerm(e.target.value)}
                   className="pl-10"

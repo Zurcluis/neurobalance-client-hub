@@ -190,7 +190,10 @@ export function useClients() {
     return clients.filter(client =>
       client.nome.toLowerCase().includes(searchTerm) ||
       (client.email && client.email.toLowerCase().includes(searchTerm)) ||
-      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm))
+      (client.telefone && client.telefone.toLowerCase().includes(searchTerm)) ||
+      (client.id_manual && client.id_manual.toLowerCase().includes(searchTerm)) ||
+      client.id.toString().includes(searchTerm) ||
+      ((client as any).nif && (client as any).nif.toLowerCase().includes(searchTerm))
     );
   }, [clients]);
 

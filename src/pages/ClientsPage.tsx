@@ -1059,7 +1059,7 @@ const ClientsPage = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
-                      placeholder="Pesquisar clientes por nome, email ou telefone..."
+                      placeholder="Pesquisar por nome, contacto, NIF ou ID..."
                       className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
