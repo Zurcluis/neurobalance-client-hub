@@ -295,7 +295,7 @@ const ReportCompare = ({ client }: ReportCompareProps) => {
           </TabsContent>
           
           <TabsContent value="sessions">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   Detalhes de comparação de sessões em desenvolvimento.
@@ -305,7 +305,7 @@ const ReportCompare = ({ client }: ReportCompareProps) => {
           </TabsContent>
           
           <TabsContent value="financial">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   Detalhes de comparação financeira em desenvolvimento.
@@ -315,7 +315,7 @@ const ReportCompare = ({ client }: ReportCompareProps) => {
           </TabsContent>
           
           <TabsContent value="progress">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   Detalhes de comparação de progresso em desenvolvimento.

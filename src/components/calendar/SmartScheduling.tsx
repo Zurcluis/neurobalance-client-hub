@@ -60,7 +60,14 @@ const SmartScheduling: React.FC = () => {
         return '#facc15'; // yellow-400
       case 'ioga':
       case 'yoga':
+      case 'yoga nidra':
         return '#86efac'; // green-300
+      case 'biorresonância magnética':
+      case 'biorressonância magnética':
+      case 'biorresonância':
+      case 'biorressonância':
+      case 'biorresonancia':
+        return '#A4B734'; // lime green
       case 'ofes':
         return '#ef4444'; // red-500
       case 'sessão':
@@ -209,7 +216,7 @@ const SmartScheduling: React.FC = () => {
     // Padrões de regex expandidos para extrair informações
     const patterns = {
       // Tipos de agendamento expandidos
-      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta|consultas|neurofeedback|discussão de resultados|discussão|ioga|yoga|ofes|reunião|reuniao|pagamento|follow-up|seguimento|terapia|workshop)/i,
+      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta|consultas|neurofeedback|discussão de resultados|discussão|ioga|yoga nidra|yoga|ofes|reunião|reuniao|pagamento|follow-up|seguimento|terapia|workshop|biorresonância magnética|biorressonância magnética|biorresonância|biorressonância|biorresonancia)/i,
       
       // Dias da semana
       days: /(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo|seg|ter|qua|qui|sex|sab|dom)/gi,
@@ -515,7 +522,8 @@ const SmartScheduling: React.FC = () => {
     const t = type.toLowerCase();
     if (t.includes('avaliação')) return 'bg-blue-100 text-blue-800';
     if (t.includes('neurofeedback') || t.includes('discussão')) return 'bg-yellow-100 text-yellow-800';
-    if (t.includes('ioga') || t.includes('yoga')) return 'bg-green-100 text-green-800';
+    if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) return 'bg-green-100 text-green-800';
+    if (t.includes('biorresonância') || t.includes('biorressonancia')) return 'bg-[#A4B734] text-white';
     if (t.includes('ofes')) return 'bg-red-100 text-red-800';
     switch (t) {
       case 'sessão': return 'bg-[#e6f2f3] text-[#3f9094]';
@@ -713,7 +721,8 @@ const SmartScheduling: React.FC = () => {
                                   <SelectItem value="consulta">Consulta</SelectItem>
                                   <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
                                   <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
-                                  <SelectItem value="ioga">Ioga</SelectItem>
+                                  <SelectItem value="ioga">Yoga Nidra</SelectItem>
+                                  <SelectItem value="biorresonância magnética">Biorresonância Magnética</SelectItem>
                                   <SelectItem value="ofes">OFES</SelectItem>
                                   <SelectItem value="reunião">Reunião</SelectItem>
                                   <SelectItem value="pagamento">Pagamento</SelectItem>

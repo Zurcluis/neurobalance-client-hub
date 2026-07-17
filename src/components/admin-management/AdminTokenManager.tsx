@@ -39,7 +39,7 @@ interface Admin {
   id: string;
   nome: string;
   email: string;
-  role: 'admin' | 'assistant';
+  role: 'admin' | 'assistant' | 'partner';
   ativo: boolean;
 }
 
@@ -321,8 +321,8 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                       
                       {admin && (
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={admin.role === 'admin' ? "destructive" : "outline"}>
-                            {admin.role === 'admin' ? 'Admin' : 'Assistente'}
+                          <Badge variant={admin.role === 'admin' ? "destructive" : admin.role === 'partner' ? "secondary" : "outline"}>
+                            {admin.role === 'admin' ? 'Admin' : admin.role === 'partner' ? 'Parceiro' : 'Assistente'}
                           </Badge>
                           <span className="text-sm text-gray-600">{admin.nome}</span>
                         </div>

@@ -20,6 +20,16 @@ export const DEV_ADMINS = import.meta.env.DEV ? [
       ADMIN_PERMISSIONS.MANAGE_APPOINTMENTS,
     ],
     is_active: true
+  },
+  {
+    id: 3,
+    nome: 'Parceiro',
+    email: 'parceiro@neurobalance.pt',
+    role: 'partner' as const,
+    permissions: [
+      ADMIN_PERMISSIONS.VIEW_CALENDAR,
+    ],
+    is_active: true
   }
 ] : [];
 

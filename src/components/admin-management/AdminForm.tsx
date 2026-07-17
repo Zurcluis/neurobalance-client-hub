@@ -47,7 +47,7 @@ const getAdminSchema = (isEdit: boolean) => z.object({
   }, 'Deve ter entre 18 e 100 anos'),
   morada: z.string().min(5, 'Morada deve ter pelo menos 5 caracteres'),
   contacto: z.string().min(9, 'Contacto deve ter pelo menos 9 dígitos'),
-  role: z.enum(['admin', 'assistant'], {
+  role: z.enum(['admin', 'assistant', 'partner'], {
     required_error: 'Selecione um tipo de acesso',
   }),
   ativo: z.boolean().default(true),
@@ -134,7 +134,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-6">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCog className="h-5 w-5 text-[#3f9094]" />
@@ -322,6 +322,15 @@ const AdminForm: React.FC<AdminFormProps> = ({
                           <div>
                             <div className="font-medium">{t('assistant')}</div>
                             <div className="text-xs text-gray-500">{t('limitedAccess')}</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="partner">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-emerald-500" />
+                          <div>
+                            <div className="font-medium">{t('partner')}</div>
+                            <div className="text-xs text-gray-500">{t('partnerAccess')}</div>
                           </div>
                         </div>
                       </SelectItem>

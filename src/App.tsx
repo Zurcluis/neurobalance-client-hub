@@ -200,9 +200,9 @@ const App = () => (
                             <Route
                               path="/admin/floor-plan"
                               element={
-                                <ProtectedRoute>
+                                <AdminProtectedRoute requiredPermission="view_clients">
                                   <ClinicFloorPlanPage />
-                                </ProtectedRoute>
+                                </AdminProtectedRoute>
                               }
                             />
 

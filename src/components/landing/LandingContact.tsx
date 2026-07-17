@@ -97,7 +97,7 @@ const LandingContact: React.FC<LandingContactProps> = ({ id }) => {
               ))}
             </div>
             
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/10">
               <div className="flex items-center gap-3 mb-4">
                 <Shield className="w-6 h-6 text-cyan-300" />
                 <h3 className="font-semibold text-white">Garantimos</h3>

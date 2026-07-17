@@ -186,7 +186,7 @@ const ClientTokenManager = () => {
                         Tokens Ativos ({getActiveTokens().length})
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                     {getActiveTokens().length === 0 ? (
                         <p className="text-gray-500 text-center py-8">Nenhum token ativo</p>
                     ) : (
@@ -261,7 +261,7 @@ const ClientTokenManager = () => {
                             Tokens Expirados ({getExpiredTokens().length})
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 sm:p-6">
                         <div className="space-y-2">
                             {getExpiredTokens().map((token) => (
                                 <div

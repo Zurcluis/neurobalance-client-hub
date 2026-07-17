@@ -286,14 +286,14 @@ const ConfirmAppointmentPage = () => {
 
                 {/* Main Card */}
                 <Card className="border-0 shadow-xl overflow-hidden">
-                    <div className="bg-gradient-to-r from-teal-500 to-cyan-600 p-6 text-white">
+                    <div className="bg-gradient-to-r from-teal-500 to-cyan-600 p-4 sm:p-6 text-white">
                         <h1 className="text-xl font-bold mb-1">Confirmação de Sessão</h1>
                         <p className="text-teal-100 text-sm">
                             Por favor confirme a sua presença
                         </p>
                     </div>
 
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 sm:p-6">
                         {appointment && (
                             <>
                                 {/* Client greeting */}

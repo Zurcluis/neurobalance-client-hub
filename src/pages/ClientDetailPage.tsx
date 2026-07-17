@@ -861,7 +861,7 @@ const ClientDetailPage = () => {
         return (
           <div className="space-y-4">
             {clientNotifications.length === 0 ? (
-              <Card className="glassmorphism p-6 text-center">
+              <Card className="glassmorphism p-4 sm:p-6 text-center">
                 <div className="flex flex-col items-center justify-center py-6">
                   <div className="p-3 rounded-full bg-green-50 text-green-500 mb-3 dark:bg-green-950/20">
                     <BellOff className="h-8 w-8" />

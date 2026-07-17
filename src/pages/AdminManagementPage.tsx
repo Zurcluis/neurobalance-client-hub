@@ -247,8 +247,8 @@ const AdminManagementPage = () => {
                           <Badge variant={admin.ativo ? "default" : "secondary"}>
                             {admin.ativo ? "Ativa" : "Inativa"}
                           </Badge>
-                          <Badge variant={admin.role === 'admin' ? "destructive" : "outline"}>
-                            {admin.role === 'admin' ? 'Admin' : 'Assistente'}
+                          <Badge variant={admin.role === 'admin' ? "destructive" : admin.role === 'partner' ? "secondary" : "outline"}>
+                            {admin.role === 'admin' ? 'Admin' : admin.role === 'partner' ? 'Parceiro' : 'Assistente'}
                           </Badge>
                         </div>
                       </div>

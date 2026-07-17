@@ -112,6 +112,14 @@
 
 /* Utilities para melhor UX */
 @layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   .tap-highlight-none {
     -webkit-tap-highlight-color: transparent;
   }

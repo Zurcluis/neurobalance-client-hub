@@ -92,7 +92,7 @@ export const ClientAvailabilityManager: React.FC<ClientAvailabilityManagerProps>
 
         {!hasAvailabilities && (
           <CardContent>
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 p-6 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 p-4 sm:p-6 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
                   <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />

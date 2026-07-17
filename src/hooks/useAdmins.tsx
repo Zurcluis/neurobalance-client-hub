@@ -14,7 +14,7 @@ export interface AdminFormData {
   data_nascimento: string;
   morada: string;
   contacto: string;
-  role: 'admin' | 'assistant';
+  role: 'admin' | 'assistant' | 'partner';
   ativo: boolean;
   password?: string;
 }

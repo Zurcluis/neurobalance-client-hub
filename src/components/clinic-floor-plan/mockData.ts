@@ -4,7 +4,7 @@ export const initialMockRooms: RoomData[] = [
   {
     roomId: 'sala-1',
     roomName: 'Sala 1',
-    serviceType: 'Yoga',
+    serviceType: 'Yoga Nidra',
     status: 'livre',
   },
   {

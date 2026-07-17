@@ -209,6 +209,12 @@ export const APPOINTMENT_TYPE_LABELS = {
   'sessao': 'Sessão de Neurofeedback',
   'consulta': 'Consulta de Seguimento',
   'discussao': 'Discussão de Resultados',
+  'ioga': 'Yoga Nidra',
+  'yoga': 'Yoga Nidra',
+  'yoga nidra': 'Yoga Nidra',
+  'biorresonância magnética': 'Biorresonância Magnética',
+  'biorressonância magnética': 'Biorresonância Magnética',
+  'biorresonancia': 'Biorresonância Magnética',
 } as const;
 
 // Utilitários de validação

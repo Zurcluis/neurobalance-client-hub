@@ -60,7 +60,7 @@ const ClientDashboardPage = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-cyan-50/20">
         <div className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 animate-pulse" />
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-100 to-cyan-100 animate-pulse" />
             <div className="space-y-2">
@@ -320,7 +320,7 @@ const ClientDashboardPage = () => {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-6">

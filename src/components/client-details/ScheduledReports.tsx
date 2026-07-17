@@ -202,7 +202,7 @@ const ScheduledReports = ({ client }: ScheduledReportsProps) => {
       
       {/* Formulário para adicionar novo relatório agendado */}
       {isCreatingNew ? (
-        <div className="bg-white/30 backdrop-blur-sm p-6 rounded-lg border border-white/20">
+        <div className="bg-white/30 backdrop-blur-sm p-4 sm:p-6 rounded-lg border border-white/20">
           <h3 className="text-lg font-medium mb-4">Agendar Novo Relatório</h3>
           
           <div className="space-y-4">

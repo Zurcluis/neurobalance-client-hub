@@ -81,7 +81,7 @@ interface KPICardProps {
 
 const KPICard: React.FC<KPICardProps> = ({ title, value, subtitle, icon, trend, color = '#3f9094' }) => (
   <Card className="hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4" style={{ borderLeftColor: color }}>
-    <CardContent className="p-6">
+    <CardContent className="p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="p-3 rounded-xl shadow-sm" style={{ backgroundColor: `${color}20` }}>

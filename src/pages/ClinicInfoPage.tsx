@@ -317,7 +317,7 @@ const ClinicInfoPage = () => {
                                 Horário de Funcionamento
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-6">
+                        <CardContent className="p-4 sm:p-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="bg-gray-50 p-4 rounded-lg">
                                     <div className="flex items-center gap-2 mb-2">
@@ -375,7 +375,7 @@ const ClinicInfoPage = () => {
                                 Presença Digital
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-6">
+                        <CardContent className="p-4 sm:p-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                                     <Globe className="h-5 w-5 text-[#3f9094]" />

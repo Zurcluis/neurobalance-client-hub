@@ -50,6 +50,7 @@ const AdminSidebar = () => {
       name: 'Planta da Clínica', 
       icon: <Map className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, 
       path: '/admin/floor-plan',
+      permission: ADMIN_PERMISSIONS.VIEW_CLIENTS
     },
   ];
 
@@ -63,6 +64,8 @@ const AdminSidebar = () => {
         return <Badge className="bg-red-100 text-red-800 text-xs">Admin</Badge>;
       case 'assistant':
         return <Badge className="bg-blue-100 text-blue-800 text-xs">Assistente</Badge>;
+      case 'partner':
+        return <Badge className="bg-emerald-100 text-emerald-800 text-xs">Parceiro</Badge>;
       default:
         return null;
     }

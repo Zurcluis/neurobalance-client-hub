@@ -46,6 +46,10 @@ const getPermissionsByRole = (role: string): string[] => {
         ADMIN_PERMISSIONS.VIEW_CALENDAR,
         ADMIN_PERMISSIONS.MANAGE_APPOINTMENTS,
       ];
+    case 'partner':
+      return [
+        ADMIN_PERMISSIONS.VIEW_CALENDAR,
+      ];
     default:
       return [];
   }
@@ -334,7 +338,7 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
 
         if (devAdmin) {
           // No desenvolvimento, aceitamos uma password default 'admin123' ou 'assistente123'
-          const defaultDevPass = devAdmin.role === 'admin' ? 'admin123' : 'assistente123';
+          const defaultDevPass = devAdmin.role === 'admin' ? 'admin123' : devAdmin.role === 'partner' ? 'parceiro123' : 'assistente123';
           
           if (request.password && request.password !== defaultDevPass) {
             return {

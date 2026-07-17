@@ -25,7 +25,8 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
     if (!type) return 'Sessão';
     const t = type.toLowerCase();
     if (t === 'discussão de resultados') return 'Discussão';
-    if (t === 'ioga' || t === 'yoga') return 'Yoga';
+    if (t === 'ioga' || t === 'yoga' || t === 'yoga nidra') return 'Yoga Nidra';
+    if (t === 'biorresonância magnética' || t === 'biorressonância magnética' || t === 'biorresonancia magnetica' || t === 'biorresonância' || t === 'biorressonância') return 'Biorresonância Magnética';
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
   
@@ -36,7 +37,8 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
     if (t.includes('avaliação')) return 'bg-purple-300 text-purple-900 border-none';
     if (t.includes('neurofeedback')) return 'bg-blue-300 text-blue-900 border-none';
     if (t.includes('discussão')) return 'bg-yellow-400 text-yellow-900 border-none';
-    if (t.includes('ioga') || t.includes('yoga')) return 'bg-green-300 text-green-900 border-none';
+    if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) return 'bg-green-300 text-green-900 border-none';
+    if (t.includes('biorresonância') || t.includes('biorressonancia') || t.includes('biorresonancia')) return 'bg-orange-300 text-orange-900 border-none';
     if (t.includes('ofes')) return 'bg-red-500 text-white border-none';
     
     switch (t) {

@@ -310,7 +310,7 @@ const CalendarPage = () => {
           </TabsContent>
 
           <TabsContent value="sms" className="animate-in slide-in-from-left-4 duration-500">
-            <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100 ring-1 ring-black/5">
+            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-100 ring-1 ring-black/5">
               <SmsAutomationSettings />
             </div>
           </TabsContent>

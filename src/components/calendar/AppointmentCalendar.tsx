@@ -45,7 +45,7 @@ import SmartScheduling from './SmartScheduling';
 import TimeGridView from './TimeGridView';
 import CalendarImport from './CalendarImport';
 
-type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes';
+type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes' | 'biorresonância magnética';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
 
@@ -404,7 +404,8 @@ const AppointmentCalendar = () => {
         if (clients) {
           if (apt.id_manual) {
             const matchingClient = clients.find(c =>
-              c.id_manual?.toLowerCase() === apt.id_manual!.toLowerCase()
+              (c.id_manual && c.id_manual.toLowerCase() === apt.id_manual!.toLowerCase()) ||
+              c.id.toString() === apt.id_manual
             );
             if (matchingClient) {
               appointmentData.id_cliente = matchingClient.id;
@@ -557,7 +558,8 @@ const AppointmentCalendar = () => {
     if (t.includes('avaliação')) return 'bg-purple-300 text-purple-900 border-none';
     if (t.includes('neurofeedback')) return 'bg-blue-300 text-blue-900 border-none';
     if (t.includes('discussão')) return 'bg-yellow-400 text-yellow-900 border-none';
-    if (t.includes('ioga') || t.includes('yoga')) return 'bg-green-300 text-green-900 border-none';
+    if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) return 'bg-green-300 text-green-900 border-none';
+    if (t.includes('biorresonância') || t.includes('biorressonancia')) return 'bg-[#A4B734] text-white border-none';
     if (t.includes('ofes')) return 'bg-red-500 text-white border-none';
 
     switch (t) {
@@ -1260,7 +1262,11 @@ const AppointmentCalendar = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 bg-green-300 rounded"></div>
-                <span className="text-xs text-gray-700">Yoga / Ioga</span>
+                <span className="text-xs text-gray-700">Yoga Nidra</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 bg-[#A4B734] rounded"></div>
+                <span className="text-xs text-gray-700">Biorresonância Magnética</span>
               </div>
             </div>
 
@@ -1540,7 +1546,8 @@ const AppointmentCalendar = () => {
                             if (t.includes('avaliação')) autoColor = '#D8B4FE';
                             else if (t.includes('neurofeedback')) autoColor = '#93C5FD';
                             else if (t.includes('discussão')) autoColor = '#FACC15';
-                            else if (t.includes('ioga') || t.includes('yoga')) autoColor = '#86EFAC';
+                            else if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) autoColor = '#86EFAC';
+                            else if (t.includes('biorresonância') || t.includes('biorressonancia')) autoColor = '#A4B734';
                             else if (t.includes('ofes')) autoColor = '#EF4444';
                             else if (t.includes('sessão')) autoColor = '#3f9094';
                             else if (t.includes('consulta')) autoColor = '#EAB308';
@@ -1559,7 +1566,8 @@ const AppointmentCalendar = () => {
                             <SelectItem value="consulta">Consulta</SelectItem>
                             <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
                             <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
-                            <SelectItem value="ioga">Yoga / Ioga</SelectItem>
+                            <SelectItem value="ioga">Yoga Nidra</SelectItem>
+                            <SelectItem value="biorresonância magnética">Biorresonância Magnética</SelectItem>
                             <SelectItem value="ofes">OFES</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1623,7 +1631,8 @@ const AppointmentCalendar = () => {
                               { hex: '#D8B4FE', name: 'Avaliação' },
                               { hex: '#93C5FD', name: 'Neurofeedback' },
                               { hex: '#FACC15', name: 'Discussão de Resultados' },
-                              { hex: '#86EFAC', name: 'Yoga / Ioga' },
+                              { hex: '#86EFAC', name: 'Yoga Nidra' },
+                              { hex: '#A4B734', name: 'Biorresonância Magnética' },
                               { hex: '#3f9094', name: 'Sessão' },
                               { hex: '#EAB308', name: 'Consulta' },
                               { hex: '#EF4444', name: 'OFES' }
@@ -1785,6 +1794,7 @@ const AppointmentCalendar = () => {
         isOpen={isImportDialogOpen}
         onClose={() => setIsImportDialogOpen(false)}
         onImport={handleImportAppointments}
+        clients={clients}
       />
 
       {/* Diálogo de pré-visualização de SMS */}

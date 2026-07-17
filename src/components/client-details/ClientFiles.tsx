@@ -61,7 +61,7 @@ const ClientFiles = ({ files, onUploadFile, onDeleteFile }: ClientFilesProps) =>
               <p className="text-sm text-gray-600">
                 Selecione um ficheiro para carregar (PDF, TXT, XLSX, JPG, PNG)
               </p>
-              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+              <div className="flex flex-col items-center justify-center p-4 sm:p-6 border-2 border-dashed border-gray-300 rounded-lg">
                 <Input 
                   type="file" 
                   onChange={onUploadFile}

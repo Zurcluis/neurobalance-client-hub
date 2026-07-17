@@ -36,11 +36,11 @@ interface ParsedAppointment {
   notas?: string;
   clientName?: string;
 }
-
 interface CalendarImportProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (appointments: ParsedAppointment[]) => Promise<void>;
+  clients?: Array<{ id: number; nome: string; id_manual?: string }>;
 }
 
 const ACCEPTED_FILE_TYPES = '.pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.gif';
@@ -48,7 +48,8 @@ const ACCEPTED_FILE_TYPES = '.pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.gif';
 export const CalendarImport: React.FC<CalendarImportProps> = ({
   isOpen,
   onClose,
-  onImport
+  onImport,
+  clients = []
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState('');
@@ -368,6 +369,57 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
       )
     );
 
+    // Tentar associar clientes pelo ID no título
+    uniqueAppointments.forEach(apt => {
+      if (apt.titulo && clients.length > 0) {
+        let matchFound = false;
+
+        // 1. Tentar por id_manual
+        const clientsWithId = clients.filter(c => c.id_manual).sort((a, b) => (b.id_manual?.length || 0) - (a.id_manual?.length || 0));
+        
+        for (const client of clientsWithId) {
+          if (!client.id_manual) continue;
+          
+          const escapedId = client.id_manual.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const idRegex = new RegExp(`(^|\\s|\\W)${escapedId}($|\\s|\\W)`, 'i');
+          
+          if (idRegex.test(apt.titulo)) {
+            apt.id_manual = client.id_manual;
+            apt.clientName = client.nome;
+            matchFound = true;
+            break;
+          }
+        }
+
+        // 2. Tentar pelo ID da base de dados
+        if (!matchFound) {
+          // Extrai o número que pode estar acompanhado por letras (ex: "133C")
+          const possibleIdMatch = apt.titulo.match(/(^|\s|\W)(\d+)[a-zA-Z]*($|\s|\W)/);
+          if (possibleIdMatch && possibleIdMatch[2]) {
+            const dbId = parseInt(possibleIdMatch[2], 10);
+            const clientByDbId = clients.find(c => c.id === dbId);
+            if (clientByDbId) {
+              apt.id_manual = clientByDbId.id_manual || dbId.toString();
+              apt.clientName = clientByDbId.nome;
+              matchFound = true;
+            }
+          }
+          
+          if (!matchFound) {
+            // Tentar encontrar o id isolado em qualquer parte do texto
+            for (const client of clients) {
+              const idRegex = new RegExp(`(^|\\s|\\W)${client.id}($|\\s|\\W)`, 'i');
+              if (idRegex.test(apt.titulo)) {
+                apt.id_manual = client.id_manual || client.id.toString();
+                apt.clientName = client.nome;
+                break;
+              }
+            }
+          }
+        }
+      }
+    });
+
     console.log('Agendamentos parseados:', uniqueAppointments);
     setParsedAppointments(uniqueAppointments);
 
@@ -630,7 +682,11 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                           <SelectItem value="sessão">Sessão</SelectItem>
                           <SelectItem value="avaliação">Avaliação</SelectItem>
                           <SelectItem value="consulta">Consulta</SelectItem>
-                          <SelectItem value="ioga">Yoga / Ioga</SelectItem>
+                          <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
+                          <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
+                          <SelectItem value="ioga">Yoga Nidra</SelectItem>
+                          <SelectItem value="biorresonância magnética">Biorresonância Magnética</SelectItem>
+                          <SelectItem value="ofes">OFES</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -644,13 +700,27 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">ID Manual do Cliente</Label>
+                      <Label className="text-xs">ID / ID Manual do Cliente</Label>
                       <Input
                         value={apt.id_manual || ''}
-                        onChange={(e) => updateAppointment(index, 'id_manual', e.target.value)}
-                        placeholder="ID manual"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateAppointment(index, 'id_manual', val);
+                          const matchedClient = clients.find(c => c.id_manual === val || c.id.toString() === val);
+                          if (matchedClient) {
+                            updateAppointment(index, 'clientName', matchedClient.nome);
+                          } else {
+                            updateAppointment(index, 'clientName', '');
+                          }
+                        }}
+                        placeholder="ID ou ID Manual"
                         className="h-8 text-sm"
                       />
+                      {apt.clientName && (
+                        <p className="text-[10px] text-teal-600 font-medium truncate mt-1">
+                          ✓ {apt.clientName}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-xs">Estado</Label>

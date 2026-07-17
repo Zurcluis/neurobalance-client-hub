@@ -17,7 +17,7 @@ const AdminLoginPage = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { login, isAuthenticated, loading } = useAdminAuth();
+  const { login, isAuthenticated, loading, session } = useAdminAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tokenParam = searchParams.get('token');
@@ -25,10 +25,10 @@ const AdminLoginPage = () => {
   // Redirecionar se já estiver autenticado (mas não se houver tokenParam na URL, para permitir fazer login noutra conta)
   useEffect(() => {
     if (isAuthenticated && !loading && !tokenParam) {
-      const redirectTo = searchParams.get('redirect') || '/admin/clients';
+      const redirectTo = searchParams.get('redirect') || (session?.role === 'partner' ? '/admin/calendar' : '/admin/clients');
       navigate(redirectTo, { replace: true });
     }
-  }, [isAuthenticated, loading, navigate, searchParams, tokenParam]);
+  }, [isAuthenticated, loading, navigate, searchParams, tokenParam, session]);
 
   // Verificar se há email nos parâmetros da URL
   useEffect(() => {
@@ -68,7 +68,8 @@ const AdminLoginPage = () => {
       
       if (response.success) {
         toast.success('Login administrativo realizado com sucesso!');
-        const redirectTo = searchParams.get('redirect') || '/admin/clients';
+        const userRole = response.admin?.role;
+        const redirectTo = searchParams.get('redirect') || (userRole === 'partner' ? '/admin/calendar' : '/admin/clients');
         navigate(redirectTo, { replace: true });
       } else {
         setError(response.error || 'Erro ao fazer login');

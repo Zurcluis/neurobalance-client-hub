@@ -164,7 +164,7 @@ const LandingHero: React.FC = () => {
 
             {/* Form (desktop) */}
             <div className="max-w-md">
-              <div className="bg-white rounded-2xl p-6 xl:p-8 shadow-xl border border-slate-100">
+              <div className="bg-white rounded-2xl p-4 sm:p-6 xl:p-8 shadow-xl border border-slate-100">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <Input name="name" value={formData.name} onChange={handleChange} placeholder="Primeiro nome" required className="h-12 bg-slate-50 border-slate-200 focus:border-teal-500 focus:ring-teal-500 text-base" />
                   <Input name="email" type="email" value={formData.email} onChange={handleChange} placeholder="Email" required className="h-12 bg-slate-50 border-slate-200 focus:border-teal-500 focus:ring-teal-500 text-base" />
