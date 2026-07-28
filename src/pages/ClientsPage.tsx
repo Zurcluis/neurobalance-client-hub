@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
@@ -14,8 +14,9 @@ import ClientsLeadsTab from '@/components/clients/ClientsLeadsTab';
 import { 
   Plus, Search, Upload, X, ChevronDown, ChevronUp, Download, 
   Users, TrendingUp, BarChart3, Target, PieChart, Key, MessageSquare,
-  AlertCircle, Clock, SlidersHorizontal, Bell, BellOff, AlertTriangle, CheckCircle
+  AlertCircle, Clock, SlidersHorizontal, Bell, BellOff, AlertTriangle, CheckCircle, Trash2
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -410,6 +411,90 @@ const ClientsPage = () => {
     return list;
   }, [clients, payments, appointments]);
 
+  // Estados para gerir eliminação e seleção de notificações
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('dismissed_notifications');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch (e) {
+      return new Set();
+    }
+  });
+
+  const [selectedNotificationIds, setSelectedNotificationIds] = useState<Set<string>>(new Set());
+
+  // Guardar notificações eliminadas no localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('dismissed_notifications', JSON.stringify(Array.from(dismissedNotificationIds)));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [dismissedNotificationIds]);
+
+  // Lista filtrada das notificações ativas
+  const visibleNotifications = useMemo(() => {
+    return allNotifications.filter(n => !dismissedNotificationIds.has(n.id));
+  }, [allNotifications, dismissedNotificationIds]);
+
+  // Handlers para gerir eliminação e seleção
+  const handleDismissNotification = (id: string) => {
+    setDismissedNotificationIds(prev => new Set([...prev, id]));
+    setSelectedNotificationIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    toast.success('Notificação eliminada');
+  };
+
+  const handleToggleSelectNotification = (id: string) => {
+    setSelectedNotificationIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllNotifications = () => {
+    if (selectedNotificationIds.size === visibleNotifications.length && visibleNotifications.length > 0) {
+      setSelectedNotificationIds(new Set());
+    } else {
+      setSelectedNotificationIds(new Set(visibleNotifications.map(n => n.id)));
+    }
+  };
+
+  const handleDeleteSelectedNotifications = () => {
+    if (selectedNotificationIds.size === 0) return;
+    const count = selectedNotificationIds.size;
+    setDismissedNotificationIds(prev => new Set([...prev, ...Array.from(selectedNotificationIds)]));
+    setSelectedNotificationIds(new Set());
+    toast.success(`${count} notificação(ões) eliminada(s) com sucesso`);
+  };
+
+  const handleDeleteAllNotifications = () => {
+    if (visibleNotifications.length === 0) return;
+    const allIds = visibleNotifications.map(n => n.id);
+    setDismissedNotificationIds(prev => new Set([...prev, ...allIds]));
+    setSelectedNotificationIds(new Set());
+    toast.success('Todas as notificações foram eliminadas');
+  };
+
+  const handleRestoreDismissedNotifications = () => {
+    setDismissedNotificationIds(new Set());
+    setSelectedNotificationIds(new Set());
+    try {
+      localStorage.removeItem('dismissed_notifications');
+    } catch (e) {
+      console.error(e);
+    }
+    toast.success('Notificações restauradas');
+  };
+
   const handleAddClient = async (data: ClientFormData) => {
     try {
       await addClient({
@@ -748,9 +833,9 @@ const ClientsPage = () => {
             <TabsTrigger value="notifications" className="flex items-center gap-2 relative">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notificações</span>
-              {allNotifications.length > 0 && (
+              {visibleNotifications.length > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white animate-pulse">
-                  {allNotifications.length}
+                  {visibleNotifications.length}
                 </span>
               )}
             </TabsTrigger>
@@ -1155,63 +1240,161 @@ const ClientsPage = () => {
           {/* 🔔 Notificações Globais */}
           <TabsContent value="notifications" className="space-y-6 mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-[#3f9094]" />
-                  Painel Geral de Notificações
-                </CardTitle>
-                <CardDescription>
-                  Alertas consolidados sobre todos os clientes (packs e plano de tratamento)
-                </CardDescription>
+              <CardHeader className="pb-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bell className="h-5 w-5 text-[#3f9094]" />
+                      Painel Geral de Notificações
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Alertas consolidados sobre todos os clientes (packs e plano de tratamento)
+                    </CardDescription>
+                  </div>
+
+                  {/* Botões de Ação Global */}
+                  {visibleNotifications.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
+                      {selectedNotificationIds.size > 0 && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="gap-1.5 bg-red-600 hover:bg-red-700 text-white"
+                          onClick={handleDeleteSelectedNotifications}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Eliminar Selecionadas ({selectedNotificationIds.size})
+                        </Button>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={handleDeleteAllNotifications}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Apagar Todas
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sub-barra com Selecionar Todas */}
+                {visibleNotifications.length > 0 && (
+                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="select-all-notifs"
+                        checked={visibleNotifications.length > 0 && selectedNotificationIds.size === visibleNotifications.length}
+                        onCheckedChange={handleToggleSelectAllNotifications}
+                      />
+                      <label htmlFor="select-all-notifs" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                        Selecionar Todas ({visibleNotifications.length})
+                      </label>
+                      {selectedNotificationIds.size > 0 && (
+                        <Badge variant="secondary" className="bg-[#3f9094]/10 text-[#3f9094] ml-2">
+                          {selectedNotificationIds.size} selecionada(s)
+                        </Badge>
+                      )}
+                    </div>
+
+                    {dismissedNotificationIds.size > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-gray-500 hover:text-[#3f9094]"
+                        onClick={handleRestoreDismissedNotifications}
+                      >
+                        Restaurar Eliminadas ({dismissedNotificationIds.size})
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
-                {allNotifications.length === 0 ? (
+                {visibleNotifications.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="p-3 rounded-full bg-green-50 text-green-500 mb-3 w-14 h-14 flex items-center justify-center mx-auto dark:bg-green-950/20">
                       <BellOff className="h-8 w-8" />
                     </div>
                     <h3 className="text-xl font-medium mb-1 dark:text-gray-200">Sem notificações ativas</h3>
-                    <p className="text-gray-500 text-sm max-w-sm mx-auto">
-                      Todos os clientes encontram-se com os packs e planos de tratamento regularizados.
+                    <p className="text-gray-500 text-sm max-w-sm mx-auto mb-4">
+                      Todas as notificações foram resolvidas ou eliminadas.
                     </p>
+                    {dismissedNotificationIds.size > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+                        onClick={handleRestoreDismissedNotifications}
+                      >
+                        Restaurar Notificações Eliminadas ({dismissedNotificationIds.size})
+                      </Button>
+                    )}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {allNotifications.map(notif => (
-                      <Card key={notif.id} className={`p-4 border-l-4 shadow-sm hover:shadow-md transition-shadow ${
-                        notif.severity === 'danger' ? 'bg-red-50/50 border-l-red-500 text-red-950 dark:bg-red-950/10 dark:text-red-200' :
-                        notif.severity === 'warning' ? 'bg-amber-50/50 border-l-amber-500 text-amber-950 dark:bg-amber-950/10 dark:text-amber-200' :
-                        'bg-blue-50/50 border-l-blue-500 text-blue-950 dark:bg-blue-950/10 dark:text-blue-200'
-                      }`}>
-                        <div className="flex justify-between items-start gap-4 flex-wrap sm:flex-nowrap">
-                          <div className="flex gap-3">
-                            <div className="mt-0.5 flex-shrink-0">
-                              {notif.severity === 'danger' && <AlertTriangle className="h-5 w-5 text-red-500" />}
-                              {notif.severity === 'warning' && <AlertCircle className="h-5 w-5 text-amber-500" />}
-                              {notif.severity === 'info' && <CheckCircle className="h-5 w-5 text-blue-500" />}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="font-semibold text-base text-gray-900 dark:text-white">{notif.title}</h4>
-                                <Badge variant="outline" className="text-xs bg-white font-medium border-gray-200 text-gray-700">
-                                  {notif.clientName}
-                                </Badge>
+                  <div className="space-y-3">
+                    {visibleNotifications.map(notif => {
+                      const isSelected = selectedNotificationIds.has(notif.id);
+                      return (
+                        <Card key={notif.id} className={`p-4 border-l-4 shadow-xs hover:shadow-md transition-all ${
+                          isSelected ? 'ring-2 ring-[#3f9094] bg-[#3f9094]/5' : ''
+                        } ${
+                          notif.severity === 'danger' ? 'bg-red-50/40 border-l-red-500 text-red-950 dark:bg-red-950/10 dark:text-red-200' :
+                          notif.severity === 'warning' ? 'bg-amber-50/40 border-l-amber-500 text-amber-950 dark:bg-amber-950/10 dark:text-amber-200' :
+                          'bg-blue-50/40 border-l-blue-500 text-blue-950 dark:bg-blue-950/10 dark:text-blue-200'
+                        }`}>
+                          <div className="flex justify-between items-start gap-4 flex-wrap sm:flex-nowrap">
+                            <div className="flex gap-3 items-start">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleToggleSelectNotification(notif.id)}
+                                className="mt-1"
+                              />
+
+                              <div className="mt-0.5 flex-shrink-0">
+                                {notif.severity === 'danger' && <AlertTriangle className="h-5 w-5 text-red-500" />}
+                                {notif.severity === 'warning' && <AlertCircle className="h-5 w-5 text-amber-500" />}
+                                {notif.severity === 'info' && <CheckCircle className="h-5 w-5 text-blue-500" />}
                               </div>
-                              <p className="text-sm mt-1.5 text-gray-700 dark:text-gray-300">{notif.message}</p>
+
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-semibold text-base text-gray-900 dark:text-white">{notif.title}</h4>
+                                  <Badge variant="outline" className="text-xs bg-white font-medium border-gray-200 text-gray-700">
+                                    {notif.clientName}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm mt-1.5 text-gray-700 dark:text-gray-300">{notif.message}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end mt-2 sm:mt-0">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="bg-white border-gray-200 hover:bg-gray-50 flex-shrink-0 text-xs"
+                                onClick={() => navigate(isAdminContext ? `/admin/clients/${notif.clientId}` : `/clients/${notif.clientId}`)}
+                              >
+                                <Users className="h-3.5 w-3.5 mr-1.5" />
+                                Ver Cliente
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                title="Eliminar notificação"
+                                onClick={() => handleDismissNotification(notif.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="bg-white border-gray-200 hover:bg-gray-50 flex-shrink-0 w-full sm:w-auto"
-                            onClick={() => navigate(isAdminContext ? `/admin/clients/${notif.clientId}` : `/clients/${notif.clientId}`)}
-                          >
-                            <Users className="h-3.5 w-3.5 mr-1.5" />
-                            Ver Cliente
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
