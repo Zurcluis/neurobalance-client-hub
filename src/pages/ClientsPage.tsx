@@ -20,6 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useClients from '@/hooks/useClients';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
 import { LandingLead } from '@/types/landing-lead';
 import { LeadCompra } from '@/types/lead-compra';
@@ -57,6 +58,8 @@ interface GlobalNotification {
 }
 
 const ClientsPage = () => {
+  const { session } = useAdminAuth();
+  const isPartner = session?.role === 'partner';
   const { isAdminContext } = useAdminContext();
   const navigate = useNavigate();
   const { 
@@ -613,18 +616,22 @@ const ClientsPage = () => {
           </div>
           
         <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImportDialogOpen(true)}>
-              <Upload className="h-4 w-4" />
-              Importar
-            </Button>
+            {!isPartner && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImportDialogOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Importar
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="gap-2" onClick={handleExportData}>
               <Download className="h-4 w-4" />
               Exportar
             </Button>
-            <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsAddClientOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Novo Cliente
-            </Button>
+            {!isPartner && (
+              <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsAddClientOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Novo Cliente
+              </Button>
+            )}
           </div>
         </div>
 
@@ -713,7 +720,7 @@ const ClientsPage = () => {
       )}
 
         {/* Leads Prontas para Conversão */}
-        <LeadsReadyForConversion onConvertLead={handleOpenConvertDialog} />
+        {!isPartner && <LeadsReadyForConversion onConvertLead={handleOpenConvertDialog} />}
 
         {/* Tabs Principais - Reorganizadas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

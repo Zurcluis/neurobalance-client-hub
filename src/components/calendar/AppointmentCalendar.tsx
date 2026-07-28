@@ -20,11 +20,11 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { addDays, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameMonth, compareAsc } from 'date-fns';
+import { addDays, addMonths, addYears, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameMonth, compareAsc } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy } from 'lucide-react';
+import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy, Menu } from 'lucide-react';
 import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
 import { parseLocalISO } from '@/utils/dateUtils';
@@ -45,15 +45,17 @@ import SmartScheduling from './SmartScheduling';
 import TimeGridView from './TimeGridView';
 import CalendarImport from './CalendarImport';
 
-type AppointmentType = 'sessão' | 'avaliação' | 'consulta' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes' | 'biorresonância magnética';
+type AppointmentType = 'sessão' | 'avaliação' | 'reavaliação' | 'consulta' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes' | 'biorresonância magnética';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
 
 
 interface AppointmentFormValues {
   titulo: string;
-  data: string;
-  hora: string;
+  data_inicio: string;
+  hora_inicio: string;
+  data_fim: string;
+  hora_fim: string;
   id_cliente: number | null;
   tipo: AppointmentType;
   notas: string;
@@ -73,13 +75,36 @@ const AppointmentCalendar = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentView, setCurrentView] = useState<CalendarView>('month');
   const isMobile = useIsMobile();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [clientAvailabilities, setClientAvailabilities] = useState<Record<number, any[]>>({});
   const [showAvailabilities, setShowAvailabilities] = useState(true);
   
-  const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly'>('none');
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState<string>('none');
   const [recurrenceCount, setRecurrenceCount] = useState<number>(8);
+
+  const getWeeklyRecurrenceLabel = (dateStr?: string) => {
+    if (!dateStr) return 'Semanalmente';
+    try {
+      const d = parseISO(`${dateStr}T00:00:00`);
+      const dayName = format(d, 'eeee', { locale: pt });
+      return `Semanalmente à ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}`;
+    } catch (e) {
+      return 'Semanalmente';
+    }
+  };
+
+  const getYearlyRecurrenceLabel = (dateStr?: string) => {
+    if (!dateStr) return 'Anualmente';
+    try {
+      const d = parseISO(`${dateStr}T00:00:00`);
+      return `Anual em ${format(d, "d 'de' MMMM", { locale: pt })}`;
+    } catch (e) {
+      return 'Anualmente';
+    }
+  };
 
   const [smsPreviewOpen, setSmsPreviewOpen] = useState(false);
   const [smsMessage, setSmsMessage] = useState('');
@@ -216,14 +241,16 @@ const AppointmentCalendar = () => {
   const form = useForm<AppointmentFormValues>({
     defaultValues: {
       titulo: '',
-      data: '',
-      hora: '09:00',
+      data_inicio: '',
+      hora_inicio: '09:00',
+      data_fim: '',
+      hora_fim: '10:00',
       id_cliente: null,
       tipo: 'sessão',
       notas: '',
       estado: 'pendente',
       terapeuta: '',
-      cor: '#3f9094'
+      cor: '#039be5'
     },
   });
 
@@ -231,19 +258,28 @@ const AppointmentCalendar = () => {
     setSelectedAppointment(null);
     const today = date || new Date();
 
+    setIsAllDay(false);
     setRecurrenceType('none');
     setRecurrenceCount(8);
 
+    const startTimeStr = date ? format(date, 'HH:mm') : '09:00';
+    const [startH, startM] = startTimeStr.split(':').map(Number);
+    const endH = (startH + 1) % 24;
+    const endTimeStr = `${endH.toString().padStart(2, '0')}:${(startM || 0).toString().padStart(2, '0')}`;
+    const dateStr = format(today, 'yyyy-MM-dd');
+
     form.reset({
       titulo: '',
-      data: format(today, 'yyyy-MM-dd'),
-      hora: date ? format(date, 'HH:mm') : '09:00',
+      data_inicio: dateStr,
+      hora_inicio: startTimeStr,
+      data_fim: dateStr,
+      hora_fim: endTimeStr,
       id_cliente: null,
       tipo: 'sessão',
       notas: '',
       estado: 'pendente',
       terapeuta: '',
-      cor: '#3f9094'
+      cor: '#039be5'
     });
 
     setIsDialogOpen(true);
@@ -252,16 +288,52 @@ const AppointmentCalendar = () => {
   const handleEventClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setRecurrenceType('none');
+
+    const aptDate = parseISO(appointment.data);
+    const dateStr = format(aptDate, 'yyyy-MM-dd');
+
+    let startTimeStr = '09:00';
+    let endTimeStr = '10:00';
+    let endDateStr = dateStr;
+
+    const horaStr = appointment.hora || '';
+    const isAllDayAppt = horaStr === 'Todo o dia' || horaStr.startsWith('Todo o dia') || (startTimeStr === '00:00' && endTimeStr === '23:59');
+    setIsAllDay(isAllDayAppt);
+
+    if (horaStr.includes('|')) {
+      const [timePart, datePart] = horaStr.split('|').map(s => s.trim());
+      if (datePart && /^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+        endDateStr = datePart;
+      }
+      if (timePart.includes('-')) {
+        const parts = timePart.split('-').map(s => s.trim());
+        if (parts[0]) startTimeStr = parts[0];
+        if (parts[1]) endTimeStr = parts[1];
+      }
+    } else if (horaStr.includes('-')) {
+      const parts = horaStr.split('-').map(s => s.trim());
+      if (parts[0]) startTimeStr = parts[0];
+      if (parts[1]) endTimeStr = parts[1];
+    } else if (horaStr.includes(':')) {
+      startTimeStr = horaStr.trim();
+      const [h, m] = startTimeStr.split(':').map(Number);
+      if (!isNaN(h)) {
+        endTimeStr = `${((h + 1) % 24).toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+      }
+    }
+
     form.reset({
       titulo: appointment.titulo,
-      data: format(parseISO(appointment.data), 'yyyy-MM-dd'),
-      hora: appointment.hora,
+      data_inicio: dateStr,
+      hora_inicio: startTimeStr,
+      data_fim: endDateStr,
+      hora_fim: endTimeStr,
       id_cliente: appointment.id_cliente,
       tipo: (appointment.tipo || 'sessão') as AppointmentType,
       notas: appointment.notas || '',
       estado: appointment.estado,
       terapeuta: appointment.terapeuta || '',
-      cor: appointment.cor || '#3f9094'
+      cor: appointment.cor || '#039be5'
     });
     setIsDialogOpen(true);
   };
@@ -282,6 +354,14 @@ const AppointmentCalendar = () => {
   const onSubmit = async (data: AppointmentFormValues) => {
     try {
       const clientId = data.id_cliente === null || data.id_cliente === undefined ? null : Number(data.id_cliente);
+      const isMultiDay = data.data_fim && data.data_fim !== data.data_inicio;
+
+      const timeRangeOnly = isAllDay ? 'Todo o dia' : `${data.hora_inicio} - ${data.hora_fim}`;
+      const horaRange = isMultiDay
+        ? `${timeRangeOnly} | ${data.data_fim}`
+        : timeRangeOnly;
+
+      const isoData = `${data.data_inicio}T${isAllDay ? '00:00' : data.hora_inicio}:00`;
 
       const baseData = {
         titulo: data.titulo || 'Novo Agendamento',
@@ -289,54 +369,106 @@ const AppointmentCalendar = () => {
         notas: data.notas || '',
         estado: data.estado,
         terapeuta: data.terapeuta || '',
-        cor: data.cor || '#3f9094'
+        cor: data.cor || '#039be5'
       };
 
-      console.log('Dados a serem enviados:', { ...baseData, id_cliente: clientId });
+      console.log('Dados a serem enviados:', { ...baseData, id_cliente: clientId, hora: horaRange });
 
       if (selectedAppointment) {
-        // updateAppointment expects id_cliente?: number (undefined when no client)
         await updateAppointment(selectedAppointment.id, {
           ...baseData,
-          data: `${data.data}T${data.hora}:00`,
-          hora: data.hora,
+          data: isoData,
+          hora: horaRange,
           id_cliente: clientId === null ? undefined : clientId
         });
+
+        if (isMultiDay) {
+          const startDateObj = parseISO(`${data.data_inicio}T00:00:00`);
+          const endDateObj = parseISO(`${data.data_fim}T00:00:00`);
+          if (compareAsc(startDateObj, endDateObj) <= 0) {
+            const daysInterval = eachDayOfInterval({ start: startDateObj, end: endDateObj });
+            const additionalDays = daysInterval.slice(1);
+
+            if (additionalDays.length > 0) {
+              const batchInserts = additionalDays.map(dayDate => ({
+                ...baseData,
+                data: `${format(dayDate, 'yyyy-MM-dd')}T${isAllDay ? '00:00' : data.hora_inicio}:00`,
+                hora: horaRange,
+                id_cliente: clientId
+              }));
+              await addAppointmentsBatch(batchInserts);
+            }
+          }
+        }
         toast.success('✅ Agendamento atualizado com sucesso!');
       } else {
-        if (recurrenceType !== 'none') {
-          // Criar múltiplos agendamentos (recorrência)
+        if (isMultiDay && recurrenceType === 'none') {
+          const startDateObj = parseISO(`${data.data_inicio}T00:00:00`);
+          const endDateObj = parseISO(`${data.data_fim}T00:00:00`);
+          if (compareAsc(startDateObj, endDateObj) <= 0) {
+            const daysInterval = eachDayOfInterval({ start: startDateObj, end: endDateObj });
+            const batchInserts = daysInterval.map(dayDate => ({
+              ...baseData,
+              data: `${format(dayDate, 'yyyy-MM-dd')}T${isAllDay ? '00:00' : data.hora_inicio}:00`,
+              hora: horaRange,
+              id_cliente: clientId
+            }));
+
+            await addAppointmentsBatch(batchInserts);
+            toast.success('🎉 Agendamento criado para o intervalo de datas!', {
+              description: `${baseData.titulo} (${format(startDateObj, 'dd/MM')} até ${format(endDateObj, 'dd/MM/yyyy')})`,
+              duration: 4000
+            });
+          }
+        } else if (recurrenceType !== 'none') {
           const appointmentsList = [];
-          const count = recurrenceCount || 1;
+          const count = recurrenceCount || 8;
+          const baseStartObj = parseISO(`${data.data_inicio}T${isAllDay ? '00:00' : data.hora_inicio}:00`);
 
           for (let i = 0; i < count; i++) {
-            let targetDate = parseISO(`${data.data}T${data.hora}:00`);
+            let targetDate = new Date(baseStartObj);
+
             if (recurrenceType === 'daily') {
-              targetDate = addDays(targetDate, i);
+              targetDate = addDays(baseStartObj, i);
             } else if (recurrenceType === 'weekly') {
-              targetDate = addDays(targetDate, i * 7);
+              targetDate = addDays(baseStartObj, i * 7);
+            } else if (recurrenceType === 'weekdays') {
+              let added = 0;
+              let curr = new Date(baseStartObj);
+              while (added < i) {
+                curr = addDays(curr, 1);
+                const day = curr.getDay();
+                if (day !== 0 && day !== 6) {
+                  added++;
+                }
+              }
+              targetDate = curr;
+            } else if (recurrenceType === 'monthly') {
+              targetDate = addMonths(baseStartObj, i);
+            } else if (recurrenceType === 'yearly') {
+              targetDate = addYears(baseStartObj, i);
             }
 
             const dateStr = format(targetDate, 'yyyy-MM-dd');
             appointmentsList.push({
               ...baseData,
-              data: `${dateStr}T${data.hora}:00`,
-              hora: data.hora,
+              data: `${dateStr}T${isAllDay ? '00:00' : data.hora_inicio}:00`,
+              hora: horaRange,
               id_cliente: clientId
             });
           }
 
           await addAppointmentsBatch(appointmentsList);
+          toast.success(`🎉 ${count} agendamentos recorrentes criados com sucesso!`);
         } else {
-          // addAppointment expects id_cliente: number | null
           await addAppointment({
             ...baseData,
-            data: `${data.data}T${data.hora}:00`,
-            hora: data.hora,
+            data: isoData,
+            hora: horaRange,
             id_cliente: clientId
           });
           toast.success('🎉 Novo agendamento criado!', {
-            description: `${baseData.titulo} - ${format(parseISO(`${data.data}T${data.hora}:00`), 'dd/MM/yyyy', { locale: pt })} às ${data.hora}`,
+            description: `${baseData.titulo} - ${format(parseISO(isoData), 'dd/MM/yyyy', { locale: pt })} (${timeRangeOnly})`,
             duration: 4000
           });
         }
@@ -791,17 +923,17 @@ const AppointmentCalendar = () => {
       end: calendarEnd
     });
 
-    const weekDays = isMobile ? ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'] : ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    const weekDays = isMobile ? ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'] : ['DOM.', 'SEG.', 'TER.', 'QUA.', 'QUI.', 'SEX.', 'SÁB.'];
     const weeks = [];
     for (let i = 0; i < days.length; i += 7) {
       weeks.push(days.slice(i, i + 7));
     }
 
     return (
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-200">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-xs">
+        <div className="grid grid-cols-7 border-b border-gray-200 bg-white">
           {weekDays.map((day, idx) => (
-            <div key={`${day}-${idx}`} className={`text-center font-medium text-gray-500 border-r border-gray-200 last:border-r-0 ${isMobile ? 'p-1 text-xs' : 'p-2 text-sm'}`}>
+            <div key={`${day}-${idx}`} className={`text-center font-semibold text-gray-500 border-r border-gray-200 last:border-r-0 ${isMobile ? 'p-1 text-xs' : 'p-2 text-xs uppercase tracking-wider'}`}>
               {day}
             </div>
           ))}
@@ -819,11 +951,11 @@ const AppointmentCalendar = () => {
                 <div
                   key={format(day, 'yyyy-MM-dd')}
                   className={`
-                    border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-gray-50 relative
+                    border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-blue-50/20 relative transition-colors
                     ${isMobile ? 'p-0.5' : 'p-2'}
-                    ${!isCurrentMonth ? 'bg-gray-50' : ''}
-                    ${isDayToday ? 'bg-[#e6f2f3]' : ''}
-                    ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50' : ''}
+                    ${!isCurrentMonth ? 'bg-gray-50/60' : 'bg-white'}
+                    ${isDayToday ? 'bg-blue-50/30' : ''}
+                    ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50/50' : ''}
                   `}
                   onClick={() => openNewAppointmentDialog(day)}
                   onDragOver={(e) => {
@@ -840,7 +972,6 @@ const AppointmentCalendar = () => {
                     if (appointmentId) {
                       const appointment = appointments.find(a => a.id.toString() === appointmentId);
                       if (appointment) {
-                        // Na vista mensal, mantemos a hora original do agendamento
                         const currentApptDate = parseISO(appointment.data);
                         const newDate = new Date(day);
                         newDate.setHours(currentApptDate.getHours(), currentApptDate.getMinutes());
@@ -849,17 +980,19 @@ const AppointmentCalendar = () => {
                     }
                   }}
                 >
-                  <div className={`
-                    font-medium text-right relative
-                    ${isMobile ? 'text-[10px] mb-0.5' : 'text-sm mb-1'}
-                    ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-700'}
-                    ${isDayToday ? 'text-[#3f9094] font-bold' : ''}
-                    ${dayHoliday && dayHoliday.type === 'feriado' ? 'text-red-600 font-bold' : ''}
-                  `}>
-                    {format(day, 'd')}
-                    {dayHoliday && dayHoliday.type === 'feriado' && (
-                      <div className={`absolute bg-red-500 rounded-full ${isMobile ? '-top-0.5 -right-0.5 w-1 h-1' : '-top-1 -right-1 w-2 h-2'}`}></div>
-                    )}
+                  <div className="flex justify-end mb-1">
+                    <div className={`
+                      font-medium relative flex items-center justify-center
+                      ${isMobile ? 'text-[10px]' : 'text-xs'}
+                      ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-700'}
+                      ${isDayToday ? 'bg-[#1a73e8] text-white w-6 h-6 rounded-full font-bold shadow-xs' : ''}
+                      ${dayHoliday && dayHoliday.type === 'feriado' && !isDayToday ? 'text-red-600 font-bold' : ''}
+                    `}>
+                      {format(day, 'd')}
+                      {dayHoliday && dayHoliday.type === 'feriado' && !isDayToday && (
+                        <div className={`absolute bg-red-500 rounded-full ${isMobile ? '-top-0.5 -right-0.5 w-1 h-1' : '-top-1 -right-1 w-1.5 h-1.5'}`}></div>
+                      )}
+                    </div>
                   </div>
                   <div className={isMobile ? 'space-y-0.5' : 'space-y-1'}>
                     {dayHoliday && !isMobile && (
@@ -1122,6 +1255,15 @@ const AppointmentCalendar = () => {
           {/* Primeira linha: Título e navegação */}
           <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="h-9 w-9 rounded-full hover:bg-gray-100 text-gray-700 shrink-0 hidden md:flex"
+                title={isSidebarOpen ? "Recolher menu lateral" : "Expandir menu lateral"}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
               <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-[#3f9094]" />
               <h1 className="text-lg sm:text-xl font-medium text-[#265255]">Calendário</h1>
             </div>
@@ -1240,7 +1382,10 @@ const AppointmentCalendar = () => {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-64 bg-gray-50 border-r border-gray-200 p-4 space-y-4 overflow-y-auto hidden md:block">
+        <aside className={`
+          transition-all duration-300 ease-in-out bg-gray-50 border-r border-gray-200 overflow-y-auto hidden md:block shrink-0
+          ${isSidebarOpen ? 'w-64 p-4 opacity-100' : 'w-0 p-0 border-none opacity-0 overflow-hidden'}
+        `}>
           {renderMiniCalendar()}
           <DayEventsPanel />
 
@@ -1344,7 +1489,7 @@ const AppointmentCalendar = () => {
         </aside>
 
         {/* Calendar */}
-        <main className="flex-1 p-4 overflow-y-auto">
+        <main className="flex-1 p-2 sm:p-4 overflow-hidden flex flex-col min-h-0 transition-all duration-300">
           {renderCurrentView()}
         </main>
       </div>
@@ -1379,13 +1524,73 @@ const AppointmentCalendar = () => {
                   )}
                 />
 
+                {/* Data e Hora de Início */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="data"
+                    name="data_inicio"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Data</FormLabel>
+                        <FormLabel>Data de Início *</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              const val = e.target.value;
+                              const endVal = form.getValues('data_fim');
+                              if (!endVal || endVal < val) {
+                                form.setValue('data_fim', val);
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="hora_inicio"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora de Início *</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            disabled={isAllDay}
+                            className={isAllDay ? 'opacity-50 bg-gray-100' : ''}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              const val = e.target.value;
+                              if (val) {
+                                const [h, m] = val.split(':').map(Number);
+                                if (!isNaN(h)) {
+                                  const endH = (h + 1) % 24;
+                                  const endFormatted = `${endH.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+                                  form.setValue('hora_fim', endFormatted);
+                                }
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Data e Hora de Fim */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="data_fim"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Fim *</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -1396,17 +1601,61 @@ const AppointmentCalendar = () => {
 
                   <FormField
                     control={form.control}
-                    name="hora"
+                    name="hora_fim"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Hora</FormLabel>
+                        <FormLabel>Hora de Fim *</FormLabel>
                         <FormControl>
-                          <Input type="time" {...field} />
+                          <Input
+                            type="time"
+                            {...field}
+                            disabled={isAllDay}
+                            className={isAllDay ? 'opacity-50 bg-gray-100' : ''}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+
+                {/* Opções estilo Google Calendar: Todo o dia & Recorrência */}
+                <div className="flex flex-wrap items-center gap-6 py-3 px-3.5 border border-gray-200 bg-gray-50/80 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="todo_o_dia"
+                      checked={isAllDay}
+                      onCheckedChange={(checked) => {
+                        setIsAllDay(!!checked);
+                        if (checked) {
+                          form.setValue('hora_inicio', '00:00');
+                          form.setValue('hora_fim', '23:59');
+                        }
+                      }}
+                    />
+                    <label htmlFor="todo_o_dia" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                      Todo o dia
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2 flex-1 min-w-[200px]">
+                    <Select
+                      value={recurrenceType}
+                      onValueChange={(val: string) => setRecurrenceType(val)}
+                    >
+                      <SelectTrigger className="h-9 w-full text-xs sm:text-sm bg-white border-gray-300">
+                        <SelectValue placeholder="Selecione a recorrência" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não se repete</SelectItem>
+                        <SelectItem value="daily">Todos os dias</SelectItem>
+                        <SelectItem value="weekly">{getWeeklyRecurrenceLabel(form.watch('data_inicio'))}</SelectItem>
+                        <SelectItem value="weekdays">Todos os dias da semana (de segunda a sexta)</SelectItem>
+                        <SelectItem value="monthly">Mensalmente neste dia</SelectItem>
+                        <SelectItem value="yearly">{getYearlyRecurrenceLabel(form.watch('data_inicio'))}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1543,7 +1792,8 @@ const AppointmentCalendar = () => {
                             field.onChange(val);
                             let autoColor = '#3f9094';
                             const t = val.toLowerCase();
-                            if (t.includes('avaliação')) autoColor = '#D8B4FE';
+                            if (t.includes('reavaliação') || t.includes('reavaliacao')) autoColor = '#3F51B5';
+                            else if (t.includes('avaliação')) autoColor = '#D8B4FE';
                             else if (t.includes('neurofeedback')) autoColor = '#93C5FD';
                             else if (t.includes('discussão')) autoColor = '#FACC15';
                             else if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) autoColor = '#86EFAC';
@@ -1563,6 +1813,7 @@ const AppointmentCalendar = () => {
                           <SelectContent>
                             <SelectItem value="sessão">Sessão</SelectItem>
                             <SelectItem value="avaliação">Avaliação</SelectItem>
+                            <SelectItem value="reavaliação">Reavaliação</SelectItem>
                             <SelectItem value="consulta">Consulta</SelectItem>
                             <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
                             <SelectItem value="neurofeedback">Neurofeedback</SelectItem>

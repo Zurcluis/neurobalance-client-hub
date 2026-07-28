@@ -37,6 +37,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Database } from '@/integrations/supabase/types';
 import { useAdminContext } from '@/contexts/AdminContext';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { getFirstAndLastName, getInitials } from '@/utils/nameUtils';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -87,6 +88,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
 const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass = '' }) => {
   const navigate = useNavigate();
   const { isAdminContext } = useAdminContext();
+  const { session } = useAdminAuth();
+  const isPartner = session?.role === 'partner';
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
   const [activeToken, setActiveToken] = useState<string | null>(null);
@@ -292,7 +295,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
                 </div>
               </>
             )}
-            {client.total_pago && client.total_pago > 0 && (
+            {!isPartner && client.total_pago && client.total_pago > 0 && (
               <>
                 <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
                 <div className="text-center flex-1">
@@ -394,17 +397,19 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
               Ver Perfil
               <ChevronRight className="h-4 w-4 ml-1 opacity-50" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {!isPartner && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>

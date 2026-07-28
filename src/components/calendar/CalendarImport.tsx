@@ -40,7 +40,7 @@ interface CalendarImportProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (appointments: ParsedAppointment[]) => Promise<void>;
-  clients?: Array<{ id: number; nome: string; id_manual?: string }>;
+  clients?: Array<{ id: number; nome: string; id_manual?: string | null }>;
 }
 
 const ACCEPTED_FILE_TYPES = '.pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.gif';

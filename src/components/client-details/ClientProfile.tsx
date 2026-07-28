@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ptBR } from 'date-fns/locale';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 
 
@@ -22,6 +23,8 @@ interface ClientProfileProps {
 }
 
 const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, onDeleteClient }) => {
+  const { session } = useAdminAuth();
+  const isPartner = session?.role === 'partner';
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
 
@@ -93,7 +96,8 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
               <User className="h-5 w-5" />
               Informações Pessoais
             </CardTitle>
-            <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+            {!isPartner && (
+              <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="sm" onClick={handleOpenEditModal} className="text-[#3f9094] hover:bg-[#3f9094]/10">
                   <Edit className="h-4 w-4 mr-1.5" />
@@ -551,6 +555,7 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
                 </Form>
               </DialogContent>
             </Dialog>
+            )}
           </CardHeader>
           <CardContent className="pt-4">
             <div className="space-y-4">
@@ -640,20 +645,22 @@ const ClientProfile: React.FC<ClientProfileProps> = ({ client, onUpdateClient, o
       )}
 
       {/* Botão de exclusão */}
-      <Card className="client-profile-card shadow-md bg-red-50 border border-red-100">
-        <CardContent className="pt-6 pb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-medium text-red-700">Zona de Perigo</h3>
-              <p className="text-sm text-red-600">Esta ação irá apagar permanentemente os dados do cliente</p>
+      {!isPartner && (
+        <Card className="client-profile-card shadow-md bg-red-50 border border-red-100">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-red-700">Zona de Perigo</h3>
+                <p className="text-sm text-red-600">Esta ação irá apagar permanentemente os dados do cliente</p>
+              </div>
+              <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar Cliente
+              </Button>
             </div>
-            <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar Cliente
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent className="sm:max-w-md">

@@ -29,6 +29,7 @@ import usePayments from '@/hooks/usePayments.tsx';
 import useAppointments from '@/hooks/useAppointments';
 import { supabase } from '@/integrations/supabase/client';
 import ClientDetailTabs from '@/components/client-details/ClientDetailTabs';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { syncAllSessions } from '@/scripts/syncSessions';
 
 
@@ -69,6 +70,8 @@ const saveToStorage = <T,>(key: string, data: T): void => {
 };
 
 const ClientDetailPage = () => {
+  const { session } = useAdminAuth();
+  const isPartner = session?.role === 'partner';
   const { isAdminContext } = useAdminContext();
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
@@ -83,6 +86,13 @@ const ClientDetailPage = () => {
   const [moods, setMoods] = useState<ClientMood[]>([]);
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Efeito para restringir abas quando o utilizador for Parceiro
+  useEffect(() => {
+    if (isPartner && activeTab !== 'profile' && activeTab !== 'reports') {
+      setActiveTab('profile');
+    }
+  }, [isPartner, activeTab]);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
   const [activeToken, setActiveToken] = useState<string | null>(null);
@@ -926,7 +936,7 @@ const ClientDetailPage = () => {
   };
 
   // Prepare the tabs data for the ClientDetailTabs component
-  const tabs = [
+  const allTabs = [
     { id: 'profile', label: 'Perfil', content: renderTabContent() },
     { id: 'sessions', label: 'Sessões', content: null },
     { id: 'payments', label: 'Pagamentos', content: null },
@@ -941,6 +951,10 @@ const ClientDetailPage = () => {
       content: null
     }
   ];
+
+  const tabs = isPartner
+    ? allTabs.filter(t => t.id === 'profile' || t.id === 'reports')
+    : allTabs;
 
   // Helper function para copiar texto
   const copyToClipboard = (text: string, label: string) => {
@@ -1016,15 +1030,17 @@ const ClientDetailPage = () => {
 
               {/* Quick Actions - Desktop */}
               <div className="hidden sm:flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
-                  onClick={() => setActiveTab('payments')}
-                >
-                  <CreditCard className="h-4 w-4 mr-1.5" />
-                  Pagamento
-                </Button>
+                {!isPartner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
+                    onClick={() => setActiveTab('payments')}
+                  >
+                    <CreditCard className="h-4 w-4 mr-1.5" />
+                    Pagamento
+                  </Button>
+                )}
                 {client.telefone && (
                   <Button
                     variant="outline"
@@ -1190,17 +1206,19 @@ const ClientDetailPage = () => {
           </div>
 
           {/* Quick Actions - Mobile */}
-          <div className="flex sm:hidden items-center gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
-              onClick={() => setActiveTab('payments')}
-            >
-              <CreditCard className="h-4 w-4 mr-1.5" />
-              Pagamento
-            </Button>
-          </div>
+          {!isPartner && (
+            <div className="flex sm:hidden items-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 border-[#3f9094]/30 text-[#3f9094] hover:bg-[#3f9094]/10"
+                onClick={() => setActiveTab('payments')}
+              >
+                <CreditCard className="h-4 w-4 mr-1.5" />
+                Pagamento
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1234,39 +1252,41 @@ const ClientDetailPage = () => {
         </Card>
 
         {/* Total Pago Card */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-help">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-2 rounded-lg bg-emerald-500/10">
-                      <CreditCard className="h-4 w-4 text-emerald-500" />
+        {!isPartner && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-help">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-2 rounded-lg bg-emerald-500/10">
+                        <CreditCard className="h-4 w-4 text-emerald-500" />
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Pago</span>
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Pago</span>
-                  </div>
-                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                    €{(client.total_pago || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                  </p>
-                  <div className="mt-2 text-[10px] text-gray-400">
-                    {payments.length} pagamento(s) total
-                  </div>
-                </CardContent>
-              </Card>
-            </TooltipTrigger>
-            <TooltipContent className="w-64 p-3" side="bottom">
-              <div className="space-y-2">
-                <p className="font-bold text-xs border-b pb-1">Resumo de Pagamentos</p>
-                {paymentBreakdown.map(([desc, data]: [string, any]) => (
-                  <div key={desc} className="flex justify-between text-[11px]">
-                    <span className="truncate mr-2">{desc}:</span>
-                    <span className="font-medium whitespace-nowrap">{data.count}x ({data.total.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}€)</span>
-                  </div>
-                ))}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      €{(client.total_pago || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="mt-2 text-[10px] text-gray-400">
+                      {payments.length} pagamento(s) total
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent className="w-64 p-3" side="bottom">
+                <div className="space-y-2">
+                  <p className="font-bold text-xs border-b pb-1">Resumo de Pagamentos</p>
+                  {paymentBreakdown.map(([desc, data]: [string, any]) => (
+                    <div key={desc} className="flex justify-between text-[11px]">
+                      <span className="truncate mr-2">{desc}:</span>
+                      <span className="font-medium whitespace-nowrap">{data.count}x ({data.total.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}€)</span>
+                    </div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
         {/* Próxima Sessão Card */}
         <Card className="col-span-2 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LayoutDashboard, Users, DollarSign, BarChart2, Settings, LogOut, TrendingUp, UserCog, Megaphone, Target, Clock, FileText } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LogOut, TrendingUp, UserCog, Megaphone, Clock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Drawer,
   DrawerContent,
@@ -16,7 +16,6 @@ import { LanguageSwitch } from '@/components/language/LanguageSwitch';
 import { useLanguage } from '@/hooks/use-language';
 import SearchDialog from '@/components/search/SearchDialog';
 import GoogleCalendarSync from '@/components/calendar/GoogleCalendarSync';
-import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { NotificationBar } from '@/components/notifications/NotificationBar';
@@ -24,14 +23,28 @@ import { DatabaseManagerDialog } from '@/components/dashboard/DatabaseManagerDia
 import { KeyboardShortcutsDialog } from '@/components/accessibility/KeyboardShortcutsDialog';
 
 const Sidebar = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar_collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    const handleSync = () => {
+      setIsCollapsed(localStorage.getItem('sidebar_collapsed') === 'true');
+    };
+    window.addEventListener('sidebar-toggle', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('sidebar-toggle', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
+
   const [showCommunications, setShowCommunications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showCalendarSync, setShowCalendarSync] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { isPortrait } = useScreenSize();
   const { t } = useLanguage();
   const { signOut } = useAuth();
 
@@ -110,7 +123,12 @@ const Sidebar = () => {
             variant="ghost"
             size="sm"
             className="mt-4 w-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => {
+              const nextState = !isCollapsed;
+              setIsCollapsed(nextState);
+              localStorage.setItem('sidebar_collapsed', String(nextState));
+              window.dispatchEvent(new Event('sidebar-toggle'));
+            }}
             aria-label={isCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
             aria-expanded={!isCollapsed}
           >

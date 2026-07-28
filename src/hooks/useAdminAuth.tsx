@@ -48,6 +48,7 @@ const getPermissionsByRole = (role: string): string[] => {
       ];
     case 'partner':
       return [
+        ADMIN_PERMISSIONS.VIEW_CLIENTS,
         ADMIN_PERMISSIONS.VIEW_CALENDAR,
       ];
     default:

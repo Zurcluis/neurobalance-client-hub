@@ -1,4 +1,4 @@
-export type AdminRole = 'admin' | 'assistant';
+export type AdminRole = 'admin' | 'assistant' | 'partner';
 
 export interface AdminSession {
   token: string;

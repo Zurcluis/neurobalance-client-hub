@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Users, Home, Menu, X, LogOut, Settings, User, Shield, ChevronLeft, Map } from 'lucide-react';
+import { Calendar, Users, Menu, X, LogOut, User, Shield, ChevronLeft, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -16,7 +16,21 @@ import { toast } from 'sonner';
 import { ADMIN_PERMISSIONS } from '@/types/admin';
 
 const AdminSidebar = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('admin_sidebar_collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    const handleSync = () => {
+      setIsCollapsed(localStorage.getItem('admin_sidebar_collapsed') === 'true');
+    };
+    window.addEventListener('admin-sidebar-toggle', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('admin-sidebar-toggle', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -50,7 +64,7 @@ const AdminSidebar = () => {
       name: 'Planta da Clínica', 
       icon: <Map className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, 
       path: '/admin/floor-plan',
-      permission: ADMIN_PERMISSIONS.VIEW_CLIENTS
+      permission: ADMIN_PERMISSIONS.MANAGE_APPOINTMENTS
     },
   ];
 
@@ -112,7 +126,12 @@ const AdminSidebar = () => {
             variant="ghost" 
             size="sm" 
             className="mt-4 w-full flex items-center justify-center hover:bg-gray-100" 
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => {
+              const next = !isCollapsed;
+              setIsCollapsed(next);
+              localStorage.setItem('admin_sidebar_collapsed', String(next));
+              window.dispatchEvent(new Event('admin-sidebar-toggle'));
+            }}
           >
             {isCollapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>

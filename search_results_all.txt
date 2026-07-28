@@ -1,0 +1,38 @@
+Starting broad search for client payments...
+
+--- Match #1 ---
+Sheet: 11
+Row: 24
+Data: [null,45983,"JoãoPedro 73C",293113335,"Serviços","NFB",210,1,44.72,10.2856,0,55.0056,"Pago","Multibanco"]
+
+--- Match #2 ---
+Sheet: 11
+Row: 35
+Data: [null,45990,"Joao Pedro 73C",293113335,"Serviços","NFB",220,1,44.72,10.2856,0,55.0056,"Pago","Multibanco"]
+
+--- Match #3 ---
+Sheet: 12
+Row: 17
+Data: [null,45992,"73C João Pedr",293113335,"Serviços","NFB",222,1,44.72,10.2856,0,55.0056,"Pago","Multibanco",null,null,null,null,null,null,null,0,0]
+
+--- Match #4 ---
+Sheet: 12
+Row: 35
+Data: [null,46004,"João Pedro 73C",293113335,"Serviços","NFB",234,1,44.72,10.2856,0,55.0056,"Pago","Multibanco"]
+
+--- Match #5 ---
+Sheet: 12
+Row: 49
+Data: [null,46011,"73C João Pedro ",293113335,"Serviços","NFB",244,1,44.72,10.2856,0,55.0056,"Pago","Multibanco"]
+
+--- Match #6 ---
+Sheet: 12
+Row: 61
+Data: [null,46056,"73C",293113335,"Serviços","NFB",257,1,44.72,10.2856,0,55.0056,"Pago","Numerário","5 euros a mais "]
+
+--- Match #7 ---
+Sheet: 12
+Row: 73
+Data: [null,46032,"73C",293113335,"Serviços","NFB",267,1,44.72,10.2856,0,55.0056,"Pago","Multibanco"]
+
+Total found: 7

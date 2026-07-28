@@ -1,0 +1,4 @@
+Starting search for "JoãoPedro 73C"...
+
+FOUND in Sheet: "11", Row: 24
+Data: [null,45983,"JoãoPedro 73C",293113335,"Serviços","NFB",210,1,44.72,10.2856,0,55.0056,"Pago","Multibanco"]

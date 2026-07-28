@@ -11,9 +11,24 @@ const AdminCalendarFullPage = () => {
   const { hasPermission } = useAdminAuth();
   const isMobile = useIsMobile();
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem('admin_sidebar_collapsed') === 'true';
+  });
+
+  React.useEffect(() => {
+    const handleToggle = () => {
+      setIsSidebarCollapsed(localStorage.getItem('admin_sidebar_collapsed') === 'true');
+    };
+    window.addEventListener('admin-sidebar-toggle', handleToggle);
+    window.addEventListener('storage', handleToggle);
+    return () => {
+      window.removeEventListener('admin-sidebar-toggle', handleToggle);
+      window.removeEventListener('storage', handleToggle);
+    };
+  }, []);
+
   // Verificar permissões
   const canViewCalendar = hasPermission(ADMIN_PERMISSIONS.VIEW_CALENDAR);
-  const canManageAppointments = hasPermission(ADMIN_PERMISSIONS.MANAGE_APPOINTMENTS);
 
   if (!canViewCalendar) {
     return (
@@ -21,7 +36,7 @@ const AdminCalendarFullPage = () => {
         <AdminSidebar />
         <main className={cn(
           "flex-1 transition-all duration-300 flex items-center justify-center",
-          isMobile ? "ml-0" : "ml-64"
+          isMobile ? "ml-0" : isSidebarCollapsed ? "ml-20" : "ml-64"
         )}>
           <div className="text-center">
             <CalendarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -39,7 +54,7 @@ const AdminCalendarFullPage = () => {
       
       <main className={cn(
         "flex-1 transition-all duration-300",
-        isMobile ? "ml-0" : "ml-64"
+        isMobile ? "ml-0" : isSidebarCollapsed ? "ml-20" : "ml-64"
       )}>
         <div className={cn(
           "h-full",

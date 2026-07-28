@@ -27,6 +27,7 @@ export const DEV_ADMINS = import.meta.env.DEV ? [
     email: 'parceiro@neurobalance.pt',
     role: 'partner' as const,
     permissions: [
+      ADMIN_PERMISSIONS.VIEW_CLIENTS,
       ADMIN_PERMISSIONS.VIEW_CALENDAR,
     ],
     is_active: true

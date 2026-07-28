@@ -15,6 +15,22 @@ const PageLayout = ({ children, showBreadcrumbs = true }: PageLayoutProps) => {
   const { isPortrait } = useScreenSize();
   const navigate = useNavigate();
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem('sidebar_collapsed') === 'true';
+  });
+
+  React.useEffect(() => {
+    const handleToggle = () => {
+      setIsSidebarCollapsed(localStorage.getItem('sidebar_collapsed') === 'true');
+    };
+    window.addEventListener('sidebar-toggle', handleToggle);
+    window.addEventListener('storage', handleToggle);
+    return () => {
+      window.removeEventListener('sidebar-toggle', handleToggle);
+      window.removeEventListener('storage', handleToggle);
+    };
+  }, []);
+
   // Registar atalhos de teclado globais
   useGlobalKeyboardShortcuts(
     undefined, // onSearch
@@ -33,10 +49,10 @@ const PageLayout = ({ children, showBreadcrumbs = true }: PageLayoutProps) => {
         aria-label="Conteúdo principal"
         className={`flex-1 transition-all duration-300 focus:outline-none ${isMobile
             ? `pt-20 px-4 pb-8 ${isPortrait ? 'pb-safe' : ''}`
-            : 'p-8 ml-64'
+            : `p-4 sm:p-6 ${isSidebarCollapsed ? 'ml-20' : 'ml-64'}`
           }`}
       >
-        <div className="max-w-[1600px] mx-auto">
+        <div className="w-full mx-auto">
           {showBreadcrumbs && !isMobile && (
             <div className="mb-4">
               <Breadcrumbs />

@@ -6,14 +6,40 @@ import { ClinicFloorPlan } from '../components/clinic-floor-plan/ClinicFloorPlan
 import { RoomDetailsPanel } from '../components/clinic-floor-plan/RoomDetailsPanel';
 import { StatusLegend } from '../components/clinic-floor-plan/StatusLegend';
 import PageLayout from '@/components/layout/PageLayout';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+import { Shield } from 'lucide-react';
 
 interface ClinicFloorPlanPageProps {
   isEmbedded?: boolean;
 }
 
 const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = false }) => {
+  const { session } = useAdminAuth();
+  const isMobile = useIsMobile();
+  const isPartner = session?.role === 'partner';
   const [rooms, setRooms] = useState<RoomData[]>(initialMockRooms);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+
+  if (isPartner) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <AdminSidebar />
+        <main className={cn(
+          "flex-1 transition-all duration-300 flex items-center justify-center",
+          isMobile ? "ml-0" : "ml-64"
+        )}>
+          <div className="text-center p-8">
+            <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
+            <p className="text-gray-600">Você não tem permissão para acessar a planta da clínica.</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // Time checker to automatically update room statuses based on sessionEnd
   useEffect(() => {
@@ -105,6 +131,25 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
 
   if (isEmbedded) {
     return content;
+  }
+
+  if (session) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <AdminSidebar />
+        <main className={cn(
+          "flex-1 transition-all duration-300",
+          isMobile ? "ml-0" : "ml-64"
+        )}>
+          <div className={cn(
+            "p-6",
+            isMobile && "pt-20"
+          )}>
+            {content}
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
