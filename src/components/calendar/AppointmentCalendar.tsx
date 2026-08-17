@@ -15,6 +15,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -71,6 +81,7 @@ const AppointmentCalendar = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentView, setCurrentView] = useState<CalendarView>('month');
@@ -342,6 +353,7 @@ const AppointmentCalendar = () => {
     if (selectedAppointment) {
       try {
         await deleteAppointment(selectedAppointment.id);
+        setIsDeleteDialogOpen(false);
         setIsDialogOpen(false);
         setSelectedAppointment(null);
         form.reset();
@@ -353,7 +365,9 @@ const AppointmentCalendar = () => {
 
   const onSubmit = async (data: AppointmentFormValues) => {
     try {
-      const clientId = data.id_cliente === null || data.id_cliente === undefined ? null : Number(data.id_cliente);
+      const rawId = data.id_cliente;
+      const parsedNum = Number(rawId);
+      const clientId = (rawId === null || rawId === undefined || rawId === '' as any || rawId === 'null' as any || isNaN(parsedNum) || parsedNum <= 0) ? null : parsedNum;
       const isMultiDay = data.data_fim && data.data_fim !== data.data_inicio;
 
       const timeRangeOnly = isAllDay ? 'Todo o dia' : `${data.hora_inicio} - ${data.hora_fim}`;
@@ -1982,7 +1996,7 @@ const AppointmentCalendar = () => {
                     <Button
                       type="button"
                       variant="destructive"
-                      onClick={handleDeleteAppointment}
+                      onClick={() => setIsDeleteDialogOpen(true)}
                     >
                       Eliminar
                     </Button>
@@ -2094,6 +2108,29 @@ const AppointmentCalendar = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Diálogo de confirmação de eliminação de agendamento */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem a certeza que quer eliminar este agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O agendamento "{selectedAppointment?.titulo || ''}" será permanentemente removido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAppointment}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sim, eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
