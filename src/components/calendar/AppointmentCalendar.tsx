@@ -2148,7 +2148,7 @@ const AppointmentCalendar = () => {
           {overflowDay && (
             <div className="p-4 space-y-3">
               {/* Header com dia da semana e número grande */}
-              <div className="flex items-center justify-between border-b pb-2 dark:border-gray-800">
+              <div className="flex items-center justify-between border-b pb-2 dark:border-gray-800 pr-8">
                 <div className="flex flex-col items-start">
                   <span className="text-[11px] font-bold tracking-wider text-gray-500 uppercase">
                     {format(overflowDay.date, 'EEE.', { locale: pt }).toUpperCase()}
@@ -2157,15 +2157,6 @@ const AppointmentCalendar = () => {
                     {format(overflowDay.date, 'd')}
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={() => setOverflowDay(null)}
-                >
-                  <X className="h-4 w-4 text-gray-500" />
-                </Button>
               </div>
 
               {/* Lista de agendamentos do dia */}
