@@ -34,7 +34,7 @@ import { addDays, addMonths, addYears, format, isSameDay, startOfMonth, endOfMon
 import { pt } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy, Menu } from 'lucide-react';
+import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy, Menu, X } from 'lucide-react';
 import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
 import { parseLocalISO } from '@/utils/dateUtils';
@@ -82,6 +82,7 @@ const AppointmentCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [overflowDay, setOverflowDay] = useState<{ date: Date; appointments: Appointment[] } | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentView, setCurrentView] = useState<CalendarView>('month');
@@ -1109,9 +1110,18 @@ const AppointmentCalendar = () => {
                       </div>
                     )}
                     {dayAppointments.length > (dayHoliday ? 1 : (isMobile ? 1 : 2)) && (
-                      <div className={`text-gray-500 ${isMobile ? 'text-[9px] px-1' : 'text-xs px-2'}`}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOverflowDay({ date: day, appointments: dayAppointments });
+                        }}
+                        className={`text-[#1a73e8] dark:text-blue-400 font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded px-1 py-0.5 transition-colors cursor-pointer text-left w-full ${
+                          isMobile ? 'text-[9px]' : 'text-xs'
+                        }`}
+                      >
                         +{dayAppointments.length - (dayHoliday ? 1 : (isMobile ? 1 : 2))}{isMobile ? '' : ' mais'}
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -2131,6 +2141,97 @@ const AppointmentCalendar = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Pop-up de agendamentos do dia (Estilo Google Calendar) */}
+      <Dialog open={!!overflowDay} onOpenChange={(open) => !open && setOverflowDay(null)}>
+        <DialogContent className="sm:max-w-[340px] p-0 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl bg-white dark:bg-gray-900">
+          {overflowDay && (
+            <div className="p-4 space-y-3">
+              {/* Header com dia da semana e número grande */}
+              <div className="flex items-center justify-between border-b pb-2 dark:border-gray-800">
+                <div className="flex flex-col items-start">
+                  <span className="text-[11px] font-bold tracking-wider text-gray-500 uppercase">
+                    {format(overflowDay.date, 'EEE.', { locale: pt }).toUpperCase()}
+                  </span>
+                  <span className="text-2xl font-black text-gray-900 dark:text-white leading-none mt-0.5">
+                    {format(overflowDay.date, 'd')}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => setOverflowDay(null)}
+                >
+                  <X className="h-4 w-4 text-gray-500" />
+                </Button>
+              </div>
+
+              {/* Lista de agendamentos do dia */}
+              <div className="max-h-[320px] overflow-y-auto space-y-1.5 pr-1">
+                {overflowDay.appointments.map((appointment, idx) => {
+                  const clientInfo = (appointment as any).clientes;
+                  const clientId = clientInfo?.id_manual;
+                  const startTime = format(parseISO(appointment.data), 'HH:mm');
+
+                  return (
+                    <div
+                      key={`overflow-${appointment.id}-${idx}`}
+                      onClick={() => {
+                        handleEventClick(appointment);
+                        setOverflowDay(null);
+                      }}
+                      className="group flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+                    >
+                      {/* Ponto indicador de cor */}
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0 shadow-xs"
+                        style={{ backgroundColor: (appointment as any).cor || '#1a73e8' }}
+                      />
+
+                      {/* Hora e Título */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {clientId ? `${clientId} - ${appointment.titulo}` : appointment.titulo}
+                          </span>
+                          <span className="text-[10px] font-medium text-gray-500 shrink-0">
+                            {startTime}
+                          </span>
+                        </div>
+                        {appointment.notas && (
+                          <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                            {appointment.notas}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Rodapé com botão de adicionar agendamento para este dia */}
+              <div className="pt-2 border-t dark:border-gray-800 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1.5 h-8 border-[#3f9094] text-[#3f9094] hover:bg-[#3f9094] hover:text-white"
+                  onClick={() => {
+                    const targetDate = overflowDay.date;
+                    setOverflowDay(null);
+                    openNewAppointmentDialog(targetDate);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Novo Agendamento
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
