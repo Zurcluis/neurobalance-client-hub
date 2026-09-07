@@ -20,7 +20,9 @@ import CampaignCard from '@/components/marketing/CampaignCard';
 import CampaignFiltersComponent from '@/components/marketing/CampaignFilters';
 import MarketingDashboard from '@/components/marketing/MarketingDashboard';
 import ExportManager from '@/components/marketing/ExportManager';
-import LeadCompraForm from '@/components/lead-compra/LeadCompraForm';
+import { LandingLeadForm, LandingLeadFormData } from '@/components/marketing/LandingLeadForm';
+import { useLandingLeads } from '@/hooks/useLandingLeads';
+import { LandingLead, LandingLeadStatus } from '@/types/landing-lead';
 import LeadCompraDashboard from '@/components/lead-compra/LeadCompraDashboard';
 import ImportManager from '@/components/lead-compra/ImportManager';
 import FileImporter from '@/components/shared/FileImporter';
@@ -83,6 +85,17 @@ const MarketingReportsPage = () => {
     importLeads
   } = useLeadCompra();
 
+  // Landing Leads (Quadro Kanban) hooks
+  const {
+    leads: landingLeads,
+    isLoading: landingLeadsLoading,
+    fetchLeads: fetchLandingLeads,
+    addLead: addLandingLead,
+    updateLeadStatus: updateLandingLeadStatus,
+    updateLead: updateLandingLead,
+    deleteLead: deleteLandingLead,
+  } = useLandingLeads();
+
   // Marketing Campaigns states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<MarketingCampaign | null>(null);
@@ -91,9 +104,9 @@ const MarketingReportsPage = () => {
   const [filters, setFilters] = useState<CampaignFilters>({});
   const [showImporter, setShowImporter] = useState(false);
 
-  // Lead Compra states
+  // Lead Compra & Quadro states
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
-  const [editingLead, setEditingLead] = useState<LeadCompra | null>(null);
+  const [editingLandingLead, setEditingLandingLead] = useState<LandingLead | null>(null);
   const [leadSearchTerm, setLeadSearchTerm] = useState('');
   const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [leadFilters, setLeadFilters] = useState<LeadCompraFilters>({
@@ -164,7 +177,8 @@ const MarketingReportsPage = () => {
     // Aplicar ordenação
     if (filters.ordenarPor) {
       filtered.sort((a, b) => {
-        let valueA: any, valueB: any;
+        let valueA: string | number | Date = 0;
+        let valueB: string | number | Date = 0;
 
         switch (filters.ordenarPor) {
           case 'nome':
@@ -292,32 +306,80 @@ const MarketingReportsPage = () => {
     setSearchTerm('');
   };
 
-  // Funções para Lead Compra
-  const handleSubmitLead = async (data: Omit<LeadCompra, 'id' | 'created_at' | 'updated_at'>) => {
+  // Funções unificadas para Leads (Quadro Kanban + Lista)
+  const handleSubmitLandingLead = async (formData: LandingLeadFormData) => {
     try {
-      if (editingLead) {
-        await updateLead(editingLead.id, data);
+      if (editingLandingLead) {
+        await updateLandingLead(editingLandingLead.id, formData);
         toast.success('Lead atualizado com sucesso!');
       } else {
-        await addLead(data);
-        toast.success('Lead adicionado com sucesso!');
+        await addLandingLead(formData);
       }
+      // Atualizar ambas as listas para manter sincronia instantânea
+      await Promise.all([fetchLandingLeads(), fetchLeads()]);
       setIsLeadFormOpen(false);
-      setEditingLead(null);
+      setEditingLandingLead(null);
     } catch (error) {
       console.error('Erro ao salvar lead:', error);
     }
   };
 
-  const handleEditLead = (lead: LeadCompra) => {
-    setEditingLead(lead);
+  const handleEditLeadFromList = (lead: LeadCompra) => {
+    const existingLanding = landingLeads.find(l =>
+      (lead.email && l.email && l.email.toLowerCase() === lead.email.toLowerCase()) ||
+      (lead.telefone && l.telefone && l.telefone.trim() === lead.telefone.trim()) ||
+      l.id === lead.id
+    );
+
+    const statusMapToLanding: Record<string, LandingLeadStatus> = {
+      'Marcaram avaliação': 'Agendou Avaliação',
+      'Vão marcar consulta mais à frente': 'Contactado',
+      'Falta resultados da avaliação': 'Avaliação Realizada',
+      'Iniciou Neurofeedback': 'Iniciou Neurofeedback',
+      'Não vai avançar': 'Não Avança',
+      'Novo': 'Novo',
+      'Contactado': 'Contactado',
+      'Agendou Avaliação': 'Agendou Avaliação',
+      'Avaliação Realizada': 'Avaliação Realizada',
+      'Não Avança': 'Não Avança',
+    };
+
+    if (existingLanding) {
+      setEditingLandingLead(existingLanding);
+    } else {
+      setEditingLandingLead({
+        id: lead.id,
+        nome: lead.nome,
+        email: lead.email || '',
+        telefone: lead.telefone,
+        status: (lead.status && statusMapToLanding[lead.status]) || 'Novo',
+        origem: lead.origem_campanha || 'Instagram',
+        morada: lead.cidade || '',
+        observacoes: lead.observacoes || '',
+        created_at: lead.created_at,
+        updated_at: lead.updated_at,
+      });
+    }
     setIsLeadFormOpen(true);
   };
 
-  const handleDeleteLead = async (id: string) => {
+  const handleDeleteLeadFromList = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este lead?')) {
       try {
+        const leadToDelete = leads.find(l => l.id === id);
         await deleteLead(id);
+
+        if (leadToDelete) {
+          const matchLanding = landingLeads.find(l =>
+            (leadToDelete.email && l.email && l.email.toLowerCase() === leadToDelete.email.toLowerCase()) ||
+            (leadToDelete.telefone && l.telefone && l.telefone.trim() === leadToDelete.telefone.trim()) ||
+            l.id === id
+          );
+          if (matchLanding) {
+            await deleteLandingLead(matchLanding.id);
+          }
+        }
+        await Promise.all([fetchLandingLeads(), fetchLeads()]);
         toast.success('Lead removido com sucesso!');
       } catch (error) {
         console.error('Erro ao remover lead:', error);
@@ -327,7 +389,7 @@ const MarketingReportsPage = () => {
 
   const handleCancelLeadForm = () => {
     setIsLeadFormOpen(false);
-    setEditingLead(null);
+    setEditingLandingLead(null);
   };
 
   const handleClearLeadFilters = () => {
@@ -337,7 +399,7 @@ const MarketingReportsPage = () => {
     setLeadSearchTerm('');
   };
 
-  const handleDataImported = async (data: any[], type: 'marketing' | 'lead-compra') => {
+  const handleDataImported = async (data: Record<string, unknown>[], type: 'marketing' | 'lead-compra') => {
     let successCount = 0;
     let errorCount = 0;
 
@@ -380,6 +442,7 @@ const MarketingReportsPage = () => {
         toast.error(`${errorCount} leads falharam ao importar.`);
       }
 
+      await Promise.all([fetchLandingLeads(), fetchLeads()]);
       setShowLeadImporter(false);
     }
   };
@@ -438,24 +501,53 @@ const MarketingReportsPage = () => {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isLeadFormOpen} onOpenChange={setIsLeadFormOpen}>
+          <Dialog open={isLeadFormOpen} onOpenChange={(open) => {
+            setIsLeadFormOpen(open);
+            if (!open) setEditingLandingLead(null);
+          }}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Novo Lead
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingLead ? 'Editar Lead' : 'Novo Lead'}
+                  {editingLandingLead ? 'Editar Lead' : 'Novo Lead'}
                 </DialogTitle>
+                <DialogDescription>
+                  {editingLandingLead ? 'Atualize as informações do lead e a sua fase no quadro.' : 'Preencha as informações para registar um novo lead diretamente no quadro.'}
+                </DialogDescription>
               </DialogHeader>
-              <LeadCompraForm
-                leadCompra={editingLead || undefined}
-                onSubmit={handleSubmitLead}
+              <LandingLeadForm
+                initialData={editingLandingLead || undefined}
+                onSubmit={handleSubmitLandingLead}
                 onCancel={handleCancelLeadForm}
-                isLoading={leadsLoading || false}
+                isLoading={landingLeadsLoading || leadsLoading}
+              />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showLeadImporter} onOpenChange={setShowLeadImporter}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Importar Leads (PDF)
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Importar Leads (PDF, Excel, CSV)</DialogTitle>
+                <DialogDescription>
+                  Carregue a folha de leads em PDF ou ficheiro Excel/CSV para registar automaticamente todos os contactos no sistema e no quadro.
+                </DialogDescription>
+              </DialogHeader>
+              <FileImporter
+                onDataImported={handleDataImported}
+                expectedType="lead-compra"
+                title="Carregar Folha de Leads (PDF / Excel)"
+                description="Arraste o PDF de leads ou clique para selecionar"
               />
             </DialogContent>
           </Dialog>
@@ -833,7 +925,32 @@ const MarketingReportsPage = () => {
 
             {/* Kanban View - Leads da Landing Page */}
             <TabsContent value="kanban" className="mt-4">
-              <LeadKanbanBoard />
+              <LeadKanbanBoard
+                leads={landingLeads}
+                isLoading={landingLeadsLoading}
+                onRefresh={async () => {
+                  await Promise.all([fetchLandingLeads(), fetchLeads()]);
+                }}
+                onImportClick={() => setShowLeadImporter(true)}
+                onAddLead={async (data) => {
+                  const res = await addLandingLead(data);
+                  await fetchLeads();
+                  return res;
+                }}
+                onUpdateStatus={async (id, status) => {
+                  await updateLandingLeadStatus(id, status);
+                  await fetchLeads();
+                }}
+                onUpdateLead={async (id, data) => {
+                  const res = await updateLandingLead(id, data);
+                  await fetchLeads();
+                  return res;
+                }}
+                onDeleteLead={async (id) => {
+                  await deleteLandingLead(id);
+                  await fetchLeads();
+                }}
+              />
             </TabsContent>
 
             {/* Lista View - Leads tradicionais */}
@@ -927,11 +1044,16 @@ const MarketingReportsPage = () => {
                     <Card key={lead.id} className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <h3 className="font-semibold text-lg">{lead.nome}</h3>
                             <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>
                               {lead.tipo}
                             </Badge>
+                            {lead.status && (
+                              <Badge variant="outline" className="border-teal-300 text-teal-700 bg-teal-50 font-medium">
+                                {lead.status}
+                              </Badge>
+                            )}
                             {lead.genero && (
                               <Badge variant="outline">
                                 {lead.genero}
@@ -986,15 +1108,17 @@ const MarketingReportsPage = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEditLead(lead)}
+                            onClick={() => handleEditLeadFromList(lead)}
+                            title="Editar Lead"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteLead(lead.id)}
+                            onClick={() => handleDeleteLeadFromList(lead.id)}
                             className="text-red-600 hover:text-red-700"
+                            title="Eliminar Lead"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

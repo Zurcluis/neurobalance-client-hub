@@ -5,8 +5,10 @@
  * @param birthDate - Birth date string (YYYY-MM-DD) or Date object
  * @returns Age in years
  */
-export const calculateAge = (birthDate: string | Date): number => {
+export const calculateAge = (birthDate?: string | Date | null): number => {
+  if (!birthDate) return 0;
   const birth = typeof birthDate === 'string' ? new Date(birthDate) : birthDate;
+  if (isNaN(birth.getTime())) return 0;
   const today = new Date();
   
   let age = today.getFullYear() - birth.getFullYear();
@@ -16,7 +18,7 @@ export const calculateAge = (birthDate: string | Date): number => {
     age--;
   }
   
-  return age;
+  return isNaN(age) || age < 0 ? 0 : age;
 };
 
 /**

@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { LANDING_LEAD_STATUS, LandingLeadStatus, LANDING_LEAD_ORIGEM, LandingLead } from '@/types/landing-lead';
-import { User, Mail, Phone, MapPin, Save, X } from 'lucide-react';
+import { LANDING_LEAD_STATUS, LandingLeadStatus, LANDING_LEAD_ORIGEM, LandingLead, KANBAN_COLUMNS } from '@/types/landing-lead';
+import { User, Mail, Phone, MapPin, Save, X, Tag } from 'lucide-react';
 
 const landingLeadSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -20,7 +20,7 @@ const landingLeadSchema = z.object({
   observacoes: z.string().optional(),
 });
 
-type LandingLeadFormData = z.infer<typeof landingLeadSchema>;
+export type LandingLeadFormData = z.infer<typeof landingLeadSchema>;
 
 interface LandingLeadFormProps {
   onSubmit: (data: LandingLeadFormData) => Promise<void>;
@@ -46,7 +46,7 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
     resolver: zodResolver(landingLeadSchema),
     defaultValues: {
       nome: initialData?.nome || '',
-      email: initialData?.email || '',
+      email: initialData?.email?.includes('@neurobalance.local') ? '' : (initialData?.email || ''),
       telefone: initialData?.telefone || '',
       status: initialData?.status || 'Novo',
       origem: initialData?.origem || 'Instagram',
@@ -59,8 +59,10 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
 
   const handleFormSubmit = async (data: LandingLeadFormData) => {
     try {
-      // Convert empty strings to undefined or null equivalent before submitting if needed
-      await onSubmit(data);
+      await onSubmit({
+        ...data,
+        morada: data.morada?.trim() || '',
+      });
       reset();
     } catch (error) {
       console.error('Erro ao salvar lead:', error);
@@ -87,13 +89,13 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
         <div className="space-y-2">
           <Label htmlFor="email" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
-            Email
+            Email <span className="text-xs text-gray-400 font-normal">(opcional)</span>
           </Label>
           <Input
             id="email"
             type="email"
             {...register('email')}
-            placeholder="maria@exemplo.com (opcional)"
+            placeholder="exemplo@email.com (opcional)"
             className={errors.email ? 'border-red-500' : ''}
           />
           {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
@@ -114,18 +116,24 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="status">Status (Kanban)</Label>
+          <Label htmlFor="status" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Coluna no Quadro (Status)
+          </Label>
           <Select
             value={watchedValues.status || 'Novo'}
             onValueChange={(value) => setValue('status', value as LandingLeadStatus)}
           >
             <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
-              <SelectValue placeholder="Selecione o status" />
+              <SelectValue placeholder="Selecione a fase no quadro" />
             </SelectTrigger>
             <SelectContent>
-              {LANDING_LEAD_STATUS.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
+              {KANBAN_COLUMNS.map((col) => (
+                <SelectItem key={col.id} value={col.id}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${col.color}`} />
+                    <span className="font-medium">{col.title}</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -135,8 +143,8 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="origem" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            Como conheceu
+            <Tag className="h-4 w-4" />
+            Origem / Canal
           </Label>
           <Select
             value={watchedValues.origem || 'Instagram'}
@@ -159,11 +167,11 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
         <div className="space-y-2">
           <Label htmlFor="morada" className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            Morada
+            Cidade <span className="text-xs text-gray-400 font-normal">(opcional)</span>
           </Label>
           <Input
             id="morada"
-            placeholder="Ex: Rua Direita, nº 1"
+            placeholder="Ex: Lisboa, Porto, Braga... (opcional)"
             className={errors.morada ? 'border-red-500' : ''}
             {...register('morada')}
           />
@@ -176,7 +184,7 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
         <Textarea
           id="observacoes"
           {...register('observacoes')}
-          placeholder="Observações adicionais..."
+          placeholder="Observações adicionais sobre o lead..."
           rows={3}
         />
       </div>
@@ -186,9 +194,9 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
           <X className="h-4 w-4 mr-2" />
           Cancelar
         </Button>
-        <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" disabled={isLoading} className="bg-[#3f9094] hover:bg-[#265255] text-white">
           <Save className="h-4 w-4 mr-2" />
-          {isLoading ? 'Salvando...' : (initialData ? 'Salvar Alterações' : 'Adicionar ao Kanban')}
+          {isLoading ? 'A guardar...' : (initialData ? 'Guardar Alterações' : 'Adicionar Lead ao Quadro')}
         </Button>
       </div>
     </form>

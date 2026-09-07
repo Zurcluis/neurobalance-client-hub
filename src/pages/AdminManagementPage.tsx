@@ -12,15 +12,17 @@ import {
   Edit, 
   Trash2, 
   Key, 
-  Users,
-  Mail,
-  Shield,
-  ShieldCheck,
-  Eye,
-  EyeOff,
-  Copy,
-  RefreshCw,
-  Calendar
+  Users, 
+  Mail, 
+  Phone,
+  Shield, 
+  ShieldCheck, 
+  Eye, 
+  EyeOff, 
+  Copy, 
+  RefreshCw, 
+  Calendar,
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminForm from '@/components/admin-management/AdminForm';
@@ -28,20 +30,14 @@ import AdminTokenManager from '@/components/admin-management/AdminTokenManager';
 import { useAdmins, Admin } from '@/hooks/useAdmins';
 import { calculateAge } from '@/utils/dateUtils';
 import { useLanguage } from '@/hooks/use-language';
-
-interface AdminToken {
-  id: string;
-  admin_id: string;
-  token: string;
-  expires_at: string;
-  created_at: string;
-  is_active: boolean;
-}
-
 import { useAdminTokens } from '@/hooks/useAdminTokens';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import AdminProfileDialog from '@/components/admin/AdminProfileDialog';
+import { cn } from '@/lib/utils';
 
 const AdminManagementPage = () => {
   const { t } = useLanguage();
+  const { session } = useAdminAuth();
   const { 
     admins, 
     isLoading: isAdminsLoading, 
@@ -62,6 +58,7 @@ const AdminManagementPage = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
   const [activeTab, setActiveTab] = useState('admins');
 
@@ -97,20 +94,23 @@ const AdminManagementPage = () => {
   const handleDeleteAdmin = async (adminId: string, adminName: string) => {
     if (confirm(`Tem certeza que deseja eliminar a administrativa ${adminName}?`)) {
       await deleteAdmin(adminId);
-      // Remover também os tokens associados (implementar depois)
-      setAdminTokens(adminTokens.filter(token => token.admin_id !== adminId));
     }
   };
 
   const handleToggleAdminStatus = async (adminId: string) => {
     try {
-      const updatedAdmins = admins.map(admin =>
-        admin.id === adminId
-          ? { ...admin, ativo: !admin.ativo }
-          : admin
-      );
-      setAdmins(updatedAdmins);
-      toast.success('Status da administrativa atualizado!');
+      const target = admins.find(a => a.id === adminId);
+      if (target) {
+        await updateAdmin(adminId, {
+          nome: target.nome,
+          email: target.email,
+          data_nascimento: target.data_nascimento,
+          morada: target.morada,
+          contacto: target.contacto,
+          role: target.role as any,
+          ativo: !target.ativo
+        });
+      }
     } catch (error) {
       toast.error('Erro ao atualizar status');
     }
@@ -133,25 +133,36 @@ const AdminManagementPage = () => {
     <PageLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <UserCog className="h-8 w-8 text-[#3f9094]" />
             <div>
               <h1 className="text-3xl font-bold text-[#3f9094]">{t('adminManagement')}</h1>
-              <p className="text-gray-600 mt-2">Gerir administrativas, assistentes e tokens de acesso</p>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Gerir administrativas, assistentes, colaboradores e tokens de acesso</p>
             </div>
           </div>
           
-          <Button
-            onClick={() => {
-              setEditingAdmin(null);
-              setIsFormOpen(true);
-            }}
-            className="bg-[#3f9094] hover:bg-[#2d7a7e] flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar Administrativa
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsProfileDialogOpen(true)}
+              className="border-[#3f9094] text-[#3f9094] hover:bg-[#3f9094]/10 flex items-center gap-2"
+            >
+              <User className="h-4 w-4" />
+              {t('myProfile') || 'Meu Perfil'}
+            </Button>
+
+            <Button
+              onClick={() => {
+                setEditingAdmin(null);
+                setIsFormOpen(true);
+              }}
+              className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar Administrativa
+            </Button>
+          </div>
         </div>
 
         {/* Estatísticas */}
@@ -235,81 +246,114 @@ const AdminManagementPage = () => {
 
             {/* Lista de Administrativas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredAdmins.map((admin) => (
-                <Card key={admin.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
-                          {admin.nome}
-                        </CardTitle>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={admin.ativo ? "default" : "secondary"}>
-                            {admin.ativo ? "Ativa" : "Inativa"}
-                          </Badge>
-                          <Badge variant={admin.role === 'admin' ? "destructive" : admin.role === 'partner' ? "secondary" : "outline"}>
-                            {admin.role === 'admin' ? 'Admin' : admin.role === 'partner' ? 'Parceiro' : 'Assistente'}
-                          </Badge>
+              {filteredAdmins.map((admin) => {
+                const isCurrentUser = session && (session.adminEmail?.toLowerCase() === admin.email?.toLowerCase() || String(session.adminId) === String(admin.id));
+                return (
+                  <Card
+                    key={admin.id}
+                    className={cn(
+                      "hover:shadow-md transition-shadow",
+                      isCurrentUser && "ring-2 ring-[#3f9094] bg-[#3f9094]/5 dark:bg-[#3f9094]/10"
+                    )}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                              {admin.nome}
+                            </CardTitle>
+                            {isCurrentUser && (
+                              <Badge className="bg-[#3f9094] text-white hover:bg-[#2d7a7e] text-[10px] px-1.5 py-0.5">
+                                Você
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={admin.ativo ? "default" : "secondary"}>
+                              {admin.ativo ? "Ativa" : "Inativa"}
+                            </Badge>
+                            <Badge variant={admin.role === 'admin' ? "destructive" : admin.role === 'partner' ? "secondary" : "outline"}>
+                              {admin.role === 'admin' ? 'Admin' : admin.role === 'partner' ? 'Parceiro' : 'Assistente'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail className="h-4 w-4" />
-                        <span className="truncate">{admin.email}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="h-4 w-4" />
-                        <span>{calculateAge(admin.data_nascimento)} anos</span>
-                      </div>
-                      
-                      <div className="text-xs text-gray-500">
-                        Criada em {new Date(admin.created_at).toLocaleDateString('pt-PT')}
-                      </div>
-                      
-                      {admin.last_login && (
-                        <div className="text-xs text-gray-500">
-                          Último acesso: {new Date(admin.last_login).toLocaleDateString('pt-PT')}
-                        </div>
-                      )}
-                    </div>
+                    </CardHeader>
                     
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditAdmin(admin)}
-                        className="flex-1"
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <Mail className="h-4 w-4 text-[#3f9094]" />
+                          <span className="truncate">{admin.email}</span>
+                        </div>
+                        
+                        {admin.contacto && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <Phone className="h-4 w-4 text-[#3f9094]" />
+                            <span>{admin.contacto}</span>
+                          </div>
+                        )}
+
+                        {admin.data_nascimento && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <Calendar className="h-4 w-4 text-[#3f9094]" />
+                            <span>{calculateAge(admin.data_nascimento)} anos</span>
+                          </div>
+                        )}
+                        
+                        <div className="text-xs text-gray-500">
+                          Criada em {new Date(admin.created_at).toLocaleDateString('pt-PT')}
+                        </div>
+                        
+                        {admin.last_login && (
+                          <div className="text-xs text-gray-500">
+                            Último acesso: {new Date(admin.last_login).toLocaleDateString('pt-PT')}
+                          </div>
+                        )}
+                      </div>
                       
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleToggleAdminStatus(admin.id)}
-                        className={admin.ativo ? "text-orange-600 hover:text-orange-700" : "text-green-600 hover:text-green-700"}
-                      >
-                        {admin.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteAdmin(admin.id, admin.nome)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex gap-2 mt-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (isCurrentUser) {
+                              setIsProfileDialogOpen(true);
+                            } else {
+                              handleEditAdmin(admin);
+                            }
+                          }}
+                          className="flex-1"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleToggleAdminStatus(admin.id)}
+                          className={admin.ativo ? "text-orange-600 hover:text-orange-700" : "text-green-600 hover:text-green-700"}
+                          title={admin.ativo ? "Desativar" : "Ativar"}
+                        >
+                          {admin.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteAdmin(admin.id, admin.nome)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             {filteredAdmins.length === 0 && (
@@ -350,6 +394,12 @@ const AdminManagementPage = () => {
           onOpenChange={setIsFormOpen}
           admin={editingAdmin}
           onSubmit={editingAdmin ? handleUpdateAdmin : handleAddAdmin}
+        />
+
+        {/* Modal de Perfil do Administrador Atual */}
+        <AdminProfileDialog
+          open={isProfileDialogOpen}
+          onOpenChange={setIsProfileDialogOpen}
         />
       </div>
     </PageLayout>

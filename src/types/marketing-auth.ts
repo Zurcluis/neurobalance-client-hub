@@ -4,7 +4,10 @@ export interface MarketingSession {
   marketingEmail: string;
   role: 'marketing_manager' | 'marketing_assistant';
   permissions: string[];
+  /** Token de sessão interno (gerado no login) */
   token: string;
+  /** Token de acesso real (validado nas políticas RLS via header x-marketing-token) */
+  accessToken: string;
   expiresAt: string;
 }
 

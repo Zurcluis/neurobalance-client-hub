@@ -8,4 +8,29 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); 
+// A área de marketing autentica-se por token (sem sessão Supabase Auth).
+// O token é enviado no header de cada pedido REST e validado nas políticas
+// RLS (função current_marketing_role) — ver fix_marketing_security.sql.
+const marketingFetch: typeof fetch = (input, init = {}) => {
+  try {
+    const sessionStr = localStorage.getItem('marketing_session');
+    if (sessionStr) {
+      const session = JSON.parse(sessionStr);
+      if (session?.accessToken && session?.marketingEmail) {
+        const headers = new Headers(init.headers);
+        headers.set('x-marketing-token', String(session.accessToken));
+        headers.set('x-marketing-email', String(session.marketingEmail));
+        return fetch(input, { ...init, headers });
+      }
+    }
+  } catch {
+    // sessão inválida/indisponível: seguir sem headers
+  }
+  return fetch(input, init);
+};
+
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  global: {
+    fetch: marketingFetch,
+  },
+});

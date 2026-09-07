@@ -33,6 +33,7 @@ import {
   Clock,
   MapPin,
   UserPlus,
+  Upload,
 } from 'lucide-react';
 import { KANBAN_COLUMNS, LandingLead, LandingLeadStatus } from '@/types/landing-lead';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
@@ -53,7 +54,7 @@ interface LeadCardProps {
 
 const LeadCard: React.FC<LeadCardProps> = ({ lead, onDragStart, onClick, onEdit, onDelete }) => {
   const nome = lead.nome || 'Sem nome';
-  const email = lead.email || 'Sem email';
+  const email = (lead.email && !lead.email.includes('@neurobalance.local')) ? lead.email : 'Sem email';
   const telefone = lead.telefone || 'Sem telefone';
   const origem = lead.origem || 'Desconhecida';
 
@@ -231,14 +232,32 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   );
 };
 
-// ─── Main Board ──────────────────────────────────────────────────────────────
+export interface LeadKanbanBoardProps {
+  leads?: LandingLead[];
+  isLoading?: boolean;
+  onRefresh?: () => void;
+  onAddLead?: (data: Omit<LandingLead, 'id' | 'created_at' | 'updated_at'>) => Promise<LandingLead | void>;
+  onUpdateStatus?: (id: string, status: LandingLeadStatus) => Promise<void>;
+  onUpdateLead?: (id: string, data: Partial<LandingLead>) => Promise<LandingLead | void>;
+  onDeleteLead?: (id: string) => Promise<void>;
+  onImportClick?: () => void;
+}
 
-const LeadKanbanBoard: React.FC = () => {
-  const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, deleteLead } = useLandingLeads();
+const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
+  const internalHook = useLandingLeads();
+
+  const leads = props.leads ?? internalHook.leads;
+  const isLoading = props.isLoading ?? internalHook.isLoading;
+  const fetchLeads = props.onRefresh ?? internalHook.fetchLeads;
+  const addLead = props.onAddLead ?? internalHook.addLead;
+  const updateLeadStatus = props.onUpdateStatus ?? internalHook.updateLeadStatus;
+  const updateLead = props.onUpdateLead ?? internalHook.updateLead;
+  const deleteLead = props.onDeleteLead ?? internalHook.deleteLead;
   const [searchTerm, setSearchTerm] = useState('');
   const [draggedLead, setDraggedLead] = useState<LandingLead | null>(null);
   const [selectedLead, setSelectedLead] = useState<LandingLead | null>(null);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const [editForm, setEditForm] = useState({ observacoes: '' });
   const [emailForm, setEmailForm] = useState({ assunto: '', mensagem: '' });
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -317,7 +336,7 @@ const LeadKanbanBoard: React.FC = () => {
     setIsEditingDetails(true);
   };
 
-  const handleUpdateLead = async (data: any) => {
+  const handleUpdateLead = async (data: Partial<LandingLead>) => {
     if (selectedLead) {
       await updateLead(selectedLead.id, data);
       setSelectedLead({ ...selectedLead, ...data });
@@ -452,6 +471,20 @@ const LeadKanbanBoard: React.FC = () => {
           </div>
           <Button variant="outline" size="icon" onClick={() => fetchLeads()} title="Atualizar">
             <RefreshCw className="h-4 w-4" />
+          </Button>
+          {props.onImportClick && (
+            <Button
+              variant="outline"
+              onClick={props.onImportClick}
+              className="gap-1.5 border-teal-200 text-teal-700 hover:bg-teal-50"
+            >
+              <Upload className="h-4 w-4" />
+              Importar PDF
+            </Button>
+          )}
+          <Button onClick={() => setIsCreateLeadOpen(true)} className="gap-1.5 bg-[#3f9094] hover:bg-[#265255] text-white">
+            <UserPlus className="h-4 w-4" />
+            Novo Lead
           </Button>
         </div>
       </div>
@@ -662,6 +695,26 @@ const LeadKanbanBoard: React.FC = () => {
               </div>
             )
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Novo Lead no Quadro */}
+      <Dialog open={isCreateLeadOpen} onOpenChange={setIsCreateLeadOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Novo Lead (Quadro)</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para adicionar uma nova lead diretamente a uma coluna do quadro.
+            </DialogDescription>
+          </DialogHeader>
+          <LandingLeadForm
+            onSubmit={async (data) => {
+              await addLead(data);
+              setIsCreateLeadOpen(false);
+            }}
+            onCancel={() => setIsCreateLeadOpen(false)}
+            isLoading={isLoading}
+          />
         </DialogContent>
       </Dialog>
     </div>

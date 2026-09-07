@@ -2,13 +2,27 @@ export type AdminRole = 'admin' | 'assistant' | 'partner';
 
 export interface AdminSession {
   token: string;
-  adminId: number;
+  adminId: string | number;
   adminName: string;
   adminEmail: string;
   role: AdminRole;
   permissions: string[];
   expiresAt: string;
   isValid: boolean;
+  contacto?: string;
+  morada?: string;
+  data_nascimento?: string;
+  created_at?: string;
+  last_login?: string | null;
+}
+
+export interface AdminProfileUpdateData {
+  nome: string;
+  email: string;
+  contacto?: string;
+  morada?: string;
+  data_nascimento?: string;
+  password?: string;
 }
 
 export interface AdminAuthRequest {

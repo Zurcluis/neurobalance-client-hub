@@ -1,0 +1,474 @@
+import React, { useState, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { useLanguage } from '@/hooks/use-language';
+import { calculateAge } from '@/utils/dateUtils';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  Lock,
+  Eye,
+  EyeOff,
+  Shield,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Save,
+  Clock,
+  Sparkles,
+  UserCheck
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+const AdminProfilePage: React.FC = () => {
+  const isMobile = useIsMobile();
+  const { t } = useLanguage();
+  const { session, updateCurrentAdminProfile, fetchCurrentAdminProfile } = useAdminAuth();
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('admin_sidebar_collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    const handleToggle = () => {
+      setIsSidebarCollapsed(localStorage.getItem('admin_sidebar_collapsed') === 'true');
+    };
+    window.addEventListener('admin-sidebar-toggle', handleToggle);
+    window.addEventListener('storage', handleToggle);
+    return () => {
+      window.removeEventListener('admin-sidebar-toggle', handleToggle);
+      window.removeEventListener('storage', handleToggle);
+    };
+  }, []);
+
+  const [loading, setLoading] = useState(false);
+
+  // Form states
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [contacto, setContacto] = useState('');
+  const [morada, setMorada] = useState('');
+  const [dataNascimento, setDataNascimento] = useState('');
+
+  // Password fields
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      setNome(session.adminName || '');
+      setEmail(session.adminEmail || '');
+      setContacto(session.contacto || '');
+      setMorada(session.morada || '');
+      setDataNascimento(session.data_nascimento || '');
+
+      fetchCurrentAdminProfile().then((fresh) => {
+        if (fresh) {
+          setNome(fresh.adminName || '');
+          setEmail(fresh.adminEmail || '');
+          setContacto(fresh.contacto || '');
+          setMorada(fresh.morada || '');
+          setDataNascimento(fresh.data_nascimento || '');
+        }
+      });
+    }
+  }, [session, fetchCurrentAdminProfile]);
+
+  const getRoleBadge = (role?: string) => {
+    switch (role) {
+      case 'admin':
+        return (
+          <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100 font-medium px-2.5 py-0.5">
+            <Shield className="h-3.5 w-3.5 mr-1 text-red-600" />
+            Administrador
+          </Badge>
+        );
+      case 'assistant':
+        return (
+          <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 font-medium px-2.5 py-0.5">
+            <ShieldCheck className="h-3.5 w-3.5 mr-1 text-blue-600" />
+            Assistente
+          </Badge>
+        );
+      case 'partner':
+        return (
+          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 font-medium px-2.5 py-0.5">
+            <Sparkles className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+            Parceiro
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">Colaborador</Badge>;
+    }
+  };
+
+  const permissionLabels: Record<string, string> = {
+    view_clients: 'Visualizar Fichas de Clientes',
+    edit_clients: 'Criar e Editar Clientes',
+    view_calendar: 'Consultar Calendário e Horários',
+    edit_calendar: 'Gerir e Reagendar Sessões',
+    manage_appointments: 'Controlo Total de Agendamentos',
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!nome.trim()) {
+      toast.error('O nome completo é obrigatório.');
+      return;
+    }
+
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('Por favor, introduza um e-mail válido.');
+      return;
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        toast.error('A nova palavra-passe deve ter pelo menos 6 caracteres.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error('A confirmação da palavra-passe não coincide.');
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      const res = await updateCurrentAdminProfile({
+        nome: nome.trim(),
+        email: email.trim(),
+        contacto: contacto.trim(),
+        morada: morada.trim(),
+        data_nascimento: dataNascimento,
+        password: newPassword ? newPassword : undefined,
+      });
+
+      if (res.success) {
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err: any) {
+      console.error('Erro ao atualizar perfil:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-950">
+      <AdminSidebar />
+
+      <main
+        className={cn(
+          'flex-1 transition-all duration-300',
+          isMobile ? 'ml-0' : isSidebarCollapsed ? 'ml-20' : 'ml-64'
+        )}
+      >
+        <div className={cn('max-w-5xl mx-auto p-4 sm:p-8 space-y-6', isMobile && 'pt-20')}>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-200 dark:border-gray-800">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+                <UserCheck className="h-7 w-7 text-[#3f9094]" />
+                {t('myProfile') || 'Meu Perfil'}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                Gerencie as suas informações de perfil, credenciais e permissões de acesso
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Cartão de Resumo Lateral */}
+            <Card className="lg:col-span-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm h-fit">
+              <CardContent className="p-6 text-center space-y-4">
+                <div className="mx-auto h-24 w-24 rounded-full bg-gradient-to-br from-[#3f9094] to-[#24585c] flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-[#3f9094]/10">
+                  {nome ? nome.charAt(0).toUpperCase() : 'U'}
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{nome || 'Colaborador'}</h2>
+                  <p className="text-sm text-gray-500 truncate mt-0.5">{email}</p>
+                </div>
+
+                <div className="flex justify-center pt-1">
+                  {getRoleBadge(session?.role)}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-800 text-left space-y-2.5 text-xs text-gray-600 dark:text-gray-400">
+                  {contacto && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-[#3f9094]" />
+                      <span>{contacto}</span>
+                    </div>
+                  )}
+                  {morada && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-[#3f9094]" />
+                      <span className="truncate">{morada}</span>
+                    </div>
+                  )}
+                  {dataNascimento && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-[#3f9094]" />
+                      <span>{calculateAge(dataNascimento)} anos ({new Date(dataNascimento).toLocaleDateString('pt-PT')})</span>
+                    </div>
+                  )}
+                  {session?.last_login && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-[#3f9094]" />
+                      <span>Último acesso: {new Date(session.last_login).toLocaleDateString('pt-PT')}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Formulário Principal com Abas */}
+            <Card className="lg:col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {t('editProfile') || 'Editar Informações do Perfil'}
+                </CardTitle>
+                <CardDescription>
+                  Atualize os seus dados de contacto e palavra-passe de acesso.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                <form onSubmit={handleSave} className="space-y-6">
+                  <Tabs defaultValue="info" className="w-full">
+                    <TabsList className="grid grid-cols-3 w-full mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                      <TabsTrigger value="info" className="flex items-center gap-2 text-xs sm:text-sm py-2">
+                        <User className="h-4 w-4 text-[#3f9094]" />
+                        <span>{t('personalInfo') || 'Dados Pessoais'}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="security" className="flex items-center gap-2 text-xs sm:text-sm py-2">
+                        <Lock className="h-4 w-4 text-[#3f9094]" />
+                        <span>{t('security') || 'Segurança'}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="permissions" className="flex items-center gap-2 text-xs sm:text-sm py-2">
+                        <Shield className="h-4 w-4 text-[#3f9094]" />
+                        <span>{t('permissions') || 'Permissões'}</span>
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* ABA 1: DADOS PESSOAIS */}
+                    <TabsContent value="info" className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor="page-nome" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5 text-[#3f9094]" />
+                            {t('fullName') || 'Nome Completo'} *
+                          </Label>
+                          <Input
+                            id="page-nome"
+                            value={nome}
+                            onChange={(e) => setNome(e.target.value)}
+                            placeholder="O seu nome completo"
+                            className="h-10 focus-visible:ring-[#3f9094]"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label htmlFor="page-email" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-[#3f9094]" />
+                            {t('email') || 'E-mail'} *
+                          </Label>
+                          <Input
+                            id="page-email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="email@neurobalance.pt"
+                            className="h-10 focus-visible:ring-[#3f9094]"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label htmlFor="page-contacto" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                            <Phone className="h-3.5 w-3.5 text-[#3f9094]" />
+                            {t('contact') || 'Contacto Telefónico'}
+                          </Label>
+                          <Input
+                            id="page-contacto"
+                            type="tel"
+                            value={contacto}
+                            onChange={(e) => setContacto(e.target.value)}
+                            placeholder="912 345 678"
+                            className="h-10 focus-visible:ring-[#3f9094]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="page-nasc" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-[#3f9094]" />
+                              {t('dateOfBirth') || 'Data de Nascimento'}
+                            </Label>
+                            {dataNascimento && (
+                              <span className="text-xs font-medium text-[#3f9094]">
+                                {calculateAge(dataNascimento)} anos
+                              </span>
+                            )}
+                          </div>
+                          <Input
+                            id="page-nasc"
+                            type="date"
+                            value={dataNascimento}
+                            onChange={(e) => setDataNascimento(e.target.value)}
+                            className="h-10 focus-visible:ring-[#3f9094]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label htmlFor="page-morada" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-[#3f9094]" />
+                            {t('address') || 'Morada / Localidade'}
+                          </Label>
+                          <Input
+                            id="page-morada"
+                            value={morada}
+                            onChange={(e) => setMorada(e.target.value)}
+                            placeholder="Rua, Cidade, Código Postal"
+                            className="h-10 focus-visible:ring-[#3f9094]"
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    {/* ABA 2: SEGURANÇA */}
+                    <TabsContent value="security" className="space-y-4">
+                      <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2.5">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                        <div>
+                          <p className="font-medium">Alteração de Palavra-passe</p>
+                          <p className="text-blue-700/80 dark:text-blue-400/80 mt-0.5">
+                            Deixe estes campos em branco caso não queira alterar a sua palavra-passe de acesso.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label htmlFor="page-new-pass" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                            <Lock className="h-3.5 w-3.5 text-[#3f9094]" />
+                            {t('newPassword') || 'Nova Palavra-passe'}
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="page-new-pass"
+                              type={showPassword ? 'text' : 'password'}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Mínimo 6 caracteres"
+                              className="pr-10 h-10 focus-visible:ring-[#3f9094]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label htmlFor="page-confirm-pass" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-[#3f9094]" />
+                            {t('confirmPassword') || 'Confirmar Nova Palavra-passe'}
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="page-confirm-pass"
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Repita a palavra-passe"
+                              className="pr-10 h-10 focus-visible:ring-[#3f9094]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    {/* ABA 3: PERMISSÕES */}
+                    <TabsContent value="permissions" className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-100 dark:border-gray-700">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Acesso Atribuído:</span>
+                          <div>{getRoleBadge(session?.role)}</div>
+                        </div>
+
+                        <div className="space-y-2 pt-2">
+                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            Lista de Permissões:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {session?.permissions && session.permissions.length > 0 ? (
+                              session.permissions.map((perm) => (
+                                <div
+                                  key={perm}
+                                  className="flex items-center gap-2 text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                                  <span className="text-gray-800 dark:text-gray-200">
+                                    {permissionLabels[perm] || perm}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs text-gray-500">Nenhuma permissão específica.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+
+                  <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-sm font-medium"
+                    >
+                      <Save className="h-4 w-4" />
+                      {loading ? (t('loading') || 'A guardar...') : (t('saveChanges') || 'Guardar Alterações')}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default AdminProfilePage;

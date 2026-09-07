@@ -1,277 +1,277 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { RoomData } from './types';
 import { RoomBlock } from './RoomBlock';
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface ClinicFloorPlanProps {
   rooms: RoomData[];
   selectedRoomId: string | null;
   onRoomSelect: (room: RoomData) => void;
+  selectedServiceFilter?: string;
+  viewMode?: 'architectural' | 'schematic';
 }
 
-/**
- * Layout baseado na planta real da Clínica NeuroBalance.
- * 
- * Circulação:
- * ENTRADA (baixo centro) → RECEÇÃO (centro inferior) →
- * SALA 1 (esq. da receção) | SALA 2 (dir. da receção) →
- * CORREDOR CENTRAL (sobe) → SALA 3 (esq. do corredor) →
- * CORREDOR LATERAL ESQ. → WC 1 + WC 2 (dir.) + SALA 4 (fundo) →
- * Continua para dir. → CORREDOR SUPERIOR → SALA 5 + SALA 6 (lado a lado, portas para cima)
- * 
- * Posições em % (left, top, width, height):
- * O contentor de referência é 100% × 100%.
- * 
- *  ┌──────────────────────────────────────────────────────────┐
- *  │  SALA 4     │ WC1│WC2 │  [corredor sup]  │  SALA 5 │SALA 6│
- *  │             │    │    │                  │         │      │
- *  │  [corredor  │    │    │                  │         │      │
- *  │   lateral]  │    │    │                  │         │      │
- *  │  SALA 3     │    │    │                  │         │      │
- *  │             │    │    │                  │         │      │
- *  │─────────────┴────┴────┤  [corr. central] │         │      │
- *  │  SALA 1     │ RECEÇÃO │                  │  SALA 2 │      │
- *  │             │ (balcão)│                  │         │      │
- *  │             │         │                  │         │      │
- *  └─────────────┴────┬────┴──────────────────┴─────────┴──────┘
- *                     │ ENTRADA
- */
-export const ClinicFloorPlan: React.FC<ClinicFloorPlanProps> = ({ rooms, selectedRoomId, onRoomSelect }) => {
-  const getRoom = (id: string) => rooms.find(r => r.roomId === id) || {
-    roomId: id, roomName: id, status: 'indisponivel', serviceType: ''
-  } as RoomData;
+export const ClinicFloorPlan: React.FC<ClinicFloorPlanProps> = ({ 
+  rooms, 
+  selectedRoomId, 
+  onRoomSelect,
+  selectedServiceFilter = 'all',
+  viewMode = 'architectural'
+}) => {
+  const [zoom, setZoom] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Definição das posições: [left%, top%, width%, height%]
-  // O mapa tem 100% × 100% de área útil dentro do container
-  const layout = {
-    // ──── ZONA SUPERIOR ESQUERDA ────
-    // Sala 4: canto superior esquerdo, grande
-    'sala-4': { left: '1%', top: '1%', width: '24%', height: '40%' },
-    // WC 1: ao lado direito da Sala 4, topo
-    'wc1': { left: '26%', top: '1%', width: '9%', height: '18%' },
-    // WC 2: ao lado direito do WC1, topo
-    'wc2': { left: '36%', top: '1%', width: '9%', height: '18%' },
-    // Sala 3: abaixo dos WCs / ao lado direito da Sala 4, centro esquerdo
-    'sala-3': { left: '26%', top: '20%', width: '19%', height: '28%' },
+  const getRoom = (id: string, fallbackName?: string, service?: string) => 
+    rooms.find(r => r.roomId === id) || {
+      roomId: id, 
+      roomName: fallbackName || id, 
+      status: 'indisponivel', 
+      serviceType: service || ''
+    } as RoomData;
 
-    // ──── ZONA SUPERIOR DIREITA ────
-    // Sala 5: superior direito, ao lado da sala 6
-    'sala-5': { left: '55%', top: '1%', width: '22%', height: '47%' },
-    // Sala 6: extremo direito superior
-    'sala-6': { left: '78%', top: '1%', width: '21%', height: '47%' },
-
-    // ──── ZONA INFERIOR ────
-    // Sala 1: canto inferior esquerdo, grande
-    'sala-1': { left: '1%', top: '50%', width: '24%', height: '43%' },
-    // Receção: centro inferior
-    'rececao': { left: '26%', top: '50%', width: '28%', height: '43%' },
-    // Sala 2: inferior direito, grande
-    'sala-2': { left: '55%', top: '49%', width: '44%', height: '44%' },
-
-    // ──── CORREDORES ────
-    // Corredor central (vertical, entre sala 3/sala 4 e sala 5/6)
-    'corredor-c': { left: '46%', top: '1%', width: '8%', height: '92%' },
-    // Corredor superior (horizontal, entre WCs e Sala 5/6)
-    'corredor-sup': { left: '26%', top: '1%', width: '28%', height: '18%' },
-
-    // Entrada: baixo ao centro, sob a Receção
-    'entrada': { left: '33%', top: '94%', width: '14%', height: '5%' },
+  const matchesFilter = (serviceType: string) => {
+    if (selectedServiceFilter === 'all') return true;
+    const s = serviceType.toLowerCase();
+    if (selectedServiceFilter === 'neurofeedback') return s.includes('neurofeedback');
+    if (selectedServiceFilter === 'yoga') return s.includes('yoga') || s.includes('relaxamento');
+    if (selectedServiceFilter === 'avaliacao') return s.includes('avaliação') || s.includes('diagnóstico') || s.includes('qeeg') || s.includes('consulta');
+    if (selectedServiceFilter === 'ocupacional') return s.includes('ocupacional');
+    return true;
   };
 
-  const corridorStyle: React.CSSProperties = {
-    position: 'absolute',
-    backgroundColor: '#f1f5f9',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '4px',
-    zIndex: 0,
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 2.2));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.7));
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPanPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  // Exact relative architectural bounds mapped over /planta/planta.png
+  const architecturalLayout = {
+    'sala-4': { left: '9.3%', top: '12.8%', width: '17.6%', height: '22.0%' },
+    'wc1': { left: '27.4%', top: '12.8%', width: '8.8%', height: '14.2%' },
+    'wc2': { left: '36.4%', top: '12.8%', width: '8.8%', height: '14.2%' },
+    'sala-3': { left: '16.2%', top: '34.8%', width: '27.4%', height: '19.4%' },
+    'sala-1': { left: '16.2%', top: '54.6%', width: '20.6%', height: '31.2%' },
+    'rececao': { left: '37.3%', top: '54.6%', width: '28.4%', height: '31.2%' },
+    'sala-2': { left: '66.2%', top: '54.2%', width: '24.6%', height: '31.6%' },
+    'sala-5': { left: '53.6%', top: '25.0%', width: '18.2%', height: '28.8%' },
+    'sala-6': { left: '72.2%', top: '25.0%', width: '18.2%', height: '28.8%' },
   };
 
   return (
-    <div className="bg-stone-100 p-4 rounded-2xl border-2 border-stone-300 shadow-inner overflow-x-auto">
-      {/* Outer building wall */}
-      <div
-        className="relative bg-[#f0ebe3] border-4 border-[#2d2d2d] rounded-lg shadow-lg"
-        style={{ width: '100%', minWidth: '800px', aspectRatio: '1.45 / 1' }}
+    <div className="relative flex flex-col bg-slate-900/5 dark:bg-black/30 rounded-3xl p-3 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-inner overflow-hidden">
+      {/* Floating Viewport Toolbar */}
+      <div className="absolute top-6 right-6 z-30 flex items-center gap-1.5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <span className="text-[11px] font-bold text-gray-500 mr-1 hidden sm:inline">
+          {Math.round(zoom * 100)}%
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleZoomIn}
+          className="h-7 w-7 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          title="Aumentar Zoom"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleZoomOut}
+          className="h-7 w-7 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          title="Diminuir Zoom"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </Button>
+        {(zoom !== 1 || panPosition.x !== 0 || panPosition.y !== 0) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleResetZoom}
+            className="h-7 w-7 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="Repor Vista"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Main Floor Plan Canvas */}
+      <div 
+        ref={containerRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        className={cn(
+          "w-full overflow-x-auto overflow-y-hidden rounded-2xl flex items-center justify-center p-2 min-h-[520px] transition-cursor",
+          zoom > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"
+        )}
       >
-        {/* Inner padding container */}
-        <div className="absolute inset-0" style={{ padding: '1.2%' }}>
-          <div className="relative w-full h-full">
+        <div
+          style={{
+            transform: `scale(${zoom}) translate(${panPosition.x / zoom}px, ${panPosition.y / zoom}px)`,
+            transformOrigin: 'center center',
+            transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+            width: '100%',
+            maxWidth: '1050px',
+            aspectRatio: '1.33 / 1',
+            minWidth: '780px'
+          }}
+          className="relative rounded-2xl shadow-2xl overflow-hidden border-2 border-stone-300 dark:border-stone-700 bg-[#f7f4ed]"
+        >
+          {/* Architectural Background Image */}
+          <img
+            src="/planta/planta.png"
+            alt="Planta da Clínica NeuroBalance"
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+            style={{
+              filter: viewMode === 'schematic' ? 'grayscale(80%) opacity(30%)' : 'none'
+            }}
+          />
 
-            {/* ── Corredor central (faixa vertical) ── */}
-            <div
-              style={{
-                ...corridorStyle,
-                left: '46%', top: '1%', width: '8%', height: '91%',
-                borderLeft: '3px solid #94a3b8',
-                borderRight: '3px solid #94a3b8',
-                backgroundColor: '#e8e0d8',
-              }}
-            >
-              <span className="text-[#94a3b8] text-[10px] font-semibold tracking-[0.3em] uppercase"
-                style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                Corredor
-              </span>
-            </div>
+          {/* ════ OVERLAY INTERATIVO DAS SALAS ════ */}
 
-            {/* ── Corredor lateral esquerdo (entre WCs/Sala4 e Sala3) ── */}
-            <div
-              style={{
-                ...corridorStyle,
-                left: '25%', top: '1%', width: '20%', height: '19%',
-                backgroundColor: '#e8e0d8',
-                borderBottom: '3px solid #94a3b8',
-              }}
+          {/* Sala 4: Superior Esquerdo */}
+          <div 
+            style={{ position: 'absolute', ...architecturalLayout['sala-4'], zIndex: 10 }}
+            className={cn(!matchesFilter(getRoom('sala-4').serviceType) && "opacity-25 grayscale")}
+          >
+            <RoomBlock
+              room={getRoom('sala-4', 'Sala 4', 'Avaliação QEEG & Diagnóstico')}
+              isSelected={selectedRoomId === 'sala-4'}
+              onClick={onRoomSelect}
+              className="w-full h-full"
             />
-
-            {/* ── Corredor superior (acesso Sala5/6 pelo topo) ── */}
-            <div
-              style={{
-                ...corridorStyle,
-                left: '54%', top: '1%', width: '45%', height: '5%',
-                backgroundColor: '#e8e0d8',
-                borderBottom: '3px solid #94a3b8',
-              }}
-            />
-
-            {/* ══ SALAS INTERATIVAS ══ */}
-
-            {/* Sala 4 — Superior esquerdo */}
-            <div style={{ position: 'absolute', left: '1%', top: '1%', width: '23%', height: '45%', zIndex: 1 }}>
-              <RoomBlock
-                room={getRoom('sala-4')}
-                isSelected={selectedRoomId === 'sala-4'}
-                onClick={onRoomSelect}
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* WC 1 — Topo centro-esquerdo */}
-            <div style={{ position: 'absolute', left: '25%', top: '1%', width: '10%', height: '18%', zIndex: 1 }}>
-              <RoomBlock
-                room={{ roomId: 'wc1', roomName: 'WC 1', status: 'livre', serviceType: '' }}
-                isSelected={false}
-                onClick={() => {}}
-                isWC
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* WC 2 — Topo centro, à direita do WC1 */}
-            <div style={{ position: 'absolute', left: '36%', top: '1%', width: '10%', height: '18%', zIndex: 1 }}>
-              <RoomBlock
-                room={{ roomId: 'wc2', roomName: 'WC 2', status: 'livre', serviceType: '' }}
-                isSelected={false}
-                onClick={() => {}}
-                isWC
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Sala 3 — Centro esquerdo, abaixo dos WCs */}
-            <div style={{ position: 'absolute', left: '25%', top: '20%', width: '20%', height: '28%', zIndex: 1 }}>
-              <RoomBlock
-                room={getRoom('sala-3')}
-                isSelected={selectedRoomId === 'sala-3'}
-                onClick={onRoomSelect}
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Sala 5 — Superior direito, porta para o corredor superior */}
-            <div style={{ position: 'absolute', left: '55%', top: '6%', width: '22%', height: '42%', zIndex: 1 }}>
-              <RoomBlock
-                room={getRoom('sala-5')}
-                isSelected={selectedRoomId === 'sala-5'}
-                onClick={onRoomSelect}
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Sala 6 — Extremo direito superior, porta para o corredor superior */}
-            <div style={{ position: 'absolute', left: '78%', top: '6%', width: '21%', height: '42%', zIndex: 1 }}>
-              <RoomBlock
-                room={getRoom('sala-6')}
-                isSelected={selectedRoomId === 'sala-6'}
-                onClick={onRoomSelect}
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Sala 1 — Inferior esquerdo */}
-            <div style={{ position: 'absolute', left: '1%', top: '47%', width: '23%', height: '48%', zIndex: 1 }}>
-              <RoomBlock
-                room={getRoom('sala-1')}
-                isSelected={selectedRoomId === 'sala-1'}
-                onClick={onRoomSelect}
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Receção — Centro inferior */}
-            <div style={{ position: 'absolute', left: '25%', top: '50%', width: '20%', height: '45%', zIndex: 1 }}>
-              <div className="w-full h-full border-2 border-dashed border-slate-300 rounded-lg bg-white/70 flex flex-col items-start justify-start p-3">
-                <span className="font-bold text-slate-500 tracking-widest uppercase text-sm">Receção</span>
-                {/* Balcão em L estilizado */}
-                <div className="mt-auto w-full flex flex-col items-end gap-1">
-                  <div className="bg-stone-300 rounded-sm" style={{ width: '55%', height: '10px' }} />
-                  <div className="bg-stone-300 rounded-sm self-end" style={{ width: '20%', height: '30px' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Sala 2 — Inferior direito */}
-            <div style={{ position: 'absolute', left: '55%', top: '50%', width: '44%', height: '45%', zIndex: 1 }}>
-              <RoomBlock
-                room={getRoom('sala-2')}
-                isSelected={selectedRoomId === 'sala-2'}
-                onClick={onRoomSelect}
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Entrada — Baixo ao centro, sob a Receção */}
-            <div style={{ position: 'absolute', left: '30%', top: '96%', width: '15%', height: '3%', zIndex: 2 }}>
-              <div className="w-full h-full bg-amber-100 border border-amber-300 rounded flex items-center justify-center">
-                <span className="text-amber-700 font-bold text-[9px] tracking-widest uppercase">Entrada</span>
-              </div>
-            </div>
-
-            {/* Marcadores de porta — decorativos */}
-            {/* Porta Sala 1 (virada para a receção) */}
-            <div style={{ position: 'absolute', left: '23.5%', top: '65%', width: '1.5%', height: '8%', zIndex: 3 }}
-              className="flex items-center justify-center">
-              <div className="w-0.5 h-full bg-[#2d2d2d]" />
-            </div>
-            {/* Porta Sala 2 (virada para a receção) */}
-            <div style={{ position: 'absolute', left: '54%', top: '65%', width: '1.5%', height: '8%', zIndex: 3 }}
-              className="flex items-center justify-center">
-              <div className="w-0.5 h-full bg-[#2d2d2d]" />
-            </div>
-            {/* Porta Sala 3 (virada para o corredor central) */}
-            <div style={{ position: 'absolute', left: '44.5%', top: '28%', width: '1.5%', height: '7%', zIndex: 3 }}
-              className="flex items-center justify-center">
-              <div className="w-0.5 h-full bg-[#2d2d2d]" />
-            </div>
-            {/* Porta Sala 4 (virada para o corredor lateral) */}
-            <div style={{ position: 'absolute', left: '24%', top: '30%', width: '1.5%', height: '7%', zIndex: 3 }}
-              className="flex items-center justify-center">
-              <div className="w-0.5 h-full bg-[#2d2d2d]" />
-            </div>
-            {/* Porta Sala 5 (virada para cima/corredor superior) */}
-            <div style={{ position: 'absolute', left: '60%', top: '4.5%', width: '8%', height: '1.5%', zIndex: 3 }}
-              className="flex items-center justify-center">
-              <div className="h-0.5 w-full bg-[#2d2d2d]" />
-            </div>
-            {/* Porta Sala 6 (virada para cima/corredor superior) */}
-            <div style={{ position: 'absolute', left: '82%', top: '4.5%', width: '8%', height: '1.5%', zIndex: 3 }}
-              className="flex items-center justify-center">
-              <div className="h-0.5 w-full bg-[#2d2d2d]" />
-            </div>
-
           </div>
+
+          {/* WC 1 */}
+          <div style={{ position: 'absolute', ...architecturalLayout['wc1'], zIndex: 5 }}>
+            <RoomBlock
+              room={{ roomId: 'wc1', roomName: 'WC 1', status: 'livre', serviceType: '' }}
+              isSelected={false}
+              onClick={() => {}}
+              isWC={true}
+              className="w-full h-full"
+            />
+          </div>
+
+          {/* WC 2 */}
+          <div style={{ position: 'absolute', ...architecturalLayout['wc2'], zIndex: 5 }}>
+            <RoomBlock
+              room={{ roomId: 'wc2', roomName: 'WC 2', status: 'livre', serviceType: '' }}
+              isSelected={false}
+              onClick={() => {}}
+              isWC={true}
+              className="w-full h-full"
+            />
+          </div>
+
+          {/* Sala 3: Centro-Esquerdo */}
+          <div 
+            style={{ position: 'absolute', ...architecturalLayout['sala-3'], zIndex: 10 }}
+            className={cn(!matchesFilter(getRoom('sala-3').serviceType) && "opacity-25 grayscale")}
+          >
+            <RoomBlock
+              room={getRoom('sala-3', 'Sala 3', 'Yoga Nidra & Relaxamento')}
+              isSelected={selectedRoomId === 'sala-3'}
+              onClick={onRoomSelect}
+              className="w-full h-full"
+            />
+          </div>
+
+          {/* Sala 1: Inferior Esquerdo */}
+          <div 
+            style={{ position: 'absolute', ...architecturalLayout['sala-1'], zIndex: 10 }}
+            className={cn(!matchesFilter(getRoom('sala-1').serviceType) && "opacity-25 grayscale")}
+          >
+            <RoomBlock
+              room={getRoom('sala-1', 'Sala 1', 'Consulta & Avaliação')}
+              isSelected={selectedRoomId === 'sala-1'}
+              onClick={onRoomSelect}
+              className="w-full h-full"
+            />
+          </div>
+
+          {/* Receção: Centro Inferior */}
+          <div style={{ position: 'absolute', ...architecturalLayout['rececao'], zIndex: 10 }}>
+            <RoomBlock
+              room={{
+                roomId: 'rececao',
+                roomName: 'Receção',
+                status: 'livre',
+                serviceType: 'Atendimento e Acolhimento'
+              }}
+              isSelected={selectedRoomId === 'rececao'}
+              onClick={onRoomSelect}
+              className="w-full h-full"
+            />
+          </div>
+
+          {/* Sala 2: Inferior Direito */}
+          <div 
+            style={{ position: 'absolute', ...architecturalLayout['sala-2'], zIndex: 10 }}
+            className={cn(!matchesFilter(getRoom('sala-2').serviceType) && "opacity-25 grayscale")}
+          >
+            <RoomBlock
+              room={getRoom('sala-2', 'Sala 2', 'Terapia Ocupacional')}
+              isSelected={selectedRoomId === 'sala-2'}
+              onClick={onRoomSelect}
+              className="w-full h-full"
+            />
+          </div>
+
+          {/* Sala 5: Superior Centro-Direito */}
+          <div 
+            style={{ position: 'absolute', ...architecturalLayout['sala-5'], zIndex: 10 }}
+            className={cn(!matchesFilter(getRoom('sala-5').serviceType) && "opacity-25 grayscale")}
+          >
+            <RoomBlock
+              room={getRoom('sala-5', 'Sala 5', 'Neurofeedback (Gabinete A)')}
+              isSelected={selectedRoomId === 'sala-5'}
+              onClick={onRoomSelect}
+              className="w-full h-full"
+            />
+          </div>
+
+          {/* Sala 6: Superior Extremo Direito */}
+          <div 
+            style={{ position: 'absolute', ...architecturalLayout['sala-6'], zIndex: 10 }}
+            className={cn(!matchesFilter(getRoom('sala-6').serviceType) && "opacity-25 grayscale")}
+          >
+            <RoomBlock
+              room={getRoom('sala-6', 'Sala 6', 'Neurofeedback (Gabinete B)')}
+              isSelected={selectedRoomId === 'sala-6'}
+              onClick={onRoomSelect}
+              className="w-full h-full"
+            />
+          </div>
+
         </div>
       </div>
     </div>
   );
 };
+

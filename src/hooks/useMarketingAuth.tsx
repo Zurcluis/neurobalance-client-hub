@@ -64,6 +64,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
           role: tokenData.token_role,
           permissions,
           token: sessionToken,
+          accessToken: token,
           expiresAt: tokenData.expires_at
         };
       }
@@ -122,6 +123,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
           role: accessToken.role,
           permissions,
           token: sessionToken,
+          accessToken: accessToken.token,
           expiresAt: sessionExpiresAt.toISOString()
         };
       }
@@ -171,6 +173,7 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
         role: user.role,
         permissions,
         token: sessionToken,
+        accessToken: token,
         expiresAt: expiresAt.toISOString()
       };
     } catch (error) {
@@ -185,8 +188,17 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
     if (savedSession) {
       try {
         const parsedSession = JSON.parse(savedSession);
-        // Nunca expira - sempre aceitar sessão salva
-        setSession(parsedSession);
+        // Sessões antigas sem token de acesso não conseguem autenticar
+        // pedidos na API — forçar novo login
+        const hasAccessToken = typeof parsedSession?.accessToken === 'string' && parsedSession.accessToken.length > 0;
+        // Respeitar a expiração do token de acesso
+        const isExpired = parsedSession?.expiresAt && new Date(parsedSession.expiresAt) <= new Date();
+
+        if (!hasAccessToken || isExpired) {
+          localStorage.removeItem('marketing_session');
+        } else {
+          setSession(parsedSession);
+        }
       } catch (error) {
         logger.error('Erro ao carregar sessão salva:', error);
         localStorage.removeItem('marketing_session');

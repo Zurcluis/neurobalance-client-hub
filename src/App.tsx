@@ -45,6 +45,7 @@ const ClientTokensPage = lazy(() => import("./pages/ClientTokensPage"));
 const ClinicInfoPage = lazy(() => import("./pages/ClinicInfoPage"));
 const ConfirmAppointmentPage = lazy(() => import("./pages/ConfirmAppointmentPage"));
 const ClinicFloorPlanPage = lazy(() => import("./pages/ClinicFloorPlanPage"));
+const AdminProfilePage = lazy(() => import("./pages/AdminProfilePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -165,6 +166,15 @@ const App = () => (
                               }
                             />
 
+                            <Route
+                              path="/floor-plan"
+                              element={
+                                <ProtectedRoute>
+                                  <ClinicFloorPlanPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
                             {/* Admin Routes */}
                             <Route path="/admin-login" element={<AdminLoginPage />} />
                             <Route
@@ -202,6 +212,14 @@ const App = () => (
                               element={
                                 <AdminProtectedRoute requiredPermission="manage_appointments">
                                   <ClinicFloorPlanPage />
+                                </AdminProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/admin/profile"
+                              element={
+                                <AdminProtectedRoute>
+                                  <AdminProfilePage />
                                 </AdminProtectedRoute>
                               }
                             />

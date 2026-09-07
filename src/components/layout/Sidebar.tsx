@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LogOut, TrendingUp, UserCog, Megaphone, Clock, FileText } from 'lucide-react';
+import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LogOut, TrendingUp, UserCog, Megaphone, Clock, FileText, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -17,6 +17,7 @@ import { useLanguage } from '@/hooks/use-language';
 import SearchDialog from '@/components/search/SearchDialog';
 import GoogleCalendarSync from '@/components/calendar/GoogleCalendarSync';
 import { useAuth } from '@/contexts/AuthContext';
+import AdminProfileDialog from '@/components/admin/AdminProfileDialog';
 import { toast } from 'sonner';
 import { NotificationBar } from '@/components/notifications/NotificationBar';
 import { DatabaseManagerDialog } from '@/components/dashboard/DatabaseManagerDialog';
@@ -26,6 +27,8 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true';
   });
+
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
 
   useEffect(() => {
     const handleSync = () => {
@@ -71,6 +74,7 @@ const Sidebar = () => {
     { name: t('dashboard'), icon: <Home className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/' },
     { name: t('clients'), icon: <User className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clients' },
     { name: t('calendar'), icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/calendar' },
+    { name: 'Planta da Clínica', icon: <Map className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/floor-plan' },
     { name: 'Disponibilidades', icon: <Clock className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin/availability' },
     { name: t('finances'), icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
     { name: t('investments'), icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
@@ -241,6 +245,14 @@ const Sidebar = () => {
             >
               <Calendar className="h-5 w-5" aria-hidden="true" />
             </button>
+            <button
+              className="p-2 text-gray-500 hover:text-[#3f9094] dark:text-gray-400 dark:hover:text-[#3f9094] rounded-lg transition"
+              onClick={() => setShowProfileDialog(true)}
+              aria-label="Editar Perfil"
+              title="Editar Meu Perfil"
+            >
+              <User className="h-5 w-5" aria-hidden="true" />
+            </button>
             <KeyboardShortcutsDialog />
             <DatabaseManagerDialog />
           </div>
@@ -293,6 +305,9 @@ const Sidebar = () => {
 
       {/* Google Calendar Sync Dialog */}
       <GoogleCalendarSync open={showCalendarSync} onOpenChange={setShowCalendarSync} />
+
+      {/* Profile Dialog */}
+      <AdminProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
     </div>
   );
 

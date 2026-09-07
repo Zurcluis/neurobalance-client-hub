@@ -17,7 +17,7 @@ const leadCompraSchema = z.object({
   telefone: z.string().min(9, 'Telefone deve ter pelo menos 9 dígitos'),
   idade: z.number().min(16, 'Idade mínima é 16 anos').max(100, 'Idade máxima é 100 anos'),
   genero: z.enum(GENEROS, { required_error: 'Selecione um gênero' }),
-  cidade: z.string().min(1, 'Cidade é obrigatória'),
+  cidade: z.string().optional().or(z.literal('')),
   valor_pago: z.number().min(0, 'Valor deve ser positivo'),
   data_evento: z.string().min(1, 'Data do evento é obrigatória'),
   tipo: z.enum(TIPOS, { required_error: 'Selecione o tipo' }),
@@ -52,11 +52,11 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
     resolver: zodResolver(leadCompraSchema),
     defaultValues: leadCompra ? {
       nome: leadCompra.nome,
-      email: leadCompra.email,
+      email: leadCompra.email?.includes('@neurobalance.local') ? '' : (leadCompra.email || ''),
       telefone: leadCompra.telefone,
       idade: leadCompra.idade,
       genero: leadCompra.genero,
-      cidade: leadCompra.cidade,
+      cidade: leadCompra.cidade || '',
       valor_pago: leadCompra.valor_pago,
       data_evento: leadCompra.data_evento.split('T')[0], // Apenas a data
       tipo: leadCompra.tipo,
@@ -83,7 +83,10 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
 
   const handleFormSubmit = async (data: LeadCompraFormData) => {
     try {
-      await onSubmit(data);
+      await onSubmit({
+        ...data,
+        cidade: data.cidade?.trim() || '',
+      });
       if (!leadCompra) {
         reset();
       }
@@ -172,7 +175,7 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
               <Label htmlFor="genero">Gênero</Label>
               <Select
                 value={watchedValues.genero || ''}
-                onValueChange={(value) => setValue('genero', value as any)}
+                onValueChange={(value) => setValue('genero', value as (typeof GENEROS)[number])}
               >
                 <SelectTrigger className={errors.genero ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Selecione o gênero" />
@@ -193,11 +196,11 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
             <div className="space-y-2">
               <Label htmlFor="cidade" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Cidade
+                Cidade <span className="text-xs text-gray-400 font-normal">(opcional)</span>
               </Label>
               <Input
                 id="cidade"
-                placeholder="Ex: Lisboa, Porto, Braga..."
+                placeholder="Ex: Lisboa, Porto, Braga... (opcional)"
                 className={errors.cidade ? 'border-red-500' : ''}
                 {...register('cidade')}
               />
@@ -246,7 +249,7 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
               <Label htmlFor="tipo">Tipo</Label>
               <Select
                 value={watchedValues.tipo || ''}
-                onValueChange={(value) => setValue('tipo', value as any)}
+                onValueChange={(value) => setValue('tipo', value as (typeof TIPOS)[number])}
               >
                 <SelectTrigger className={errors.tipo ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Selecione o tipo" />
@@ -275,7 +278,7 @@ const LeadCompraForm: React.FC<LeadCompraFormProps> = ({
               <Label htmlFor="status">Status</Label>
               <Select
                 value={watchedValues.status || ''}
-                onValueChange={(value) => setValue('status', value as any)}
+                onValueChange={(value) => setValue('status', value as (typeof STATUS_OPTIONS)[number])}
               >
                 <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Selecione o status" />

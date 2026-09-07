@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Users, Menu, X, LogOut, User, Shield, ChevronLeft, Map } from 'lucide-react';
+import { Calendar, Users, Menu, X, LogOut, User, Shield, ChevronLeft, Map, UserCheck, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -14,11 +14,13 @@ import { Badge } from '@/components/ui/badge';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { toast } from 'sonner';
 import { ADMIN_PERMISSIONS } from '@/types/admin';
+import AdminProfileDialog from '@/components/admin/AdminProfileDialog';
 
 const AdminSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('admin_sidebar_collapsed') === 'true';
   });
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     const handleSync = () => {
@@ -66,6 +68,11 @@ const AdminSidebar = () => {
       path: '/admin/floor-plan',
       permission: ADMIN_PERMISSIONS.MANAGE_APPOINTMENTS
     },
+    {
+      name: 'Meu Perfil',
+      icon: <UserCheck className={isMobile ? "h-6 w-6" : "h-5 w-5"} />,
+      path: '/admin/profile'
+    }
   ];
 
   const filteredMenuItems = menuItems.filter(item => 
@@ -140,21 +147,33 @@ const AdminSidebar = () => {
 
       {/* Informações do Admin Logado */}
       {session && (
-        <div className={cn(
-          "mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200",
-          isCollapsed && !isMobile && "p-2"
-        )}>
+        <div
+          onClick={() => setIsProfileOpen(true)}
+          className={cn(
+            "mb-6 p-3 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer transition-all hover:shadow-sm group",
+            isCollapsed && !isMobile && "p-2"
+          )}
+          title="Clique para editar o seu perfil"
+        >
           <div className="flex items-center gap-3">
-            <div className="bg-[#3f9094] p-2 rounded-full flex-shrink-0">
+            <div className="bg-[#3f9094] group-hover:bg-[#2e6d70] transition-colors p-2 rounded-full flex-shrink-0 relative">
               <User className="h-4 w-4 text-white" />
+              <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-gray-900 rounded-full p-0.5 shadow-sm">
+                <Edit3 className="h-2.5 w-2.5 text-[#3f9094]" />
+              </div>
             </div>
             {(!isCollapsed || isMobile) && (
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {session.adminName}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-[#3f9094] transition-colors">
+                    {session.adminName}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-1 mt-1">
                   {getRoleBadge(session.role)}
+                  <span className="text-[10px] text-gray-400 group-hover:text-[#3f9094] transition-colors flex items-center gap-0.5">
+                    Editar
+                  </span>
                 </div>
               </div>
             )}
@@ -172,11 +191,11 @@ const AdminSidebar = () => {
               <Link
                 to={item.path}
                 className={cn(
-                  'flex items-center rounded-lg py-3 px-3 text-sm font-medium transition-colors hover:bg-gray-100',
+                  'flex items-center rounded-lg py-3 px-3 text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800',
                   isMobile && "text-base py-3.5 px-4",
                   location.pathname === item.path
                     ? 'bg-[#3f9094] text-white hover:bg-[#2d7a7e]'
-                    : 'text-gray-700 hover:text-gray-900',
+                    : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100',
                   isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-start'
                 )}
                 onClick={() => isMobile && document.querySelector('.drawer-close')?.dispatchEvent(new Event('click'))}
@@ -199,7 +218,7 @@ const AdminSidebar = () => {
             
             <Button
               variant="ghost"
-              className="w-full flex items-center justify-center text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="w-full flex items-center justify-center text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
@@ -212,13 +231,16 @@ const AdminSidebar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
           </Button>
         )}
       </div>
+
+      {/* Modal de Perfil do Administrador */}
+      <AdminProfileDialog open={isProfileOpen} onOpenChange={setIsProfileOpen} />
     </div>
   );
 
@@ -245,7 +267,15 @@ const AdminSidebar = () => {
           <span className="font-semibold text-gray-900">Admin</span>
         </div>
         
-        <div className="w-11" /> {/* Spacer for centering */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full h-10 w-10 text-[#3f9094]"
+          onClick={() => setIsProfileOpen(true)}
+          title="Meu Perfil"
+        >
+          <User className="h-5 w-5" />
+        </Button>
       </div>
     );
   }

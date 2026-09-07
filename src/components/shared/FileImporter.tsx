@@ -92,11 +92,11 @@ const FileImporter: React.FC<FileImporterProps> = ({
     let mappedData: any[] = [];
 
     if (finalType === 'marketing') {
-      mappedData = (fileData.type === 'excel' || fileData.type === 'csv') 
+      mappedData = (fileData.type === 'excel' || fileData.type === 'csv' || fileData.type === 'pdf') 
         ? mapToMarketingData(fileData.content)
         : [];
     } else if (finalType === 'lead-compra') {
-      mappedData = (fileData.type === 'excel' || fileData.type === 'csv') 
+      mappedData = (fileData.type === 'excel' || fileData.type === 'csv' || fileData.type === 'pdf') 
         ? mapToLeadCompraData(fileData.content)
         : [];
     }
