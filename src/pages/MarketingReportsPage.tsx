@@ -127,9 +127,23 @@ const MarketingReportsPage = () => {
   // Time range filter
   const [periodFilter, setPeriodFilter] = useState<TimeRange>('all');
 
+  // Data de corte do período selecionado (null = tudo)
+  const periodCutoff = useMemo(() => {
+    if (periodFilter === 'all') return null;
+    const now = new Date();
+    if (periodFilter === '1y') return new Date(now.getFullYear() - 1, now.getMonth(), 1);
+    const days = periodFilter === '7d' ? 7 : periodFilter === '30d' ? 30 : 90;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+  }, [periodFilter]);
+
   // Filtrar campanhas baseado na busca e filtros
   const filteredCampaigns = useMemo(() => {
     let filtered = campaigns || [];
+
+    // Aplicar período selecionado
+    if (periodCutoff) {
+      filtered = filtered.filter(campaign => new Date(campaign.ano, campaign.mes - 1, 1) >= periodCutoff);
+    }
 
     // Aplicar busca por texto
     if (searchTerm) {
@@ -210,11 +224,16 @@ const MarketingReportsPage = () => {
     }
 
     return filtered;
-  }, [campaigns, searchTerm, filters]);
+  }, [campaigns, searchTerm, filters, periodCutoff]);
 
   // Filtrar leads baseado na busca e filtros
   const filteredLeads = useMemo(() => {
     let filtered = leads || [];
+
+    // Aplicar período selecionado
+    if (periodCutoff) {
+      filtered = filtered.filter(lead => new Date(lead.data_evento) >= periodCutoff);
+    }
 
     // Aplicar busca por texto
     if (leadSearchTerm) {
@@ -252,7 +271,7 @@ const MarketingReportsPage = () => {
     }
 
     return filtered;
-  }, [leads, leadSearchTerm, leadFilters]);
+  }, [leads, leadSearchTerm, leadFilters, periodCutoff]);
 
   const metrics = useMemo(() => {
     return calculateMetrics(filteredCampaigns);
@@ -527,7 +546,7 @@ const MarketingReportsPage = () => {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Upload className="h-4 w-4" />
-                Importar Leads (PDF)
+                Importar Leads
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

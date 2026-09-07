@@ -1,29 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
 
-type Payment = {
-  id: number;
-  id_cliente: number;
-  valor: number;
-  data: string;
-  tipo: string;
-  descricao: string;
-  cliente_nome?: string;
-  nif?: string;
-  tipo_servico?: string;
-  numero_fatura?: string;
-  valor_base?: number;
-  valor_iva?: number;
-  retencao?: number;
-  estado?: string;
-};
+type PaymentRow = Database['public']['Tables']['pagamentos']['Row'];
+type NewPayment = Database['public']['Tables']['pagamentos']['Insert'];
+type UpdatePayment = Database['public']['Tables']['pagamentos']['Update'];
 
-type PaymentWithClient = Payment & {
+type PaymentWithClient = PaymentRow & {
   clientes?: {
     nome: string | null;
     id_manual?: string | null;
   } | null;
+};
+
+export type Payment = PaymentRow & {
+  cliente_nome?: string;
+  cliente_id_manual?: string | null;
 };
 
 // Função para criar a tabela de pagamentos se não existir
@@ -37,8 +30,6 @@ const ensurePaymentsTable = async (supabase: any) => {
 
     // Se receber um erro indicando que a tabela não existe (código 42P01)
     if (checkError && checkError.code === '42P01') {
-      console.log('Tabela de pagamentos não existe - verificando acesso admin');
-
       // Verificar se o cliente tem outras tabelas existentes
       const { error: tablesError } = await supabase
         .from('clientes')
@@ -51,7 +42,6 @@ const ensurePaymentsTable = async (supabase: any) => {
         return false;
       }
 
-      // Se chegamos aqui, o problema é específico da tabela de pagamentos
       toast.error('A tabela de pagamentos não existe no banco de dados');
       console.error('É necessário criar a tabela de pagamentos no painel do Supabase');
       return false;
@@ -74,8 +64,6 @@ export const createSamplePayment = async (supabase: any) => {
       return null;
     }
 
-    console.log('Criando pagamento de exemplo para teste...');
-
     // Verificar se existem clientes
     const { data: clients, error: clientError } = await supabase
       .from('clientes')
@@ -88,7 +76,6 @@ export const createSamplePayment = async (supabase: any) => {
     }
 
     if (!clients || clients.length === 0) {
-      console.log('Nenhum cliente encontrado para criar pagamento de teste');
       toast.error('Não há clientes para associar um pagamento de teste');
       return null;
     }
@@ -115,9 +102,7 @@ export const createSamplePayment = async (supabase: any) => {
       return null;
     }
 
-    console.log('Pagamento de teste criado com sucesso:', data);
     toast.success('Pagamento de teste criado para demonstração');
-
     return data[0];
   } catch (err) {
     console.error('Erro ao criar pagamento de teste:', err);
@@ -126,15 +111,26 @@ export const createSamplePayment = async (supabase: any) => {
   }
 };
 
-export function usePayments() {
+/**
+ * Hook unificado de pagamentos.
+ * - Sem clientId: carrega todos os pagamentos (Finanças, Estatísticas, Relatórios)
+ * - Com clientId: filtra os pagamentos desse cliente (perfil do cliente)
+ */
+export function usePayments(clientId?: number) {
   const supabase = useSupabaseClient();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const formatPayments = (data: PaymentWithClient[]): Payment[] =>
+    data.map((payment) => ({
+      ...payment,
+      cliente_nome: payment.clientes?.nome || 'Cliente Desconhecido',
+      cliente_id_manual: payment.clientes?.id_manual || null
+    }));
+
   const fetchPayments = useCallback(async () => {
     try {
-      console.log('Iniciando carregamento de pagamentos...');
       setIsLoading(true);
       setError(null);
 
@@ -144,8 +140,7 @@ export function usePayments() {
         throw new Error('Falha ao acessar tabela de pagamentos');
       }
 
-      // Buscar pagamentos
-      const { data, error: paymentError } = await supabase
+      let query = supabase
         .from('pagamentos')
         .select(`
           *,
@@ -156,41 +151,19 @@ export function usePayments() {
         `)
         .order('data', { ascending: false });
 
+      // Se um clientId for fornecido, filtrar por esse cliente
+      if (clientId) {
+        query = query.eq('id_cliente', clientId);
+      }
+
+      const { data, error: paymentError } = await query;
+
       if (paymentError) {
         console.error('Erro ao buscar pagamentos:', paymentError);
         throw new Error('Erro ao carregar pagamentos: ' + paymentError.message);
       }
 
-      console.log('Resposta do Supabase (pagamentos):', data);
-
-      if (!data || data.length === 0) {
-        console.log('Nenhum pagamento encontrado no banco de dados');
-        setPayments([]);
-        return;
-      }
-
-      // Log do primeiro pagamento para debug
-      if (data.length > 0) {
-        console.log('Primeiro pagamento (raw):', data[0]);
-        console.log('Cliente do primeiro pagamento:', data[0].clientes);
-      }
-
-      const formattedPayments = data.map((payment: PaymentWithClient) => {
-        const clienteNome = payment.clientes?.nome || 'Cliente Desconhecido';
-        const clienteIdManual = payment.clientes?.id_manual || null;
-
-        console.log(`Pagamento ${payment.id} - cliente_id_manual:`, clienteIdManual);
-
-        return {
-          ...payment,
-          cliente_nome: clienteNome,
-          cliente_id_manual: clienteIdManual
-        };
-      });
-
-      console.log('Pagamentos formatados:', formattedPayments.length);
-      console.log('Primeiro pagamento formatado:', formattedPayments[0]);
-      setPayments(formattedPayments);
+      setPayments(formatPayments((data || []) as PaymentWithClient[]));
     } catch (err) {
       console.error('Erro ao carregar pagamentos:', err);
       setError(err instanceof Error ? err : new Error('Erro desconhecido'));
@@ -198,20 +171,20 @@ export function usePayments() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, clientId]);
 
   useEffect(() => {
     fetchPayments();
 
     // Configurar escuta em tempo real para atualizações
     const channelId = Math.random().toString(36).substring(2, 9);
+    const filterString = clientId ? `id_cliente=eq.${clientId}` : undefined;
     const channel = supabase
       .channel(`payment-changes_${channelId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'pagamentos' },
+        { event: '*', schema: 'public', table: 'pagamentos', filter: filterString },
         () => {
-          console.log('Alterações detectadas na tabela pagamentos');
           fetchPayments();
         }
       )
@@ -220,21 +193,20 @@ export function usePayments() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchPayments]);
+  }, [fetchPayments, supabase, clientId]);
 
-  const addPayment = async (newPayment: Omit<Payment, 'id' | 'cliente_nome'>) => {
+  const addPayment = async (newPayment: NewPayment) => {
     try {
-      console.log('Adicionando novo pagamento:', newPayment);
-
       // Garantir que a tabela existe
       const tableExists = await ensurePaymentsTable(supabase);
       if (!tableExists) {
         throw new Error('Falha ao acessar tabela de pagamentos');
       }
 
+      const { com_iva, ...paymentToInsert } = newPayment as any;
       const { data, error } = await supabase
         .from('pagamentos')
-        .insert(newPayment)
+        .insert([paymentToInsert])
         .select('*')
         .single();
 
@@ -251,14 +223,61 @@ export function usePayments() {
     } catch (err) {
       console.error('Erro ao adicionar pagamento:', err);
       toast.error('Falha ao registrar pagamento');
-      throw err;
+      return null;
     }
   };
 
+  const updatePayment = useCallback(async (id: number, updates: UpdatePayment) => {
+    try {
+      const { com_iva, ...updatesToApply } = updates as any;
+      const { data, error: updateError } = await supabase
+        .from('pagamentos')
+        .update(updatesToApply)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setPayments(prev => prev.map(payment =>
+        payment.id === id ? data : payment
+      ));
+      toast.success('Pagamento atualizado com sucesso');
+      return data;
+    } catch (err) {
+      console.error('Erro ao atualizar pagamento:', err);
+      toast.error('Falha ao atualizar pagamento');
+      return null;
+    }
+  }, [supabase]);
+
+  const deletePayment = useCallback(async (id: number) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('pagamentos')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      setPayments(prev => prev.filter(payment => payment.id !== id));
+      toast.success('Pagamento eliminado com sucesso');
+      return true;
+    } catch (err) {
+      console.error('Erro ao eliminar pagamento:', err);
+      toast.error('Falha ao eliminar pagamento');
+      return false;
+    }
+  }, [supabase]);
+
   // Função para calcular a receita total
-  const getTotalRevenue = () => {
+  const getTotalRevenue = useCallback(() => {
     return payments.reduce((total, payment) => total + (payment.valor || 0), 0);
-  };
+  }, [payments]);
 
   return {
     payments,
@@ -266,9 +285,10 @@ export function usePayments() {
     error,
     fetchPayments,
     addPayment,
-    createSamplePayment,
+    updatePayment,
+    deletePayment,
     getTotalRevenue
   };
 }
 
-export default usePayments; 
+export default usePayments;

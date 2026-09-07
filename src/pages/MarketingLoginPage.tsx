@@ -191,15 +191,17 @@ const MarketingLoginPage = () => {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <div className="text-sm text-gray-600">
-                <p className="mb-2"><strong>Tokens de exemplo:</strong></p>
-                <div className="bg-gray-100 p-3 rounded-md text-left">
-                  <p><strong>Manager:</strong> MKT2024, MARKETING123</p>
-                  <p><strong>Assistant:</strong> ASSIST_MKT, MKT_HELPER</p>
+            {import.meta.env.DEV && (
+              <div className="mt-6 text-center">
+                <div className="text-sm text-gray-600">
+                  <p className="mb-2"><strong>Tokens de exemplo:</strong></p>
+                  <div className="bg-gray-100 p-3 rounded-md text-left">
+                    <p><strong>Manager:</strong> MKT2024, MARKETING123</p>
+                    <p><strong>Assistant:</strong> ASSIST_MKT, MKT_HELPER</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

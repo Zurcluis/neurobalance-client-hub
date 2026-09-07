@@ -25,7 +25,7 @@ import { format, compareDesc, isAfter } from 'date-fns';
 import { parseLocalISO } from '@/utils/dateUtils';
 const parseISO = parseLocalISO;
 import useClients from '@/hooks/useClients';
-import usePayments from '@/hooks/usePayments.tsx';
+import usePayments from '@/hooks/usePayments';
 import useAppointments from '@/hooks/useAppointments';
 import { supabase } from '@/integrations/supabase/client';
 import ClientDetailTabs from '@/components/client-details/ClientDetailTabs';

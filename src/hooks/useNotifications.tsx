@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export interface Notification {
   id: string;
@@ -27,7 +27,6 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   const fetchNotifications = async () => {
     try {
@@ -205,11 +204,7 @@ export const useNotifications = () => {
       setUnreadCount(allNotifications.filter(n => !n.read).length);
     } catch (error) {
       console.error('Erro ao buscar notificações:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar notificações",
-        variant: "destructive",
-      });
+      toast.error("Erro", { description: "Falha ao carregar notificações" });
     } finally {
       setIsLoading(false);
     }

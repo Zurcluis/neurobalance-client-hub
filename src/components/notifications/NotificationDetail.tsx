@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { type Notification } from '@/hooks/useNotifications';
 
@@ -52,7 +52,6 @@ export const NotificationDetail = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [feedback, setFeedback] = useState('');
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   if (!notification) return null;
 
@@ -95,20 +94,13 @@ export const NotificationDetail = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Sucesso",
-        description: "Marcação confirmada com sucesso",
-      });
+      toast.success("Sucesso", { description: "Marcação confirmada com sucesso" });
 
       onMarkAsRead(notification.id);
       onClose();
     } catch (error) {
       console.error('Erro ao confirmar marcação:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao confirmar marcação",
-        variant: "destructive",
-      });
+      toast.error("Erro", { description: "Falha ao confirmar marcação" });
     } finally {
       setIsProcessing(false);
     }
@@ -144,10 +136,9 @@ export const NotificationDetail = ({
         }
       }
 
-      toast({
-        title: "Sucesso",
-        description: feedback.trim() 
-          ? "Feedback registrado com sucesso" 
+      toast.success("Sucesso", {
+        description: feedback.trim()
+          ? "Feedback registrado com sucesso"
           : "Marco marcado como processado",
       });
 
@@ -156,11 +147,7 @@ export const NotificationDetail = ({
       setFeedback('');
     } catch (error) {
       console.error('Erro ao processar feedback:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao processar feedback",
-        variant: "destructive",
-      });
+      toast.error("Erro", { description: "Falha ao processar feedback" });
     } finally {
       setIsProcessing(false);
     }

@@ -42,19 +42,21 @@ const EmptyFinanceState = () => {
               <Plus className="w-4 h-4" />
               {t('addPayment')}
             </Button>
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={handleCreateDemo}
-              disabled={isCreatingDemo}
-            >
-              {isCreatingDemo ? (
-                <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
-              ) : (
-                <Lightbulb className="w-4 h-4" />
-              )}
-              Criar Demonstração
-            </Button>
+            {import.meta.env.DEV && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={handleCreateDemo}
+                disabled={isCreatingDemo}
+              >
+                {isCreatingDemo ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
+                ) : (
+                  <Lightbulb className="w-4 h-4" />
+                )}
+                Criar Demonstração
+              </Button>
+            )}
             <Button 
               variant="ghost" 
               className="gap-2"
