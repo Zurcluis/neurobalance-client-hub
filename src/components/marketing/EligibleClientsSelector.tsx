@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEligibleClients } from '@/hooks/useEligibleClients';
 import { EligibleClient, ClientFilter } from '@/types/email-sms-campaign';
-import { Search, Users, Mail, Phone, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Users, Mail, Phone, CheckCircle2 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 

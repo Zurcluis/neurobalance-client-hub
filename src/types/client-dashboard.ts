@@ -2,20 +2,60 @@ import { Database } from '@/integrations/supabase/types';
 import { z } from 'zod';
 
 // Tipos das tabelas do dashboard
-export type ClientAccessToken = Database['public']['Tables']['client_access_tokens']['Row'];
-export type ClientMessage = Database['public']['Tables']['client_messages']['Row'];
+// Nota: client_access_tokens, client_messages e appointment_confirmations ainda não
+// existem nos tipos gerados do Supabase, pelo que são definidos localmente.
+export interface ClientAccessToken {
+  id: number;
+  token: string;
+  client_id: number;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface ClientMessage {
+  id: number;
+  id_cliente: number;
+  sender_type: 'client' | 'admin';
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ClientNotification = Database['public']['Tables']['client_notifications']['Row'];
-export type AppointmentConfirmation = Database['public']['Tables']['appointment_confirmations']['Row'];
+export type NewClientNotification = Database['public']['Tables']['client_notifications']['Insert'];
+export type UpdateClientNotification = Database['public']['Tables']['client_notifications']['Update'];
+
+export interface AppointmentConfirmation {
+  id: number;
+  id_agendamento: number;
+  id_cliente: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'rescheduled';
+  confirmed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 // Tipos para inserção
-export type NewClientMessage = Database['public']['Tables']['client_messages']['Insert'];
-export type NewClientNotification = Database['public']['Tables']['client_notifications']['Insert'];
-export type NewAppointmentConfirmation = Database['public']['Tables']['appointment_confirmations']['Insert'];
+export type NewClientAccessToken = Omit<ClientAccessToken, 'id' | 'created_at'> & {
+  id?: number;
+  created_at?: string;
+};
+export type NewClientMessage = Omit<ClientMessage, 'id' | 'created_at' | 'updated_at'> & {
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+export type NewAppointmentConfirmation = Omit<AppointmentConfirmation, 'id' | 'created_at' | 'updated_at'> & {
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+};
 
 // Tipos para atualização
-export type UpdateClientMessage = Database['public']['Tables']['client_messages']['Update'];
-export type UpdateClientNotification = Database['public']['Tables']['client_notifications']['Update'];
-export type UpdateAppointmentConfirmation = Database['public']['Tables']['appointment_confirmations']['Update'];
+export type UpdateClientMessage = Partial<ClientMessage>;
+export type UpdateAppointmentConfirmation = Partial<AppointmentConfirmation>;
 
 // Esquemas de validação
 export const clientMessageSchema = z.object({
@@ -219,7 +259,7 @@ export const APPOINTMENT_TYPE_LABELS = {
 
 // Utilitários de validação
 export const isValidClientToken = (token: string): boolean => {
-  return token && token.length === 64 && /^[a-f0-9]+$/.test(token);
+  return !!token && token.length === 64 && /^[a-f0-9]+$/.test(token);
 };
 
 export const isAppointmentConfirmable = (appointment: AppointmentWithConfirmation): boolean => {

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Key, 
@@ -16,7 +14,6 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  Mail,
   Clock,
   User,
   Calendar
@@ -78,7 +75,7 @@ interface ClientTokenManagerProps {
   onClose?: () => void;
 }
 
-const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId, onClose }) => {
+const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => {
   const [tokens, setTokens] = useState<ClientToken[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,10 +263,8 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId, onClo
     }
   };
 
-  const sendLoginLink = async (token: string, clientEmail: string) => {
+  const sendLoginLink = async (_token: string, clientEmail: string) => {
     try {
-      const link = generateClientLoginLink(token);
-      
       // Aqui você implementaria o envio do email
       // Por enquanto, apenas simula o envio
       toast.success(`Link de acesso enviado para ${clientEmail}`);

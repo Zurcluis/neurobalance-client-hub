@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, TrendingUp, Users, FileText, AlertCircle, RefreshCw, Copy, Download } from 'lucide-react';
+import { Calculator, TrendingUp, Users, FileText, AlertCircle, RefreshCw, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -160,10 +160,6 @@ export const SmartTaxCalculator: React.FC = () => {
     const text = JSON.stringify(results, null, 2);
     navigator.clipboard.writeText(text);
     toast.success(`Resultados de ${type} copiados!`);
-  };
-
-  const handleExportPDF = (type: string) => {
-    toast.info(`Exportação de ${type} em desenvolvimento...`);
   };
 
   const handleReset = (type: string) => {

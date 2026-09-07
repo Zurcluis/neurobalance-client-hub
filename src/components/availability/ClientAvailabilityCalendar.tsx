@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,11 +11,10 @@ import {
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus, X, CheckCircle, CalendarCheck } from 'lucide-react';
 import { useClientAvailability } from '@/hooks/useClientAvailability';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { AvailabilityForm } from './AvailabilityForm';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import type { ClientAvailability } from '@/types/availability';
 import { getAllHolidaysUntil2040 } from '@/data/portugueseHolidays';
 
@@ -60,7 +58,7 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState<ClientAvailability | null>(null);
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
-  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [, setLoadingAppointments] = useState(false);
   
   const holidays = getAllHolidaysUntil2040();
 

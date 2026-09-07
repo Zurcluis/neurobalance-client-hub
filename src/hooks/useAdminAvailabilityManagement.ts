@@ -5,7 +5,6 @@ import { logger } from '@/lib/logger';
 import type {
   ClientAvailability,
   SuggestedAppointment,
-  AvailabilityNotification,
 } from '@/types/availability';
 
 interface ClientWithAvailability {

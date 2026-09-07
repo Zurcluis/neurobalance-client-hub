@@ -322,7 +322,7 @@ const ClientPayments: React.FC<ClientPaymentsProps> = ({ clientId }) => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {paymentMethodData.map((entry, index) => (
+                    {paymentMethodData.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>

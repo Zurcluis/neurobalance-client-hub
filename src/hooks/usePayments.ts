@@ -40,7 +40,7 @@ const ensurePaymentsTable = async (supabase: any) => {
       console.log('Tabela de pagamentos não existe - verificando acesso admin');
 
       // Verificar se o cliente tem outras tabelas existentes
-      const { data: tablesData, error: tablesError } = await supabase
+      const { error: tablesError } = await supabase
         .from('clientes')
         .select('id')
         .limit(1);

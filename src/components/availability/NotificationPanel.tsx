@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, BellOff, Check, CheckCheck, Trash2, Mail, MessageSquare, Smartphone, AlertCircle } from 'lucide-react';
+import { Bell, BellOff, Check, CheckCheck, Trash2, Mail, AlertCircle } from 'lucide-react';
 import { useAvailabilityNotifications } from '@/hooks/useAvailabilityNotifications';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -38,14 +38,16 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
   const getIconByType = (tipo: TipoNotificacao) => {
     switch (tipo) {
-      case 'email':
-        return <Mail className="h-4 w-4" />;
-      case 'sms':
-        return <MessageSquare className="h-4 w-4" />;
-      case 'push':
-        return <Smartphone className="h-4 w-4" />;
-      case 'in-app':
+      case 'sugestao_agendamento':
         return <Bell className="h-4 w-4" />;
+      case 'confirmacao_disponibilidade':
+        return <Check className="h-4 w-4" />;
+      case 'lembrete_atualizar':
+        return <Mail className="h-4 w-4" />;
+      case 'agendamento_sugerido_aceito':
+        return <CheckCheck className="h-4 w-4" />;
+      case 'agendamento_conflito':
+        return <AlertCircle className="h-4 w-4" />;
       default:
         return <Bell className="h-4 w-4" />;
     }

@@ -1,11 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
-import { Database } from '@/integrations/supabase/types';
 
 // Definição de tipos
-type Expense = Database['public']['Tables']['despesas']['Row'];
-type NewExpense = Omit<Database['public']['Tables']['despesas']['Insert'], 'id' | 'criado_em'>;
+// A tabela 'despesas' ainda não está refletida nos tipos gerados do Supabase,
+// pelo que a sua forma é declarada localmente (colunas: id, tipo, categoria, data, valor, notas, criado_em).
+type Expense = {
+  id: number;
+  tipo: string;
+  categoria: string;
+  data: string;
+  valor: number;
+  notas?: string;
+  criado_em: string;
+};
+type NewExpense = Omit<Expense, 'id' | 'criado_em'>;
 type UpdateExpense = Partial<NewExpense>;
 
 export function useExpenses() {
@@ -18,7 +27,7 @@ export function useExpenses() {
   const createExpensesTable = async () => {
     try {
       // Usar a função create_despesas_table diretamente via RPC
-      const { data, error } = await supabase.rpc('create_despesas_table');
+      const { error } = await supabase.rpc('create_despesas_table');
       
       if (error) {
         console.error('Erro ao criar tabela despesas:', error);

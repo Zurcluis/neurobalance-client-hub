@@ -1,13 +1,12 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, CreditCard, Download, FileText, Search, Users, Calendar, DollarSign, Filter, ArrowUpDown, RefreshCw, Database, Edit, Trash2, X } from 'lucide-react';
+import { CreditCard, Download, FileText, Search, Users, Calendar, DollarSign, ArrowUpDown, RefreshCw, Database, Edit, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { LineChart, Line } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Database as SupabaseDatabase } from '@/integrations/supabase/types';
-import { format, parseISO, isSameMonth, subMonths, isSameYear, getMonth, getYear, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
+import { format, parseISO, subMonths, subDays, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
 import {
@@ -39,26 +38,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import usePayments, { createSamplePayment } from '@/hooks/usePayments';
+import usePayments from '@/hooks/usePayments';
 import { useLanguage } from '@/hooks/use-language';
-
-// Definições de tipos
-type PaymentWithClient = SupabaseDatabase['public']['Tables']['pagamentos']['Row'] & {
-  clientes?: {
-    nome: string | null;
-  } | null;
-};
-
-type Payment = Omit<SupabaseDatabase['public']['Tables']['pagamentos']['Row'], 'id_cliente'> & {
-  id_cliente: string | number;
-  cliente_nome?: string;
-  cliente_id_manual?: string;
-  agendamento_titulo?: string;
-  clientes?: {
-    nome: string;
-    id_manual: string;
-  } | null;
-};
 
 // Cores para os gráficos
 const CHART_COLORS = ['#1088c4', '#9e50b3', '#3f9094', '#ecc249', '#e67c50', '#6633cc'];
@@ -88,7 +69,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     if (hookPayments.length > 0) {
       console.log('Sincronizando localPayments com hookPayments');
       console.log('Primeiro pagamento:', hookPayments[0]);
-      console.log('cliente_id_manual:', hookPayments[0]?.cliente_id_manual);
+      console.log('cliente_id_manual:', (hookPayments[0] as any)?.cliente_id_manual);
       setLocalPayments(hookPayments);
     }
   }, [hookPayments]);
@@ -629,7 +610,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                           `${name}: ${(percent * 100).toFixed(0)}%`
                         }
                       >
-                        {paymentMethodDistribution.map((entry, index) => (
+                        {paymentMethodDistribution.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Pie>

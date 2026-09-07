@@ -85,8 +85,7 @@ export const DeleteConfirmDialog = ({
   open,
   onOpenChange,
   onConfirm,
-  itemName,
-  itemType = 'item'
+  itemName
 }: DeleteConfirmDialogProps) => {
   return (
     <ConfirmDialog

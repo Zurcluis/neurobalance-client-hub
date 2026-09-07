@@ -42,7 +42,7 @@ interface BulkGenerationResult {
 }
 
 export const BulkSuggestionsGenerator: React.FC = () => {
-  const { admin } = useAdminAuth();
+  const { session } = useAdminAuth();
   const { clients, fetchClientsWithAvailability } = useAdminAvailabilityManagement();
 
   const [selectedClients, setSelectedClients] = useState<Set<number>>(new Set());
@@ -109,7 +109,7 @@ export const BulkSuggestionsGenerator: React.FC = () => {
   // =====================================================
 
   const handleGenerateBulk = async () => {
-    if (!admin?.id) {
+    if (!session?.adminId) {
       toast.error('Não foi possível identificar o administrador');
       return;
     }
@@ -137,7 +137,7 @@ export const BulkSuggestionsGenerator: React.FC = () => {
         // Verificar se cliente tem disponibilidade
         if (client.disponibilidades_ativas === 0) {
           generationResults.push({
-            clienteId,
+            clienteId: clientId,
             clienteNome: client.nome,
             status: 'skipped',
             suggestionsCount: 0,
@@ -149,14 +149,14 @@ export const BulkSuggestionsGenerator: React.FC = () => {
         }
 
         // Gerar sugestões
-        const newSuggestions = await generateSuggestionsForClient(clientId, admin.id, {
+        const newSuggestions = await generateSuggestionsForClient(clientId, String(session.adminId), {
           daysAhead,
           maxSuggestions: maxSuggestionsPerClient,
         });
 
         if (newSuggestions.length === 0) {
           generationResults.push({
-            clienteId,
+            clienteId: clientId,
             clienteNome: client.nome,
             status: 'skipped',
             suggestionsCount: 0,
@@ -169,7 +169,7 @@ export const BulkSuggestionsGenerator: React.FC = () => {
           }
 
           generationResults.push({
-            clienteId,
+            clienteId: clientId,
             clienteNome: client.nome,
             status: 'success',
             suggestionsCount: newSuggestions.length,
@@ -178,7 +178,7 @@ export const BulkSuggestionsGenerator: React.FC = () => {
       } catch (error) {
         console.error(`Error generating for client ${clientId}:`, error);
         generationResults.push({
-          clienteId,
+          clienteId: clientId,
           clienteNome: client.nome,
           status: 'error',
           suggestionsCount: 0,

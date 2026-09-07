@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon, Clock, Bell, CheckCircle, AlertCircle } from 'lucide-react';
 import { ClientDetailData } from '@/types/client';

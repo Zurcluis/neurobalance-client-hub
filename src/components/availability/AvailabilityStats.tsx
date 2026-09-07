@@ -5,7 +5,6 @@ import {
   TrendingUp, 
   Calendar, 
   Clock, 
-  Target,
   Sun,
   Sunset,
   Moon

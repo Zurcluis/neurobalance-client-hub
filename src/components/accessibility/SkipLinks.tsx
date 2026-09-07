@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SkipLink {
@@ -17,8 +16,6 @@ interface SkipLinksProps {
 }
 
 export const SkipLinks = ({ links = defaultSkipLinks }: SkipLinksProps) => {
-  const [isVisible, setIsVisible] = useState(false);
-
   const handleSkipLink = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     const target = document.getElementById(targetId);

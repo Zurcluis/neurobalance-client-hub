@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -8,17 +8,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, RefreshCw, Filter, TrendingUp, BarChart3 } from 'lucide-react';
+import { Plus, Search, RefreshCw, Filter, TrendingUp } from 'lucide-react';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useMarketData } from '@/hooks/useMarketData';
 import { InvestmentCard } from '@/components/investments/InvestmentCard';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { PortfolioSummary } from '@/components/investments/PortfolioSummary';
 import { PortfolioChart } from '@/components/investments/PortfolioChart';
-import { Investment, InvestmentFormData, InvestmentType } from '@/types/investments';
 import { toast } from 'sonner';
+
+type InvestmentType = 'crypto' | 'stock' | 'etf';
+
+interface Investment {
+  id: string;
+  symbol: string;
+  name: string;
+  type: InvestmentType;
+  quantity: number;
+  buyPrice: number;
+  currentPrice: number;
+  purchaseDate: string;
+  notes?: string;
+}
+
+interface InvestmentFormData {
+  symbol: string;
+  name: string;
+  type: InvestmentType;
+  quantity: number;
+  buyPrice: number;
+  purchaseDate: string;
+  notes?: string;
+}
 import Sidebar from '@/components/layout/Sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -109,7 +132,7 @@ const InvestmentsPage = () => {
       etf: { count: 0, value: 0 }
     };
 
-    investments.forEach(inv => {
+    investments.forEach((inv: Investment) => {
       stats[inv.type].count++;
       stats[inv.type].value += inv.quantity * inv.currentPrice;
     });

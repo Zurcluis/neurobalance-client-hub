@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ClientDetailData } from '@/types/client';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { 
   Select, 
   SelectContent, 
@@ -11,7 +10,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GitCompareArrows, ArrowLeftRight, FileText, File, Download } from 'lucide-react';
+import { GitCompareArrows, ArrowLeftRight, Download } from 'lucide-react';
 
 interface ReportCompareProps {
   client: ClientDetailData;
@@ -36,7 +35,7 @@ interface HistoricalReport {
   };
 }
 
-const ReportCompare = ({ client }: ReportCompareProps) => {
+const ReportCompare = ({ client: _client }: ReportCompareProps) => {
   // Exemplo de dados históricos para comparar
   const availableReports: HistoricalReport[] = [
     {

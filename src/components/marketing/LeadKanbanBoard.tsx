@@ -709,7 +709,7 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
           </DialogHeader>
           <LandingLeadForm
             onSubmit={async (data) => {
-              await addLead(data);
+              await addLead({ ...data, email: data.email ?? '' });
               setIsCreateLeadOpen(false);
             }}
             onCancel={() => setIsCreateLeadOpen(false)}

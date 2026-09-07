@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Eye, Trash2, FileText, File, Search, FilterIcon } from 'lucide-react';
+import { Download, Eye, Trash2, FileText, File, Search } from 'lucide-react';
 import { ClientDetailData } from '@/types/client';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -21,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Popover,
@@ -47,7 +44,7 @@ interface HistoricalReport {
   previewText?: string;
 }
 
-const ReportHistory = ({ client }: ReportHistoryProps) => {
+const ReportHistory = (_props: ReportHistoryProps) => {
   // Exemplo de dados históricos
   const initialReports: HistoricalReport[] = [
     {

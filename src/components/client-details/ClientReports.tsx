@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Download, File, Calendar, Filter } from 'lucide-react';
+import { FileText, Download, File, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ClientDetailData, Session, Payment } from '@/types/client';
-import { format, isValid, parseISO, subMonths, subDays, startOfMonth, endOfMonth, isBefore, isAfter } from 'date-fns';
+import { format, isValid, parseISO, subMonths, isBefore, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Textarea } from '@/components/ui/textarea';
 import jsPDF from 'jspdf';
@@ -13,13 +13,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -30,7 +23,7 @@ import ReportHistory from './ReportHistory';
 import ReportCompare from './ReportCompare';
 import ReportShare from './ReportShare';
 import { Label } from '@/components/ui/label';
-import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 
 interface ClientReportsProps {
   client: ClientDetailData;
@@ -40,7 +33,7 @@ interface ClientReportsProps {
 
 // Fazendo cast de jsPDF para ter o método autoTable
 interface JsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: any) => void;
+  autoTable: (options: any) => jsPDF;
 }
 
 // Definindo tipos de relatórios disponíveis
@@ -624,7 +617,7 @@ const ClientReports = ({ client, sessions, payments }: ClientReportsProps) => {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0">
-                                <Calendar
+                                <CalendarPicker
                                   mode="single"
                                   selected={dateRange.from}
                                   onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
@@ -643,7 +636,7 @@ const ClientReports = ({ client, sessions, payments }: ClientReportsProps) => {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0">
-                                <Calendar
+                                <CalendarPicker
                                   mode="single"
                                   selected={dateRange.to}
                                   onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}

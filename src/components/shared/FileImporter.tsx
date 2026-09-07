@@ -10,10 +10,8 @@ import {
   FileSpreadsheet, 
   File,
   CheckCircle,
-  AlertCircle,
   X,
-  Download,
-  Eye
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processFile, detectDataType, mapToMarketingData, mapToLeadCompraData, ProcessedFileData } from '@/lib/file-processors';

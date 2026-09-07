@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Home, Zap, Phone, Users, Briefcase, Calculator, Wrench, Beaker, FileText, ShoppingCart, PiggyBank } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+import { Home, Briefcase, Wrench, Beaker, FileText, PiggyBank } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 
 interface MonthlyAnalysisProps {

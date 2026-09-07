@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { useSuggestedAppointments } from '@/hooks/useSuggestedAppointments';
 import { generateSuggestionsForClient } from '@/lib/suggestionAlgorithm';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import type { SuggestedAppointment } from '@/types/availability';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,7 +23,7 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
   clienteId,
   onSuggestionAccepted,
 }) => {
-  const { admin } = useAdminAuth();
+  const { session: adminSession } = useAdminAuth();
   const {
     suggestions,
     isLoading,
@@ -39,14 +40,14 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
   // =====================================================
 
   const handleGenerateSuggestions = async () => {
-    if (!admin?.id) {
+    if (!adminSession?.adminId) {
       toast.error('Não foi possível identificar o administrador');
       return;
     }
 
     setIsGenerating(true);
     try {
-      const newSuggestions = await generateSuggestionsForClient(clienteId, admin.id, {
+      const newSuggestions = await generateSuggestionsForClient(clienteId, String(adminSession.adminId), {
         daysAhead: 14,
         maxSuggestions: 5,
       });
@@ -205,7 +206,7 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
           {suggestions.map((suggestion) => {
             const date = parseISO(suggestion.data_sugerida);
             const formattedDate = format(date, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-            const reasons = suggestion.razoes_sugestao?.split(';').map((r) => r.trim()) || [];
+            const reasons = (suggestion as SuggestedAppointment & { razoes_sugestao?: string }).razoes_sugestao?.split(';').map((r) => r.trim()) || [];
 
             return (
               <Card key={suggestion.id} className="border-l-4 border-l-[#3f9094]">

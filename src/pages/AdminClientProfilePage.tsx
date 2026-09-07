@@ -1,5 +1,3 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import AdminSidebar from '@/components/admin/AdminSidebar';
@@ -12,8 +10,7 @@ import { AdminContextProvider } from '@/contexts/AdminContext';
 const AdminClientProfilePage = () => {
   const { hasPermission } = useAdminAuth();
   const isMobile = useIsMobile();
-  const { clientId } = useParams();
-  
+
   // Verificar permissões
   const canViewClients = hasPermission(ADMIN_PERMISSIONS.VIEW_CLIENTS);
 

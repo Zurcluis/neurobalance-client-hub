@@ -7,7 +7,6 @@ import type {
   NewAvailabilityNotification,
   TipoNotificacao,
   StatusNotificacao,
-  PrioridadeNotificacao,
 } from '@/types/availability';
 
 export const useAvailabilityNotifications = (clienteId?: number) => {

@@ -15,7 +15,7 @@ import { logger } from './logger';
 import type {
   ClientAvailability,
   NewSuggestedAppointment,
-  PreferenciaNivel,
+  PreferenciaHorario,
 } from '@/types/availability';
 import { addDays, format, parse, isAfter, isBefore, isEqual, startOfDay } from 'date-fns';
 
@@ -64,7 +64,7 @@ const WEIGHTS = {
 
 export async function generateSuggestionsForClient(
   clienteId: number,
-  adminId: string,
+  _adminId: string,
   options?: {
     daysAhead?: number;
     maxSuggestions?: number;
@@ -109,13 +109,13 @@ export async function generateSuggestionsForClient(
 
       const suggestion: NewSuggestedAppointment = {
         cliente_id: clienteId,
-        admin_id: adminId,
         data_sugerida: slot.data,
         hora_inicio: slot.hora_inicio,
         hora_fim: slot.hora_fim,
         compatibilidade_score: score,
-        razoes_sugestao: reasons.join('; '),
+        razoes: reasons,
         status: 'pendente',
+        tipo: 'automatica',
         expira_em: addDays(new Date(), 7).toISOString(), // Expira em 7 dias
       };
 
@@ -239,8 +239,8 @@ function generateAvailableSlots(
 
     dayAvailability.forEach((avail) => {
       // Verificar se está dentro do período de validade
-      if (avail.data_inicio && isBefore(targetDate, new Date(avail.data_inicio))) return;
-      if (avail.data_fim && isAfter(targetDate, new Date(avail.data_fim))) return;
+      if (avail.valido_de && isBefore(targetDate, new Date(avail.valido_de))) return;
+      if (avail.valido_ate && isAfter(targetDate, new Date(avail.valido_ate))) return;
 
       // Gerar slots de 30 em 30 minutos dentro da janela disponível
       const startTime = parse(avail.hora_inicio, 'HH:mm', new Date());
@@ -373,7 +373,7 @@ function calculateCompatibilityScore(
 // HELPER: Get Preference Score
 // =====================================================
 
-function getPreferenceScore(preferencia: PreferenciaNivel): number {
+function getPreferenceScore(preferencia: PreferenciaHorario): number {
   switch (preferencia) {
     case 'alta':
       return 100;

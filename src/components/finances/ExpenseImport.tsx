@@ -541,13 +541,6 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
     setCurrentTab('upload');
   };
 
-  // Acionador do input de arquivo
-  const triggerFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   return (
     <Tabs value={currentTab} onValueChange={setCurrentTab}>
       <TabsList className="mb-4 grid w-full grid-cols-2">

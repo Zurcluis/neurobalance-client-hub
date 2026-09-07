@@ -80,7 +80,7 @@ export default function ClientsLeadsTab() {
     return filtered;
   }, [leads, leadSearchTerm, leadFilters]);
 
-  const handleSubmitLead = async (data: Omit<LeadCompra, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSubmitLead = async (data: Omit<LeadCompra, 'id' | 'created_at' | 'updated_at' | 'cidade'> & { cidade?: string }) => {
     try {
       const payloadToSave = { ...data };
       if (payloadToSave.email === '') payloadToSave.email = undefined;
@@ -89,7 +89,7 @@ export default function ClientsLeadsTab() {
         await updateLead(editingLead.id, payloadToSave);
         toast.success('Lead/Compra atualizado com sucesso!');
       } else {
-        await addLead(payloadToSave);
+        await addLead({ ...payloadToSave, cidade: payloadToSave.cidade ?? '' });
         toast.success('Lead/Compra adicionado com sucesso!');
       }
       setIsLeadFormOpen(false);

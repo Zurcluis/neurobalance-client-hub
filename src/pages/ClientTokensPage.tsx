@@ -1,4 +1,3 @@
-import React from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import ClientTokenManager from '@/components/clients/ClientTokenManager';
 import { Alert, AlertDescription } from '@/components/ui/alert';

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,7 +46,7 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
   const generateTemplateMessage = (clientId: string, type: string) => {
     if (!clientId) return '';
 
-    const client = clients.find(c => c.id === clientId);
+    const client = clients.find(c => String(c.id) === clientId);
     if (!client) return '';
 
     const appointments = getClientAppointments(clientId);
@@ -62,9 +62,9 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
           const date = new Date(nextAppointment.date);
           const formattedDate = date.toLocaleDateString('pt-PT');
           const formattedTime = date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-          template = `Olá ${client.name},\n\nEstamos a confirmar o seu agendamento de ${nextAppointment.type === 'avaliação' ? 'Avaliação Inicial' : nextAppointment.type === 'sessão' ? 'Neurofeedback' : 'Discussão de Resultados'} para dia ${formattedDate} às ${formattedTime}.\n\nPor favor, confirme a sua presença.\n\nObrigado,\nNeuroBalance Clinic`;
+          template = `Olá ${client.nome},\n\nEstamos a confirmar o seu agendamento de ${nextAppointment.type === 'avaliação' ? 'Avaliação Inicial' : nextAppointment.type === 'sessão' ? 'Neurofeedback' : 'Discussão de Resultados'} para dia ${formattedDate} às ${formattedTime}.\n\nPor favor, confirme a sua presença.\n\nObrigado,\nNeuroBalance Clinic`;
         } else {
-          template = `Olá ${client.name},\n\nGostaríamos de agendar a sua próxima sessão na NeuroBalance Clinic.\n\nPor favor, entre em contacto connosco para marcar uma data conveniente.\n\nObrigado,\nNeuroBalance Clinic`;
+          template = `Olá ${client.nome},\n\nGostaríamos de agendar a sua próxima sessão na NeuroBalance Clinic.\n\nPor favor, entre em contacto connosco para marcar uma data conveniente.\n\nObrigado,\nNeuroBalance Clinic`;
         }
         break;
       case 'email':
@@ -72,9 +72,9 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
           const date = new Date(nextAppointment.date);
           const formattedDate = date.toLocaleDateString('pt-PT');
           const formattedTime = date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-          template = `Prezado(a) ${client.name},\n\nEsperamos que esta mensagem o(a) encontre bem.\n\nEstamos a escrever para confirmar o seu agendamento para ${nextAppointment.type === 'avaliação' ? 'Avaliação Inicial' : nextAppointment.type === 'sessão' ? 'sessão de Neurofeedback' : 'Discussão de Resultados'} marcado para ${formattedDate} às ${formattedTime}.\n\nPor favor, confirme a sua presença respondendo a este e-mail ou ligando para o nosso número de telefone.\n\nEstamos ansiosos para recebê-lo(a).\n\nCom os melhores cumprimentos,\nEquipa NeuroBalance Clinic`;
+          template = `Prezado(a) ${client.nome},\n\nEsperamos que esta mensagem o(a) encontre bem.\n\nEstamos a escrever para confirmar o seu agendamento para ${nextAppointment.type === 'avaliação' ? 'Avaliação Inicial' : nextAppointment.type === 'sessão' ? 'sessão de Neurofeedback' : 'Discussão de Resultados'} marcado para ${formattedDate} às ${formattedTime}.\n\nPor favor, confirme a sua presença respondendo a este e-mail ou ligando para o nosso número de telefone.\n\nEstamos ansiosos para recebê-lo(a).\n\nCom os melhores cumprimentos,\nEquipa NeuroBalance Clinic`;
         } else {
-          template = `Prezado(a) ${client.name},\n\nEsperamos que esta mensagem o(a) encontre bem.\n\nGostaríamos de agendar a sua próxima sessão na NeuroBalance Clinic. Por favor, entre em contacto connosco para marcar uma data conveniente.\n\nEstamos ansiosos para recebê-lo(a) novamente.\n\nCom os melhores cumprimentos,\nEquipa NeuroBalance Clinic`;
+          template = `Prezado(a) ${client.nome},\n\nEsperamos que esta mensagem o(a) encontre bem.\n\nGostaríamos de agendar a sua próxima sessão na NeuroBalance Clinic. Por favor, entre em contacto connosco para marcar uma data conveniente.\n\nEstamos ansiosos para recebê-lo(a) novamente.\n\nCom os melhores cumprimentos,\nEquipa NeuroBalance Clinic`;
         }
         break;
       case 'call':
@@ -82,9 +82,9 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
           const date = new Date(nextAppointment.date);
           const formattedDate = date.toLocaleDateString('pt-PT');
           const formattedTime = date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-          template = `Notas para chamada com ${client.name}:\n\n- Confirmar o agendamento para ${formattedDate} às ${formattedTime}\n- Verificar se há alguma dúvida sobre a ${nextAppointment.type === 'avaliação' ? 'avaliação inicial' : nextAppointment.type === 'sessão' ? 'sessão de neurofeedback' : 'discussão de resultados'}\n- Lembrar de trazer documentos necessários (se aplicável)\n- Confirmar dados de contacto`;
+          template = `Notas para chamada com ${client.nome}:\n\n- Confirmar o agendamento para ${formattedDate} às ${formattedTime}\n- Verificar se há alguma dúvida sobre a ${nextAppointment.type === 'avaliação' ? 'avaliação inicial' : nextAppointment.type === 'sessão' ? 'sessão de neurofeedback' : 'discussão de resultados'}\n- Lembrar de trazer documentos necessários (se aplicável)\n- Confirmar dados de contacto`;
         } else {
-          template = `Notas para chamada com ${client.name}:\n\n- Verificar disponibilidade para próxima sessão\n- Discutir progresso das sessões anteriores\n- Verificar se há alguma dúvida ou preocupação\n- Confirmar dados de contacto atualizados`;
+          template = `Notas para chamada com ${client.nome}:\n\n- Verificar disponibilidade para próxima sessão\n- Discutir progresso das sessões anteriores\n- Verificar se há alguma dúvida ou preocupação\n- Confirmar dados de contacto atualizados`;
         }
         break;
       default:
@@ -123,12 +123,12 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
     
     // Save communication record to localStorage
     const communications = JSON.parse(localStorage.getItem('communications') || '[]');
-    const client = clients.find(c => c.id === selectedClientId);
+    const client = clients.find(c => String(c.id) === selectedClientId);
     
     const newCommunication = {
       id: Date.now().toString(),
       clientId: selectedClientId,
-      clientName: client?.name,
+      clientName: client?.nome,
       type: activeTab,
       subject: activeTab === 'email' ? subject : 'N/A',
       message: message,
@@ -169,8 +169,8 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
             </SelectTrigger>
             <SelectContent>
               {clients.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.name} ({client.phone})
+                <SelectItem key={client.id} value={String(client.id)}>
+                  {client.nome} ({client.telefone})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -189,7 +189,7 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
           </div>
           
           <div className="text-xs text-gray-500">
-            <p>O cliente receberá esta mensagem como SMS no número: {selectedClientId ? clients.find(c => c.id === selectedClientId)?.phone : 'Selecione um cliente'}</p>
+            <p>O cliente receberá esta mensagem como SMS no número: {selectedClientId ? clients.find(c => String(c.id) === selectedClientId)?.telefone : 'Selecione um cliente'}</p>
           </div>
         </TabsContent>
         
@@ -214,7 +214,7 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
           </div>
           
           <div className="text-xs text-gray-500">
-            <p>O cliente receberá este email em: {selectedClientId ? clients.find(c => c.id === selectedClientId)?.email : 'Selecione um cliente'}</p>
+            <p>O cliente receberá este email em: {selectedClientId ? clients.find(c => String(c.id) === selectedClientId)?.email : 'Selecione um cliente'}</p>
           </div>
         </TabsContent>
         
@@ -232,10 +232,10 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
           <div>
             <h4 className="text-sm font-medium mb-2">Número para Chamada</h4>
             <div className="flex items-center justify-between p-3 bg-white/50 rounded-md">
-              <span>{selectedClientId ? clients.find(c => c.id === selectedClientId)?.phone : 'Selecione um cliente'}</span>
+              <span>{selectedClientId ? clients.find(c => String(c.id) === selectedClientId)?.telefone : 'Selecione um cliente'}</span>
               {selectedClientId && (
                 <a 
-                  href={`tel:${clients.find(c => c.id === selectedClientId)?.phone}`}
+                  href={`tel:${clients.find(c => String(c.id) === selectedClientId)?.telefone}`}
                   className="text-[#3f9094] flex items-center gap-1 hover:underline"
                 >
                   <Phone className="h-4 w-4" />

@@ -1,4 +1,3 @@
-import React from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from '@/components/ui/button';

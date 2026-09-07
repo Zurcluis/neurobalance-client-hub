@@ -34,7 +34,7 @@ import { addDays, addMonths, addYears, format, isSameDay, startOfMonth, endOfMon
 import { pt } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy, Menu, X } from 'lucide-react';
+import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy, Menu } from 'lucide-react';
 import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
 import { parseLocalISO } from '@/utils/dateUtils';

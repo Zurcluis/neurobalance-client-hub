@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Plus, Database } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { createSamplePayment } from '@/hooks/usePayments';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -14,7 +15,7 @@ const EmptyFinanceState = () => {
   const handleCreateDemo = async () => {
     try {
       setIsCreatingDemo(true);
-      const result = await createSamplePayment();
+      const result = await createSamplePayment(supabase);
       if (!result) {
         // Se não foi possível criar o pagamento, pode ser problema com a tabela
         setShowTableHelpDialog(true);

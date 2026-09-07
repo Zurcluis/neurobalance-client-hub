@@ -25,7 +25,6 @@ import {
   Trash2, 
   Eye, 
   EyeOff,
-  Calendar,
   User,
   Shield,
   AlertTriangle,
@@ -111,7 +110,7 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   };
 
   // Renovar token
-  const handleRefreshToken = async (tokenId: string) => {
+  const handleRefreshToken = async (_tokenId: string) => {
     toast.error('Funcionalidade a ser implementada na base de dados.');
     // Na base de dados, a renovação seria criar um novo token e desativar o antigo, ou estender a data.
   };
@@ -141,7 +140,7 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   // Enviar link por email
   const sendLoginLink = async (token: string, adminEmail: string) => {
     try {
-      const link = generateAdminLoginLink(token);
+      generateAdminLoginLink(token);
       
       // Simular envio do email
       toast.success(`Link de acesso enviado para ${adminEmail}`);

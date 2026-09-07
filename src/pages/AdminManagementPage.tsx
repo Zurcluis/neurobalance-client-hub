@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,8 +19,6 @@ import {
   ShieldCheck, 
   Eye, 
   EyeOff, 
-  Copy, 
-  RefreshCw, 
   Calendar,
   User
 } from 'lucide-react';
@@ -41,11 +39,9 @@ const AdminManagementPage = () => {
   const { 
     admins, 
     isLoading: isAdminsLoading, 
-    error, 
     createAdmin, 
     updateAdmin, 
-    deleteAdmin, 
-    getAdminStats 
+    deleteAdmin
   } = useAdmins();
   
   const {
@@ -379,7 +375,7 @@ const AdminManagementPage = () => {
           {/* Tab Tokens */}
           <TabsContent value="tokens" className="space-y-4">
             <AdminTokenManager 
-              admins={admins}
+              admins={admins.map(a => ({ ...a, role: a.role as 'admin' | 'assistant' | 'partner' }))}
               tokens={adminTokens}
               onCreateToken={createToken}
               onUpdateTokenStatus={updateTokenStatus}

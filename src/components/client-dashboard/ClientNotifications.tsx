@@ -11,8 +11,7 @@ import {
   Calendar,
   CreditCard,
   MessageSquare,
-  Loader2,
-  X
+  Loader2
 } from 'lucide-react';
 import { useClientNotifications } from '@/hooks/useClientAuth';
 import { toast } from 'sonner';

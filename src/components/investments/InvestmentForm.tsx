@@ -27,7 +27,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Investment, InvestmentFormData, InvestmentType } from '@/types/investments';
+
+// O ficheiro @/types/investments está vazio; os tipos usados são declarados localmente.
+export type InvestmentType = 'crypto' | 'stock' | 'etf';
+
+export interface Investment {
+  symbol: string;
+  name: string;
+  type: InvestmentType;
+  quantity: number;
+  buyPrice: number;
+  purchaseDate: string;
+  notes?: string;
+}
 
 const investmentSchema = z.object({
   symbol: z.string().min(1, 'Símbolo é obrigatório').max(10, 'Símbolo deve ter no máximo 10 caracteres'),
@@ -40,6 +52,8 @@ const investmentSchema = z.object({
   purchaseDate: z.string().min(1, 'Data de compra é obrigatória'),
   notes: z.string().optional(),
 });
+
+export type InvestmentFormData = z.infer<typeof investmentSchema>;
 
 interface InvestmentFormProps {
   open: boolean;

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Key, 
@@ -16,12 +14,10 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  Mail,
   Clock,
   User,
   Calendar,
-  Shield,
-  UserPlus
+  Shield
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -34,7 +30,7 @@ interface AdminTokenManagerProps {
   onClose?: () => void;
 }
 
-const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({ adminId, onClose }) => {
+const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({ adminId }) => {
   const [tokens, setTokens] = useState<AdminToken[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +91,12 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({ adminId, onClose 
         .order('nome');
 
       if (error) throw error;
-      setAdmins(data || []);
+      setAdmins((data || []).map((admin) => ({
+        ...admin,
+        permissions: [],
+        created_at: '',
+        updated_at: ''
+      })));
     } catch (error: any) {
       console.error('Erro ao carregar admins:', error);
       setError(error.message);
@@ -222,10 +223,8 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({ adminId, onClose 
     }
   };
 
-  const sendLoginLink = async (token: string, adminEmail: string) => {
+  const sendLoginLink = async (_token: string, adminEmail: string) => {
     try {
-      const link = generateAdminLoginLink(token);
-      
       // Aqui você implementaria o envio do email
       // Por enquanto, apenas simula o envio
       toast.success(`Link de acesso administrativo enviado para ${adminEmail}`);

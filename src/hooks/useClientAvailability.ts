@@ -234,7 +234,7 @@ export const useClientAvailability = (clienteId?: number) => {
     // Dia com mais disponibilidade
     const diasCount = new Map<DiaSemana, number>();
     ativos.forEach((avail) => {
-      diasCount.set(avail.dia_semana, (diasCount.get(avail.dia_semana) || 0) + 1);
+      diasCount.set(avail.dia_semana as DiaSemana, (diasCount.get(avail.dia_semana as DiaSemana) || 0) + 1);
     });
     const diaComMais = Array.from(diasCount.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || 0;
 

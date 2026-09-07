@@ -4,20 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   MessageSquare, 
   Send, 
-  User, 
-  Clock,
   CheckCircle,
-  AlertCircle,
   Loader2,
   Users,
   MessageCircle,
-  Search,
-  Filter
+  Search
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

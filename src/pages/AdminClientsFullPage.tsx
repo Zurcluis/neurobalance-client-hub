@@ -1,4 +1,3 @@
-import React from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import AdminSidebar from '@/components/admin/AdminSidebar';

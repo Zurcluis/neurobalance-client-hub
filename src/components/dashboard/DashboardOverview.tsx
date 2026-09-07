@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, User, BarChart3, Plus, DollarSign, TrendingUp, TrendingDown, Users, Target, Clock, ArrowUpRight, ArrowDownRight, Download, Filter } from 'lucide-react';
+import { Calendar, User, BarChart3, Plus, DollarSign, TrendingUp, Users, Target, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import UpcomingAppointmentsTable from '@/components/dashboard/UpcomingAppointmentsTable';
@@ -15,8 +15,6 @@ import { ptBR } from 'date-fns/locale';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, LineChart, Line, PieChart, Pie, Cell, ComposedChart, Area, AreaChart } from 'recharts';
 import { Database } from '@/integrations/supabase/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
 import { DashboardSkeleton } from '@/components/shared/SkeletonCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAnnouncer } from '@/hooks/useAnnouncer';
@@ -78,14 +76,14 @@ const DashboardOverview = () => {
   const navigate = useNavigate();
   const { clients, isLoading: isClientsLoading } = useClients();
   const { appointments, isLoading: isAppointmentsLoading } = useAppointments();
-  const { payments, isLoading: isPaymentsLoading, getTotalRevenue } = usePayments();
-  const { expenses, isLoading: isExpensesLoading, getTotalExpenses } = useExpenses();
+  const { payments, isLoading: isPaymentsLoading } = usePayments();
+  const { expenses, isLoading: isExpensesLoading } = useExpenses();
   const { announce } = useAnnouncer();
   
   const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
-  const [completedSessions, setCompletedSessions] = useState<number>(0);
-  const [totalSessions, setTotalSessions] = useState<number>(0);
+  const [, setCompletedSessions] = useState<number>(0);
+  const [, setTotalSessions] = useState<number>(0);
   const [recentClients, setRecentClients] = useState<any[]>([]);
   const [periodFilter, setPeriodFilter] = useState<TimeRange>('all');
   const [hasAnnounced, setHasAnnounced] = useState(false);
@@ -212,7 +210,7 @@ const DashboardOverview = () => {
       return acc;
     }, {} as Record<string, number>);
     
-    const statusLabels = {
+    const statusLabels: Record<string, string> = {
       ongoing: 'Em Andamento',
       thinking: 'Pensando',
       'no-need': 'Sem Necessidade',
@@ -289,7 +287,7 @@ const DashboardOverview = () => {
     }
   }, [isClientsLoading, isAppointmentsLoading, isPaymentsLoading, isExpensesLoading, clients, appointments, hasAnnounced, announce]);
     
-  const formatAppointmentsForTable = (appointments) => {
+  const formatAppointmentsForTable = (appointments: any[]) => {
     return appointments.map(appointment => ({
       id: appointment.id?.toString() || '',
       title: appointment.titulo || '',
@@ -299,27 +297,6 @@ const DashboardOverview = () => {
       type: appointment.tipo || '',
       confirmed: appointment.estado === 'confirmado' || appointment.estado === 'realizado'
     }));
-  };
-  
-  const handleExportData = () => {
-    const exportData = {
-      metricas: advancedMetrics,
-      dadosTemporais: temporalData,
-      distribuicaoClientes: clientStatusData,
-      dataExportacao: new Date().toISOString()
-    };
-    
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `dashboard-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    toast.success('Dados exportados com sucesso!');
   };
   
   const getPeriodLabel = (period: string) => {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Card, 
@@ -176,10 +176,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
       'finished': 'finished',
       'concluído': 'finished',
       'realizado': 'finished',
-      'finalizado': 'finished',
-      'call': 'call',
-      'ligar': 'call',
-      'contatar': 'call'
+      'finalizado': 'finished'
     };
     
     const normalized = value.toLowerCase().trim();
@@ -431,7 +428,8 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
               como_conheceu: data.como_conheceu || 'Anúncio',
               numero_sessoes: data.numero_sessoes || 0,
               total_pago: data.total_pago || 0,
-              max_sessoes: data.max_sessoes || 0
+              max_sessoes: data.max_sessoes || 0,
+              data_entrada_clinica: data.data_entrada_clinica || null
             };
             
             // Validar campos obrigatórios

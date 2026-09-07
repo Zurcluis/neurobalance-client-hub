@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Megaphone, BarChart3, Target, LogOut, Menu, X, User, Shield, ChevronLeft, ExternalLink, Layout } from 'lucide-react';
+import { Megaphone, BarChart3, LogOut, Menu, X, User, ChevronLeft, Layout } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 

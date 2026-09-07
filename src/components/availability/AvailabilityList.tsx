@@ -174,19 +174,21 @@ export const AvailabilityList: React.FC<AvailabilityListProps> = ({
                           <Edit className="h-4 w-4" />
                         </Button>
 
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => setDeletingId(avail.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+
                         <ConfirmDialog
+                          open={deletingId === avail.id}
+                          onOpenChange={(open) => setDeletingId(open ? avail.id : null)}
                           title="Remover Horário"
                           description="Tem certeza que deseja remover este horário da sua disponibilidade?"
                           onConfirm={() => onDelete(avail.id)}
-                          trigger={
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          }
                         />
                       </div>
                     </div>

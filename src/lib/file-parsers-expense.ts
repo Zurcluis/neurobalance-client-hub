@@ -30,7 +30,7 @@ export async function readExcelFile(
         
         // Mapeia os campos com base nos cabeçalhos da planilha
         const result: Partial<ExpenseImportData>[] = [];
-        const headers = Object.keys(jsonData[0]);
+        const headers = Object.keys(jsonData[0] as Record<string, unknown>);
         
         const fieldMap: Record<string, string> = {};
         

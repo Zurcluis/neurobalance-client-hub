@@ -347,7 +347,7 @@ export const FinancialChatbot: React.FC = () => {
   const findBestResponse = (query: string): { responses: string[]; suggestions: string[] } | null => {
     const lowerQuery = query.toLowerCase();
     
-    for (const [key, data] of Object.entries(KNOWLEDGE_BASE)) {
+    for (const [, data] of Object.entries(KNOWLEDGE_BASE)) {
       if (data.keywords.some(keyword => lowerQuery.includes(keyword))) {
         return { responses: data.responses, suggestions: data.suggestions };
       }
@@ -388,6 +388,7 @@ export const FinancialChatbot: React.FC = () => {
         botResponse = {
           id: (Date.now() + 1).toString(),
           type: 'bot',
+          timestamp: new Date(),
           content: [
             'Desculpe, não encontrei uma resposta específica para essa pergunta. 🤔',
             '',

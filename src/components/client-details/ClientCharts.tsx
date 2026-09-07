@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
 import { ClientDetailData, Session, Payment } from '@/types/client';
 import { format, parseISO, isValid, subMonths, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+  PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 
 interface ClientChartsProps {
@@ -164,7 +163,7 @@ const ClientCharts = ({ client, sessions, payments }: ClientChartsProps) => {
                       `${name}: ${(percent * 100).toFixed(0)}%`
                   }
                 >
-                  {paymentsData.map((entry, index) => (
+                  {paymentsData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -206,7 +205,6 @@ const ClientCharts = ({ client, sessions, payments }: ClientChartsProps) => {
       
       case 'evolucao':
         // Taxa de conclusão ao longo do tempo
-        const totalSessions = sessions.length;
         const realizadas = sessions.filter(s => s.status === 'confirmado').length;
         const completionRate = client.max_sessoes && client.max_sessoes > 0 ? 
           (realizadas / client.max_sessoes) * 100 : 0;

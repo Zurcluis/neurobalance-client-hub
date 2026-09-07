@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { useMarketingContext } from '@/contexts/MarketingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import { useLeadCompra } from '@/hooks/useLeadCompra';
 import { useEmailSmsCampaigns } from '@/hooks/useEmailSmsCampaigns';
 import { MarketingCampaign, CampaignFilters } from '@/types/marketing';
 import { LeadCompra, LeadCompraFilters } from '@/types/lead-compra';
-import { EmailSmsCampaign, NewEmailSmsCampaign } from '@/types/email-sms-campaign';
+import { EmailSmsCampaign } from '@/types/email-sms-campaign';
 import CampaignForm from '@/components/marketing/CampaignForm';
 import CampaignCard from '@/components/marketing/CampaignCard';
 import CampaignFiltersComponent from '@/components/marketing/CampaignFilters';
@@ -24,7 +24,6 @@ import { LandingLeadForm, LandingLeadFormData } from '@/components/marketing/Lan
 import { useLandingLeads } from '@/hooks/useLandingLeads';
 import { LandingLead, LandingLeadStatus } from '@/types/landing-lead';
 import LeadCompraDashboard from '@/components/lead-compra/LeadCompraDashboard';
-import ImportManager from '@/components/lead-compra/ImportManager';
 import FileImporter from '@/components/shared/FileImporter';
 import { EmailSmsCampaignForm } from '@/components/marketing/EmailSmsCampaignForm';
 import { EmailSmsCampaignCard } from '@/components/marketing/EmailSmsCampaignCard';
@@ -49,7 +48,6 @@ import {
   MapPin,
   LayoutGrid,
   List,
-  Kanban,
   Settings2
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -80,9 +78,7 @@ const MarketingReportsPage = () => {
     error: leadsError,
     fetchLeads,
     addLead,
-    updateLead,
-    deleteLead,
-    importLeads
+    deleteLead
   } = useLeadCompra();
 
   // Landing Leads (Quadro Kanban) hooks
@@ -102,7 +98,7 @@ const MarketingReportsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<CampaignFilters>({});
-  const [showImporter, setShowImporter] = useState(false);
+  const [, setShowImporter] = useState(false);
 
   // Lead Compra & Quadro states
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
@@ -118,8 +114,6 @@ const MarketingReportsPage = () => {
   const {
     campaigns: emailSmsCampaigns,
     isLoading: emailSmsLoading,
-    error: emailSmsError,
-    fetchCampaigns: fetchEmailSmsCampaigns,
     addCampaign: addEmailSmsCampaign,
     updateCampaign: updateEmailSmsCampaign,
     deleteCampaign: deleteEmailSmsCampaign,
@@ -313,7 +307,7 @@ const MarketingReportsPage = () => {
         await updateLandingLead(editingLandingLead.id, formData);
         toast.success('Lead atualizado com sucesso!');
       } else {
-        await addLandingLead(formData);
+        await addLandingLead({ ...formData, email: formData.email ?? '' });
       }
       // Atualizar ambas as listas para manter sincronia instantânea
       await Promise.all([fetchLandingLeads(), fetchLeads()]);
@@ -406,7 +400,7 @@ const MarketingReportsPage = () => {
     if (type === 'marketing') {
       for (const item of data) {
         try {
-          await addCampaign(item);
+          await addCampaign(item as Omit<MarketingCampaign, 'id' | 'updated_at' | 'created_at' | 'cpl' | 'cac' | 'taxa_conversao'>);
           successCount++;
         } catch (error) {
           console.error('Erro ao importar campanha:', error);
@@ -426,7 +420,7 @@ const MarketingReportsPage = () => {
     } else if (type === 'lead-compra') {
       for (const item of data) {
         try {
-          await addLead(item);
+          await addLead(item as Omit<LeadCompra, 'id' | 'updated_at' | 'created_at'>);
           successCount++;
         } catch (error) {
           console.error('Erro ao importar lead:', error);

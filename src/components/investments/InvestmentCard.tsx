@@ -2,10 +2,23 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Investment } from '@/types/investments';
 import { TrendingUp, TrendingDown, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
+
+type InvestmentType = 'crypto' | 'stock' | 'etf';
+
+interface Investment {
+  id: string;
+  symbol: string;
+  name: string;
+  type: InvestmentType;
+  quantity: number;
+  buyPrice: number;
+  currentPrice: number;
+  purchaseDate: string;
+  notes?: string;
+}
 
 interface InvestmentCardProps {
   investment: Investment;

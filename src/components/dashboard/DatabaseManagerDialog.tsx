@@ -21,7 +21,7 @@ export const DatabaseManagerDialog = () => {
 
   const handleToggle = async () => {
     const newStatus = status === 'online' ? 'offline' : 'online';
-    const success = await setStatus(newStatus, password);
+    const success = await setStatus(newStatus);
 
     if (success) {
       toast.success(`Base de dados está agora ${newStatus === 'online' ? 'Online' : 'Offline'}.`);

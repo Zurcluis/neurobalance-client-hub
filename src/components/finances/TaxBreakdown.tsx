@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calculator, FileText, Users, TrendingUp } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
-import { format, parseISO, getQuarter } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { getQuarter } from 'date-fns';
 
 interface TaxBreakdownProps {
   payments: any[];

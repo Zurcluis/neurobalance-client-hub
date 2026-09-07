@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client'; // Importar diretamente
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Check, Edit, FileText, Trash2, Upload, Filter, Clock, SortAsc, SortDesc, FileType, Clipboard, RefreshCw, Link2Off } from 'lucide-react';
+import { Calendar, Check, Edit, FileText, Trash2, Filter, Clock, SortAsc, SortDesc, Clipboard, RefreshCw, Link2Off } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,6 @@ import { ClientDetailData, Session } from '@/types/client';
 import { Progress } from '@/components/ui/progress';
 import { parseISO, isBefore, format, compareDesc, isAfter } from 'date-fns';
 import { toast } from 'sonner';
-import { ptBR } from 'date-fns/locale';
 import {
   Popover,
   PopoverContent,
@@ -34,27 +33,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import useAppointments from '@/hooks/useAppointments';
+import useAppointments, { type Appointment } from '@/hooks/useAppointments';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-
-// Interface para representar um agendamento do calendário
-interface Appointment {
-  id: number;
-  titulo: string;
-  data: string;
-  hora: string;
-  id_cliente: number;
-  tipo: string;
-  notas: string;
-  estado: string;
-  terapeuta?: string;
-  clientes: {
-    nome: string;
-    email: string;
-    telefone: string;
-  };
-}
 
 // Estrutura de dados para o formulário de edição
 interface EditSessionFormData {
@@ -95,14 +76,13 @@ interface ClientSessionsProps {
   paidSessionsCount?: number;
 }
 
-const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClient, onUpdateSession, paidSessionsCount }: ClientSessionsProps) => {
-  const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
+const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }: ClientSessionsProps) => {
   const [isMaxSessionsDialogOpen, setIsMaxSessionsDialogOpen] = useState(false);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [sessionToEdit, setSessionToEdit] = useState<RealizedSessionView | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [refreshTrigger] = useState<number>(0);
   const [syncProgress, setSyncProgress] = useState<boolean>(false);
   const lastUpdatedValueRef = useRef<number>(-1);
 
@@ -115,7 +95,6 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
   // Obter dados de agendamentos e a função refetch do hook
   const { appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useAppointments();
 
-  const sessionForm = useForm<Session>();
   const maxSessionsForm = useForm<{ maxSessions: number }>({
     defaultValues: { maxSessions: client.max_sessoes || 0 }
   });
@@ -255,7 +234,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
           isFromCalendar: true,
           calendarTitle: app.titulo,
           status: app.estado,
-          sessionType: app.tipo,
+          sessionType: app.tipo ?? undefined,
           notes: sessionNote,
           terapeuta: app.terapeuta ?? existingManualSession.terapeuta,
           arquivos: processSessionFiles(existingManualSession.arquivos || []),
@@ -461,7 +440,6 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     }
 
     setIsUploading(true);
-    let uploadedFilePaths: SessionFile[] = [];
 
     // 1. Upload de ficheiros (se existirem)
     if (data.filesToUpload && data.filesToUpload.length > 0) {
@@ -485,11 +463,8 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
         }
         return null;
       });
-      const results = await Promise.all(uploadPromises);
-      uploadedFilePaths = results.filter((r): r is SessionFile => r !== null);
+      await Promise.all(uploadPromises);
     }
-
-    const updatedSessionFiles = [...(sessionToEdit.arquivos || []), ...uploadedFilePaths];
 
     try {
       // 2. Unificar a atualização para sempre usar a tabela 'agendamentos'
@@ -552,7 +527,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
     }
   };
 
-  const getSessionTypeLabel = (type: string | undefined) => {
+  const getSessionTypeLabel = (type: string | null | undefined) => {
     if (!type) return 'N/A';
 
     switch (type.toLowerCase()) {
@@ -604,7 +579,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
 
   return (
     <div className="space-y-6">
-      {client.max_sessoes > 0 && (
+      {(client.max_sessoes ?? 0) > 0 && (
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-3">
@@ -625,9 +600,9 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                     }`}
                 />
                 {/* Marcadores de Metas */}
-                {Array.from({ length: Math.floor(client.max_sessoes / 5) }).map((_, i) => {
+                {Array.from({ length: Math.floor((client.max_sessoes ?? 0) / 5) }).map((_, i) => {
                   const milestone = (i + 1) * 5;
-                  if (milestone < client.max_sessoes) {
+                  if (client.max_sessoes && milestone < client.max_sessoes) {
                     const leftPosition = (milestone / client.max_sessoes) * 100;
                     return (
                       <div
@@ -643,7 +618,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
               </div>
               <div className="flex justify-between items-center text-xs text-gray-500">
                 <span>{Math.round(completedSessionsPercentage)}% concluído</span>
-                <span>{client.max_sessoes - totalRealizedCount} sessões restantes</span>
+                <span>{(client.max_sessoes ?? 0) - totalRealizedCount} sessões restantes</span>
               </div>
               <div className="flex items-center justify-between space-x-2 pt-2">
                 <Button
@@ -1179,7 +1154,7 @@ const ClientSessions = ({ sessions, clientId, onAddSession, client, onUpdateClie
                 )}
               />
 
-              {sessionToEdit?.arquivos?.length > 0 && (
+              {sessionToEdit && sessionToEdit.arquivos.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium mb-2">Ficheiros existentes:</h4>
                   <div className="max-h-[100px] overflow-y-auto space-y-1 border rounded-md p-2">

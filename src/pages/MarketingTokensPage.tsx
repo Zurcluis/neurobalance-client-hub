@@ -1,4 +1,3 @@
-import React from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import MarketingTokenManager from '@/components/marketing/MarketingTokenManager';
 import { Alert, AlertDescription } from '@/components/ui/alert';

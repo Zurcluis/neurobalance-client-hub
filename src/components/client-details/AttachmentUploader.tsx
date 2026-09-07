@@ -16,7 +16,7 @@ interface Attachment {
   file: File;
 }
 
-const AttachmentUploader = ({ client, onAttachmentAdd }: AttachmentUploaderProps) => {
+const AttachmentUploader = ({ onAttachmentAdd }: AttachmentUploaderProps) => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

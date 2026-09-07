@@ -8,7 +8,6 @@ import {
   Calendar, 
   Clock, 
   Plus, 
-  TrendingUp, 
   AlertCircle, 
   CheckCircle2,
   Sparkles

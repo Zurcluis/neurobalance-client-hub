@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import FinancialReport from '@/components/finances/FinancialReport';
 import ExpenseManager from '@/components/finances/ExpenseManager';
@@ -13,10 +13,9 @@ import SmartTaxCalculator from '@/components/finances/SmartTaxCalculator';
 import FinancialChatbot from '@/components/finances/FinancialChatbot';
 import LoanTracker from '@/components/finances/LoanTracker';
 import PaymentImport, { PaymentImportData } from '@/components/finances/PaymentImport';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useLanguage } from '@/hooks/use-language';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,6 @@ import {
   TrendingDown,
   DollarSign,
   Download,
-  Zap,
   PiggyBank,
   Upload
 } from 'lucide-react';
@@ -45,7 +43,6 @@ import { useExpenses } from '@/hooks/useExpenses';
 import { usePayments } from '@/hooks/usePayments';
 
 const FinancesPage = () => {
-  const { t } = useLanguage();
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,8 +53,8 @@ const FinancesPage = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  const { expenses, isLoading: isLoadingExpenses, fetchExpenses: refreshExpenses } = useExpenses();
-  const { payments: paymentsData, isLoading: isLoadingPayments } = usePayments();
+  const { expenses, fetchExpenses: refreshExpenses } = useExpenses();
+  const { payments: paymentsData } = usePayments();
 
   const fetchPayments = async () => {
     try {

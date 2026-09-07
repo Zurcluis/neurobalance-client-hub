@@ -8,8 +8,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   MessageSquare, 
   Send, 
-  User, 
-  Clock,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -27,7 +25,7 @@ interface ClientChatProps {
 
 const MESSAGE_LIMIT = 5; // Limite de mensagens do cliente
 
-const ClientChat: React.FC<ClientChatProps> = ({ clientId }) => {
+const ClientChat: React.FC<ClientChatProps> = () => {
   const { messages, loading, error, sendMessage, markAsRead } = useClientMessages();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -96,15 +94,6 @@ const ClientChat: React.FC<ClientChatProps> = ({ clientId }) => {
     } catch {
       return 'Data inválida';
     }
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   if (loading) {

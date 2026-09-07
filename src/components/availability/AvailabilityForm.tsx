@@ -15,6 +15,7 @@ import {
   NewClientAvailability,
   AvailabilityFormSchema,
   AvailabilityFormData,
+  DiaSemana,
   DIAS_SEMANA,
   PREFERENCIA_HORARIO,
   RECORRENCIA,
@@ -42,7 +43,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
   onSubmit,
   isLoading = false,
 }) => {
-  const { addAvailability, updateAvailability, isAdding, isUpdating } = useClientAvailability(clienteId);
+  const { addAvailability, updateAvailability, isLoading: isMutating } = useClientAvailability(clienteId);
 
   const {
     register,
@@ -54,7 +55,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
     resolver: zodResolver(AvailabilityFormSchema),
     defaultValues: availability
       ? {
-          dia_semana: availability.dia_semana,
+          dia_semana: availability.dia_semana as DiaSemana,
           hora_inicio: availability.hora_inicio,
           hora_fim: availability.hora_fim,
           preferencia: availability.preferencia,
@@ -65,7 +66,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
           notas: availability.notas || undefined,
         }
       : {
-          dia_semana: defaultDiaSemana ?? 1,
+          dia_semana: (defaultDiaSemana ?? 1) as DiaSemana,
           hora_inicio: '09:00',
           hora_fim: '10:00',
           preferencia: 'media',
@@ -109,7 +110,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
     }
   };
 
-  const loading = isLoading || isAdding || isUpdating;
+  const loading = isLoading || isMutating;
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">

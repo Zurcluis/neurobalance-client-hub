@@ -1,8 +1,16 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PortfolioSummary as PortfolioSummaryType } from '@/types/investments';
-import { TrendingUp, TrendingDown, DollarSign, Target, Award, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Target, Award } from 'lucide-react';
+
+interface PortfolioSummaryType {
+  totalValue: number;
+  totalInvested: number;
+  totalPnL: number;
+  totalPnLPercent: number;
+  topGainer?: { symbol: string };
+  topLoser?: { symbol: string };
+}
 
 interface PortfolioSummaryProps {
   summary: PortfolioSummaryType;

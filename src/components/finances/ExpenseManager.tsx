@@ -6,7 +6,6 @@ import {
   Filter, 
   ArrowUpDown, 
   Plus, 
-  FileText, 
   RefreshCw,
   CalendarIcon,
   Upload,
@@ -49,9 +48,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
 import { 
   PieChart, 
   Pie, 
@@ -166,7 +163,6 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [activeDialog, setActiveDialog] = useState<'form' | 'import'>('form');
   const [currentExpenseId, setCurrentExpenseId] = useState<number | null>(null);
   const [formValues, setFormValues] = useState<ExpenseFormValues>({
     tipo: 'Fixas',
@@ -208,7 +204,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
         categoria: formValues.categoria,
         data: formValues.data,
         valor: numericValue,
-        notas: formValues.notas || null
+        notas: formValues.notas || undefined
       };
 
       await addExpense(newExpense);
@@ -252,7 +248,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
         categoria: formValues.categoria,
         data: formValues.data,
         valor: numericValue,
-        notas: formValues.notas || null
+        notas: formValues.notas || undefined
       };
 
       await updateExpense(currentExpenseId, updatedExpense);
@@ -456,18 +452,6 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
       console.error('Erro ao importar despesas:', error);
       toast.error('Falha ao importar despesas');
     }
-  };
-
-  const openAddExpenseDialog = () => {
-    setActiveDialog('form');
-    setIsAddDialogOpen(true);
-    setIsImportDialogOpen(false);
-  };
-
-  const openImportDialog = () => {
-    setActiveDialog('import');
-    setIsImportDialogOpen(true);
-    setIsAddDialogOpen(false);
   };
 
   // Abrir modal de edição e carregar dados da despesa
@@ -956,7 +940,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
                             dataKey="value"
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                           >
-                            {totalsByType.map((entry, index) => (
+                            {totalsByType.map((_, index) => (
                               <Cell 
                                 key={`cell-${index}`} 
                                 fill={CHART_COLORS[index % CHART_COLORS.length]} 

@@ -16,7 +16,6 @@ import {
   Sparkles,
   Key,
   Copy,
-  Link,
   ExternalLink,
   Loader2,
   Check
@@ -27,13 +26,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { Database } from '@/integrations/supabase/types';
 import { useAdminContext } from '@/contexts/AdminContext';
@@ -44,7 +36,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-type Client = Database['public']['Tables']['clientes']['Row'];
+type Client = Database['public']['Tables']['clientes']['Row'] & { proxima_sessao?: string | null };
 
 interface ClientCardProps {
   client: Client;

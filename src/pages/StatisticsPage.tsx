@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,6 @@ import {
   Pie,
   BarChart,
   Bar,
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -21,20 +20,15 @@ import {
   AreaChart,
   ComposedChart
 } from 'recharts';
-import { ChartContainer, ChartTooltipContent, ChartLegendContent } from '@/components/ui/chart';
-import { cn } from '@/lib/utils';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { 
   differenceInYears, 
   format, 
   subMonths, 
-  subDays, 
-  isAfter, 
-  isBefore, 
-  parseISO,
+  subDays,
   startOfMonth,
   endOfMonth,
   eachMonthOfInterval,
-  eachDayOfInterval,
   startOfDay,
   endOfDay
 } from 'date-fns';
@@ -43,14 +37,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { usePayments } from '@/hooks/usePayments';
-import { Database } from '@/integrations/supabase/types';
-import { 
+import {
   TrendingUp, 
   TrendingDown, 
   Users, 
   Calendar, 
-  Euro, 
-  Clock,
+  Euro,
   Target,
   Activity,
   Download,
@@ -63,9 +55,6 @@ import { toast } from 'sonner';
 
 // Cores para os gráficos
 const COLORS = ['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#D8E6E3', '#265255'];
-
-type Client = Database['public']['Tables']['clientes']['Row'];
-type Appointment = Database['public']['Tables']['agendamentos']['Row'];
 
 interface KPICardProps {
   title: string;
@@ -111,7 +100,6 @@ const StatisticsPage = () => {
   
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
   const [selectedView, setSelectedView] = useState<'overview' | 'clients' | 'appointments' | 'financial'>('overview');
-  const [isLoading, setIsLoading] = useState(false);
 
   // Função para filtrar dados por período
   const filterByPeriod = (data: any[], dateField: string) => {
@@ -493,7 +481,7 @@ const StatisticsPage = () => {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {genderData.map((entry, index) => (
+                      {genderData.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -520,7 +508,7 @@ const StatisticsPage = () => {
                     <YAxis />
                     <Tooltip content={<ChartTooltipContent />} />
                         <Bar dataKey="value" fill="#3f9094" name="Clientes">
-                          {ageData.map((entry, index) => (
+                          {ageData.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Bar>
@@ -574,7 +562,7 @@ const StatisticsPage = () => {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {appointmentTypeData.map((entry, index) => (
+                          {appointmentTypeData.map((_entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
@@ -629,7 +617,7 @@ const StatisticsPage = () => {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {paymentMethodData.map((entry, index) => (
+                          {paymentMethodData.map((_entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>

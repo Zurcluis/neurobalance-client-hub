@@ -1,11 +1,42 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MarketData, CryptoApiResponse, StockApiResponse, Investment } from '@/types/investments';
 import axios from 'axios';
 import { toast } from 'sonner';
 
+type InvestmentType = 'crypto' | 'stock' | 'etf';
+
+interface Investment {
+  id: string;
+  symbol: string;
+  name: string;
+  type: InvestmentType;
+  quantity: number;
+  buyPrice: number;
+  currentPrice: number;
+  purchaseDate: string;
+  notes?: string;
+}
+
+interface MarketData {
+  symbol: string;
+  price: number;
+  change24h: number;
+  changePercent24h: number;
+  marketCap: number;
+  volume24h: number;
+  lastUpdated: string;
+}
+
+interface CryptoApiResponse {
+  [coinId: string]: {
+    usd: number;
+    usd_24h_change: number;
+    usd_market_cap: number;
+    usd_24h_vol: number;
+    last_updated_at: number;
+  };
+}
+
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
-const ALPHA_VANTAGE_API = 'https://www.alphavantage.co/query';
-const ALPHA_VANTAGE_KEY = 'demo'; // Usar uma chave real em produção
 
 export const useMarketData = () => {
   const [marketData, setMarketData] = useState<MarketData[]>([]);
