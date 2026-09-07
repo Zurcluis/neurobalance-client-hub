@@ -189,7 +189,11 @@ const App = () => (
 
                             <Route
                               path="/admin/availability"
-                              element={<AdminAvailabilityPage />}
+                              element={
+                                <AdminProtectedRoute>
+                                  <AdminAvailabilityPage />
+                                </AdminProtectedRoute>
+                              }
                             />
 
                             <Route
