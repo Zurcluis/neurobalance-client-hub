@@ -1,8 +1,7 @@
-import { lazy, Suspense } from "react";
+﻿import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./hooks/use-theme";
 import { LanguageProvider } from "./hooks/use-language";
@@ -47,17 +46,6 @@ const ConfirmAppointmentPage = lazy(() => import("./pages/ConfirmAppointmentPage
 const ClinicFloorPlanPage = lazy(() => import("./pages/ClinicFloorPlanPage"));
 const AdminProfilePage = lazy(() => import("./pages/AdminProfilePage"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -66,7 +54,6 @@ const LoadingFallback = () => (
 
 const App = () => (
   <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <LanguageProvider>
           <AuthProvider>
@@ -283,7 +270,6 @@ const App = () => (
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>
-    </QueryClientProvider>
   </ErrorBoundary>
 );
 
