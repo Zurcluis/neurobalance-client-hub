@@ -27,24 +27,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-
-// O ficheiro @/types/investments está vazio; os tipos usados são declarados localmente.
-export type InvestmentType = 'crypto' | 'stock' | 'etf';
-
-export interface Investment {
-  symbol: string;
-  name: string;
-  type: InvestmentType;
-  quantity: number;
-  buyPrice: number;
-  purchaseDate: string;
-  notes?: string;
-}
+import type { Investment, InvestmentFormData, InvestmentType } from '@/types/investments';
 
 const investmentSchema = z.object({
   symbol: z.string().min(1, 'Símbolo é obrigatório').max(10, 'Símbolo deve ter no máximo 10 caracteres'),
   name: z.string().min(1, 'Nome é obrigatório'),
-  type: z.enum(['crypto', 'stock', 'etf'] as const, {
+  type: z.enum(['crypto', 'stock', 'etf'], {
     required_error: 'Tipo é obrigatório',
   }),
   quantity: z.number().min(0.00001, 'Quantidade deve ser maior que 0'),
@@ -53,7 +41,48 @@ const investmentSchema = z.object({
   notes: z.string().optional(),
 });
 
-export type InvestmentFormData = z.infer<typeof investmentSchema>;
+const POPULAR_OPTIONS: Record<InvestmentType, Array<{ symbol: string; name: string }>> = {
+  crypto: [
+    { symbol: 'BTC', name: 'Bitcoin' },
+    { symbol: 'ETH', name: 'Ethereum' },
+    { symbol: 'ADA', name: 'Cardano' },
+    { symbol: 'DOT', name: 'Polkadot' },
+    { symbol: 'MATIC', name: 'Polygon' },
+    { symbol: 'SOL', name: 'Solana' },
+    { symbol: 'AVAX', name: 'Avalanche' },
+    { symbol: 'ATOM', name: 'Cosmos' },
+    { symbol: 'LINK', name: 'Chainlink' },
+    { symbol: 'UNI', name: 'Uniswap' },
+  ],
+  stock: [
+    { symbol: 'AAPL', name: 'Apple Inc.' },
+    { symbol: 'MSFT', name: 'Microsoft Corporation' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+    { symbol: 'TSLA', name: 'Tesla Inc.' },
+    { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+    { symbol: 'META', name: 'Meta Platforms Inc.' },
+    { symbol: 'NFLX', name: 'Netflix Inc.' },
+  ],
+  etf: [
+    { symbol: 'SPY', name: 'SPDR S&P 500 ETF' },
+    { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
+    { symbol: 'VTI', name: 'Vanguard Total Stock Market ETF' },
+    { symbol: 'IWM', name: 'iShares Russell 2000 ETF' },
+    { symbol: 'EFA', name: 'iShares MSCI EAFE ETF' },
+    { symbol: 'VEA', name: 'Vanguard FTSE Developed Markets ETF' },
+  ],
+};
+
+const emptyValues = (): InvestmentFormData => ({
+  symbol: '',
+  name: '',
+  type: 'crypto',
+  quantity: 0,
+  buyPrice: 0,
+  purchaseDate: new Date().toISOString().split('T')[0],
+  notes: '',
+});
 
 interface InvestmentFormProps {
   open: boolean;
@@ -66,22 +95,18 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
   open,
   onOpenChange,
   onSubmit,
-  investment
+  investment,
 }) => {
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   const form = useForm<InvestmentFormData>({
     resolver: zodResolver(investmentSchema),
-    defaultValues: {
-      symbol: investment?.symbol || '',
-      name: investment?.name || '',
-      type: investment?.type || 'crypto',
-      quantity: investment?.quantity || 0,
-      buyPrice: investment?.buyPrice || 0,
-      purchaseDate: investment?.purchaseDate || new Date().toISOString().split('T')[0],
-      notes: investment?.notes || '',
-    },
+    defaultValues: emptyValues(),
   });
 
   React.useEffect(() => {
+    if (!open) return;
+
     if (investment) {
       form.reset({
         symbol: investment.symbol,
@@ -93,70 +118,24 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
         notes: investment.notes || '',
       });
     } else {
-      form.reset({
-        symbol: '',
-        name: '',
-        type: 'crypto',
-        quantity: 0,
-        buyPrice: 0,
-        purchaseDate: new Date().toISOString().split('T')[0],
-        notes: '',
-      });
+      form.reset(emptyValues());
     }
-  }, [investment, form]);
+  }, [open, investment, form]);
 
   const handleSubmit = (data: InvestmentFormData) => {
-    onSubmit(data);
-    onOpenChange(false);
-  };
-
-  const popularCryptos = [
-    { symbol: 'BTC', name: 'Bitcoin' },
-    { symbol: 'ETH', name: 'Ethereum' },
-    { symbol: 'ADA', name: 'Cardano' },
-    { symbol: 'DOT', name: 'Polkadot' },
-    { symbol: 'MATIC', name: 'Polygon' },
-    { symbol: 'SOL', name: 'Solana' },
-    { symbol: 'AVAX', name: 'Avalanche' },
-    { symbol: 'ATOM', name: 'Cosmos' },
-    { symbol: 'LINK', name: 'Chainlink' },
-    { symbol: 'UNI', name: 'Uniswap' },
-  ];
-
-  const popularStocks = [
-    { symbol: 'AAPL', name: 'Apple Inc.' },
-    { symbol: 'MSFT', name: 'Microsoft Corporation' },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-    { symbol: 'AMZN', name: 'Amazon.com Inc.' },
-    { symbol: 'TSLA', name: 'Tesla Inc.' },
-    { symbol: 'NVDA', name: 'NVIDIA Corporation' },
-    { symbol: 'META', name: 'Meta Platforms Inc.' },
-    { symbol: 'NFLX', name: 'Netflix Inc.' },
-  ];
-
-  const popularETFs = [
-    { symbol: 'SPY', name: 'SPDR S&P 500 ETF' },
-    { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
-    { symbol: 'VTI', name: 'Vanguard Total Stock Market ETF' },
-    { symbol: 'IWM', name: 'iShares Russell 2000 ETF' },
-    { symbol: 'EFA', name: 'iShares MSCI EAFE ETF' },
-    { symbol: 'VEA', name: 'Vanguard FTSE Developed Markets ETF' },
-  ];
-
-  const getPopularOptions = (type: InvestmentType) => {
-    switch (type) {
-      case 'crypto':
-        return popularCryptos;
-      case 'stock':
-        return popularStocks;
-      case 'etf':
-        return popularETFs;
-      default:
-        return [];
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      onSubmit(data);
+      form.reset(emptyValues());
+      onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const selectedType = form.watch('type');
+  const options = (selectedType && POPULAR_OPTIONS[selectedType]) || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -175,7 +154,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Investimento</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />
@@ -222,11 +201,11 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
               />
             </div>
 
-            {selectedType && (
+            {options.length > 0 && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Opções Populares:</label>
+                <span className="text-sm font-medium">Opções populares</span>
                 <div className="flex flex-wrap gap-2">
-                  {getPopularOptions(selectedType).map((option) => (
+                  {options.map(option => (
                     <Button
                       key={option.symbol}
                       type="button"
@@ -257,7 +236,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
                         {...field}
                         type="number"
                         step="0.00001"
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -276,7 +255,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
                         {...field}
                         type="number"
                         step="0.01"
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -317,7 +296,11 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-[#3f9094] hover:bg-[#2d7a7e]">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+              >
                 {investment ? 'Atualizar' : 'Adicionar'}
               </Button>
             </DialogFooter>

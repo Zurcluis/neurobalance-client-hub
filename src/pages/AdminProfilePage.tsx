@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import PageHeader from '@/components/shared/PageHeader';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useLanguage } from '@/hooks/use-language';
 import { calculateAge } from '@/utils/dateUtils';
@@ -54,14 +55,12 @@ const AdminProfilePage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
-  // Form states
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [contacto, setContacto] = useState('');
   const [morada, setMorada] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
 
-  // Password fields
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -91,22 +90,22 @@ const AdminProfilePage: React.FC = () => {
     switch (role) {
       case 'admin':
         return (
-          <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100 font-medium px-2.5 py-0.5">
-            <Shield className="h-3.5 w-3.5 mr-1 text-red-600" />
+          <Badge variant="destructive" className="gap-1 font-medium px-2.5 py-0.5">
+            <Shield className="h-3 w-3" />
             Administrador
           </Badge>
         );
       case 'assistant':
         return (
-          <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 font-medium px-2.5 py-0.5">
-            <ShieldCheck className="h-3.5 w-3.5 mr-1 text-blue-600" />
+          <Badge variant="outline" className="gap-1 font-medium px-2.5 py-0.5">
+            <ShieldCheck className="h-3 w-3" />
             Assistente
           </Badge>
         );
       case 'partner':
         return (
-          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 font-medium px-2.5 py-0.5">
-            <Sparkles className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+          <Badge variant="secondary" className="gap-1 font-medium px-2.5 py-0.5">
+            <Sparkles className="h-3 w-3" />
             Parceiro
           </Badge>
         );
@@ -148,29 +147,24 @@ const AdminProfilePage: React.FC = () => {
     }
 
     setLoading(true);
-    try {
-      const res = await updateCurrentAdminProfile({
-        nome: nome.trim(),
-        email: email.trim(),
-        contacto: contacto.trim(),
-        morada: morada.trim(),
-        data_nascimento: dataNascimento,
-        password: newPassword ? newPassword : undefined,
-      });
+    const res = await updateCurrentAdminProfile({
+      nome: nome.trim(),
+      email: email.trim(),
+      contacto: contacto.trim(),
+      morada: morada.trim(),
+      data_nascimento: dataNascimento,
+      password: newPassword ? newPassword : undefined,
+    });
 
-      if (res.success) {
-        setNewPassword('');
-        setConfirmPassword('');
-      }
-    } catch (err: any) {
-      console.error('Erro ao atualizar perfil:', err);
-    } finally {
-      setLoading(false);
+    if (res.success) {
+      setNewPassword('');
+      setConfirmPassword('');
     }
+    setLoading(false);
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-950">
+    <div className="flex min-h-screen bg-muted/50">
       <AdminSidebar />
 
       <main
@@ -180,37 +174,29 @@ const AdminProfilePage: React.FC = () => {
         )}
       >
         <div className={cn('max-w-5xl mx-auto p-4 sm:p-8 space-y-6', isMobile && 'pt-20')}>
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-200 dark:border-gray-800">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-                <UserCheck className="h-7 w-7 text-[#3f9094]" />
-                {t('myProfile') || 'Meu Perfil'}
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">
-                Gerencie as suas informações de perfil, credenciais e permissões de acesso
-              </p>
-            </div>
-          </div>
+          <PageHeader
+            title={t('myProfile') || 'Meu Perfil'}
+            description="Gerir as suas informações de perfil, credenciais e permissões de acesso"
+            icon={<UserCheck className="h-5 w-5" />}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Cartão de Resumo Lateral */}
-            <Card className="lg:col-span-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm h-fit">
+            <Card className="lg:col-span-1 h-fit">
               <CardContent className="p-6 text-center space-y-4">
-                <div className="mx-auto h-24 w-24 rounded-full bg-gradient-to-br from-[#3f9094] to-[#24585c] flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-[#3f9094]/10">
+                <div className="mx-auto h-24 w-24 rounded-full bg-[#3f9094] flex items-center justify-center text-white text-3xl font-bold">
                   {nome ? nome.charAt(0).toUpperCase() : 'U'}
                 </div>
 
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{nome || 'Colaborador'}</h2>
-                  <p className="text-sm text-gray-500 truncate mt-0.5">{email}</p>
+                  <h2 className="text-xl font-bold">{nome || 'Colaborador'}</h2>
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">{email}</p>
                 </div>
 
                 <div className="flex justify-center pt-1">
                   {getRoleBadge(session?.role)}
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 dark:border-gray-800 text-left space-y-2.5 text-xs text-gray-600 dark:text-gray-400">
+                <div className="pt-4 border-t text-left space-y-2.5 text-xs text-muted-foreground">
                   {contacto && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-[#3f9094]" />
@@ -226,7 +212,9 @@ const AdminProfilePage: React.FC = () => {
                   {dataNascimento && (
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-[#3f9094]" />
-                      <span>{calculateAge(dataNascimento)} anos ({new Date(dataNascimento).toLocaleDateString('pt-PT')})</span>
+                      <span className="tabular-nums">
+                        {calculateAge(dataNascimento)} anos ({new Date(dataNascimento).toLocaleDateString('pt-PT')})
+                      </span>
                     </div>
                   )}
                   {session?.last_login && (
@@ -239,10 +227,9 @@ const AdminProfilePage: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Formulário Principal com Abas */}
-            <Card className="lg:col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+            <Card className="lg:col-span-2">
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <CardTitle className="text-base font-semibold">
                   {t('editProfile') || 'Editar Informações do Perfil'}
                 </CardTitle>
                 <CardDescription>
@@ -253,7 +240,7 @@ const AdminProfilePage: React.FC = () => {
               <CardContent>
                 <form onSubmit={handleSave} className="space-y-6">
                   <Tabs defaultValue="info" className="w-full">
-                    <TabsList className="grid grid-cols-3 w-full mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                    <TabsList className="grid grid-cols-3 w-full mb-6">
                       <TabsTrigger value="info" className="flex items-center gap-2 text-xs sm:text-sm py-2">
                         <User className="h-4 w-4 text-[#3f9094]" />
                         <span>{t('personalInfo') || 'Dados Pessoais'}</span>
@@ -268,11 +255,10 @@ const AdminProfilePage: React.FC = () => {
                       </TabsTrigger>
                     </TabsList>
 
-                    {/* ABA 1: DADOS PESSOAIS */}
                     <TabsContent value="info" className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1 sm:col-span-2">
-                          <Label htmlFor="page-nome" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <Label htmlFor="page-nome" className="text-xs font-semibold flex items-center gap-1.5">
                             <User className="h-3.5 w-3.5 text-[#3f9094]" />
                             {t('fullName') || 'Nome Completo'} *
                           </Label>
@@ -281,13 +267,13 @@ const AdminProfilePage: React.FC = () => {
                             value={nome}
                             onChange={(e) => setNome(e.target.value)}
                             placeholder="O seu nome completo"
-                            className="h-10 focus-visible:ring-[#3f9094]"
+                            className="h-10"
                             required
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <Label htmlFor="page-email" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <Label htmlFor="page-email" className="text-xs font-semibold flex items-center gap-1.5">
                             <Mail className="h-3.5 w-3.5 text-[#3f9094]" />
                             {t('email') || 'E-mail'} *
                           </Label>
@@ -297,13 +283,13 @@ const AdminProfilePage: React.FC = () => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="email@neurobalance.pt"
-                            className="h-10 focus-visible:ring-[#3f9094]"
+                            className="h-10"
                             required
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <Label htmlFor="page-contacto" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <Label htmlFor="page-contacto" className="text-xs font-semibold flex items-center gap-1.5">
                             <Phone className="h-3.5 w-3.5 text-[#3f9094]" />
                             {t('contact') || 'Contacto Telefónico'}
                           </Label>
@@ -313,18 +299,18 @@ const AdminProfilePage: React.FC = () => {
                             value={contacto}
                             onChange={(e) => setContacto(e.target.value)}
                             placeholder="912 345 678"
-                            className="h-10 focus-visible:ring-[#3f9094]"
+                            className="h-10"
                           />
                         </div>
 
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="page-nasc" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                            <Label htmlFor="page-nasc" className="text-xs font-semibold flex items-center gap-1.5">
                               <Calendar className="h-3.5 w-3.5 text-[#3f9094]" />
                               {t('dateOfBirth') || 'Data de Nascimento'}
                             </Label>
                             {dataNascimento && (
-                              <span className="text-xs font-medium text-[#3f9094]">
+                              <span className="text-xs font-medium text-[#3f9094] tabular-nums">
                                 {calculateAge(dataNascimento)} anos
                               </span>
                             )}
@@ -334,12 +320,12 @@ const AdminProfilePage: React.FC = () => {
                             type="date"
                             value={dataNascimento}
                             onChange={(e) => setDataNascimento(e.target.value)}
-                            className="h-10 focus-visible:ring-[#3f9094]"
+                            className="h-10"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <Label htmlFor="page-morada" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <Label htmlFor="page-morada" className="text-xs font-semibold flex items-center gap-1.5">
                             <MapPin className="h-3.5 w-3.5 text-[#3f9094]" />
                             {t('address') || 'Morada / Localidade'}
                           </Label>
@@ -347,28 +333,27 @@ const AdminProfilePage: React.FC = () => {
                             id="page-morada"
                             value={morada}
                             onChange={(e) => setMorada(e.target.value)}
-                            placeholder="Rua, Cidade, Código Postal"
-                            className="h-10 focus-visible:ring-[#3f9094]"
+                            placeholder="Rua, Código Postal, Cidade"
+                            className="h-10"
                           />
                         </div>
                       </div>
                     </TabsContent>
 
-                    {/* ABA 2: SEGURANÇA */}
                     <TabsContent value="security" className="space-y-4">
-                      <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2.5">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                      <div className="p-3 bg-muted/50 rounded-lg border text-xs text-muted-foreground flex items-start gap-2.5">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                         <div>
-                          <p className="font-medium">Alteração de Palavra-passe</p>
-                          <p className="text-blue-700/80 dark:text-blue-400/80 mt-0.5">
-                            Deixe estes campos em branco caso não queira alterar a sua palavra-passe de acesso.
+                          <p className="font-medium text-foreground">Alteração de Palavra-passe</p>
+                          <p className="mt-0.5">
+                            Deixe estes campos em branco caso não pretenda alterar a sua palavra-passe de acesso.
                           </p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <Label htmlFor="page-new-pass" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <Label htmlFor="page-new-pass" className="text-xs font-semibold flex items-center gap-1.5">
                             <Lock className="h-3.5 w-3.5 text-[#3f9094]" />
                             {t('newPassword') || 'Nova Palavra-passe'}
                           </Label>
@@ -379,12 +364,12 @@ const AdminProfilePage: React.FC = () => {
                               value={newPassword}
                               onChange={(e) => setNewPassword(e.target.value)}
                               placeholder="Mínimo 6 caracteres"
-                              className="pr-10 h-10 focus-visible:ring-[#3f9094]"
+                              className="pr-10 h-10"
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             >
                               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
@@ -392,7 +377,7 @@ const AdminProfilePage: React.FC = () => {
                         </div>
 
                         <div className="space-y-1">
-                          <Label htmlFor="page-confirm-pass" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <Label htmlFor="page-confirm-pass" className="text-xs font-semibold flex items-center gap-1.5">
                             <CheckCircle2 className="h-3.5 w-3.5 text-[#3f9094]" />
                             {t('confirmPassword') || 'Confirmar Nova Palavra-passe'}
                           </Label>
@@ -403,12 +388,12 @@ const AdminProfilePage: React.FC = () => {
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
                               placeholder="Repita a palavra-passe"
-                              className="pr-10 h-10 focus-visible:ring-[#3f9094]"
+                              className="pr-10 h-10"
                             />
                             <button
                               type="button"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             >
                               {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
@@ -417,16 +402,15 @@ const AdminProfilePage: React.FC = () => {
                       </div>
                     </TabsContent>
 
-                    {/* ABA 3: PERMISSÕES */}
                     <TabsContent value="permissions" className="space-y-4">
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-100 dark:border-gray-700">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Acesso Atribuído:</span>
+                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                          <span className="text-sm font-medium">Tipo de Acesso Atribuído:</span>
                           <div>{getRoleBadge(session?.role)}</div>
                         </div>
 
                         <div className="space-y-2 pt-2">
-                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          <span className="text-xs font-semibold">
                             Lista de Permissões:
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -434,16 +418,16 @@ const AdminProfilePage: React.FC = () => {
                               session.permissions.map((perm) => (
                                 <div
                                   key={perm}
-                                  className="flex items-center gap-2 text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm"
+                                  className="flex items-center gap-2 text-xs bg-muted/50 p-3 rounded-lg border"
                                 >
-                                  <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                                  <span className="text-gray-800 dark:text-gray-200">
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                  <span>
                                     {permissionLabels[perm] || perm}
                                   </span>
                                 </div>
                               ))
                             ) : (
-                              <p className="text-xs text-gray-500">Nenhuma permissão específica.</p>
+                              <p className="text-xs text-muted-foreground">Nenhuma permissão específica.</p>
                             )}
                           </div>
                         </div>
@@ -451,13 +435,9 @@ const AdminProfilePage: React.FC = () => {
                     </TabsContent>
                   </Tabs>
 
-                  <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <Button
-                      type="submit"
-                      disabled={loading}
-                      className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-sm font-medium"
-                    >
-                      <Save className="h-4 w-4" />
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button type="submit" disabled={loading}>
+                      <Save className="h-4 w-4 mr-2" />
                       {loading ? (t('loading') || 'A guardar...') : (t('saveChanges') || 'Guardar Alterações')}
                     </Button>
                   </div>

@@ -2,23 +2,23 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Edit, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { formatCurrency, formatPercent } from '@/utils/formatUtils';
+import type { Investment } from '@/types/investments';
+import { cn } from '@/lib/utils';
 
-type InvestmentType = 'crypto' | 'stock' | 'etf';
+const TYPE_BADGE_CLASS: Record<Investment['type'], string> = {
+  crypto: 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300 border-transparent',
+  stock: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-transparent',
+  etf: 'bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300 border-transparent',
+};
 
-interface Investment {
-  id: string;
-  symbol: string;
-  name: string;
-  type: InvestmentType;
-  quantity: number;
-  buyPrice: number;
-  currentPrice: number;
-  purchaseDate: string;
-  notes?: string;
-}
+const TYPE_LABEL: Record<Investment['type'], string> = {
+  crypto: 'Cripto',
+  stock: 'Ação',
+  etf: 'ETF',
+};
 
 interface InvestmentCardProps {
   investment: Investment;
@@ -29,7 +29,7 @@ interface InvestmentCardProps {
 export const InvestmentCard: React.FC<InvestmentCardProps> = ({
   investment,
   onEdit,
-  onDelete
+  onDelete,
 }) => {
   const totalValue = investment.quantity * investment.currentPrice;
   const totalInvested = investment.quantity * investment.buyPrice;
@@ -37,119 +37,94 @@ export const InvestmentCard: React.FC<InvestmentCardProps> = ({
   const pnlPercent = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
   const isProfit = pnl >= 0;
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'crypto':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'stock':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'etf':
-        return 'bg-green-100 text-green-800 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'crypto':
-        return 'Crypto';
-      case 'stock':
-        return 'Ação';
-      case 'etf':
-        return 'ETF';
-      default:
-        return type;
-    }
-  };
-
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
+    <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {investment.symbol.toUpperCase()}
-              </CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {investment.name}
-              </p>
-            </div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <CardTitle className="text-base font-semibold truncate">
+              {investment.symbol.toUpperCase()}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5 truncate">{investment.name}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={getTypeColor(investment.type)}>
-              {getTypeLabel(investment.type)}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge className={TYPE_BADGE_CLASS[investment.type]}>
+              {TYPE_LABEL[investment.type]}
             </Badge>
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEdit(investment)}
-                className="h-8 w-8 p-0"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(investment.id)}
-                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(investment)}
+              className="h-8 w-8 p-0"
+              aria-label="Editar investimento"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(investment.id)}
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+              aria-label="Remover investimento"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Quantidade</p>
-            <p className="text-lg font-semibold">{investment.quantity}</p>
+            <p className="text-sm text-muted-foreground">Quantidade</p>
+            <p className="text-lg font-semibold tabular-nums">
+              {investment.quantity.toLocaleString('pt-PT', { maximumFractionDigits: 8 })}
+            </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Preço Atual</p>
-            <p className="text-lg font-semibold">€{investment.currentPrice.toFixed(2)}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Preço de Compra</p>
-            <p className="text-base">€{investment.buyPrice.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Preço atual</p>
+            <p className="text-lg font-semibold tabular-nums">
+              {formatCurrency(investment.currentPrice)}
+            </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Data de Compra</p>
-            <p className="text-base">
-              {format(new Date(investment.purchaseDate), 'dd/MM/yyyy', { locale: pt })}
+            <p className="text-sm text-muted-foreground">Preço de compra</p>
+            <p className="text-sm font-medium tabular-nums mt-1">
+              {formatCurrency(investment.buyPrice)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Data de compra</p>
+            <p className="text-sm font-medium mt-1">
+              {format(new Date(investment.purchaseDate), 'dd/MM/yyyy')}
             </p>
           </div>
         </div>
 
-        <div className="border-t pt-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Valor Total</p>
-              <p className="text-xl font-bold">€{totalValue.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">P&L</p>
-              <div className="flex items-center gap-2">
-                {isProfit ? (
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                )}
-                <div className={`text-right ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
-                  <p className="text-lg font-bold">
-                    {isProfit ? '+' : ''}€{pnl.toFixed(2)}
-                  </p>
-                  <p className="text-sm">
-                    {isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%
-                  </p>
-                </div>
+        <div className="border-t pt-3 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Valor atual</p>
+            <p className="text-xl font-bold tabular-nums">{formatCurrency(totalValue)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Ganhos/Perdas</p>
+            <div
+              className={cn(
+                'flex items-center gap-1.5 mt-0.5',
+                isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+              )}
+            >
+              {isProfit ? (
+                <TrendingUp className="h-4 w-4 shrink-0" />
+              ) : (
+                <TrendingDown className="h-4 w-4 shrink-0" />
+              )}
+              <div className="tabular-nums">
+                <p className="text-lg font-bold leading-tight">{formatCurrency(pnl)}</p>
+                <p className="text-xs font-medium">
+                  {pnlPercent >= 0 ? '+' : ''}
+                  {formatPercent(pnlPercent, 2)}
+                </p>
               </div>
             </div>
           </div>
@@ -157,7 +132,7 @@ export const InvestmentCard: React.FC<InvestmentCardProps> = ({
 
         {investment.notes && (
           <div className="border-t pt-3">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Notas</p>
+            <p className="text-sm text-muted-foreground">Notas</p>
             <p className="text-sm mt-1">{investment.notes}</p>
           </div>
         )}

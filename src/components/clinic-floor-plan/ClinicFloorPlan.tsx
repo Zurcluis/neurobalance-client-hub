@@ -81,17 +81,17 @@ export const ClinicFloorPlan: React.FC<ClinicFloorPlanProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col bg-slate-900/5 dark:bg-black/30 rounded-3xl p-3 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-inner overflow-hidden">
+    <div className="relative flex flex-col bg-muted/40 dark:bg-black/30 rounded-2xl p-3 sm:p-5 border shadow-sm overflow-hidden">
       {/* Floating Viewport Toolbar */}
-      <div className="absolute top-6 right-6 z-30 flex items-center gap-1.5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-        <span className="text-[11px] font-bold text-gray-500 mr-1 hidden sm:inline">
+      <div className="absolute top-6 right-6 z-30 flex items-center gap-1.5 bg-popover/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-md border">
+        <span className="text-[11px] font-semibold text-muted-foreground tabular-nums mr-1 hidden sm:inline">
           {Math.round(zoom * 100)}%
         </span>
         <Button
           variant="ghost"
           size="icon"
           onClick={handleZoomIn}
-          className="h-7 w-7 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
           title="Aumentar Zoom"
         >
           <ZoomIn className="w-4 h-4" />
@@ -100,7 +100,7 @@ export const ClinicFloorPlan: React.FC<ClinicFloorPlanProps> = ({
           variant="ghost"
           size="icon"
           onClick={handleZoomOut}
-          className="h-7 w-7 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
           title="Diminuir Zoom"
         >
           <ZoomOut className="w-4 h-4" />
@@ -110,7 +110,7 @@ export const ClinicFloorPlan: React.FC<ClinicFloorPlanProps> = ({
             variant="ghost"
             size="icon"
             onClick={handleResetZoom}
-            className="h-7 w-7 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
             title="Repor Vista"
           >
             <RotateCcw className="w-4 h-4" />
@@ -126,7 +126,7 @@ export const ClinicFloorPlan: React.FC<ClinicFloorPlanProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         className={cn(
-          "w-full overflow-x-auto overflow-y-hidden rounded-2xl flex items-center justify-center p-2 min-h-[520px] transition-cursor",
+          "w-full overflow-x-auto overflow-y-hidden rounded-xl flex items-center justify-center p-2 min-h-[520px]",
           zoom > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"
         )}
       >

@@ -63,8 +63,8 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
 
   if (isCleaning) {
     return (
-      <div className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200', className)}>
-        {showIcon && <Sparkles className="w-3 h-3 text-purple-600 animate-spin" style={{ animationDuration: '4s' }} />}
+      <div className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900 tabular-nums', className)}>
+        {showIcon && <Sparkles className="h-3 w-3 text-purple-600 animate-spin" style={{ animationDuration: '4s' }} />}
         <span>{timeLeft} restantes</span>
       </div>
     );
@@ -73,20 +73,20 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold transition-all',
+        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold transition-all tabular-nums',
         isOverdue
           ? 'bg-red-100 text-red-700 border border-red-300 animate-pulse'
           : isUrgent
           ? 'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse'
-          : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 backdrop-blur-sm',
+          : 'bg-card text-muted-foreground border',
         className
       )}
     >
       {showIcon && (
         isOverdue ? (
-          <AlertTriangle className="w-3 h-3 text-red-600 animate-bounce" />
+          <AlertTriangle className="h-3 w-3 text-red-600 animate-bounce" />
         ) : (
-          <Clock className={cn('w-3 h-3', isUrgent ? 'text-amber-600' : 'text-gray-500')} />
+          <Clock className={cn('h-3 w-3', isUrgent ? 'text-amber-600' : 'text-muted-foreground')} />
         )
       )}
       <span>{timeLeft} {isOverdue ? 'excedido' : 'restante'}</span>

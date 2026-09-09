@@ -1,153 +1,140 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Investment } from '@/types/investments';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
+import type { Investment, InvestmentType } from '@/types/investments';
+import { CHART, tooltipStyle, axisProps, compactCurrency } from '@/utils/chartUtils';
+import { formatCurrency } from '@/utils/formatUtils';
+
+const TYPE_META: Record<InvestmentType, { label: string; color: string }> = {
+  crypto: { label: 'Criptomoedas', color: CHART.primary },
+  stock: { label: 'Ações', color: CHART.soft },
+  etf: { label: 'ETFs', color: '#8AC1BB' },
+};
 
 interface PortfolioChartProps {
   investments: Investment[];
 }
 
 export const PortfolioChart: React.FC<PortfolioChartProps> = ({ investments }) => {
-  const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28', '#8884D8'];
+  const typeData = (Object.keys(TYPE_META) as InvestmentType[])
+    .map(type => {
+      const items = investments.filter(inv => inv.type === type);
+      return {
+        type,
+        label: TYPE_META[type].label,
+        color: TYPE_META[type].color,
+        count: items.length,
+        value: items.reduce((sum, inv) => sum + inv.quantity * inv.currentPrice, 0),
+      };
+    })
+    .filter(item => item.count > 0);
 
-  // Dados para o gráfico de pizza por tipo
-  const typeData = investments.reduce((acc, inv) => {
-    const existing = acc.find(item => item.type === inv.type);
-    const value = inv.quantity * inv.currentPrice;
-    
-    if (existing) {
-      existing.value += value;
-    } else {
-      acc.push({
-        type: inv.type === 'crypto' ? 'Crypto' : inv.type === 'stock' ? 'Ações' : 'ETFs',
-        value,
-        color: inv.type === 'crypto' ? COLORS[0] : inv.type === 'stock' ? COLORS[1] : COLORS[2]
-      });
-    }
-    return acc;
-  }, [] as Array<{ type: string; value: number; color: string }>);
+  const totalValue = typeData.reduce((sum, item) => sum + item.value, 0);
 
-  // Dados para o gráfico de barras de P&L
-  const pnlData = investments.map(inv => {
-    const totalValue = inv.quantity * inv.currentPrice;
-    const totalInvested = inv.quantity * inv.buyPrice;
-    const pnl = totalValue - totalInvested;
-    const pnlPercent = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
-
-    return {
-      symbol: inv.symbol,
-      pnl: pnl,
-      pnlPercent: pnlPercent,
-      fill: pnl >= 0 ? '#10B981' : '#EF4444'
-    };
-  }).sort((a, b) => b.pnl - a.pnl);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-PT', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-          <p className="font-medium">{`${label}`}</p>
-          <p className="text-sm">
-            <span className="text-green-600 dark:text-green-400">P&L: </span>
-            {formatCurrency(payload[0].value)}
-          </p>
-          <p className="text-sm">
-            <span className="text-blue-600 dark:text-blue-400">%: </span>
-            {payload[0].payload.pnlPercent.toFixed(2)}%
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const PieTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-          <p className="font-medium">{payload[0].payload.type}</p>
-          <p className="text-sm">
-            <span className="text-blue-600 dark:text-blue-400">Valor: </span>
-            {formatCurrency(payload[0].value)}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const pnlData = investments
+    .map(inv => {
+      const invested = inv.quantity * inv.buyPrice;
+      const pnl = inv.quantity * (inv.currentPrice - inv.buyPrice);
+      return {
+        symbol: inv.symbol,
+        pnl,
+        pnlPercent: invested > 0 ? (pnl / invested) * 100 : 0,
+        fill: pnl >= 0 ? CHART.green : CHART.red,
+      };
+    })
+    .sort((a, b) => b.pnl - a.pnl);
 
   if (investments.length === 0) {
     return null;
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      {/* Gráfico de Pizza - Distribuição por Tipo */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Distribuição por Tipo</CardTitle>
+          <CardTitle className="text-base font-semibold">Distribuição por tipo</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
                 data={typeData}
+                dataKey="value"
+                nameKey="label"
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ type, percent }) => `${type} ${(percent * 100).toFixed(1)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
+                innerRadius={55}
+                outerRadius={90}
+                strokeWidth={2}
               >
-                {typeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                {typeData.map(item => (
+                  <Cell key={item.type} fill={item.color} />
                 ))}
               </Pie>
-              <Tooltip content={<PieTooltip />} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={value => [formatCurrency(value as number), 'Valor']}
+              />
             </PieChart>
           </ResponsiveContainer>
+          <div className="mt-4 space-y-1.5">
+            {typeData.map(item => (
+              <div
+                key={item.type}
+                className="flex items-center justify-between gap-3 rounded-md bg-muted/50 px-3 py-2"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-sm font-medium truncate">{item.label}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {item.count} {item.count === 1 ? 'posição' : 'posições'}
+                  </span>
+                </div>
+                <div className="text-sm shrink-0">
+                  <span className="font-semibold tabular-nums">{formatCurrency(item.value)}</span>
+                  <span className="text-muted-foreground ml-2 tabular-nums">
+                    {totalValue > 0 ? `${((item.value / totalValue) * 100).toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Gráfico de Barras - P&L por Investimento */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">P&L por Investimento</CardTitle>
+          <CardTitle className="text-base font-semibold">Ganhos/Perdas por ativo</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={pnlData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis 
-                dataKey="symbol" 
-                tick={{ fontSize: 12 }}
-                className="text-gray-600 dark:text-gray-400"
+          <ResponsiveContainer width="100%" height={340}>
+            <BarChart data={pnlData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="symbol" {...axisProps} interval={0} />
+              <YAxis {...axisProps} width={56} tickFormatter={compactCurrency} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={value => [formatCurrency(value as number), 'Ganhos/Perdas']}
               />
-              <YAxis 
-                tick={{ fontSize: 12 }}
-                className="text-gray-600 dark:text-gray-400"
-                tickFormatter={(value) => formatCurrency(value)}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="pnl" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                {pnlData.map((item, index) => (
+                  <Cell key={`${item.symbol}-${index}`} fill={item.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

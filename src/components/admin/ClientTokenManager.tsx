@@ -1,27 +1,95 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Key, 
-  Link, 
-  Copy, 
-  Send, 
-  Trash2, 
-  Eye, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Key,
+  Link,
+  Copy,
+  Trash2,
+  Eye,
   EyeOff,
+  Loader2,
   AlertCircle,
   CheckCircle,
-  Loader2,
   Clock,
   User,
-  Calendar
+  Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format, parseISO, isAfter } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format, parseISO, isBefore } from 'date-fns';
+import { pt } from 'date-fns/locale';
+
+interface ClientToken {
+  id: number;
+  id_cliente: number;
+  token: string;
+  expires_at: string;
+  is_active: boolean;
+  created_at: string;
+  last_used_at: string | null;
+  cliente: {
+    nome: string;
+    email: string;
+    telefone: string;
+  };
+}
+
+interface ClientOption {
+  id: number;
+  nome: string;
+  email: string;
+  telefone: string;
+}
+
+interface ClientTokenManagerProps {
+  clientId?: number;
+}
+
+const VALIDITY_OPTIONS = [
+  { value: '1h', label: '1 hora' },
+  { value: '6h', label: '6 horas' },
+  { value: '12h', label: '12 horas' },
+  { value: '24h', label: '24 horas' },
+  { value: '1w', label: '1 semana' },
+  { value: '1m', label: '1 mês' },
+  { value: '3m', label: '3 meses' },
+  { value: '6m', label: '6 meses' },
+  { value: '1y', label: '1 ano' },
+];
+
+const getHoursFromOption = (option: string): number => {
+  switch (option) {
+    case '1h': return 1;
+    case '6h': return 6;
+    case '12h': return 12;
+    case '24h': return 24;
+    case '1w': return 24 * 7;
+    case '1m': return 24 * 30;
+    case '3m': return 24 * 90;
+    case '6m': return 24 * 180;
+    case '1y': return 24 * 365;
+    default: return 24;
+  }
+};
+
+const formatDateTime = (value: string) =>
+  format(parseISO(value), 'dd/MM/yyyy HH:mm', { locale: pt });
+
+const maskToken = (token: string) =>
+  token.length <= 8 ? '••••••••' : `${token.slice(0, 4)}••••••••${token.slice(-4)}`;
 
 const copyToClipboard = async (text: string): Promise<boolean> => {
   if (navigator.clipboard && window.isSecureContext) {
@@ -44,7 +112,7 @@ const fallbackCopyToClipboard = (text: string): boolean => {
   document.body.appendChild(textArea);
   textArea.focus();
   textArea.select();
-  
+
   try {
     const successful = document.execCommand('copy');
     document.body.removeChild(textArea);
@@ -55,73 +123,23 @@ const fallbackCopyToClipboard = (text: string): boolean => {
   }
 };
 
-interface ClientToken {
-  id: number;
-  id_cliente: number;
-  token: string;
-  expires_at: string;
-  is_active: boolean;
-  created_at: string;
-  last_used_at: string | null;
-  cliente: {
-    nome: string;
-    email: string;
-    telefone: string;
-  };
-}
-
-interface ClientTokenManagerProps {
-  clientId?: number;
-  onClose?: () => void;
-}
-
 const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => {
   const [tokens, setTokens] = useState<ClientToken[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(clientId || null);
   const [generatingToken, setGeneratingToken] = useState(false);
   const [showToken, setShowToken] = useState<number | null>(null);
-  const [expirationHours, setExpirationHours] = useState(24);
   const [validityOption, setValidityOption] = useState('24h');
 
-  // Opções de validade predefinidas
-  const validityOptions = [
-    { value: '1h', label: '1 hora' },
-    { value: '6h', label: '6 horas' },
-    { value: '12h', label: '12 horas' },
-    { value: '24h', label: '24 horas' },
-    { value: '1w', label: '1 semana' },
-    { value: '1m', label: '1 mês' },
-    { value: '3m', label: '3 meses' },
-    { value: '6m', label: '6 meses' },
-    { value: '1y', label: '1 ano' }
-  ];
-
-  // Função para converter opção de validade em horas
-  const getHoursFromOption = (option: string): number => {
-    switch (option) {
-      case '1h': return 1;
-      case '6h': return 6;
-      case '12h': return 12;
-      case '24h': return 24;
-      case '1w': return 24 * 7; // 1 semana
-      case '1m': return 24 * 30; // 1 mês (aproximado)
-      case '3m': return 24 * 90; // 3 meses (aproximado)
-      case '6m': return 24 * 180; // 6 meses (aproximado)
-      case '1y': return 24 * 365; // 1 ano (aproximado)
-      default: return 24;
-    }
-  };
-
-  // Atualizar horas quando a opção mudar
-  useEffect(() => {
-    setExpirationHours(getHoursFromOption(validityOption));
-  }, [validityOption]);
+  const expirationHours = getHoursFromOption(validityOption);
 
   useEffect(() => {
     fetchClients();
+  }, []);
+
+  useEffect(() => {
     if (selectedClientId) {
       fetchTokens(selectedClientId);
     }
@@ -136,9 +154,9 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
 
       if (error) throw error;
       setClients(data || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar clientes:', error);
-      setError(error.message);
+    } catch (err) {
+      console.error('Erro ao carregar clientes:', err);
+      setError(err instanceof Error ? err.message : 'Erro inesperado');
     }
   };
 
@@ -162,7 +180,7 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
 
       if (error) throw error;
       setTokens(
-        (data || []).map((token: any) => ({
+        (data || []).map((token) => ({
           id: token.id,
           id_cliente: token.id_cliente,
           token: token.token,
@@ -170,8 +188,6 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
           is_active: token.is_active,
           created_at: token.created_at,
           last_used_at: token.last_used_at,
-          user_agent: token.user_agent,
-          ip_address: token.ip_address,
           cliente: {
             nome: token.clientes?.nome ?? '',
             email: token.clientes?.email ?? '',
@@ -179,11 +195,19 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
           },
         }))
       );
-    } catch (error: any) {
-      console.error('Erro ao carregar tokens:', error);
-      setError(error.message);
+    } catch (err) {
+      console.error('Erro ao carregar tokens:', err);
+      setError(err instanceof Error ? err.message : 'Erro inesperado');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (selectedClientId) {
+      fetchTokens(selectedClientId);
+    } else {
+      fetchClients();
     }
   };
 
@@ -196,7 +220,7 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
     try {
       setGeneratingToken(true);
 
-      const { data, error } = await supabase.rpc<any, any>('create_client_access_token', {
+      const { data, error } = await supabase.rpc('create_client_access_token', {
         client_id: selectedClientId,
         expires_hours: expirationHours
       });
@@ -205,16 +229,16 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
 
       toast.success('Token gerado com sucesso');
       await fetchTokens(selectedClientId);
-      
+
       if (data) {
         const copied = await copyToClipboard(data);
         if (copied) {
           toast.success('Token copiado para a área de transferência');
         }
       }
-    } catch (error: any) {
-      console.error('Erro ao gerar token:', error);
-      toast.error('Erro ao gerar token: ' + error.message);
+    } catch (err) {
+      console.error('Erro ao gerar token:', err);
+      toast.error('Erro ao gerar token: ' + (err instanceof Error ? err.message : 'Erro inesperado'));
     } finally {
       setGeneratingToken(false);
     }
@@ -233,8 +257,8 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
       if (selectedClientId) {
         await fetchTokens(selectedClientId);
       }
-    } catch (error: any) {
-      console.error('Erro ao revogar token:', error);
+    } catch (err) {
+      console.error('Erro ao revogar token:', err);
       toast.error('Erro ao revogar token');
     }
   };
@@ -263,33 +287,14 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
     }
   };
 
-  const sendLoginLink = async (_token: string, clientEmail: string) => {
-    try {
-      // Aqui você implementaria o envio do email
-      // Por enquanto, apenas simula o envio
-      toast.success(`Link de acesso enviado para ${clientEmail}`);
-      
-      // Em produção, você faria algo como:
-      // await supabase.functions.invoke('send-email', {
-      //   body: {
-      //     to: clientEmail,
-      //     subject: 'Acesso ao seu Dashboard - NeuroBalance',
-      //     html: `<p>Clique no link para acessar seu dashboard: <a href="${link}">${link}</a></p>`
-      //   }
-      // });
-    } catch (error) {
-      toast.error('Erro ao enviar link');
-    }
-  };
-
   const isTokenExpired = (expiresAt: string) => {
-    return !isAfter(parseISO(expiresAt), new Date());
+    return isBefore(parseISO(expiresAt), new Date());
   };
 
-  const getTokenStatus = (token: ClientToken) => {
-    if (!token.is_active) return { label: 'Revogado', color: 'bg-red-100 text-red-800' };
-    if (isTokenExpired(token.expires_at)) return { label: 'Expirado', color: 'bg-gray-100 text-gray-800' };
-    return { label: 'Ativo', color: 'bg-green-100 text-green-800' };
+  const getTokenStatus = (token: ClientToken): { label: string; variant: 'default' | 'secondary' | 'destructive' } => {
+    if (!token.is_active) return { label: 'Revogado', variant: 'destructive' };
+    if (isTokenExpired(token.expires_at)) return { label: 'Expirado', variant: 'secondary' };
+    return { label: 'Ativo', variant: 'default' };
   };
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
@@ -298,193 +303,198 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Gestão de Tokens de Acesso
-          </CardTitle>
+          <CardTitle className="text-base font-semibold">Gerar Novo Token</CardTitle>
           <CardDescription>
-            Gere e gerencie tokens de acesso para o dashboard dos clientes
+            Selecione um cliente e gere um link de acesso temporário para o dashboard
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {/* Seleção de Cliente */}
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Cliente</label>
-              <select
-                value={selectedClientId || ''}
-                onChange={(e) => setSelectedClientId(Number(e.target.value))}
-                className="w-full mt-1 p-2 border rounded-md"
-              >
-                <option value="">Selecione um cliente...</option>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Cliente</Label>
+            <Select
+              value={selectedClientId ? String(selectedClientId) : ''}
+              onValueChange={(value) => setSelectedClientId(value ? Number(value) : null)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione um cliente..." />
+              </SelectTrigger>
+              <SelectContent>
                 {clients.map(client => (
-                  <option key={client.id} value={client.id}>
+                  <SelectItem key={client.id} value={String(client.id)}>
                     {client.nome} ({client.email})
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
-
-            {selectedClient && (
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-blue-900">{selectedClient.nome}</span>
-                </div>
-                <div className="text-sm text-blue-700">
-                  <p>Email: {selectedClient.email}</p>
-                  <p>Telefone: {selectedClient.telefone}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Geração de Token */}
-            {selectedClientId && (
-              <div className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <label className="text-sm font-medium">Validade</label>
-                  <select
-                    value={validityOption}
-                    onChange={(e) => setValidityOption(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3f9094] focus:border-[#3f9094]"
-                  >
-                    {validityOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Button
-                  onClick={generateToken}
-                  disabled={generatingToken}
-                  className="bg-[#3f9094] hover:bg-[#2d6b6e]"
-                >
-                  {generatingToken ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Key className="h-4 w-4 mr-2" />
-                  )}
-                  Gerar Token
-                </Button>
-              </div>
-            )}
+              </SelectContent>
+            </Select>
           </div>
+
+          {selectedClient && (
+            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <User className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{selectedClient.nome}</span>
+                  <Badge variant="outline">Cliente</Badge>
+                </div>
+                <p className="mt-1 text-muted-foreground">{selectedClient.email}</p>
+                {selectedClient.telefone && (
+                  <p className="text-muted-foreground">{selectedClient.telefone}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedClientId && (
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex-1 space-y-2">
+                <Label>Validade</Label>
+                <Select value={validityOption} onValueChange={setValidityOption}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VALIDITY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={generateToken} disabled={generatingToken} className="gap-2">
+                {generatingToken ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Key className="h-4 w-4" />
+                )}
+                Gerar Token
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Lista de Tokens */}
-      {selectedClientId && (
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>{error}</span>
+            <Button size="sm" variant="outline" onClick={handleRetry} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {selectedClientId && !error && (
         <Card>
           <CardHeader>
-            <CardTitle>Tokens do Cliente</CardTitle>
+            <CardTitle className="text-base font-semibold">Tokens do Cliente</CardTitle>
             <CardDescription>
               Histórico de tokens gerados para {selectedClient?.nome}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-[#3f9094]" />
+              <div className="space-y-3">
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
               </div>
-            ) : error ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
             ) : tokens.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Key className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>Nenhum token gerado ainda</p>
-                <p className="text-sm">Gere um token para permitir acesso ao dashboard</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Key className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="font-medium">Nenhum token gerado ainda</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Gere um token para permitir acesso ao dashboard do cliente
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {tokens.map((token) => {
                   const status = getTokenStatus(token);
                   return (
-                    <div key={token.id} className="p-4 border rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge className={status.color}>
-                              {status.label}
-                            </Badge>
-                            <span className="text-sm text-gray-600">
-                              Criado em {format(parseISO(token.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                    <div key={token.id} className="rounded-lg border p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant={status.variant}>{status.label}</Badge>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              Criado em {formatDateTime(token.created_at)}
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4" />
+                          <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Calendar className="h-4 w-4 shrink-0" />
                               <span>
-                                Expira em {format(parseISO(token.expires_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                                Expira em{' '}
+                                <span className="tabular-nums">{formatDateTime(token.expires_at)}</span>
                               </span>
                             </div>
                             {token.last_used_at && (
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4" />
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock className="h-4 w-4 shrink-0" />
                                 <span>
-                                  Último uso: {format(parseISO(token.last_used_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                                  Último uso:{' '}
+                                  <span className="tabular-nums">{formatDateTime(token.last_used_at)}</span>
                                 </span>
                               </div>
                             )}
                           </div>
 
-                          <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-mono">
-                                {showToken === token.id ? token.token : '••••••••••••••••••••••••••••••••'}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setShowToken(showToken === token.id ? null : token.id)}
-                              >
-                                {showToken === token.id ? (
-                                  <EyeOff className="h-4 w-4" />
-                                ) : (
-                                  <Eye className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
+                          <div className="flex max-w-md items-center gap-1 rounded-md bg-muted/50 px-3 py-1.5">
+                            <code className="flex-1 truncate font-mono text-sm">
+                              {showToken === token.id ? token.token : maskToken(token.token)}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => setShowToken(showToken === token.id ? null : token.id)}
+                              aria-label={showToken === token.id ? 'Ocultar token' : 'Mostrar token'}
+                            >
+                              {showToken === token.id ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => copyToken(token.token)}
+                              aria-label="Copiar token"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
 
                         {token.is_active && !isTokenExpired(token.expires_at) && (
-                          <div className="flex flex-col gap-2 ml-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => copyToken(token.token)}
-                            >
-                              <Copy className="h-4 w-4 mr-1" />
-                              Copiar Token
-                            </Button>
+                          <div className="flex shrink-0 gap-2 sm:flex-col">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => copyLoginLink(token.token)}
+                              className="gap-2"
                             >
-                              <Link className="h-4 w-4 mr-1" />
+                              <Link className="h-4 w-4" />
                               Copiar Link
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => sendLoginLink(token.token, selectedClient?.email || '')}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              Enviar Email
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
                               onClick={() => revokeToken(token.id)}
-                              className="text-red-600 border-red-600 hover:bg-red-50"
+                              className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             >
-                              <Trash2 className="h-4 w-4 mr-1" />
+                              <Trash2 className="h-4 w-4" />
                               Revogar
                             </Button>
                           </div>
@@ -499,31 +509,28 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
         </Card>
       )}
 
-      {/* Instruções */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            Instruções de Uso
-          </CardTitle>
+          <CardTitle className="text-base font-semibold">Como Funcionam os Tokens</CardTitle>
+          <CardDescription>Boas práticas na gestão de acessos</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <p>Gere um token para cada cliente que precisa acessar o dashboard</p>
+              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <p>Gere um token para cada cliente que precisa de aceder ao dashboard</p>
             </div>
             <div className="flex items-start gap-2">
-              <Copy className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-              <p>Copie o link de acesso e envie para o cliente por email ou SMS</p>
+              <Copy className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+              <p>Copie o link de acesso e envie-o para o cliente por email ou SMS</p>
             </div>
             <div className="flex items-start gap-2">
-              <Clock className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-              <p>Tokens expiram automaticamente após o período definido</p>
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p>Os tokens expiram automaticamente após o período definido</p>
             </div>
             <div className="flex items-start gap-2">
-              <Trash2 className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-              <p>Revogue tokens imediatamente se houver suspeita de uso indevido</p>
+              <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <p>Revogue tokens imediatamente se houver suspeita de utilização indevida</p>
             </div>
           </div>
         </CardContent>
@@ -532,4 +539,4 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
   );
 };
 
-export default ClientTokenManager; 
+export default ClientTokenManager;

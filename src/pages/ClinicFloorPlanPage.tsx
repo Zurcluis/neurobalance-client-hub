@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
 import { initialMockRooms } from '../components/clinic-floor-plan/mockData';
 import { RoomData } from '../components/clinic-floor-plan/types';
 import { SummaryCards } from '../components/clinic-floor-plan/SummaryCards';
@@ -7,12 +6,12 @@ import { ClinicFloorPlan } from '../components/clinic-floor-plan/ClinicFloorPlan
 import { RoomDetailsPanel } from '../components/clinic-floor-plan/RoomDetailsPanel';
 import { StatusLegend } from '../components/clinic-floor-plan/StatusLegend';
 import PageLayout from '@/components/layout/PageLayout';
-import AdminSidebar from '@/components/admin/AdminSidebar';
+import PageHeader from '@/components/shared/PageHeader';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { Shield, RefreshCw } from 'lucide-react';
+import { Shield, RefreshCw, Building2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface ClinicFloorPlanPageProps {
@@ -23,13 +22,9 @@ const STORAGE_KEY = 'neurobalance_clinic_rooms_v2';
 
 const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = false }) => {
   const { session } = useAdminAuth();
-  const location = useLocation();
-  const isMobile = useIsMobile();
-  const isAdminRoute = location.pathname.startsWith('/admin');
   const isPartner = session?.role === 'partner';
   const pageContainerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize rooms from localStorage if present
   const [rooms, setRooms] = useState<RoomData[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -48,7 +43,10 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  // Save to localStorage
+  useEffect(() => {
+    document.title = 'Planta da Clínica | NeuroBalance';
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms));
@@ -57,7 +55,6 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
     }
   }, [rooms]);
 
-  // Audio chime using Web Audio API
   const playChime = useCallback(() => {
     if (!soundEnabled) return;
     try {
@@ -66,17 +63,17 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
       const audioCtx = new AudioCtxClass();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      
+
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-      osc.frequency.setValueAtTime(880.00, audioCtx.currentTime + 0.15); // A5
-      
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(880.00, audioCtx.currentTime + 0.15);
+
       gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
-      
+
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      
+
       osc.start();
       osc.stop(audioCtx.currentTime + 0.8);
     } catch (e) {
@@ -84,7 +81,6 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
     }
   }, [soundEnabled]);
 
-  // Fullscreen toggle
   const handleToggleFullscreen = () => {
     if (!document.fullscreenElement) {
       if (pageContainerRef.current) {
@@ -109,13 +105,11 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Time checker to automatically update room statuses based on sessionEnd & cleaningUntil
   useEffect(() => {
     const checkStatuses = () => {
       const now = new Date().getTime();
 
       setRooms(prevRooms => prevRooms.map(room => {
-        // Check cleaning status
         if (room.status === 'higienizacao' && room.cleaningUntil) {
           const cleanEnd = new Date(room.cleaningUntil).getTime();
           if (now >= cleanEnd) {
@@ -129,7 +123,6 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
           }
         }
 
-        // Check session status
         if (!room.sessionEnd) return room;
 
         const endTime = new Date(room.sessionEnd).getTime();
@@ -142,13 +135,13 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
             playChime();
           }
           newStatus = 'atrasada';
-        } else if (difference <= 10 * 60000) { // 10 minutes
+        } else if (difference <= 10 * 60000) {
           if (room.status === 'ocupada') {
             playChime();
           }
           newStatus = 'a_terminar';
         } else if (room.status === 'a_terminar' && difference > 10 * 60000) {
-          newStatus = 'ocupada'; // Extended
+          newStatus = 'ocupada';
         }
 
         if (newStatus !== room.status) {
@@ -160,7 +153,7 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
     };
 
     checkStatuses();
-    const interval = setInterval(checkStatuses, 10000); // Check every 10 seconds
+    const interval = setInterval(checkStatuses, 10000);
     return () => clearInterval(interval);
   }, [playChime]);
 
@@ -185,69 +178,50 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
 
   const selectedRoom = selectedRoomId ? rooms.find(r => r.roomId === selectedRoomId) || null : null;
 
-  if (isPartner && isAdminRoute) {
-    return (
-      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-        <AdminSidebar />
-        <main className={cn(
-          "flex-1 transition-all duration-300 flex items-center justify-center",
-          isMobile ? "ml-0" : "ml-64"
-        )}>
-          <div className="text-center p-8">
-            <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Acesso Negado</h2>
-            <p className="text-gray-600 dark:text-gray-400">Você não tem permissão para aceder à planta da clínica.</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   const content = (
-    <div 
+    <div
       ref={pageContainerRef}
       className={cn(
-        isEmbedded ? "w-full" : "p-4 sm:p-6 w-full max-w-[1680px] mx-auto min-h-[calc(100vh-4rem)] flex flex-col",
+        isEmbedded ? "w-full" : "w-full mx-auto flex flex-col gap-6",
         isFullscreen && "bg-slate-900 text-white p-6 min-h-screen overflow-y-auto"
       )}
     >
-      {/* Header */}
       {!isEmbedded && (
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-                Planta Interativa da Clínica
-              </h1>
-              <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-black px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                AO VIVO
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Monitorização, ocupação e gestão de gabinetes em tempo real
-            </p>
-          </div>
-
-          {/* Top Quick Tools */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetToDefaults}
-              className="text-xs rounded-xl h-9 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              title="Repor estado inicial da simulação"
-            >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              Repor Estado
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Planta da Clínica"
+          description="Monitorização de ocupação e gestão de gabinetes em tempo real"
+          icon={<Building2 className="h-5 w-5" />}
+          actions={
+            <>
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                title="Os estados das salas são simulados localmente; apenas clientes e agendamentos do painel são reais."
+              >
+                <Info className="h-3.5 w-3.5" />
+                Demo
+              </Badge>
+              <Badge variant="outline" className="gap-1.5 border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Ao vivo
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetToDefaults}
+                className="gap-2"
+                title="Repor estado inicial da simulação"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Repor Estado
+              </Button>
+            </>
+          }
+        />
       )}
 
-      {/* Summary KPI Cards & Global Filter Bar */}
-      <SummaryCards 
-        rooms={rooms} 
+      <SummaryCards
+        rooms={rooms}
         selectedServiceFilter={selectedServiceFilter}
         onSelectServiceFilter={setSelectedServiceFilter}
         isFullscreen={isFullscreen}
@@ -258,13 +232,11 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
         onToggleViewMode={setViewMode}
       />
 
-      {/* Main Content Area: Map Canvas + Side Management Drawer */}
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[620px]">
-        {/* Floor Plan Canvas */}
-        <div className="flex-1 flex flex-col">
-          <ClinicFloorPlan 
-            rooms={rooms} 
-            selectedRoomId={selectedRoomId} 
+        <div className="flex-1 min-w-0 flex flex-col">
+          <ClinicFloorPlan
+            rooms={rooms}
+            selectedRoomId={selectedRoomId}
             onRoomSelect={handleRoomSelect}
             selectedServiceFilter={selectedServiceFilter}
             viewMode={viewMode}
@@ -272,10 +244,9 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
           <StatusLegend />
         </div>
 
-        {/* Side Panel Area */}
         <div className="w-full lg:w-[380px] xl:w-[420px] lg:shrink-0 h-auto">
-          <RoomDetailsPanel 
-            room={selectedRoom} 
+          <RoomDetailsPanel
+            room={selectedRoom}
             onClose={() => setSelectedRoomId(null)}
             onUpdateRoom={handleUpdateRoom}
           />
@@ -288,22 +259,17 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
     return content;
   }
 
-  if (isAdminRoute && session) {
+  if (isPartner) {
     return (
-      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-        <AdminSidebar />
-        <main className={cn(
-          "flex-1 transition-all duration-300",
-          isMobile ? "ml-0" : "ml-64"
-        )}>
-          <div className={cn(
-            "p-4 sm:p-6",
-            isMobile && "pt-20"
-          )}>
-            {content}
+      <PageLayout>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="text-center p-8">
+            <Shield className="h-16 w-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Acesso Negado</h2>
+            <p className="text-muted-foreground">Não tem permissão para aceder à planta da clínica.</p>
           </div>
-        </main>
-      </div>
+        </div>
+      </PageLayout>
     );
   }
 
@@ -315,4 +281,3 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
 };
 
 export default ClinicFloorPlanPage;
-

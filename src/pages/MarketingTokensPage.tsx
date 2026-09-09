@@ -10,15 +10,16 @@ const MarketingTokensPage = () => {
             <div className="space-y-6">
                 <PageHeader
                     title="Gestão de Acessos ao Marketing"
-                    description="Crie e gerencie links de acesso temporários para a equipa de marketing"
+                    description="Crie e faça a gestão de links de acesso temporários para a equipa de marketing"
                     icon={<Shield className="h-5 w-5" />}
                 />
 
-                <Alert className="border-amber-200 bg-amber-50">
-                    <Shield className="h-4 w-4 text-amber-600" />
-                    <AlertDescription className="text-amber-800">
-                        <strong>Acesso Restrito:</strong> Apenas administradores principais podem criar e gerenciar tokens de acesso.
-                        Os utilizadores que acedem via link gerado NÃO terão acesso a esta página.
+                <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40">
+                    <Shield className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+                    <AlertDescription className="text-amber-800 dark:text-amber-200">
+                        <strong>Acesso Restrito:</strong> apenas administradores principais podem criar e gerir
+                        tokens de acesso. Os utilizadores que acedem via link gerado não terão acesso a esta
+                        página.
                     </AlertDescription>
                 </Alert>
 

@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import PageLayout from '@/components/layout/PageLayout';
+import PageHeader from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,42 +11,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search, RefreshCw, Filter, TrendingUp } from 'lucide-react';
-import PageHeader from '@/components/shared/PageHeader';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useMarketData } from '@/hooks/useMarketData';
 import { InvestmentCard } from '@/components/investments/InvestmentCard';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { PortfolioSummary } from '@/components/investments/PortfolioSummary';
 import { PortfolioChart } from '@/components/investments/PortfolioChart';
+import type { Investment, InvestmentFormData, InvestmentType } from '@/types/investments';
 import { toast } from 'sonner';
-
-type InvestmentType = 'crypto' | 'stock' | 'etf';
-
-interface Investment {
-  id: string;
-  symbol: string;
-  name: string;
-  type: InvestmentType;
-  quantity: number;
-  buyPrice: number;
-  currentPrice: number;
-  purchaseDate: string;
-  notes?: string;
-}
-
-interface InvestmentFormData {
-  symbol: string;
-  name: string;
-  type: InvestmentType;
-  quantity: number;
-  buyPrice: number;
-  purchaseDate: string;
-  notes?: string;
-}
-import Sidebar from '@/components/layout/Sidebar';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 const InvestmentsPage = () => {
@@ -52,7 +28,7 @@ const InvestmentsPage = () => {
   const [typeFilter, setTypeFilter] = useState<InvestmentType | 'all'>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
-  
+
   const {
     investments,
     isLoading: investmentsLoading,
@@ -60,7 +36,7 @@ const InvestmentsPage = () => {
     updateInvestment,
     deleteInvestment,
     updatePrices,
-    getPortfolioSummary
+    getPortfolioSummary,
   } = useInvestments();
 
   const {
@@ -68,19 +44,33 @@ const InvestmentsPage = () => {
     isLoading: marketLoading,
     lastUpdated,
     fetchMarketData,
-    refreshData
+    refreshData,
   } = useMarketData();
 
-  const isMobile = useIsMobile();
+  useEffect(() => {
+    document.title = 'Investimentos | NeuroBalance';
+  }, []);
+
+  const investmentsRef = useRef(investments);
+  useEffect(() => {
+    investmentsRef.current = investments;
+  });
+
+  const symbolsKey = useMemo(
+    () => investments.map(inv => `${inv.type}:${inv.symbol.toUpperCase()}`).sort().join('|'),
+    [investments]
+  );
 
   useEffect(() => {
-    if (investments.length > 0) {
-      fetchMarketData(investments);
+    if (symbolsKey) {
+      fetchMarketData(investmentsRef.current);
     }
-  }, [investments, fetchMarketData]);
+  }, [symbolsKey, fetchMarketData]);
 
+  const lastMarketDataRef = useRef<typeof marketData | null>(null);
   useEffect(() => {
-    if (marketData.length > 0) {
+    if (marketData.length > 0 && marketData !== lastMarketDataRef.current) {
+      lastMarketDataRef.current = marketData;
       updatePrices(marketData);
     }
   }, [marketData, updatePrices]);
@@ -104,257 +94,191 @@ const InvestmentsPage = () => {
   };
 
   const handleDeleteInvestment = (id: string) => {
-    if (confirm('Tem certeza que deseja remover este investimento?')) {
+    if (confirm('Tem a certeza que deseja remover este investimento?')) {
       deleteInvestment(id);
     }
   };
 
   const handleRefreshPrices = async () => {
-    if (investments.length > 0) {
-      toast.info('Atualizando preços...');
-      await refreshData(investments);
-      toast.success('Preços atualizados!');
-    }
+    if (investments.length === 0) return;
+    toast.info('A atualizar preços...');
+    await refreshData(investments);
+    toast.success('Preços atualizados!');
   };
 
   const filteredInvestments = investments.filter(investment => {
-    const matchesSearch = investment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         investment.symbol.toLowerCase().includes(searchTerm.toLowerCase());
+    const search = searchTerm.toLowerCase();
+    const matchesSearch =
+      investment.name.toLowerCase().includes(search) ||
+      investment.symbol.toLowerCase().includes(search);
     const matchesType = typeFilter === 'all' || investment.type === typeFilter;
     return matchesSearch && matchesType;
   });
 
   const portfolioSummary = getPortfolioSummary();
 
-  const getTypeStats = () => {
-    const stats = {
-      crypto: { count: 0, value: 0 },
-      stock: { count: 0, value: 0 },
-      etf: { count: 0, value: 0 }
-    };
-
-    investments.forEach((inv: Investment) => {
-      stats[inv.type].count++;
-      stats[inv.type].value += inv.quantity * inv.currentPrice;
-    });
-
-    return stats;
-  };
-
-  const typeStats = getTypeStats();
-
   if (investmentsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3f9094] mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Carregando investimentos...</p>
+      <PageLayout>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-72" />
+              <Skeleton className="h-4 w-96 max-w-full" />
+            </div>
+            <Skeleton className="h-9 w-64" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-96 w-full" />
+            <Skeleton className="h-96 w-full" />
+          </div>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-      
-      <main className={cn(
-        "flex-1 transition-all duration-300",
-        isMobile ? "ml-0" : "ml-64"
-      )}>
-        <div className={cn(
-          "p-6 space-y-6",
-          isMobile && "pt-20"
-        )}>
-          {/* Header Melhorado */}
-          <PageHeader
-            title="Portfólio de Investimentos"
-            description="Acompanhe e gerencie seus investimentos em tempo real"
-            icon={<TrendingUp className="h-5 w-5" />}
-            actions={
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefreshPrices}
-                  disabled={marketLoading || investments.length === 0}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={cn("h-4 w-4", marketLoading && "animate-spin")} />
-                  {!isMobile && "Atualizar Preços"}
-                </Button>
+    <PageLayout>
+      <div className="space-y-6">
+        <PageHeader
+          title="Portefólio de Investimentos"
+          description="Acompanhe e faça a gestão dos seus investimentos em tempo real"
+          icon={<TrendingUp className="h-5 w-5" />}
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshPrices}
+                disabled={marketLoading || investments.length === 0}
+                className="gap-2"
+              >
+                <RefreshCw className={cn('h-4 w-4', marketLoading && 'animate-spin')} />
+                <span className="hidden sm:inline">Atualizar preços</span>
+              </Button>
 
-                <Button
-                  onClick={() => {
-                    setEditingInvestment(null);
-                    setIsFormOpen(true);
-                  }}
-                  className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90 flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {!isMobile && "Novo Investimento"}
-                </Button>
-              </>
-            }
-          />
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingInvestment(null);
+                  setIsFormOpen(true);
+                }}
+                className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Novo Investimento</span>
+              </Button>
+            </>
+          }
+        />
 
-          {/* Portfolio Summary */}
-          {investments.length > 0 && (
+        {investments.length === 0 ? (
+          <Card className="text-center py-12">
+            <CardContent className="flex flex-col items-center">
+              <div className="h-12 w-12 rounded-xl bg-muted/50 flex items-center justify-center mb-4">
+                <TrendingUp className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Nenhum investimento encontrado</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                Comece por adicionar o seu primeiro investimento para acompanhar a performance do
+                portefólio.
+              </p>
+              <Button
+                onClick={() => setIsFormOpen(true)}
+                className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar Primeiro Investimento
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
             <PortfolioSummary summary={portfolioSummary} />
-          )}
 
-          {/* Portfolio Charts */}
-          {investments.length > 0 && (
             <PortfolioChart investments={investments} />
-          )}
 
-          {/* Type Statistics */}
-          {investments.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-orange-700 dark:text-orange-300">Criptomoedas</p>
-                      <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                        {typeStats.crypto.count}
-                      </p>
-                      <p className="text-xs text-orange-600 dark:text-orange-400">
-                        €{typeStats.crypto.value.toFixed(2)}
-                      </p>
-                    </div>
-                    <Badge className="bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-200">
-                      Crypto
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Pesquisar investimentos..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full sm:w-80"
+                  />
+                </div>
 
-              <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-blue-700 dark:text-blue-300">Ações</p>
-                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                        {typeStats.stock.count}
-                      </p>
-                      <p className="text-xs text-blue-600 dark:text-blue-400">
-                        €{typeStats.stock.value.toFixed(2)}
-                      </p>
-                    </div>
-                    <Badge className="bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200">
-                      Stocks
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-green-700 dark:text-green-300">ETFs</p>
-                      <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                        {typeStats.etf.count}
-                      </p>
-                      <p className="text-xs text-green-600 dark:text-green-400">
-                        €{typeStats.etf.value.toFixed(2)}
-                      </p>
-                    </div>
-                    <Badge className="bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200">
-                      ETFs
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Pesquisar investimentos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full sm:w-80"
-                />
-              </div>
-              
-              <Select value={typeFilter} onValueChange={(value: string) => setTypeFilter(value as InvestmentType | 'all')}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="crypto">Crypto</SelectItem>
-                  <SelectItem value="stock">Ações</SelectItem>
-                  <SelectItem value="etf">ETFs</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {lastUpdated && (
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Última atualização: {lastUpdated.toLocaleTimeString('pt-PT')}
-              </div>
-            )}
-          </div>
-
-          {/* Investments Grid */}
-          {filteredInvestments.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredInvestments.map((investment) => (
-                <InvestmentCard
-                  key={investment.id}
-                  investment={investment}
-                  onEdit={handleEditInvestment}
-                  onDelete={handleDeleteInvestment}
-                />
-              ))}
-            </div>
-          ) : investments.length === 0 ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Nenhum investimento encontrado
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Comece adicionando seu primeiro investimento para acompanhar sua performance.
-                </p>
-                <Button
-                  onClick={() => setIsFormOpen(true)}
-                  className="bg-[#3f9094] hover:bg-[#2d7a7e]"
+                <Select
+                  value={typeFilter}
+                  onValueChange={(value: string) => setTypeFilter(value as InvestmentType | 'all')}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Primeiro Investimento
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="text-center py-8">
-              <CardContent>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Nenhum investimento encontrado com os filtros aplicados.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </main>
+                  <SelectTrigger className="w-full sm:w-44">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="crypto">Criptomoedas</SelectItem>
+                    <SelectItem value="stock">Ações</SelectItem>
+                    <SelectItem value="etf">ETFs</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-      {/* Investment Form Dialog */}
+              {lastUpdated && (
+                <p className="text-sm text-muted-foreground shrink-0">
+                  Última atualização: {lastUpdated.toLocaleTimeString('pt-PT')}
+                </p>
+              )}
+            </div>
+
+            {filteredInvestments.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+                {filteredInvestments.map(investment => (
+                  <InvestmentCard
+                    key={investment.id}
+                    investment={investment}
+                    onEdit={handleEditInvestment}
+                    onDelete={handleDeleteInvestment}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="text-center py-8">
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    Nenhum investimento encontrado com os filtros aplicados.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setTypeFilter('all');
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+
       <InvestmentForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={editingInvestment ? handleUpdateInvestment : handleAddInvestment}
         investment={editingInvestment}
       />
-    </div>
+    </PageLayout>
   );
 };
 

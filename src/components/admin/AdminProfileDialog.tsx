@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   User,
   Mail,
@@ -50,20 +49,17 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
   const [activeTab, setActiveTab] = useState<'info' | 'security' | 'permissions'>('info');
   const [loading, setLoading] = useState(false);
 
-  // Campos do formulário
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [contacto, setContacto] = useState('');
   const [morada, setMorada] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
 
-  // Segurança / Password
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Inicializar formulário quando o modal abre ou a sessão muda
   useEffect(() => {
     if (open && session) {
       setNome(session.adminName || '');
@@ -75,7 +71,6 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
       setConfirmPassword('');
       setActiveTab('info');
 
-      // Tentar recarregar dados mais recentes da BD caso faltem
       fetchCurrentAdminProfile().then((fresh) => {
         if (fresh) {
           setNome(fresh.adminName || '');
@@ -92,31 +87,27 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
     switch (role) {
       case 'admin':
         return (
-          <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100 font-medium">
-            <Shield className="h-3 w-3 mr-1 text-red-600" />
+          <Badge variant="destructive" className="gap-1 font-medium">
+            <Shield className="h-3 w-3" />
             Administrador
           </Badge>
         );
       case 'assistant':
         return (
-          <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 font-medium">
-            <ShieldCheck className="h-3 w-3 mr-1 text-blue-600" />
+          <Badge variant="outline" className="gap-1 font-medium">
+            <ShieldCheck className="h-3 w-3" />
             Assistente
           </Badge>
         );
       case 'partner':
         return (
-          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 font-medium">
-            <Sparkles className="h-3 w-3 mr-1 text-emerald-600" />
+          <Badge variant="secondary" className="gap-1 font-medium">
+            <Sparkles className="h-3 w-3" />
             Parceiro
           </Badge>
         );
       default:
-        return (
-          <Badge variant="outline">
-            Colaborador
-          </Badge>
-        );
+        return <Badge variant="outline">Colaborador</Badge>;
     }
   };
 
@@ -153,42 +144,37 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
     }
 
     setLoading(true);
-    try {
-      const res = await updateCurrentAdminProfile({
-        nome: nome.trim(),
-        email: email.trim(),
-        contacto: contacto.trim(),
-        morada: morada.trim(),
-        data_nascimento: dataNascimento,
-        password: newPassword ? newPassword : undefined,
-      });
+    const res = await updateCurrentAdminProfile({
+      nome: nome.trim(),
+      email: email.trim(),
+      contacto: contacto.trim(),
+      morada: morada.trim(),
+      data_nascimento: dataNascimento,
+      password: newPassword ? newPassword : undefined,
+    });
 
-      if (res.success) {
-        setNewPassword('');
-        setConfirmPassword('');
-        onOpenChange(false);
-      }
-    } catch (err: any) {
-      console.error('Erro ao guardar perfil:', err);
-    } finally {
-      setLoading(false);
+    if (res.success) {
+      setNewPassword('');
+      setConfirmPassword('');
+      onOpenChange(false);
     }
+    setLoading(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[620px] max-h-[92vh] overflow-y-auto p-4 sm:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-2xl rounded-2xl">
-        <DialogHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+      <DialogContent className="sm:max-w-[620px] max-h-[92vh] overflow-y-auto">
+        <DialogHeader className="pb-2 border-b">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#3f9094] to-[#24585c] flex items-center justify-center text-white font-bold text-lg shadow-md">
+            <div className="h-12 w-12 rounded-full bg-[#3f9094] flex items-center justify-center text-white font-bold text-lg shrink-0">
               {nome ? nome.charAt(0).toUpperCase() : 'U'}
             </div>
-            <div>
-              <DialogTitle className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <div className="min-w-0">
+              <DialogTitle className="text-lg font-semibold flex items-center gap-2 flex-wrap">
                 {t('myProfile') || 'Meu Perfil'}
                 {getRoleBadge(session?.role)}
               </DialogTitle>
-              <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+              <DialogDescription>
                 Visualize e edite as suas informações pessoais e de acesso
               </DialogDescription>
             </div>
@@ -196,8 +182,8 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-4 pt-2">
-          <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
-            <TabsList className="grid grid-cols-3 w-full mb-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+          <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'info' | 'security' | 'permissions')} className="w-full">
+            <TabsList className="grid grid-cols-3 w-full mb-4">
               <TabsTrigger value="info" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
                 <User className="h-4 w-4 text-[#3f9094]" />
                 <span>{t('personalInfo') || 'Dados'}</span>
@@ -212,12 +198,10 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
               </TabsTrigger>
             </TabsList>
 
-            {/* ABA 1: DADOS PESSOAIS */}
             <TabsContent value="info" className="space-y-4">
               <div className="space-y-3">
-                {/* Nome Completo */}
                 <div className="space-y-1">
-                  <Label htmlFor="admin-nome" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Label htmlFor="admin-nome" className="text-xs font-semibold flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5 text-[#3f9094]" />
                     {t('fullName') || 'Nome Completo'} *
                   </Label>
@@ -226,14 +210,13 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     placeholder="O seu nome completo"
-                    className="h-10 focus-visible:ring-[#3f9094]"
+                    className="h-10"
                     required
                   />
                 </div>
 
-                {/* Email */}
                 <div className="space-y-1">
-                  <Label htmlFor="admin-email" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Label htmlFor="admin-email" className="text-xs font-semibold flex items-center gap-1.5">
                     <Mail className="h-3.5 w-3.5 text-[#3f9094]" />
                     {t('email') || 'E-mail de Acesso'} *
                   </Label>
@@ -243,14 +226,13 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="email@neurobalance.pt"
-                    className="h-10 focus-visible:ring-[#3f9094]"
+                    className="h-10"
                     required
                   />
                 </div>
 
-                {/* Contacto Telefónico */}
                 <div className="space-y-1">
-                  <Label htmlFor="admin-contacto" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Label htmlFor="admin-contacto" className="text-xs font-semibold flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5 text-[#3f9094]" />
                     {t('contact') || 'Contacto Telefónico'}
                   </Label>
@@ -260,19 +242,18 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                     value={contacto}
                     onChange={(e) => setContacto(e.target.value)}
                     placeholder="912 345 678"
-                    className="h-10 focus-visible:ring-[#3f9094]"
+                    className="h-10"
                   />
                 </div>
 
-                {/* Data de Nascimento */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="admin-nasc" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <Label htmlFor="admin-nasc" className="text-xs font-semibold flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-[#3f9094]" />
                       {t('dateOfBirth') || 'Data de Nascimento'}
                     </Label>
                     {dataNascimento && (
-                      <span className="text-xs font-medium text-[#3f9094]">
+                      <span className="text-xs font-medium text-[#3f9094] tabular-nums">
                         {calculateAge(dataNascimento)} anos
                       </span>
                     )}
@@ -282,13 +263,12 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                     type="date"
                     value={dataNascimento}
                     onChange={(e) => setDataNascimento(e.target.value)}
-                    className="h-10 focus-visible:ring-[#3f9094]"
+                    className="h-10"
                   />
                 </div>
 
-                {/* Morada */}
                 <div className="space-y-1">
-                  <Label htmlFor="admin-morada" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Label htmlFor="admin-morada" className="text-xs font-semibold flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-[#3f9094]" />
                     {t('address') || 'Morada / Localidade'}
                   </Label>
@@ -296,29 +276,27 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                     id="admin-morada"
                     value={morada}
                     onChange={(e) => setMorada(e.target.value)}
-                    placeholder="Rua, Cidade, Código Postal"
-                    className="h-10 focus-visible:ring-[#3f9094]"
+                    placeholder="Rua, Código Postal, Cidade"
+                    className="h-10"
                   />
                 </div>
               </div>
             </TabsContent>
 
-            {/* ABA 2: SEGURANÇA & SENHA */}
             <TabsContent value="security" className="space-y-4">
-              <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2.5">
-                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+              <div className="p-3 bg-muted/50 rounded-lg border text-xs text-muted-foreground flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">Alteração de Palavra-passe</p>
-                  <p className="text-blue-700/80 dark:text-blue-400/80 mt-0.5">
+                  <p className="font-medium text-foreground">Alteração de Palavra-passe</p>
+                  <p className="mt-0.5">
                     Caso não pretenda alterar a sua palavra-passe, deixe os campos abaixo em branco.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                {/* Nova Palavra-passe */}
                 <div className="space-y-1">
-                  <Label htmlFor="new-pass" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Label htmlFor="new-pass" className="text-xs font-semibold flex items-center gap-1.5">
                     <Lock className="h-3.5 w-3.5 text-[#3f9094]" />
                     {t('newPassword') || 'Nova Palavra-passe'}
                   </Label>
@@ -329,21 +307,20 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Mínimo 6 caracteres"
-                      className="pr-10 h-10 focus-visible:ring-[#3f9094]"
+                      className="pr-10 h-10"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Confirmar Palavra-passe */}
                 <div className="space-y-1">
-                  <Label htmlFor="confirm-pass" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Label htmlFor="confirm-pass" className="text-xs font-semibold flex items-center gap-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5 text-[#3f9094]" />
                     {t('confirmPassword') || 'Confirmar Nova Palavra-passe'}
                   </Label>
@@ -354,12 +331,12 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Repita a palavra-passe"
-                      className="pr-10 h-10 focus-visible:ring-[#3f9094]"
+                      className="pr-10 h-10"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -368,65 +345,59 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
               </div>
             </TabsContent>
 
-            {/* ABA 3: PERMISSÕES & METADATA */}
             <TabsContent value="permissions" className="space-y-4">
-              <Card className="border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
-                    <span className="text-xs font-medium text-gray-500">Função atribuída</span>
-                    <div>{getRoleBadge(session?.role)}</div>
-                  </div>
+              <div className="bg-muted/50 rounded-lg border p-4 space-y-3">
+                <div className="flex items-center justify-between pb-3 border-b">
+                  <span className="text-xs font-medium text-muted-foreground">Função atribuída</span>
+                  <div>{getRoleBadge(session?.role)}</div>
+                </div>
 
-                  <div className="space-y-2">
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                      Permissões Ativas na Conta:
+                <div className="space-y-2">
+                  <span className="text-xs font-semibold">
+                    Permissões Ativas na Conta:
+                  </span>
+                  <div className="grid grid-cols-1 gap-2 pt-1">
+                    {session?.permissions && session.permissions.length > 0 ? (
+                      session.permissions.map((perm) => (
+                        <div
+                          key={perm}
+                          className="flex items-center gap-2 text-xs bg-background p-2.5 rounded-lg border"
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                          <span>
+                            {permissionLabels[perm] || perm}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Nenhuma permissão específica configurada.</p>
+                    )}
+                  </div>
+                </div>
+
+                {session?.last_login && (
+                  <div className="pt-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span className="tabular-nums">
+                      Último acesso registado: {new Date(session.last_login).toLocaleString('pt-PT')}
                     </span>
-                    <div className="grid grid-cols-1 gap-2 pt-1">
-                      {session?.permissions && session.permissions.length > 0 ? (
-                        session.permissions.map((perm) => (
-                          <div
-                            key={perm}
-                            className="flex items-center gap-2 text-xs bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm"
-                          >
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                            <span className="text-gray-800 dark:text-gray-200">
-                              {permissionLabels[perm] || perm}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-gray-500">Nenhuma permissão específica configurada.</p>
-                      )}
-                    </div>
                   </div>
-
-                  {session?.last_login && (
-                    <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2 text-xs text-gray-500">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>Último acesso registado: {new Date(session.last_login).toLocaleString('pt-PT')}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-row gap-2 justify-end">
+          <DialogFooter className="pt-4 border-t flex flex-row gap-2 justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={loading}
-              className="rounded-xl"
             >
               {t('cancel') || 'Cancelar'}
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white rounded-xl flex items-center gap-2 shadow-sm"
-            >
-              <Save className="h-4 w-4" />
+            <Button type="submit" disabled={loading}>
+              <Save className="h-4 w-4 mr-2" />
               {loading ? (t('loading') || 'A guardar...') : (t('saveChanges') || 'Guardar Alterações')}
             </Button>
           </DialogFooter>
