@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -187,7 +187,7 @@ export const SmartTaxCalculator: React.FC = () => {
   };
 
   return (
-    <Card className="w-full bg-gradient-to-br from-white to-blue-50/30">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-2xl">
           <Calculator className="h-6 w-6 text-blue-600" />
@@ -255,7 +255,7 @@ export const SmartTaxCalculator: React.FC = () => {
             {fullRevenue && fullExpenses && (
               <div className="space-y-4 mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                  <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-blue-700">IVA</CardTitle>
                     </CardHeader>
@@ -269,7 +269,7 @@ export const SmartTaxCalculator: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+                  <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-red-700">IRS</CardTitle>
                     </CardHeader>
@@ -281,7 +281,7 @@ export const SmartTaxCalculator: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                  <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-green-700">Seg. Social</CardTitle>
                     </CardHeader>
@@ -293,7 +293,7 @@ export const SmartTaxCalculator: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                  <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-purple-700">Total Impostos</CardTitle>
                     </CardHeader>
@@ -308,7 +308,7 @@ export const SmartTaxCalculator: React.FC = () => {
                   </Card>
                 </div>
 
-                <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-amber-800">
                       <TrendingUp className="h-5 w-5" />
@@ -679,7 +679,7 @@ export const SmartTaxCalculator: React.FC = () => {
           </TabsContent>
         </Tabs>
 
-        <Card className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <Card className="mt-6">
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2 text-blue-900">
               <AlertCircle className="h-4 w-4" />

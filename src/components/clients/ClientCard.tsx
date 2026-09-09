@@ -207,13 +207,10 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
   };
 
   return (
-    <Card 
-      className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-[#3f9094]/40 cursor-pointer ${statusClass}`}
+    <Card
+      className={`group relative cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-md ${statusClass}`}
       onClick={handleEdit}
     >
-      {/* Gradient accent line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#3f9094] to-[#5DA399] opacity-0 group-hover:opacity-100 transition-opacity" />
-      
       <CardContent className="p-5">
         {/* Header with Avatar and Status */}
         <div className="flex items-start justify-between mb-4">
@@ -273,9 +270,9 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
 
         {/* Stats Row */}
         {(client.numero_sessoes !== null && client.numero_sessoes !== undefined) && (
-          <div className="flex items-center gap-4 py-2.5 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg mb-4">
+          <div className="flex items-center gap-4 py-2.5 px-3 bg-muted/50 rounded-lg mb-4">
             <div className="text-center flex-1">
-              <p className="text-lg font-bold text-[#3f9094]">{client.numero_sessoes || 0}</p>
+              <p className="text-lg font-bold text-primary">{client.numero_sessoes || 0}</p>
               <p className="text-xs text-gray-500">Sessões</p>
             </div>
             {client.max_sessoes && client.max_sessoes > 0 && (
@@ -379,7 +376,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
             <Button
               variant="default"
               size="sm"
-              className="flex-1 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90 shadow-sm"
+              className="flex-1"
               onClick={(e) => {
                 e.stopPropagation();
                 handleEdit();

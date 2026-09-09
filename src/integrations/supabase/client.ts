@@ -11,26 +11,38 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // A área de marketing autentica-se por token (sem sessão Supabase Auth).
 // O token é enviado no header de cada pedido REST e validado nas políticas
 // RLS (função current_marketing_role) — ver fix_marketing_security.sql.
-const marketingFetch: typeof fetch = (input, init = {}) => {
+// O admin também envia o seu token (x-admin-token), permitindo ler leads,
+// campanhas e lead_compra na app geral (validado em current_marketing_role).
+const authedFetch: typeof fetch = (input, init = {}) => {
   try {
-    const sessionStr = localStorage.getItem('marketing_session');
-    if (sessionStr) {
-      const session = JSON.parse(sessionStr);
+    const headers = new Headers(init.headers);
+
+    const marketingSessionStr = localStorage.getItem('marketing_session');
+    if (marketingSessionStr) {
+      const session = JSON.parse(marketingSessionStr);
       if (session?.accessToken && session?.marketingEmail) {
-        const headers = new Headers(init.headers);
         headers.set('x-marketing-token', String(session.accessToken));
         headers.set('x-marketing-email', String(session.marketingEmail));
-        return fetch(input, { ...init, headers });
       }
     }
+
+    const adminSessionStr = localStorage.getItem('admin_session');
+    if (adminSessionStr) {
+      const adminSession = JSON.parse(adminSessionStr);
+      if (adminSession?.token) {
+        headers.set('x-admin-token', String(adminSession.token));
+      }
+    }
+
+    return fetch(input, { ...init, headers });
   } catch {
     // sessão inválida/indisponível: seguir sem headers
+    return fetch(input, init);
   }
-  return fetch(input, init);
 };
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   global: {
-    fetch: marketingFetch,
+    fetch: authedFetch,
   },
 });

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
+import PageHeader from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -304,37 +305,33 @@ const StatisticsPage = () => {
     <PageLayout>
       <div className="space-y-6">
         {/* Header Melhorado */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent">
-              Estatísticas & Analytics
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Análise completa do desempenho e insights da clínica
-            </p>
-          </div>
+        <PageHeader
+          title="Estatísticas & Analytics"
+          description="Análise completa do desempenho e insights da clínica"
+          icon={<BarChart className="h-5 w-5" />}
+          actions={
+            <>
+              <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
+                <SelectTrigger className="w-48">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                  <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                  <SelectItem value="90d">Últimos 90 dias</SelectItem>
+                  <SelectItem value="1y">Último ano</SelectItem>
+                  <SelectItem value="all">Todos os dados</SelectItem>
+                </SelectContent>
+              </Select>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
-              <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Últimos 7 dias</SelectItem>
-                <SelectItem value="30d">Últimos 30 dias</SelectItem>
-                <SelectItem value="90d">Últimos 90 dias</SelectItem>
-                <SelectItem value="1y">Último ano</SelectItem>
-                <SelectItem value="all">Todos os dados</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button onClick={exportData} variant="outline" size="sm" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Exportar Dados</span>
-            </Button>
-                  </div>
-              </div>
+              <Button onClick={exportData} variant="outline" size="sm" className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Exportar Dados</span>
+              </Button>
+            </>
+          }
+        />
 
         {/* KPIs Dashboard */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

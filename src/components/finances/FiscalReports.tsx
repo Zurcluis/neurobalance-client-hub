@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -284,7 +284,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
             </div>
           </div>
 
-          <Card className={`bg-gradient-to-br ${ivaQuarterlyReport.isPastDue ? 'from-red-50 to-orange-50 border-l-4 border-l-red-500' : 'from-white to-blue-50 border-l-4 border-l-blue-500'}`}>
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -313,7 +313,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                <div className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-l-green-500">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">IVA Liquidado</p>
                   <p className="text-2xl font-bold text-green-600">
                     €{ivaQuarterlyReport.ivaLiquidado.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
@@ -323,7 +323,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
                   </p>
                 </div>
 
-                <div className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-l-blue-500">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">IVA Dedutível</p>
                   <p className="text-2xl font-bold text-blue-600">
                     €{ivaQuarterlyReport.ivaDedutivel.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
@@ -333,7 +333,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
                   </p>
                 </div>
 
-                <div className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-l-red-500">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">IVA a Pagar</p>
                   <p className="text-2xl font-bold text-red-600">
                     €{ivaQuarterlyReport.ivaToPay.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
@@ -354,7 +354,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
         </TabsContent>
 
         <TabsContent value="ss" className="space-y-6">
-          <Card className="bg-gradient-to-br from-white to-green-50 border-l-4 border-l-green-500">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -363,25 +363,25 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">Receita Anual</p>
                   <p className="text-xl font-bold text-green-600">
                     €{ssReport.totalRevenue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">Base de Incidência</p>
                   <p className="text-xl font-bold text-blue-600">
                     €{ssReport.ssBase.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">Contribuição Mensal</p>
                   <p className="text-xl font-bold text-orange-600">
                     €{ssReport.ssMonthly.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">Total Anual</p>
                   <p className="text-xl font-bold text-red-600">
                     €{ssReport.ssAnnual.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
@@ -437,7 +437,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
             </Button>
           </div>
 
-          <Card className="bg-gradient-to-br from-white to-red-50 border-l-4 border-l-red-500">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -446,19 +446,19 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">Receita Total</p>
                   <p className="text-xl font-bold text-green-600">
                     €{irsReport.totalRevenue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">Despesas</p>
                   <p className="text-xl font-bold text-orange-600">
                     €{irsReport.totalExpenses.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">Rendimento Tributável</p>
                   <p className="text-xl font-bold text-blue-600">
                     €{irsReport.taxableIncome.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
@@ -467,7 +467,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
                     Coeficiente: {(irsReport.coefficient * 100).toFixed(0)}%
                   </p>
                 </div>
-                <div className="p-4 bg-white rounded-lg shadow-sm">
+                <div className="p-4 rounded-lg border bg-card">
                   <p className="text-sm text-gray-600 mb-1">IRS Estimado</p>
                   <p className="text-xl font-bold text-red-600">
                     €{irsReport.irsEstimated.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
@@ -475,7 +475,7 @@ export const FiscalReports: React.FC<FiscalReportsProps> = ({ payments, expenses
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-white rounded-lg shadow-sm border-l-4 border-l-blue-500">
+              <div className="mt-6 p-4 rounded-lg border bg-card">
                 <h4 className="font-semibold mb-4">Pagamentos por Conta {selectedYear + 1}</h4>
                 <div className="space-y-3">
                   {irsReport.pagamentosPorConta.map((payment, idx) => (

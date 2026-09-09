@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
+import PageHeader from '@/components/shared/PageHeader';
+import KpiCard from '@/components/shared/KpiCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -129,93 +131,41 @@ const AdminManagementPage = () => {
     <PageLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <UserCog className="h-8 w-8 text-[#3f9094]" />
-            <div>
-              <h1 className="text-3xl font-bold text-[#3f9094]">{t('adminManagement')}</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">Gerir administrativas, assistentes, colaboradores e tokens de acesso</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsProfileDialogOpen(true)}
-              className="border-[#3f9094] text-[#3f9094] hover:bg-[#3f9094]/10 flex items-center gap-2"
-            >
-              <User className="h-4 w-4" />
-              {t('myProfile') || 'Meu Perfil'}
-            </Button>
+        <PageHeader
+          title={t('adminManagement')}
+          description="Gerir administrativas, assistentes, colaboradores e tokens de acesso"
+          icon={<UserCog className="h-5 w-5" />}
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setIsProfileDialogOpen(true)}
+                className="border-[#3f9094] text-[#3f9094] hover:bg-[#3f9094]/10 flex items-center gap-2"
+              >
+                <User className="h-4 w-4" />
+                {t('myProfile') || 'Meu Perfil'}
+              </Button>
 
-            <Button
-              onClick={() => {
-                setEditingAdmin(null);
-                setIsFormOpen(true);
-              }}
-              className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar Administrativa
-            </Button>
-          </div>
-        </div>
+              <Button
+                onClick={() => {
+                  setEditingAdmin(null);
+                  setIsFormOpen(true);
+                }}
+                className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar Administrativa
+              </Button>
+            </>
+          }
+        />
 
         {/* Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Users className="h-8 w-8 text-[#3f9094]" />
-                <div>
-                  <p className="text-sm text-gray-600">Total de Administrativas</p>
-                  <p className="text-2xl font-bold text-gray-900">{admins.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="h-8 w-8 text-green-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Administrativas Ativas</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {admins.filter(a => a.ativo).length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Shield className="h-8 w-8 text-blue-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Administradoras</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {admins.filter(a => a.role === 'admin').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Key className="h-8 w-8 text-purple-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Tokens Ativos</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {adminTokens.filter(t => t.is_active).length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <KpiCard icon={Users} label="Total de Administrativas" value={admins.length} tone="teal" />
+          <KpiCard icon={ShieldCheck} label="Administrativas Ativas" value={admins.filter(a => a.ativo).length} tone="emerald" />
+          <KpiCard icon={Shield} label="Administradoras" value={admins.filter(a => a.role === 'admin').length} tone="blue" />
+          <KpiCard icon={Key} label="Tokens Ativos" value={adminTokens.filter(t => t.is_active).length} tone="purple" />
         </div>
 
         {/* Tabs */}

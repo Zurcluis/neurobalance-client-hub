@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MarketingCampaign, MarketingMetrics } from '@/types/marketing';
+import KpiCard from '@/components/shared/KpiCard';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,8 +17,6 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
-  TrendingUp,
-  TrendingDown,
   Euro,
   Users,
   Target,
@@ -88,15 +87,15 @@ const MarketingDashboard: React.FC<MarketingDashboardProps> = ({
         {
           label: 'Investimento',
           data: sortedKeys.map(key => monthlyStats[key].investimento),
-          backgroundColor: 'rgba(239, 68, 68, 0.5)',
-          borderColor: 'rgba(239, 68, 68, 1)',
+          backgroundColor: 'rgba(244, 63, 94, 0.55)',
+          borderColor: 'rgba(244, 63, 94, 1)',
           borderWidth: 2,
         },
         {
           label: 'Receita',
           data: sortedKeys.map(key => monthlyStats[key].receita),
-          backgroundColor: 'rgba(34, 197, 94, 0.5)',
-          borderColor: 'rgba(34, 197, 94, 1)',
+          backgroundColor: 'rgba(63, 144, 148, 0.55)',
+          borderColor: 'rgba(63, 144, 148, 1)',
           borderWidth: 2,
         }
       ]
@@ -106,14 +105,14 @@ const MarketingDashboard: React.FC<MarketingDashboardProps> = ({
   // Dados para gráfico de origem das campanhas
   const origemData = useMemo(() => {
     const origemStats: { [key: string]: number } = {};
-    
+
     campaigns.forEach(campaign => {
       origemStats[campaign.origem] = (origemStats[campaign.origem] || 0) + campaign.receita;
     });
 
     const colors = [
-      '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
-      '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+      '#3f9094', '#2A5854', '#65ada7', '#9CC1BF', '#5C8A87',
+      '#B7D6D3', '#F59E0B', '#64748B', '#84CC16', '#F43F5E'
     ];
 
     return {
@@ -204,91 +203,57 @@ const MarketingDashboard: React.FC<MarketingDashboardProps> = ({
     <div className="space-y-6">
       {/* Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Investido</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(metrics.totalInvestimento)}
-                </p>
-              </div>
-              <Euro className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Receita</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(metrics.totalReceita)}
-                </p>
-              </div>
-              <Euro className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Leads</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {metrics.totalLeads.toLocaleString()}
-                </p>
-              </div>
-              <Users className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ROI Médio</p>
-                <p className={`text-2xl font-bold ${metrics.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {metrics.roi >= 0 ? (
-                    <TrendingUp className="inline h-6 w-6 mr-1" />
-                  ) : (
-                    <TrendingDown className="inline h-6 w-6 mr-1" />
-                  )}
-                  {formatPercentage(metrics.roi)}
-                </p>
-              </div>
-              <Target className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
+        <KpiCard
+          icon={Euro}
+          label="Total Investido"
+          value={formatCurrency(metrics.totalInvestimento)}
+          tone="red"
+          sub={`${campaigns.length} campanhas no período`}
+        />
+        <KpiCard
+          icon={Euro}
+          label="Total Receita"
+          value={formatCurrency(metrics.totalReceita)}
+          tone="emerald"
+        />
+        <KpiCard
+          icon={Users}
+          label="Total Leads"
+          value={metrics.totalLeads.toLocaleString()}
+          tone="teal"
+        />
+        <KpiCard
+          icon={Target}
+          label="ROI Médio"
+          value={formatPercentage(metrics.roi)}
+          tone={metrics.roi >= 0 ? 'teal' : 'red'}
+          sub={metrics.roi >= 0 ? 'Retorno positivo' : 'Retorno negativo'}
+        />
       </div>
 
-      {/* Métricas Secundárias */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-gray-600">CPL Médio</p>
-            <p className="text-xl font-semibold">{formatCurrency(metrics.cplMedio)}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-gray-600">CAC Médio</p>
-            <p className="text-xl font-semibold">{formatCurrency(metrics.cacMedio)}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-gray-600">Taxa Conversão</p>
-            <p className="text-xl font-semibold">{formatPercentage(metrics.taxaConversaoMedia)}</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Métricas Secundárias inline */}
+      <Card className="shadow-sm">
+        <CardContent className="p-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border">
+            <div className="p-4 text-center">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">CPL Médio</p>
+              <p className="text-lg font-semibold mt-1 tabular-nums">{formatCurrency(metrics.cplMedio)}</p>
+            </div>
+            <div className="p-4 text-center">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">CAC Médio</p>
+              <p className="text-lg font-semibold mt-1 tabular-nums">{formatCurrency(metrics.cacMedio)}</p>
+            </div>
+            <div className="p-4 text-center">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Taxa Conversão</p>
+              <p className="text-lg font-semibold mt-1 tabular-nums">{formatPercentage(metrics.taxaConversaoMedia)}</p>
+            </div>
+            <div className="p-4 text-center">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">ROAS</p>
+              <p className="text-lg font-semibold mt-1 tabular-nums">{metrics.roas.toFixed(2)}x</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

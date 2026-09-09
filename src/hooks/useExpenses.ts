@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 // Definição de tipos
 // A tabela 'despesas' ainda não está refletida nos tipos gerados do Supabase,
 // pelo que a sua forma é declarada localmente (colunas: id, tipo, categoria, data, valor, notas, criado_em).
-type Expense = {
+export type Expense = {
   id: number;
   tipo: string;
   categoria: string;

@@ -510,7 +510,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
       ) : (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-2xl font-bold gradient-heading">Despesas</h2>
+            <h2 className="text-base font-semibold">Despesas</h2>
             
             <div className="flex items-center gap-2">
               {/* Botão de nova despesa */}
@@ -699,7 +699,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
             <TabsContent value="list" className="space-y-6">
               <Card className="glassmorphism">
                 <CardHeader>
-                  <CardTitle className="text-lg">Filtros</CardTitle>
+                  <CardTitle className="text-base font-semibold">Filtros</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -924,7 +924,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="glassmorphism">
                   <CardHeader>
-                    <CardTitle className="text-lg">Despesas por Tipo</CardTitle>
+                    <CardTitle className="text-base font-semibold">Despesas por Tipo</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[300px]">
@@ -958,7 +958,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
 
                 <Card className="glassmorphism">
                   <CardHeader>
-                    <CardTitle className="text-lg">Top 10 Categorias</CardTitle>
+                    <CardTitle className="text-base font-semibold">Top 10 Categorias</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[300px]">
@@ -990,7 +990,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
               {/* Tabela de resumo por categoria */}
               <Card className="glassmorphism">
                 <CardHeader>
-                  <CardTitle className="text-lg">Resumo por Categoria</CardTitle>
+                  <CardTitle className="text-base font-semibold">Resumo por Categoria</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-md border">

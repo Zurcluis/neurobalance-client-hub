@@ -316,11 +316,33 @@
 }
 
 .gradient-heading {
-  @apply bg-gradient-to-r from-[#3A726D] to-[#2A5854] bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent;
 }
 
 .dark .gradient-heading {
   @apply bg-gradient-to-r from-[#65ada7] to-[#478682] bg-clip-text text-transparent;
+}
+
+/* KPI value numbers aligned and consistent */
+.kpi-value {
+  @apply text-2xl sm:text-[1.7rem] font-bold tracking-tight tabular-nums;
+}
+
+/* Tabs ativas com identidade teal institucional em toda a plataforma */
+[role='tablist'] > [role='tab'][data-state='active'] {
+  @apply bg-[#3f9094] text-white shadow-sm;
+}
+
+[role='tablist'] > [role='tab'][data-state='active'] svg {
+  color: inherit;
+}
+
+.dark [role='tablist'] > [role='tab'][data-state='active'] {
+  @apply bg-[#2A5854] text-white;
+}
+
+[role='tablist'] > [role='tab']:hover:not([data-state='active']) {
+  @apply text-[#2A5854] dark:text-[#65ada7];
 }
 
 .glassmorphism {

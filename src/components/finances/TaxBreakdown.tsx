@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calculator, FileText, Users, TrendingUp } from 'lucide-react';
+import { Calculator, FileText, Users, TrendingUp, AlertTriangle } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import { getQuarter } from 'date-fns';
+import { tooltipStyle } from '@/utils/chartUtils';
 
 interface TaxBreakdownProps {
   payments: any[];
@@ -90,80 +91,88 @@ export const TaxBreakdown: React.FC<TaxBreakdownProps> = ({ payments, expenses, 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-white to-blue-50 border-l-4 border-l-blue-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">IVA a Pagar</CardTitle>
-            <Calculator className="h-5 w-5 text-blue-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">IVA a Pagar</CardTitle>
+            <div className="h-9 w-9 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 flex items-center justify-center shrink-0">
+              <Calculator className="h-5 w-5" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-blue-600 tabular-nums">
               €{taxData.ivaToPay.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
             </div>
             <div className="mt-2 space-y-1">
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Liquidado: €{taxData.ivaLiquidado.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Dedutível: €{taxData.ivaDedutivel.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-white to-red-50 border-l-4 border-l-red-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">IRS Estimado</CardTitle>
-            <FileText className="h-5 w-5 text-red-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">IRS Estimado</CardTitle>
+            <div className="h-9 w-9 rounded-lg bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-red-600 tabular-nums">
               €{taxData.irsEstimated.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
             </div>
             <div className="mt-2 space-y-1">
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Rendimento tributável: €{taxData.taxableIncome.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Coeficiente: {(IRS_COEFFICIENT * 100).toFixed(0)}%
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-white to-green-50 border-l-4 border-l-green-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Segurança Social</CardTitle>
-            <Users className="h-5 w-5 text-green-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Segurança Social</CardTitle>
+            <div className="h-9 w-9 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center justify-center shrink-0">
+              <Users className="h-5 w-5" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-emerald-600 tabular-nums">
               €{taxData.ssAnnual.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
             </div>
             <div className="mt-2 space-y-1">
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Mensal: €{taxData.ssMonthly.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Base: €{taxData.ssBase.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-white to-purple-50 border-l-4 border-l-purple-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Total Impostos</CardTitle>
-            <TrendingUp className="h-5 w-5 text-purple-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Impostos</CardTitle>
+            <div className="h-9 w-9 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300 flex items-center justify-center shrink-0">
+              <TrendingUp className="h-5 w-5" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
+            <div className="text-2xl font-bold text-purple-600 tabular-nums">
               €{totalTaxes.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
             </div>
             <div className="mt-2 space-y-1">
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Carga fiscal: {((totalTaxes / taxData.totalRevenue) * 100).toFixed(1)}%
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Lucro após impostos: €{(taxData.profitBeforeTax - totalTaxes).toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
               </p>
             </div>
@@ -172,7 +181,7 @@ export const TaxBreakdown: React.FC<TaxBreakdownProps> = ({ payments, expenses, 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-gradient-to-br from-white to-gray-50">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calculator className="h-5 w-5" />
@@ -194,7 +203,7 @@ export const TaxBreakdown: React.FC<TaxBreakdownProps> = ({ payments, expenses, 
                       `€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 
                       name
                     ]}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb' }}
+                    contentStyle={tooltipStyle}
                   />
                   <Legend />
                   <Bar dataKey="ivaLiquidado" name="IVA Liquidado" fill="#3b82f6" />
@@ -206,7 +215,7 @@ export const TaxBreakdown: React.FC<TaxBreakdownProps> = ({ payments, expenses, 
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-white to-gray-50">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
@@ -233,7 +242,7 @@ export const TaxBreakdown: React.FC<TaxBreakdownProps> = ({ payments, expenses, 
                   </Pie>
                   <Tooltip 
                     formatter={(value: any) => [`€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 'Valor']}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb' }}
+                    contentStyle={tooltipStyle}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -255,9 +264,9 @@ export const TaxBreakdown: React.FC<TaxBreakdownProps> = ({ payments, expenses, 
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-l-4 border-l-amber-500">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-amber-800">Notas Importantes</CardTitle>
+          <CardTitle className="text-base font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" />Notas Importantes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-amber-900">
           <p>• <strong>IVA Trimestral:</strong> Declaração até ao dia 15 do 2º mês após o trimestre</p>

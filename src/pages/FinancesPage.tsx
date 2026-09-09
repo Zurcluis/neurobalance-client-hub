@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
+import PageHeader from '@/components/shared/PageHeader';
+import KpiCard from '@/components/shared/KpiCard';
 import FinancialReport from '@/components/finances/FinancialReport';
 import ExpenseManager from '@/components/finances/ExpenseManager';
 import EmptyFinanceState from '@/components/finances/EmptyFinanceState';
@@ -20,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -32,20 +35,27 @@ import {
   AlertCircle,
   Sparkles,
   Plus,
-  TrendingUp,
-  TrendingDown,
   DollarSign,
-  Download,
   PiggyBank,
-  Upload
+  Upload,
+  ChevronRight
 } from 'lucide-react';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePayments } from '@/hooks/usePayments';
+import { formatCurrency } from '@/utils/formatUtils';
+import { format, differenceInDays, subMonths } from 'date-fns';
+import { pt } from 'date-fns/locale';
+import { getUpcomingFiscalDeadlines } from '@/utils/fiscalCalendar';
+
+const monthKey = (dateStr?: string | null) => (dateStr || '').slice(0, 7);
+
+/** Variação percentual; null quando não há base de comparação. */
+const pctChange = (current: number, previous: number): number | null => {
+  if (previous <= 0) return null;
+  return ((current - previous) / previous) * 100;
+};
 
 const FinancesPage = () => {
-  const [payments, setPayments] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [transactionTab, setTransactionTab] = useState<string>('income');
   const [analysisTab, setAnalysisTab] = useState<string>('monthly');
@@ -54,54 +64,14 @@ const FinancesPage = () => {
   const currentYear = new Date().getFullYear();
 
   const { expenses, fetchExpenses: refreshExpenses } = useExpenses();
-  const { payments: paymentsData } = usePayments();
+  const { payments: paymentsData, isLoading, error, fetchPayments } = usePayments();
 
-  const fetchPayments = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from('pagamentos')
-        .select(`
-          *,
-          clientes:id_cliente (
-            nome
-          )
-        `)
-        .order('data', { ascending: false });
-
-      if (error) {
-        console.error('Erro ao buscar pagamentos:', error);
-        setError('Falha ao carregar pagamentos');
-        toast.error('Erro ao carregar pagamentos');
-        return;
-      }
-
-      if (!data) {
-        setPayments([]);
-        return;
-      }
-
-      const formattedPayments = data.map(payment => ({
-        ...payment,
-        cliente_nome: payment.clientes?.nome || 'Cliente Desconhecido'
-      }));
-
-      setPayments(formattedPayments);
-    } catch (err) {
-      console.error('Erro ao carregar pagamentos:', err);
-      setError('Falha ao carregar pagamentos');
-      toast.error('Erro ao carregar pagamentos');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    document.title = 'Gestão Financeira | NeuroBalance';
+  }, []);
 
   const handleImportPayments = async (importedPayments: PaymentImportData[]) => {
     try {
-      setIsLoading(true);
-
       const paymentsToInsert = importedPayments.map(p => ({
         id_cliente: p.id_cliente,
         data: p.data,
@@ -126,93 +96,139 @@ const FinancesPage = () => {
       toast.success(`${paymentsToInsert.length} pagamentos importados com sucesso!`);
       setShowImportModal(false);
       fetchPayments();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao importar pagamentos:', err);
-      toast.error('Falha ao importar pagamentos: ' + (err.message || 'Erro desconhecido'));
-    } finally {
-      setIsLoading(false);
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast.error('Falha ao importar pagamentos: ' + message);
     }
   };
 
-  useEffect(() => {
-    fetchPayments();
-  }, []);
+  // Métricas do mês corrente com comparação real vs. mês anterior
+  const metrics = useMemo(() => {
+    const thisMonth = format(new Date(), 'yyyy-MM');
+    const lastMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
 
-  // Calcular métricas rápidas
-  const totalRevenue = paymentsData.reduce((acc, p) => acc + (p.valor || 0), 0);
-  const totalExpenses = expenses.reduce((acc, e) => acc + (e.valor || 0), 0);
-  const netProfit = totalRevenue - totalExpenses;
-  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+    const sum = (items: { data?: string | null; valor?: number | null }[], month: string) =>
+      items.filter(i => monthKey(i.data) === month).reduce((acc, i) => acc + (i.valor || 0), 0);
 
-  // Próximos prazos fiscais
-  const upcomingDeadlines = [
-    { name: 'IVA - 1º Trimestre', date: '2025-05-20', daysLeft: 30, priority: 'high' },
-    { name: 'IRS - Declaração Anual', date: '2025-06-30', daysLeft: 65, priority: 'medium' },
-  ];
+    const revThis = sum(paymentsData, thisMonth);
+    const revLast = sum(paymentsData, lastMonth);
+    const expThis = sum(expenses, thisMonth);
+    const expLast = sum(expenses, lastMonth);
+
+    return {
+      revThis,
+      revDelta: pctChange(revThis, revLast),
+      expThis,
+      expDelta: pctChange(expThis, expLast),
+      netThis: revThis - expThis,
+      marginThis: revThis > 0 ? ((revThis - expThis) / revThis) * 100 : 0
+    };
+  }, [paymentsData, expenses]);
+
+  // Prazos fiscais reais (calculados a partir do calendário fiscal de FiscalDeadlines)
+  const upcomingDeadlines = useMemo(() => getUpcomingFiscalDeadlines(3), []);
+  const deadlinesSoon = upcomingDeadlines.filter(
+    d => differenceInDays(d.date, new Date()) <= 60
+  );
+
+  const formatDelta = (pct: number | null) =>
+    pct === null
+      ? null
+      : { value: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs mês anterior`, positive: pct >= 0 };
+
+  const goToTab = (tab: string, nested?: string) => {
+    if (nested) {
+      if (tab === 'taxes') setTaxTab(nested);
+      if (tab === 'analysis') setAnalysisTab(nested);
+      if (tab === 'transactions') setTransactionTab(nested);
+    }
+    setActiveTab(tab);
+  };
 
   return (
     <PageLayout>
       <div className="space-y-6">
         {/* Header com ações rápidas */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent">
-              Gestão Financeira
-            </h1>
-            <p className="text-gray-600 mt-1">Controle completo das suas finanças e obrigações fiscais</p>
-          </div>
+        <PageHeader
+          title="Gestão Financeira"
+          description="Controle completo das suas finanças e obrigações fiscais"
+          icon={<DollarSign className="h-5 w-5" />}
+          actions={
+            <>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="gap-2"
+                onClick={() => setShowImportModal(true)}
+              >
+                <Upload className="h-4 w-4" />
+                Importar
+              </Button>
+              <Button
+                size="sm"
+                className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+                onClick={() => goToTab('transactions', 'income')}
+              >
+                <Plus className="h-4 w-4" />
+                Nova Transação
+              </Button>
+            </>
+          }
+        />
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Exportar Relatório
-            </Button>
-            <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90">
-              <Plus className="h-4 w-4" />
-              Nova Transação
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="gap-2"
-              onClick={() => setShowImportModal(true)}
-            >
-              <Upload className="h-4 w-4" />
-              Importar
-            </Button>
-          </div>
-        </div>
-
-        {/* Alertas Fiscais em Destaque */}
-        {upcomingDeadlines.length > 0 && (
-          <Card className="border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900">
+        {/* Prazos Fiscais em Destaque (dados reais de FiscalDeadlines) */}
+        {deadlinesSoon.length > 0 && (
+          <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-                <CardTitle className="text-lg">Prazos Fiscais Próximos</CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <AlertCircle className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-base font-semibold">Prazos Fiscais Próximos</CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted-foreground"
+                  onClick={() => goToTab('taxes', 'deadlines')}
+                >
+                  Ver todos
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
-                {upcomingDeadlines.map((deadline, index) => (
-                  <Badge
-                    key={index}
-                    variant={deadline.priority === 'high' ? 'destructive' : 'secondary'}
-                    className="px-3 py-1.5"
-                  >
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {deadline.name} - {deadline.daysLeft} dias
-                  </Badge>
-                ))}
+                {deadlinesSoon.map((deadline) => {
+                  const daysLeft = differenceInDays(deadline.date, new Date());
+                  return (
+                    <button
+                      key={deadline.title + deadline.date.toISOString()}
+                      onClick={() => goToTab('taxes', 'deadlines')}
+                      className="group flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2 text-left transition-colors hover:border-orange-300 hover:bg-orange-50/50 dark:hover:bg-orange-950/20"
+                    >
+                      <Calendar className="h-4 w-4 text-orange-500 shrink-0" />
+                      <span className="text-sm font-medium">{deadline.title}</span>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                        {format(deadline.date, "d 'de' MMM", { locale: pt })}
+                      </span>
+                      <Badge variant={daysLeft <= 14 ? 'destructive' : 'secondary'} className="text-[10px] px-1.5">
+                        {daysLeft === 0 ? 'hoje' : `${daysLeft} dias`}
+                      </Badge>
+                    </button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Tabs Principais - Reorganizadas */}
+        {/* Tabs Principais */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto md:h-10">
-            <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#3f9094] data-[state=active]:to-[#2A5854]">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Visão Geral</span>
             </TabsTrigger>
@@ -241,133 +257,94 @@ const FinancesPage = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* 📊 Visão Geral */}
+          {/* Visão Geral */}
           <TabsContent value="overview" className="space-y-6 mt-6">
-            {/* Cards de Resumo - Maiores e Mais Visuais */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-gray-900 border-t-4 border-t-green-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <ArrowDownCircle className="h-4 w-4 text-green-600" />
-                    Receitas Totais
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-600">
-                    €{totalRevenue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                    <span className="text-xs text-green-600 font-medium">+12.5% vs ano anterior</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-red-50 to-white dark:from-red-950/20 dark:to-gray-900 border-t-4 border-t-red-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <ArrowUpCircle className="h-4 w-4 text-red-600" />
-                    Despesas Totais
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-red-600">
-                    €{totalExpenses.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingDown className="h-4 w-4 text-red-600" />
-                    <span className="text-xs text-red-600 font-medium">-5.2% vs mês anterior</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900 border-t-4 border-t-blue-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-blue-600" />
-                    Lucro Líquido
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">
-                    €{netProfit.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
-                    <span className="text-xs text-blue-600 font-medium">
-                      Margem: {profitMargin.toFixed(1)}%
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
+              <KpiCard
+                icon={ArrowDownCircle}
+                label="Receitas do mês"
+                value={formatCurrency(metrics.revThis)}
+                delta={formatDelta(metrics.revDelta) ?? undefined}
+                tone="emerald"
+              />
+              <KpiCard
+                icon={ArrowUpCircle}
+                label="Despesas do mês"
+                value={formatCurrency(metrics.expThis)}
+                delta={metrics.expDelta === null ? undefined : {
+                  value: `${metrics.expDelta >= 0 ? '+' : ''}${metrics.expDelta.toFixed(1)}% vs mês anterior`,
+                  positive: metrics.expDelta <= 0
+                }}
+                tone="red"
+              />
+              <KpiCard
+                icon={DollarSign}
+                label="Lucro líquido do mês"
+                value={formatCurrency(metrics.netThis)}
+                delta={{ value: `Margem: ${metrics.marginThis.toFixed(1)}%`, positive: metrics.netThis >= 0 }}
+                tone="blue"
+              />
+              <KpiCard
+                icon={Calendar}
+                label="Prazos fiscais"
+                value={deadlinesSoon.length}
+                tone="amber"
+                sub="Próximos 60 dias"
+              />
             </div>
 
-            {/* Dashboard de Fluxo de Caixa */}
             <CashFlowDashboard payments={paymentsData} expenses={expenses} />
           </TabsContent>
 
-          {/* 💰 Transações */}
+          {/* Transações */}
           <TabsContent value="transactions" className="space-y-6 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ArrowLeftRight className="h-5 w-5" />
-                  Gestão de Transações
-                </CardTitle>
-                <CardDescription>
-                  Adicione e gerencie suas receitas e despesas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={transactionTab} onValueChange={setTransactionTab} className="w-full">
-                  <TabsList className="grid w-full max-w-md grid-cols-2">
-                    <TabsTrigger value="income" className="gap-2">
-                      <ArrowDownCircle className="h-4 w-4" />
-                      Receitas
-                    </TabsTrigger>
-                    <TabsTrigger value="expenses" className="gap-2">
-                      <ArrowUpCircle className="h-4 w-4" />
-                      Despesas
-                    </TabsTrigger>
-                  </TabsList>
+            <Tabs value={transactionTab} onValueChange={setTransactionTab} className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="income" className="gap-2">
+                  <ArrowDownCircle className="h-4 w-4" />
+                  Receitas
+                </TabsTrigger>
+                <TabsTrigger value="expenses" className="gap-2">
+                  <ArrowUpCircle className="h-4 w-4" />
+                  Despesas
+                </TabsTrigger>
+              </TabsList>
 
-                  <TabsContent value="income" className="mt-4">
-                    {isLoading ? (
-                      <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3f9094]"></div>
-                        <span className="ml-2">Carregando receitas...</span>
-                      </div>
-                    ) : error ? (
-                      <div className="flex flex-col items-center justify-center h-64 text-center">
-                        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-                        <p className="text-red-500 font-medium mb-2">Erro ao carregar dados financeiros</p>
-                        <p className="text-gray-600 mb-4">{error}</p>
-                        <Button onClick={fetchPayments} variant="outline">
-                          Tentar Novamente
-                        </Button>
-                      </div>
-                    ) : payments.length === 0 ? (
-                      <EmptyFinanceState />
-                    ) : (
-                      <FinancialReport initialPayments={payments} />
-                    )}
-                  </TabsContent>
+              <TabsContent value="income" className="mt-4">
+                {isLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : error ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                    <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                    <p className="text-red-500 font-medium mb-2">Erro ao carregar dados financeiros</p>
+                    <p className="text-muted-foreground mb-4">{error.message}</p>
+                    <Button onClick={fetchPayments} variant="outline">
+                      Tentar Novamente
+                    </Button>
+                  </div>
+                ) : paymentsData.length === 0 ? (
+                  <EmptyFinanceState />
+                ) : (
+                  <FinancialReport initialPayments={paymentsData} />
+                )}
+              </TabsContent>
 
-                  <TabsContent value="expenses" className="mt-4">
-                    <ExpenseManager onExpenseChange={refreshExpenses} />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+              <TabsContent value="expenses" className="mt-4">
+                <ExpenseManager onExpenseChange={refreshExpenses} />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
-          {/* 🏦 Empréstimos */}
+          {/* Empréstimos */}
           <TabsContent value="loans" className="space-y-6 mt-6">
             <LoanTracker expenses={expenses} />
           </TabsContent>
 
-          {/* 📊 Análises */}
+          {/* Análises */}
           <TabsContent value="analysis" className="space-y-6 mt-6">
             <Tabs value={analysisTab} onValueChange={setAnalysisTab} className="w-full">
               <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -391,7 +368,7 @@ const FinancesPage = () => {
             </Tabs>
           </TabsContent>
 
-          {/* 🧾 Impostos e Relatórios */}
+          {/* Impostos e Relatórios */}
           <TabsContent value="taxes" className="space-y-6 mt-6">
             <Tabs value={taxTab} onValueChange={setTaxTab} className="w-full">
               <TabsList className="grid w-full max-w-2xl grid-cols-3">
@@ -423,14 +400,16 @@ const FinancesPage = () => {
             </Tabs>
           </TabsContent>
 
-          {/* 🧮 Ferramentas */}
+          {/* Ferramentas */}
           <TabsContent value="tools" className="space-y-6 mt-6">
             <div className="grid gap-6">
-              <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-gray-900">
+              <Card>
                 <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-amber-600" />
-                    <CardTitle>Calculadora Inteligente de Impostos</CardTitle>
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-base font-semibold">Calculadora Inteligente de Impostos</CardTitle>
                     <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 border-0">
                       NOVO
                     </Badge>

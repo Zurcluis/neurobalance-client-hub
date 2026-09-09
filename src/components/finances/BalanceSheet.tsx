@@ -142,7 +142,7 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({ payments, expenses }
 
       {viewType === 'quarterly' ? (
         <>
-          <Card className="bg-gradient-to-br from-white to-blue-50 border-l-4 border-l-blue-500">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -181,7 +181,7 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({ payments, expenses }
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {quarterlyData.quarters.map((quarter, idx) => (
-              <Card key={idx} className="bg-gradient-to-br from-white to-gray-50">
+              <Card key={idx}>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
@@ -233,7 +233,7 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({ payments, expenses }
             ))}
           </div>
 
-          <Card className="bg-gradient-to-br from-white to-gray-50">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
@@ -276,7 +276,7 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({ payments, expenses }
         </>
       ) : (
         <>
-          <Card className="bg-gradient-to-br from-white to-gray-50">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -333,7 +333,7 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({ payments, expenses }
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             {yearlyComparison.map((yearData, idx) => (
-              <Card key={idx} className="bg-gradient-to-br from-white to-blue-50">
+              <Card key={idx}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg text-center">{yearData.year}</CardTitle>
                 </CardHeader>

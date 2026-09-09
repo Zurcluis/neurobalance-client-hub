@@ -1,8 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
+import PageHeader from '@/components/shared/PageHeader';
+import QuickCard from '@/components/shared/QuickCard';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { SkeletonCard } from '@/components/shared/SkeletonCard';
 import { useAdminContext } from '@/contexts/AdminContext';
 import ClientCard from '@/components/clients/ClientCard';
+import ClientsOverview from '@/components/clients/ClientsOverview';
+import ClientNotificationsPanel from '@/components/clients/ClientNotificationsPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -11,18 +17,18 @@ import ClientImport from '@/components/clients/ClientImport';
 import ConvertLeadDialog, { ConvertedClientData } from '@/components/clients/ConvertLeadDialog';
 import LeadsReadyForConversion from '@/components/clients/LeadsReadyForConversion';
 import ClientsLeadsTab from '@/components/clients/ClientsLeadsTab';
-import { 
-  Plus, Search, Upload, X, ChevronDown, ChevronUp, Download, 
-  Users, TrendingUp, BarChart3, Target, PieChart, Key, MessageSquare,
-  AlertCircle, Clock, SlidersHorizontal, Bell, BellOff, AlertTriangle, CheckCircle, Trash2
+import {
+  Plus, Search, Upload, X, Download,
+  Users, BarChart3, Target, Key, MessageSquare,
+  AlertCircle, Clock, SlidersHorizontal, Bell,
 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useClients from '@/hooks/useClients';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
+import useAppointments from '@/hooks/useAppointments';
+import usePayments from '@/hooks/usePayments';
 import { LandingLead } from '@/types/landing-lead';
 import { LeadCompra } from '@/types/lead-compra';
 import { Database } from '@/integrations/supabase/types';
@@ -31,14 +37,11 @@ import { ptBR } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import useAppointments from '@/hooks/useAppointments';
-import usePayments from '@/hooks/usePayments';
 import ClientTokenManager from '@/components/admin/ClientTokenManager';
 import AdminChatPanel from '@/components/admin/AdminChatPanel';
+import { STATUS_META, CHART } from '@/utils/chartUtils';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 type DatePeriod = 'all' | 'month' | 'quarter' | 'halfyear' | 'year' | 'custom';
@@ -48,29 +51,18 @@ interface DateRange {
   to: Date | undefined;
 }
 
-interface GlobalNotification {
-  id: string;
-  clientId: number;
-  clientName: string;
-  type: 'pack_exhausted' | 'pack_ending' | 'treatment_ending' | 'treatment_finished';
-  title: string;
-  message: string;
-  severity: 'danger' | 'warning' | 'info';
-}
-
 const ClientsPage = () => {
-  const { session } = useAdminAuth();
-  const isPartner = session?.role === 'partner';
+  const isPartner = useAdminAuth().session?.role === 'partner';
   const { isAdminContext } = useAdminContext();
   const navigate = useNavigate();
-  const { 
-    clients, 
-    isLoading, 
-    addClient, 
-    deleteClient, 
-    searchClients 
+  const {
+    clients,
+    isLoading,
+    addClient,
+    deleteClient,
+    searchClients
   } = useClients();
-  
+
   const { appointments } = useAppointments();
   const { payments } = usePayments();
 
@@ -78,40 +70,36 @@ const ClientsPage = () => {
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [datePeriod, setDatePeriod] = useState<DatePeriod>('all');
-  const [dateRange, setDateRange] = useState<DateRange>({ 
-    from: undefined, 
-    to: undefined 
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: undefined,
+    to: undefined
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedGender, setSelectedGender] = useState<string>('all');
   const [ageRange, setAgeRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name');
-  const [activeTab, setActiveTab] = useState<string>('clients');
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [clientView, setClientView] = useState<'all' | 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu'>('all');
-  
+
   // Estado para conversão de leads
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LandingLead | LeadCompra | null>(null);
   const [selectedLeadType, setSelectedLeadType] = useState<'landing' | 'compra'>('landing');
   const [isConverting, setIsConverting] = useState(false);
-  
+
   // Hook para atualizar status de landing leads após conversão
   const { updateLeadStatus } = useLandingLeads();
-  
-  // Estados para controlar cards colapsáveis
-  const [isAlertsExpanded, setIsAlertsExpanded] = useState(true);
 
   // Filtros avançados
   const filteredAndSortedClients = useMemo(() => {
     let filtered = clients;
-    
+
     // Filtro por texto
     if (searchQuery) {
       filtered = searchClients(searchQuery);
     }
-    
+
     // Filtro por período
     if (datePeriod !== 'all') {
     let fromDate: Date | undefined;
@@ -139,30 +127,25 @@ const ClientsPage = () => {
       filtered = filtered.filter(client => {
       const clientDate = client.criado_em ? parseISO(client.criado_em) : null;
         if (!clientDate) return true;
-      
+
       const isAfterFrom = fromDate ? isAfter(clientDate, fromDate) : true;
       const isBeforeTo = isValid(toDate) ? isBefore(clientDate, toDate) : true;
-      
+
       return isAfterFrom && isBeforeTo;
     });
     }
-    
-    // Filtro por status
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(client => client.estado === selectedStatus);
-    }
-    
+
     // Filtro por gênero
     if (selectedGender !== 'all') {
       filtered = filtered.filter(client => client.genero === selectedGender);
     }
-    
+
     // Filtro por idade
     if (ageRange !== 'all') {
       filtered = filtered.filter(client => {
         if (!client.data_nascimento) return false;
         const age = differenceInYears(new Date(), parseISO(client.data_nascimento));
-        
+
         switch (ageRange) {
           case '18-25':
             return age >= 18 && age <= 25;
@@ -179,7 +162,7 @@ const ClientsPage = () => {
         }
       });
     }
-    
+
     // Ordenação
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
@@ -204,9 +187,9 @@ const ClientsPage = () => {
           return 0;
       }
     });
-    
+
     return sorted;
-  }, [clients, searchQuery, datePeriod, dateRange, selectedStatus, selectedGender, ageRange, sortBy, searchClients, appointments, payments]);
+  }, [clients, searchQuery, datePeriod, dateRange, selectedGender, ageRange, sortBy, searchClients, appointments, payments]);
 
   // Analytics dos clientes
   const clientAnalytics = useMemo(() => {
@@ -218,68 +201,60 @@ const ClientsPage = () => {
       const oneMonthAgo = subMonths(new Date(), 1);
       return clientDate >= oneMonthAgo;
     }).length;
-    
+
     // Distribuição por gênero
     const genderDistribution = filteredAndSortedClients.reduce((acc, client) => {
       const gender = client.genero || 'Não especificado';
       acc[gender] = (acc[gender] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+
     // Distribuição por idade
     const ageDistribution = filteredAndSortedClients.reduce((acc, client) => {
       if (!client.data_nascimento) {
         acc['Não especificado'] = (acc['Não especificado'] || 0) + 1;
         return acc;
       }
-      
+
       const age = differenceInYears(new Date(), parseISO(client.data_nascimento));
       let ageGroup = 'Não especificado';
-      
+
       if (age >= 18 && age <= 25) ageGroup = '18-25';
       else if (age >= 26 && age <= 35) ageGroup = '26-35';
       else if (age >= 36 && age <= 45) ageGroup = '36-45';
       else if (age >= 46 && age <= 60) ageGroup = '46-60';
       else if (age > 60) ageGroup = '60+';
-      
+
       acc[ageGroup] = (acc[ageGroup] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+
     // Distribuição por status
-    const statusDistribution = filteredAndSortedClients.reduce((acc, client) => {
+    const statusCount = filteredAndSortedClients.reduce((acc, client) => {
       const status = client.estado || 'ongoing';
-      const statusLabels = {
-        ongoing: 'Em Andamento',
-        thinking: 'Pensando',
-        'no-need': 'Sem Necessidade',
-        finished: 'Finalizado',
-        call: 'Ligar'
-      };
-      const label = statusLabels[status as keyof typeof statusLabels] || status;
-      acc[label] = (acc[label] || 0) + 1;
+      acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+
     // Evolução mensal
     const monthlyEvolution = [];
     for (let i = 5; i >= 0; i--) {
       const month = subMonths(new Date(), i);
       const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
       const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-      
+
       const monthClients = clients.filter(client => {
         if (!client.criado_em) return false;
         const clientDate = parseISO(client.criado_em);
         return clientDate >= monthStart && clientDate <= monthEnd;
       }).length;
-      
+
       monthlyEvolution.push({
-        month: format(month, 'MMM', { locale: ptBR }),
+        month: format(month, 'MMM', { locale: ptBR }).replace('.', ''),
         clientes: monthClients
       });
     }
-    
+
     // Top clientes por receita
     const topClientsByRevenue = filteredAndSortedClients.map(client => {
       const clientRevenue = payments.filter(pay => pay.id_cliente === client.id).reduce((sum, pay) => sum + (pay.valor || 0), 0);
@@ -310,7 +285,7 @@ const ClientsPage = () => {
       const sevenDaysLater = addDays(today, 7);
       return isAfter(aptDate, today) && isBefore(aptDate, sevenDaysLater);
     }).length;
-    
+
     return {
       total,
       activeClients,
@@ -318,7 +293,12 @@ const ClientsPage = () => {
       conversionRate: total > 0 ? (activeClients / total) * 100 : 0,
       genderDistribution: Object.entries(genderDistribution).map(([name, value]) => ({ name, value })),
       ageDistribution: Object.entries(ageDistribution).map(([name, value]) => ({ name, value })),
-      statusDistribution: Object.entries(statusDistribution).map(([name, value]) => ({ name, value })),
+      statusDistribution: Object.entries(statusCount).map(([key, value]) => ({
+        key,
+        label: STATUS_META[key]?.label || key,
+        value,
+        color: STATUS_META[key]?.color || CHART.primary,
+      })),
       monthlyEvolution,
       topClientsByRevenue,
       clientsNeedingAttention,
@@ -334,166 +314,6 @@ const ClientsPage = () => {
     finished: filteredAndSortedClients.filter(client => client.estado === 'finished'),
     desistiu: filteredAndSortedClients.filter(client => client.estado === 'desistiu'),
   }), [filteredAndSortedClients]);
-
-  // Cálculo de todas as notificações de todos os clientes
-  const allNotifications = useMemo(() => {
-    const list: GlobalNotification[] = [];
-    if (!clients || !payments || !appointments) return list;
-
-    clients.forEach(client => {
-      // 1. Sessões realizadas
-      const now = new Date();
-      const countRealized = appointments.filter(app =>
-        app.id_cliente === client.id &&
-        (app.estado === 'realizado' || (app.estado !== 'cancelado' && isAfter(now, parseISO(app.data))))
-      ).length;
-
-      // 2. Packs mensais
-      const clientPayments = payments.filter(p => p.id_cliente === client.id);
-      const monthlyPayments = clientPayments.filter(p =>
-        p.descricao?.toLowerCase().includes('pack') ||
-        p.descricao?.toLowerCase().includes('mensal')
-      );
-
-      if (monthlyPayments.length > 0) {
-        const totalPackSessions = monthlyPayments.length * 8;
-        
-        if (countRealized >= totalPackSessions) {
-          list.push({
-            id: `pack_exhausted_${client.id}_${totalPackSessions}`,
-            clientId: client.id,
-            clientName: client.nome,
-            type: 'pack_exhausted',
-            title: 'Pack Esgotado',
-            message: `${client.nome} já realizou ${countRealized} sessões (Limite do pack: ${totalPackSessions}). A próxima sessão será fora do pack.`,
-            severity: 'danger'
-          });
-        } else if (totalPackSessions - countRealized <= 2) {
-          list.push({
-            id: `pack_ending_${client.id}_${totalPackSessions}`,
-            clientId: client.id,
-            clientName: client.nome,
-            type: 'pack_ending',
-            title: 'Pack a Terminar',
-            message: `${client.nome} tem apenas ${totalPackSessions - countRealized} sessões restantes no pack (realizou ${countRealized} de ${totalPackSessions}).`,
-            severity: 'warning'
-          });
-        }
-      }
-
-      // 3. Fim do tratamento
-      if (client.max_sessoes && client.max_sessoes > 0) {
-        const remaining = client.max_sessoes - countRealized;
-        if (remaining > 0 && remaining <= 5) {
-          list.push({
-            id: `treatment_ending_${client.id}_${client.max_sessoes}`,
-            clientId: client.id,
-            clientName: client.nome,
-            type: 'treatment_ending',
-            title: 'Tratamento a Terminar',
-            message: `${client.nome} tem apenas ${remaining} sessões restantes no plano de tratamento (${countRealized}/${client.max_sessoes} realizadas).`,
-            severity: 'warning'
-          });
-        } else if (remaining <= 0) {
-          list.push({
-            id: `treatment_finished_${client.id}_${client.max_sessoes}`,
-            clientId: client.id,
-            clientName: client.nome,
-            type: 'treatment_finished',
-            title: 'Tratamento Concluído',
-            message: `O plano de tratamento indicado de ${client.max_sessoes} sessões para ${client.nome} foi concluído (${countRealized} sessões realizadas).`,
-            severity: 'info'
-          });
-        }
-      }
-    });
-
-    return list;
-  }, [clients, payments, appointments]);
-
-  // Estados para gerir eliminação e seleção de notificações
-  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('dismissed_notifications');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch (e) {
-      return new Set();
-    }
-  });
-
-  const [selectedNotificationIds, setSelectedNotificationIds] = useState<Set<string>>(new Set());
-
-  // Guardar notificações eliminadas no localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('dismissed_notifications', JSON.stringify(Array.from(dismissedNotificationIds)));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [dismissedNotificationIds]);
-
-  // Lista filtrada das notificações ativas
-  const visibleNotifications = useMemo(() => {
-    return allNotifications.filter(n => !dismissedNotificationIds.has(n.id));
-  }, [allNotifications, dismissedNotificationIds]);
-
-  // Handlers para gerir eliminação e seleção
-  const handleDismissNotification = (id: string) => {
-    setDismissedNotificationIds(prev => new Set([...prev, id]));
-    setSelectedNotificationIds(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    toast.success('Notificação eliminada');
-  };
-
-  const handleToggleSelectNotification = (id: string) => {
-    setSelectedNotificationIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const handleToggleSelectAllNotifications = () => {
-    if (selectedNotificationIds.size === visibleNotifications.length && visibleNotifications.length > 0) {
-      setSelectedNotificationIds(new Set());
-    } else {
-      setSelectedNotificationIds(new Set(visibleNotifications.map(n => n.id)));
-    }
-  };
-
-  const handleDeleteSelectedNotifications = () => {
-    if (selectedNotificationIds.size === 0) return;
-    const count = selectedNotificationIds.size;
-    setDismissedNotificationIds(prev => new Set([...prev, ...Array.from(selectedNotificationIds)]));
-    setSelectedNotificationIds(new Set());
-    toast.success(`${count} notificação(ões) eliminada(s) com sucesso`);
-  };
-
-  const handleDeleteAllNotifications = () => {
-    if (visibleNotifications.length === 0) return;
-    const allIds = visibleNotifications.map(n => n.id);
-    setDismissedNotificationIds(prev => new Set([...prev, ...allIds]));
-    setSelectedNotificationIds(new Set());
-    toast.success('Todas as notificações foram eliminadas');
-  };
-
-  const handleRestoreDismissedNotifications = () => {
-    setDismissedNotificationIds(new Set());
-    setSelectedNotificationIds(new Set());
-    try {
-      localStorage.removeItem('dismissed_notifications');
-    } catch (e) {
-      console.error(e);
-    }
-    toast.success('Notificações restauradas');
-  };
 
   const handleAddClient = async (data: ClientFormData) => {
     try {
@@ -645,17 +465,17 @@ const ClientsPage = () => {
       analytics: clientAnalytics,
       dataExportacao: new Date().toISOString()
     };
-    
+
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
+
     const exportFileDefaultName = `clientes-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    
+
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
-    
+
     toast.success('Dados exportados com sucesso!');
   };
 
@@ -663,22 +483,20 @@ const ClientsPage = () => {
     setSearchQuery('');
     setDatePeriod('all');
     setDateRange({ from: undefined, to: undefined });
-    setSelectedStatus('all');
     setSelectedGender('all');
     setAgeRange('all');
     setSortBy('name');
   };
 
-  const hasActiveFilters = searchQuery || selectedStatus !== 'all' || selectedGender !== 'all' || ageRange !== 'all' || datePeriod !== 'all';
+  const hasActiveFilters = searchQuery !== '' || selectedGender !== 'all' || ageRange !== 'all' || datePeriod !== 'all';
 
   if (isLoading) {
     const loadingContent = (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3f9094] mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold mb-2">Carregando clientes...</h2>
-          <p className="text-gray-500">Aguarde enquanto buscamos seus clientes</p>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
         </div>
+        <SkeletonCard />
       </div>
     );
 
@@ -691,16 +509,12 @@ const ClientsPage = () => {
 
   const pageContent = (
     <div className="space-y-6">
-        {/* Header com ações rápidas */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent">
-              Gestão de Clientes
-            </h1>
-            <p className="text-gray-600 mt-1">Controle completo dos seus clientes e suas jornadas</p>
-          </div>
-          
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="Gestão de Clientes"
+        description="Controle completo dos seus clientes e suas jornadas"
+        icon={<Users className="h-5 w-5" />}
+        actions={
+          <>
             {!isPartner && (
               <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImportDialogOpen(true)}>
                 <Upload className="h-4 w-4" />
@@ -712,696 +526,260 @@ const ClientsPage = () => {
               Exportar
             </Button>
             {!isPartner && (
-              <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsAddClientOpen(true)}>
+              <Button size="sm" className="gap-2" onClick={() => setIsAddClientOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Novo Cliente
               </Button>
             )}
-          </div>
-        </div>
+          </>
+        }
+      />
 
-      {/* Alertas em Destaque - Colapsável */}
+      {/* Alertas */}
       {(clientAnalytics.clientsNeedingAttention > 0 || clientAnalytics.upcomingSessions > 0) && (
-        <Collapsible open={isAlertsExpanded} onOpenChange={setIsAlertsExpanded}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <AlertCircle className="h-4 w-4 text-orange-500" />
-              <span className="font-medium">Alertas e Notificações</span>
-              {!isAlertsExpanded && (
-                <Badge variant="secondary" className="text-xs">
-                  {clientAnalytics.clientsNeedingAttention + clientAnalytics.upcomingSessions} pendentes
-                </Badge>
-              )}
-            </div>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                {isAlertsExpanded ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-          <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {clientAnalytics.clientsNeedingAttention > 0 && (
-                <Card className="border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-orange-500" />
-                      <CardTitle className="text-lg">Clientes Precisam de Atenção</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-orange-600">
-                          {clientAnalytics.clientsNeedingAttention}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Clientes "Pensando" há mais de 7 dias
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        setSelectedStatus('thinking');
-                        setActiveTab('clients');
-                      }}>
-                        Ver Clientes
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {clientAnalytics.clientsNeedingAttention > 0 && (
+            <QuickCard
+              icon={<AlertCircle className="h-5 w-5" />}
+              tint="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              title="Clientes por Atenção"
+              description={`${clientAnalytics.clientsNeedingAttention} ${clientAnalytics.clientsNeedingAttention === 1 ? 'cliente' : 'clientes'} "Pensando" há mais de 7 dias`}
+              actionLabel="Ver clientes"
+              onAction={() => {
+                setClientView('thinking');
+                setActiveTab('clients');
+              }}
+            />
+          )}
 
-              {clientAnalytics.upcomingSessions > 0 && (
-                <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-blue-500" />
-                      <CardTitle className="text-lg">Próximas Sessões</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-blue-600">
-                          {clientAnalytics.upcomingSessions}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Agendamentos nos próximos 7 dias
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => window.location.href = '/calendar'}>
-                        Ver Calendário
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+          {clientAnalytics.upcomingSessions > 0 && (
+            <QuickCard
+              icon={<Clock className="h-5 w-5" />}
+              tint="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              title="Próximas Sessões"
+              description={`${clientAnalytics.upcomingSessions} ${clientAnalytics.upcomingSessions === 1 ? 'agendamento' : 'agendamentos'} nos próximos 7 dias`}
+              actionLabel="Ver calendário"
+              onAction={() => navigate('/calendar')}
+            />
+          )}
+        </div>
       )}
 
-        {/* Leads Prontas para Conversão */}
-        {!isPartner && <LeadsReadyForConversion onConvertLead={handleOpenConvertDialog} />}
+      {/* Leads Prontas para Conversão */}
+      {!isPartner && <LeadsReadyForConversion onConvertLead={handleOpenConvertDialog} />}
 
-        {/* Tabs Principais - Reorganizadas */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto md:h-10">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Visão Geral</span>
-            </TabsTrigger>
-            <TabsTrigger value="clients" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Clientes</span>
-            </TabsTrigger>
-            <TabsTrigger value="leads" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">Leads</span>
-            </TabsTrigger>
-            <TabsTrigger value="tokens" className="flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              <span className="hidden sm:inline">Tokens</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Chat</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2 relative">
-              <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">Notificações</span>
-              {visibleNotifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white animate-pulse">
-                  {visibleNotifications.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
+      {/* Tabs Principais */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex w-full justify-start overflow-x-auto scrollbar-hide">
+          <TabsTrigger value="overview" className="shrink-0 gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Geral
+          </TabsTrigger>
+          <TabsTrigger value="clients" className="shrink-0 gap-2">
+            <Users className="h-4 w-4" />
+            Clientes
+          </TabsTrigger>
+          <TabsTrigger value="leads" className="shrink-0 gap-2">
+            <Target className="h-4 w-4" />
+            Leads
+          </TabsTrigger>
+          <TabsTrigger value="tokens" className="shrink-0 gap-2">
+            <Key className="h-4 w-4" />
+            Tokens
+          </TabsTrigger>
+          <TabsTrigger value="chat" className="shrink-0 gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Chat
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="relative shrink-0 gap-2">
+            <Bell className="h-4 w-4" />
+            Avisos
+          </TabsTrigger>
+        </TabsList>
 
-          {/* 📊 Visão Geral */}
-          <TabsContent value="overview" className="space-y-6 mt-6">
-            {/* Cards de Resumo - Maiores e Mais Visuais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-gray-900 border-t-4 border-t-green-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <Users className="h-4 w-4 text-green-600" />
-                    Total de Clientes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-600">
-                    {clientAnalytics.total}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {clientAnalytics.activeClients} ativos
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Visão Geral */}
+        <TabsContent value="overview" className="mt-6">
+          <ClientsOverview analytics={clientAnalytics} />
+        </TabsContent>
 
-              <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900 border-t-4 border-t-blue-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
-                    Novos este Mês
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">
-                    {clientAnalytics.newClientsThisMonth}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
-                    <span className="text-xs text-blue-600 font-medium">
-                      +{((clientAnalytics.newClientsThisMonth / (clientAnalytics.total || 1)) * 100).toFixed(1)}% do total
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-gray-900 border-t-4 border-t-purple-500">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <Target className="h-4 w-4 text-purple-600" />
-                    Taxa de Conversão
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-purple-600">
-                    {clientAnalytics.conversionRate.toFixed(1)}%
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Badge variant="secondary" className="text-xs">
-                      Clientes ativos
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-            </div>
-
-            {/* Gráficos Analytics */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChart className="h-5 w-5" />
-                    Distribuição por Status
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <Pie
-                          data={clientAnalytics.statusDistribution}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {clientAnalytics.statusDistribution.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#E6ECEA'][index % 5]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Distribuição por Gênero
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={clientAnalytics.genderDistribution}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis dataKey="name" fontSize={12} />
-                        <YAxis fontSize={12} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#3f9094" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Evolução Mensal
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={clientAnalytics.monthlyEvolution}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis dataKey="month" fontSize={12} />
-                        <YAxis fontSize={12} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="clientes" stroke="#3f9094" strokeWidth={3} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Distribuição por Idade
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={clientAnalytics.ageDistribution}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis dataKey="name" fontSize={12} />
-                        <YAxis fontSize={12} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#5DA399" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-      
-            {/* Top Clientes */}
-            <Card className="bg-gradient-to-br from-white to-[#E6ECEA]/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Top 10 Clientes por Receita
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {clientAnalytics.topClientsByRevenue.map((client, index) => (
-                    <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-[#3f9094] to-[#5DA399] rounded-full flex items-center justify-center text-white font-bold text-sm">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium">{client.nome}</p>
-                          <p className="text-sm text-gray-600">{client.sessions} sessões</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-[#3f9094]">€{client.revenue.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500">
-                          €{client.sessions > 0 ? (client.revenue / client.sessions).toFixed(2) : '0.00'}/sessão
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+        {/* Clientes */}
+        <TabsContent value="clients" className="mt-6 space-y-6">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div>
+                  <CardTitle className="text-base font-semibold">Lista de Clientes</CardTitle>
+                  <CardDescription className="mt-1">
+                    Gerencie e visualize todos os seus clientes
+                  </CardDescription>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* 👥 Clientes */}
-          <TabsContent value="clients" className="space-y-6 mt-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Lista de Clientes
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      Gerencie e visualize todos os seus clientes
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <SlidersHorizontal className="h-4 w-4" />
-                          Filtros
-                          {hasActiveFilters && (
-                            <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full">
-                              !
-                            </Badge>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80">
-                        <div className="space-y-4">
-                          <h4 className="font-medium leading-none">Filtros Avançados</h4>
-                          
-                          <div className="space-y-2">
-                            <Label>Status</Label>
-                            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todos os Status</SelectItem>
-                                <SelectItem value="ongoing">Em Andamento</SelectItem>
-                                <SelectItem value="thinking">Pensando</SelectItem>
-                                <SelectItem value="no-need">Sem Necessidade</SelectItem>
-                                <SelectItem value="finished">Finalizado</SelectItem>
-                                <SelectItem value="desistiu">Desistiu</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Gênero</Label>
-                            <Select value={selectedGender} onValueChange={setSelectedGender}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todos</SelectItem>
-                                <SelectItem value="masculino">Masculino</SelectItem>
-                                <SelectItem value="feminino">Feminino</SelectItem>
-                                <SelectItem value="outro">Outro</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Faixa Etária</Label>
-                            <Select value={ageRange} onValueChange={setAgeRange}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todas</SelectItem>
-                                <SelectItem value="18-25">18-25</SelectItem>
-                                <SelectItem value="26-35">26-35</SelectItem>
-                                <SelectItem value="36-45">36-45</SelectItem>
-                                <SelectItem value="46-60">46-60</SelectItem>
-                                <SelectItem value="60+">60+</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Ordenar por</Label>
-                            <Select value={sortBy} onValueChange={setSortBy}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="name">Nome</SelectItem>
-                                <SelectItem value="date">Data</SelectItem>
-                                <SelectItem value="sessions">Sessões</SelectItem>
-                                <SelectItem value="revenue">Receita</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Button variant="outline" size="sm" className="w-full" onClick={clearFilters}>
-                            <X className="h-4 w-4 mr-2" />
-                            Limpar Filtros
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* Busca */}
-                <div className="mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Pesquisar por nome, contacto, NIF ou ID..."
-                      className="pl-10"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Tabs por Status */}
-                <Tabs value={clientView} onValueChange={(v) => setClientView(v as typeof clientView)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-6">
-                    <TabsTrigger value="all">Todos ({clientsByStatus.all.length})</TabsTrigger>
-                    <TabsTrigger value="ongoing">Em Andamento ({clientsByStatus.ongoing.length})</TabsTrigger>
-                    <TabsTrigger value="thinking">Pensando ({clientsByStatus.thinking.length})</TabsTrigger>
-                    <TabsTrigger value="no-need">Sem Necessidade ({clientsByStatus['no-need'].length})</TabsTrigger>
-                    <TabsTrigger value="finished">Finalizado ({clientsByStatus.finished.length})</TabsTrigger>
-                    <TabsTrigger value="desistiu">Desistiu ({clientsByStatus.desistiu.length})</TabsTrigger>
-                  </TabsList>
-                  
-                  {Object.entries(clientsByStatus).map(([status, clientList]) => (
-                    <TabsContent key={status} value={status} className="mt-0">
-                      {clientList.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {clientList.map(client => (
-                            <ClientCard 
-                              key={client.id} 
-                              client={client} 
-                              onDelete={() => handleRequestDeleteClient(client)}
-                              statusClass={`client-${client.estado || 'ongoing'}`}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-12 bg-gradient-to-br from-white to-[#E6ECEA]/30 rounded-lg shadow-sm p-8">
-                          <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                          <h3 className="text-xl font-medium mb-2">Nenhum cliente encontrado</h3>
-                          <p className="text-gray-600 mb-6">
-                            {searchQuery || hasActiveFilters ? 
-                              'Tente ajustar seus filtros de pesquisa' : 
-                              status === 'all' ? 'Adicione seu primeiro cliente para começar' : 'Não há clientes com este status no momento'
-                            }
-                          </p>
-                          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            {status === 'all' && (
-                              <Button 
-                                className="bg-[#3f9094] hover:bg-[#2A5854]" 
-                                onClick={() => setIsAddClientOpen(true)}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Adicionar Novo Cliente
-                              </Button>
-                            )}
-                            {(searchQuery || hasActiveFilters) && (
-                              <Button 
-                                variant="outline" 
-                                onClick={clearFilters}
-                              >
-                                <X className="h-4 w-4 mr-2" />
-                                Limpar Filtros
-                              </Button>
-                            )}
-                          </div>
-                        </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-2 self-start sm:self-auto">
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Filtros
+                      {hasActiveFilters && (
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                          !
+                        </span>
                       )}
-                    </TabsContent>
-                  ))}
-                </Tabs>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="end">
+                    <div className="space-y-4">
+                      <h4 className="font-medium leading-none">Filtros Avançados</h4>
 
-          {/* 🔑 Tokens */}
-          <TabsContent value="tokens" className="space-y-6 mt-6">
-            <ClientTokenManager />
-          </TabsContent>
+                      <div className="space-y-2">
+                        <Label>Género</Label>
+                        <Select value={selectedGender} onValueChange={setSelectedGender}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            <SelectItem value="masculino">Masculino</SelectItem>
+                            <SelectItem value="feminino">Feminino</SelectItem>
+                            <SelectItem value="outro">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-          {/* 💬 Chat */}
-          <TabsContent value="chat" className="space-y-6 mt-6">
-            <AdminChatPanel />
-          </TabsContent>
+                      <div className="space-y-2">
+                        <Label>Faixa Etária</Label>
+                        <Select value={ageRange} onValueChange={setAgeRange}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas</SelectItem>
+                            <SelectItem value="18-25">18-25</SelectItem>
+                            <SelectItem value="26-35">26-35</SelectItem>
+                            <SelectItem value="36-45">36-45</SelectItem>
+                            <SelectItem value="46-60">46-60</SelectItem>
+                            <SelectItem value="60+">60+</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-          {/* 🎯 Leads */}
-          <TabsContent value="leads" className="space-y-6 mt-6">
-            <ClientsLeadsTab />
-          </TabsContent>
+                      <div className="space-y-2">
+                        <Label>Ordenar por</Label>
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="name">Nome</SelectItem>
+                            <SelectItem value="date">Data</SelectItem>
+                            <SelectItem value="sessions">Sessões</SelectItem>
+                            <SelectItem value="revenue">Receita</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-          {/* 🔔 Notificações Globais */}
-          <TabsContent value="notifications" className="space-y-6 mt-6">
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Bell className="h-5 w-5 text-[#3f9094]" />
-                      Painel Geral de Notificações
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      Alertas consolidados sobre todos os clientes (packs e plano de tratamento)
-                    </CardDescription>
-                  </div>
-
-                  {/* Botões de Ação Global */}
-                  {visibleNotifications.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
-                      {selectedNotificationIds.size > 0 && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="gap-1.5 bg-red-600 hover:bg-red-700 text-white"
-                          onClick={handleDeleteSelectedNotifications}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Eliminar Selecionadas ({selectedNotificationIds.size})
-                        </Button>
-                      )}
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                        onClick={handleDeleteAllNotifications}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Apagar Todas
+                      <Button variant="outline" size="sm" className="w-full" onClick={clearFilters}>
+                        <X className="mr-2 h-4 w-4" />
+                        Limpar Filtros
                       </Button>
                     </div>
-                  )}
-                </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Busca */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar por nome, contacto, NIF ou ID..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
 
-                {/* Sub-barra com Selecionar Todas */}
-                {visibleNotifications.length > 0 && (
-                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="select-all-notifs"
-                        checked={visibleNotifications.length > 0 && selectedNotificationIds.size === visibleNotifications.length}
-                        onCheckedChange={handleToggleSelectAllNotifications}
+              {/* Tabs por Status */}
+              <Tabs value={clientView} onValueChange={(v) => setClientView(v as typeof clientView)} className="w-full">
+                <TabsList className="mb-6 flex w-full justify-start overflow-x-auto scrollbar-hide">
+                  <TabsTrigger value="all" className="shrink-0 whitespace-nowrap">Todos ({clientsByStatus.all.length})</TabsTrigger>
+                  <TabsTrigger value="ongoing" className="shrink-0 whitespace-nowrap">Em Andamento ({clientsByStatus.ongoing.length})</TabsTrigger>
+                  <TabsTrigger value="thinking" className="shrink-0 whitespace-nowrap">Pensando ({clientsByStatus.thinking.length})</TabsTrigger>
+                  <TabsTrigger value="no-need" className="shrink-0 whitespace-nowrap">Sem Necessidade ({clientsByStatus['no-need'].length})</TabsTrigger>
+                  <TabsTrigger value="finished" className="shrink-0 whitespace-nowrap">Finalizado ({clientsByStatus.finished.length})</TabsTrigger>
+                  <TabsTrigger value="desistiu" className="shrink-0 whitespace-nowrap">Desistiu ({clientsByStatus.desistiu.length})</TabsTrigger>
+                </TabsList>
+
+                {Object.entries(clientsByStatus).map(([status, clientList]) => (
+                  <TabsContent key={status} value={status} className="mt-0">
+                    {clientList.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {clientList.map(client => (
+                          <ClientCard
+                            key={client.id}
+                            client={client}
+                            onDelete={() => handleRequestDeleteClient(client)}
+                            statusClass={`client-${client.estado || 'ongoing'}`}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={<Users className="h-12 w-12" />}
+                        title="Nenhum cliente encontrado"
+                        description={
+                          searchQuery || hasActiveFilters
+                            ? 'Tente ajustar os seus filtros de pesquisa'
+                            : status === 'all'
+                              ? 'Adicione o seu primeiro cliente para começar'
+                              : 'Não há clientes com este estado neste momento'
+                        }
+                        action={
+                          status === 'all' && !isPartner
+                            ? {
+                                label: 'Adicionar Novo Cliente',
+                                onClick: () => setIsAddClientOpen(true),
+                                icon: <Plus className="h-4 w-4" />
+                              }
+                            : undefined
+                        }
+                        secondaryAction={
+                          (searchQuery || hasActiveFilters)
+                            ? {
+                                label: 'Limpar Filtros',
+                                onClick: clearFilters,
+                                icon: <X className="h-4 w-4" />
+                              }
+                            : undefined
+                        }
                       />
-                      <label htmlFor="select-all-notifs" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
-                        Selecionar Todas ({visibleNotifications.length})
-                      </label>
-                      {selectedNotificationIds.size > 0 && (
-                        <Badge variant="secondary" className="bg-[#3f9094]/10 text-[#3f9094] ml-2">
-                          {selectedNotificationIds.size} selecionada(s)
-                        </Badge>
-                      )}
-                    </div>
-
-                    {dismissedNotificationIds.size > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-gray-500 hover:text-[#3f9094]"
-                        onClick={handleRestoreDismissedNotifications}
-                      >
-                        Restaurar Eliminadas ({dismissedNotificationIds.size})
-                      </Button>
                     )}
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                {visibleNotifications.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="p-3 rounded-full bg-green-50 text-green-500 mb-3 w-14 h-14 flex items-center justify-center mx-auto dark:bg-green-950/20">
-                      <BellOff className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-xl font-medium mb-1 dark:text-gray-200">Sem notificações ativas</h3>
-                    <p className="text-gray-500 text-sm max-w-sm mx-auto mb-4">
-                      Todas as notificações foram resolvidas ou eliminadas.
-                    </p>
-                    {dismissedNotificationIds.size > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
-                        onClick={handleRestoreDismissedNotifications}
-                      >
-                        Restaurar Notificações Eliminadas ({dismissedNotificationIds.size})
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {visibleNotifications.map(notif => {
-                      const isSelected = selectedNotificationIds.has(notif.id);
-                      return (
-                        <Card key={notif.id} className={`p-4 border-l-4 shadow-xs hover:shadow-md transition-all ${
-                          isSelected ? 'ring-2 ring-[#3f9094] bg-[#3f9094]/5' : ''
-                        } ${
-                          notif.severity === 'danger' ? 'bg-red-50/40 border-l-red-500 text-red-950 dark:bg-red-950/10 dark:text-red-200' :
-                          notif.severity === 'warning' ? 'bg-amber-50/40 border-l-amber-500 text-amber-950 dark:bg-amber-950/10 dark:text-amber-200' :
-                          'bg-blue-50/40 border-l-blue-500 text-blue-950 dark:bg-blue-950/10 dark:text-blue-200'
-                        }`}>
-                          <div className="flex justify-between items-start gap-4 flex-wrap sm:flex-nowrap">
-                            <div className="flex gap-3 items-start">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => handleToggleSelectNotification(notif.id)}
-                                className="mt-1"
-                              />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                              <div className="mt-0.5 flex-shrink-0">
-                                {notif.severity === 'danger' && <AlertTriangle className="h-5 w-5 text-red-500" />}
-                                {notif.severity === 'warning' && <AlertCircle className="h-5 w-5 text-amber-500" />}
-                                {notif.severity === 'info' && <CheckCircle className="h-5 w-5 text-blue-500" />}
-                              </div>
+        {/* Tokens */}
+        <TabsContent value="tokens" className="mt-6 space-y-6">
+          <ClientTokenManager />
+        </TabsContent>
 
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="font-semibold text-base text-gray-900 dark:text-white">{notif.title}</h4>
-                                  <Badge variant="outline" className="text-xs bg-white font-medium border-gray-200 text-gray-700">
-                                    {notif.clientName}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm mt-1.5 text-gray-700 dark:text-gray-300">{notif.message}</p>
-                              </div>
-                            </div>
+        {/* Chat */}
+        <TabsContent value="chat" className="mt-6 space-y-6">
+          <AdminChatPanel />
+        </TabsContent>
 
-                            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end mt-2 sm:mt-0">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="bg-white border-gray-200 hover:bg-gray-50 flex-shrink-0 text-xs"
-                                onClick={() => navigate(isAdminContext ? `/admin/clients/${notif.clientId}` : `/clients/${notif.clientId}`)}
-                              >
-                                <Users className="h-3.5 w-3.5 mr-1.5" />
-                                Ver Cliente
-                              </Button>
+        {/* Leads */}
+        <TabsContent value="leads" className="mt-6 space-y-6">
+          <ClientsLeadsTab />
+        </TabsContent>
 
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
-                                title="Eliminar notificação"
-                                onClick={() => handleDismissNotification(notif.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      
+        {/* Notificações Globais */}
+        <TabsContent value="notifications" className="mt-6">
+          <ClientNotificationsPanel clients={clients} appointments={appointments} payments={payments} />
+        </TabsContent>
+      </Tabs>
+
       {/* Dialogs */}
       <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
         <DialogContent className="sm:max-w-[600px]">
@@ -1462,4 +840,3 @@ const ClientsPage = () => {
 };
 
 export default ClientsPage;
-

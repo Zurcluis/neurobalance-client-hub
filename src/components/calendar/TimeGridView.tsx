@@ -1,27 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { format, isSameDay, addDays, subDays } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { parseLocalISO } from '@/utils/dateUtils';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '../ui/button';
+import { getEventColors } from '@/utils/eventColors';
 import { Appointment } from '@/hooks/useAppointments';
-
-const isLightColor = (hex: string): boolean => {
-  if (!hex || hex.length < 6) return false;
-  const c = hex.startsWith('#') ? hex.slice(1) : hex;
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  return yiq >= 128;
-};
 
 interface TimeGridViewProps {
   days: Date[];
   appointments: Appointment[];
   onTimeSlotClick: (date: Date) => void;
   onEventClick: (appointment: Appointment) => void;
-  onDateChange?: (date: Date) => void;
   isDailyView?: boolean;
   availabilities?: Record<number, any[]>;
   showAvailabilities?: boolean;
@@ -354,8 +342,6 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
   appointments,
   onTimeSlotClick,
   onEventClick,
-  onDateChange,
-  isDailyView = false,
   availabilities = {},
   showAvailabilities = false,
   holidays = [],
@@ -363,7 +349,6 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
 }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [currentDate, setCurrentDate] = useState(days[0]);
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -386,12 +371,6 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
 
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (days.length > 0) {
-      setCurrentDate(days[0]);
-    }
-  }, [days]);
 
   useEffect(() => {
     // Rolar por defeito para as 08:00
@@ -479,23 +458,6 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
     }
   };
 
-  const navigateDay = (direction: 'prev' | 'next') => {
-    const increment = isDailyView ? 1 : 7;
-    const newDate = direction === 'prev' ? subDays(currentDate, increment) : addDays(currentDate, increment);
-    setCurrentDate(newDate);
-    if (onDateChange) {
-      onDateChange(newDate);
-    }
-  };
-
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentDate(today);
-    if (onDateChange) {
-      onDateChange(today);
-    }
-  };
-
   const getCurrentTimePosition = () => {
     const now = currentTime;
     const hour = now.getHours();
@@ -514,45 +476,6 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
 
   return (
     <div className="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden h-full shadow-sm min-h-0">
-      {/* Navegação Secundária */}
-      {(isDailyView || days.length === 7) && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white shrink-0">
-          <div className="flex items-center space-x-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToToday}
-              className="rounded-full px-4 text-xs font-medium border-gray-300 hover:bg-gray-100 text-gray-700"
-            >
-              Hoje
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigateDay('prev')}
-              className="h-8 w-8 rounded-full hover:bg-gray-100"
-            >
-              <ChevronLeft className="h-4 w-4 text-gray-600" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigateDay('next')}
-              className="h-8 w-8 rounded-full hover:bg-gray-100"
-            >
-              <ChevronRight className="h-4 w-4 text-gray-600" />
-            </Button>
-          </div>
-          <div className="text-base font-medium text-gray-800">
-            {isDailyView
-              ? format(currentDate, "d 'de' MMMM 'de' yyyy", { locale: pt })
-              : `${format(days[0], "d 'de' MMM", { locale: pt })} – ${format(days[days.length - 1], "d 'de' MMM 'de' yyyy", { locale: pt })}`
-            }
-          </div>
-          <div className="w-24"></div>
-        </div>
-      )}
-
       {/* Header Fixo dos Dias & Eventos Todo o Dia */}
       {(() => {
         const allDayBars = getAllDayBars(appointments, days);
@@ -615,24 +538,29 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                   ))}
 
                   {/* Barras Contínuas de Eventos de Vários Dias */}
-                  {allDayBars.map(bar => (
-                    <div
-                      key={bar.id}
-                      onClick={(e) => { e.stopPropagation(); onEventClick(bar.appointment); }}
-                      className="absolute z-10 h-6 px-3 text-xs font-semibold text-white shadow-xs flex items-center justify-between cursor-pointer hover:opacity-90 transition-opacity rounded-md"
-                      style={{
-                        gridColumnStart: bar.startIndex + 2,
-                        gridColumnEnd: `span ${bar.span}`,
-                        top: `${3 + bar.rowIndex * 28}px`,
-                        left: '4px',
-                        right: '4px',
-                        backgroundColor: bar.cor || '#d93025'
-                      }}
-                      title={`${bar.titulo} (Todo o dia)`}
-                    >
-                      <span className="truncate">{bar.titulo}</span>
-                    </div>
-                  ))}
+                  {allDayBars.map(bar => {
+                    const barColors = getEventColors(bar.cor, bar.appointment.estado);
+                    return (
+                      <div
+                        key={bar.id}
+                        onClick={(e) => { e.stopPropagation(); onEventClick(bar.appointment); }}
+                        className="absolute z-10 h-6 px-3 text-xs font-medium shadow-xs flex items-center justify-between cursor-pointer hover:brightness-95 transition-all rounded-md"
+                        style={{
+                          gridColumnStart: bar.startIndex + 2,
+                          gridColumnEnd: `span ${bar.span}`,
+                          top: `${3 + bar.rowIndex * 28}px`,
+                          left: '4px',
+                          right: '4px',
+                          backgroundColor: barColors.backgroundColor,
+                          color: barColors.color,
+                          borderLeft: `3px solid ${barColors.statusColor}`
+                        }}
+                        title={`${bar.titulo} (Todo o dia)`}
+                      >
+                        <span className="truncate">{bar.titulo}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -719,7 +647,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                   );
                 })}
 
-                {/* Renderização dos Eventos (Estilo Imagem 2: Contentor em Fundo e Sub-eventos Sobrepostos) */}
+                {/* Renderização dos Eventos (fundo pálido + texto escuro, estilo Google) */}
                 {layoutAppts.map((item, idx) => {
                   const { appointment, startMinutes, endMinutes, timeRangeLabel, colIndex, maxCols, isContainer, isSubEvent, zIndex } = item;
                   const top = (startMinutes / 60) * HOUR_HEIGHT;
@@ -753,9 +681,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                     };
                   }
 
-                  const color = (appointment as any).cor || '#039be5';
-                  const isLight = isLightColor(color);
-                  const textColor = isLight ? '#111827' : '#ffffff';
+                  const colors = getEventColors((appointment as any).cor, appointment.estado);
                   const clientInfo = (appointment as any).clientes;
                   const displayTitle = clientInfo?.id_manual || clientInfo?.nome || appointment.titulo || 'Agendamento';
 
@@ -768,28 +694,29 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
                         e.stopPropagation();
                         onEventClick(appointment);
                       }}
-                      className={`absolute rounded-lg p-2 cursor-pointer shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-start select-none ${
-                        isSubEvent ? 'border-2 border-white ring-1 ring-black/10' : 'border border-black/10'
-                      }`}
+                      className={`absolute rounded-md p-1.5 pl-2 cursor-pointer hover:brightness-95 transition-all overflow-hidden flex flex-col justify-start select-none ${
+                        isSubEvent ? 'border border-white ring-1 ring-black/10' : ''
+                      } ${colors.isCancelled ? 'opacity-70' : ''}`}
                       style={{
                         top: `${top}px`,
                         height: `${height}px`,
-                        backgroundColor: color,
-                        color: textColor,
+                        backgroundColor: colors.backgroundColor,
+                        color: colors.color,
+                        borderLeft: `3px solid ${colors.statusColor}`,
                         ...leftStyle
                       }}
                       title={`${displayTitle} (${timeRangeLabel})`}
                     >
-                      <div className="font-bold text-xs truncate leading-tight">
+                      <div className={`text-xs truncate leading-tight ${colors.isCancelled ? 'line-through' : 'font-medium'}`}>
                         {displayTitle}
                       </div>
                       {height >= 34 && (
-                        <div className="text-[11px] opacity-90 truncate leading-tight mt-0.5">
+                        <div className="text-[11px] opacity-80 truncate leading-tight mt-0.5">
                           {timeRangeLabel}
                         </div>
                       )}
                       {height >= 55 && (appointment.tipo || appointment.notas) && (
-                        <div className="text-[10px] opacity-80 truncate leading-tight capitalize mt-0.5">
+                        <div className="text-[10px] opacity-70 truncate leading-tight capitalize mt-0.5">
                           {appointment.tipo} {appointment.notas ? `• ${appointment.notas}` : ''}
                         </div>
                       )}

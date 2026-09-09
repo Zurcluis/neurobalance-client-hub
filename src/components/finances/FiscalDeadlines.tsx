@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, AlertCircle, CheckCircle2, Clock, Bell, Filter } from 'lucide-react';
@@ -10,146 +10,7 @@ import { toast } from 'sonner';
 interface FiscalDeadlinesProps {
   year?: number;
 }
-
-interface Deadline {
-  id: string;
-  title: string;
-  description: string;
-  date: Date;
-  type: 'iva' | 'irs' | 'ss' | 'outros';
-  priority: 'high' | 'medium' | 'low';
-  recurrent: boolean;
-}
-
-const getIVADeadlines = (year: number): Deadline[] => {
-  return [
-    {
-      id: 'iva-t1',
-      title: 'IVA 1º Trimestre',
-      description: 'Declaração periódica de IVA referente ao 1º trimestre',
-      date: new Date(year, 4, 15),
-      type: 'iva',
-      priority: 'high',
-      recurrent: true
-    },
-    {
-      id: 'iva-t2',
-      title: 'IVA 2º Trimestre',
-      description: 'Declaração periódica de IVA referente ao 2º trimestre',
-      date: new Date(year, 7, 15),
-      type: 'iva',
-      priority: 'high',
-      recurrent: true
-    },
-    {
-      id: 'iva-t3',
-      title: 'IVA 3º Trimestre',
-      description: 'Declaração periódica de IVA referente ao 3º trimestre',
-      date: new Date(year, 10, 15),
-      type: 'iva',
-      priority: 'high',
-      recurrent: true
-    },
-    {
-      id: 'iva-t4',
-      title: 'IVA 4º Trimestre',
-      description: 'Declaração periódica de IVA referente ao 4º trimestre do ano anterior',
-      date: new Date(year, 1, 15),
-      type: 'iva',
-      priority: 'high',
-      recurrent: true
-    }
-  ];
-};
-
-const getIRSDeadlines = (year: number): Deadline[] => {
-  return [
-    {
-      id: 'irs-declaracao',
-      title: 'Declaração IRS (Modelo 3)',
-      description: 'Entrega da declaração de rendimentos do ano anterior',
-      date: new Date(year, 5, 30),
-      type: 'irs',
-      priority: 'high',
-      recurrent: true
-    },
-    {
-      id: 'irs-pagamento-1',
-      title: 'IRS - 1ª Prestação (Pagamento por Conta)',
-      description: 'Pagamento da 1ª prestação do IRS (22,67% do imposto do ano anterior)',
-      date: new Date(year, 6, 31),
-      type: 'irs',
-      priority: 'high',
-      recurrent: true
-    },
-    {
-      id: 'irs-pagamento-2',
-      title: 'IRS - 2ª Prestação (Pagamento por Conta)',
-      description: 'Pagamento da 2ª prestação do IRS (22,67% do imposto do ano anterior)',
-      date: new Date(year, 8, 30),
-      type: 'irs',
-      priority: 'high',
-      recurrent: true
-    },
-    {
-      id: 'irs-pagamento-3',
-      title: 'IRS - 3ª Prestação (Pagamento por Conta)',
-      description: 'Pagamento da 3ª prestação do IRS (22,67% do imposto do ano anterior)',
-      date: new Date(year, 11, 31),
-      type: 'irs',
-      priority: 'high',
-      recurrent: true
-    }
-  ];
-};
-
-const getSSDeadlines = (year: number): Deadline[] => {
-  const deadlines: Deadline[] = [];
-  for (let month = 0; month < 12; month++) {
-    deadlines.push({
-      id: `ss-${month + 1}`,
-      title: `Segurança Social - ${format(new Date(year, month), 'MMMM', { locale: ptBR })}`,
-      description: `Pagamento das contribuições à Segurança Social`,
-      date: new Date(year, month, 20),
-      type: 'ss',
-      priority: 'high',
-      recurrent: true
-    });
-  }
-  return deadlines;
-};
-
-const getOtherDeadlines = (year: number): Deadline[] => {
-  return [
-    {
-      id: 'dmr',
-      title: 'Declaração Mensal de Remunerações',
-      description: 'Entrega da DMR (se aplicável)',
-      date: new Date(year, 0, 10),
-      type: 'outros',
-      priority: 'medium',
-      recurrent: true
-    },
-    {
-      id: 'ies',
-      title: 'IES (Informação Empresarial Simplificada)',
-      description: 'Entrega da declaração anual de informação contabilística e fiscal',
-      date: new Date(year, 6, 15),
-      type: 'outros',
-      priority: 'medium',
-      recurrent: true
-    },
-    {
-      id: 'modelo-10',
-      title: 'Modelo 10 - Retenções na Fonte',
-      description: 'Declaração de retenções na fonte (mensal)',
-      date: new Date(year, 0, 20),
-      type: 'outros',
-      priority: 'medium',
-      recurrent: true
-    }
-  ];
-};
+import { Deadline, getIVADeadlines, getIRSDeadlines, getSSDeadlines, getOtherDeadlines } from '@/utils/fiscalCalendar';
 
 export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Date().getFullYear() }) => {
   const [selectedYear, setSelectedYear] = useState<number>(year);
@@ -297,7 +158,7 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
           <select
             className="border rounded px-3 py-2 bg-white text-sm"
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value as any)}
+            onChange={(e) => setFilterType(e.target.value as typeof filterType)}
           >
             <option value="all">Todos</option>
             <option value="iva">IVA</option>
@@ -309,7 +170,7 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-l-4 border-l-red-500">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
@@ -324,7 +185,7 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-l-4 border-l-orange-500">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -339,7 +200,7 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-l-4 border-l-yellow-500">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -354,7 +215,7 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-l-green-500">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
@@ -378,9 +239,9 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
 
         <TabsContent value="timeline" className="space-y-6 mt-6">
           {filteredDeadlines.overdue.length > 0 && (
-            <Card className="bg-gradient-to-br from-red-50 to-white border-l-4 border-l-red-500">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-red-800 flex items-center gap-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <AlertCircle className="h-5 w-5" />
                   Obrigações Vencidas ({filteredDeadlines.overdue.length})
                 </CardTitle>
@@ -394,9 +255,9 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
           )}
 
           {filteredDeadlines.urgent.length > 0 && (
-            <Card className="bg-gradient-to-br from-orange-50 to-white border-l-4 border-l-orange-500">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-orange-800 flex items-center gap-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Clock className="h-5 w-5" />
                   Urgentes - Próximos 7 Dias ({filteredDeadlines.urgent.length})
                 </CardTitle>
@@ -410,9 +271,9 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
           )}
 
           {filteredDeadlines.upcoming.length > 0 && (
-            <Card className="bg-gradient-to-br from-yellow-50 to-white border-l-4 border-l-yellow-500">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-yellow-800 flex items-center gap-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   Próximos 30 Dias ({filteredDeadlines.upcoming.length})
                 </CardTitle>
@@ -426,7 +287,7 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
           )}
 
           {filteredDeadlines.later.length > 0 && (
-            <Card className="bg-gradient-to-br from-white to-gray-50">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />

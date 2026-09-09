@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { useSms } from '@/hooks/useSms';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
-import { Send, CheckCircle2, XCircle, Clock, MessageSquare } from 'lucide-react';
+import { Send, MessageSquare } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import {
   Dialog,
@@ -32,12 +32,12 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { addDays, addMonths, addYears, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameMonth, compareAsc } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Plus, Search, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Settings, Upload, Copy, Menu } from 'lucide-react';
 import useAppointments, { Appointment } from '@/hooks/useAppointments';
 import useClients from '@/hooks/useClients';
 import { parseLocalISO } from '@/utils/dateUtils';
+import { getEventColors, isValidHex as isValidHexColor } from '@/utils/eventColors';
 
 const parseISO = parseLocalISO;
 
@@ -52,8 +52,10 @@ import {
   DropdownMenuSeparator
 } from '../ui/dropdown-menu';
 import SmartScheduling from './SmartScheduling';
-import TimeGridView from './TimeGridView';
+import TimeGridView, { isAllDayAppointment } from './TimeGridView';
 import CalendarImport from './CalendarImport';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Info } from 'lucide-react';
 
 type AppointmentType = 'sessão' | 'avaliação' | 'reavaliação' | 'consulta' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes' | 'biorresonância magnética';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
@@ -123,7 +125,6 @@ const AppointmentCalendar = () => {
 
   const { sendManualSms, isSending } = useSms();
   const [isAutomationEnabled, setIsAutomationEnabled] = useState(false);
-  const [smsStatus] = useState<Record<number, { status: string; sid: string }>>({});
 
   const supabase = useSupabaseClient();
 
@@ -140,64 +141,6 @@ const AppointmentCalendar = () => {
     };
     fetchAutomationState();
   }, [supabase]);
-
-  // SMS Status tracking disabled - columns don't exist in client_notifications table
-  // To re-enable, add 'metadata', 'sms_status', 'sms_sid' columns to client_notifications
-  /*
-  useEffect(() => {
-    const fetchSmsStatuses = async () => {
-      if (appointments.length === 0) return;
-
-      try {
-        const appointmentIds = appointments.map(a => a.id);
-
-        const { data, error } = await supabase
-          .from('client_notifications')
-          .select('metadata, sms_status, sms_sid')
-          .eq('type', 'appointment');
-
-        if (error) {
-          console.warn('Erro ao carregar status SMS (ignorado):', error);
-          return;
-        }
-
-        if (data) {
-          const statuses: any = {};
-          data.forEach((n: any) => {
-            const aptId = n.metadata?.id_agendamento;
-            if (aptId && appointmentIds.includes(aptId)) {
-              statuses[aptId] = { status: n.sms_status, sid: n.sms_sid };
-            }
-          });
-          setSmsStatus(statuses);
-        }
-      } catch (err) {
-        console.warn('Erro ao carregar status SMS:', err);
-      }
-    };
-
-    fetchSmsStatuses();
-
-    const channel = supabase
-      .channel('sms-status-updates')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'client_notifications'
-      }, (payload) => {
-        const aptId = (payload.new as any).metadata?.id_agendamento;
-        if (aptId) {
-          setSmsStatus(prev => ({
-            ...prev,
-            [aptId]: { status: (payload.new as any).sms_status, sid: (payload.new as any).sms_sid }
-          }));
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [appointments, supabase]);
-  */
 
   const toggleAutomation = async (enabled: boolean) => {
     setIsAutomationEnabled(enabled);
@@ -387,8 +330,6 @@ const AppointmentCalendar = () => {
         cor: data.cor || '#039be5'
       };
 
-      console.log('Dados a serem enviados:', { ...baseData, id_cliente: clientId, hora: horaRange });
-
       if (selectedAppointment) {
         await updateAppointment(selectedAppointment.id, {
           ...baseData,
@@ -415,7 +356,7 @@ const AppointmentCalendar = () => {
             }
           }
         }
-        toast.success('✅ Agendamento atualizado com sucesso!');
+        toast.success('Agendamento atualizado com sucesso!');
       } else {
         if (isMultiDay && recurrenceType === 'none') {
           const startDateObj = parseISO(`${data.data_inicio}T00:00:00`);
@@ -430,7 +371,7 @@ const AppointmentCalendar = () => {
             }));
 
             await addAppointmentsBatch(batchInserts);
-            toast.success('🎉 Agendamento criado para o intervalo de datas!', {
+            toast.success('Agendamento criado para o intervalo de datas!', {
               description: `${baseData.titulo} (${format(startDateObj, 'dd/MM')} até ${format(endDateObj, 'dd/MM/yyyy')})`,
               duration: 4000
             });
@@ -474,7 +415,7 @@ const AppointmentCalendar = () => {
           }
 
           await addAppointmentsBatch(appointmentsList);
-          toast.success(`🎉 ${count} agendamentos recorrentes criados com sucesso!`);
+          toast.success(`${count} agendamentos recorrentes criados com sucesso!`);
         } else {
           await addAppointment({
             ...baseData,
@@ -482,7 +423,7 @@ const AppointmentCalendar = () => {
             hora: horaRange,
             id_cliente: clientId
           });
-          toast.success('🎉 Novo agendamento criado!', {
+          toast.success('Novo agendamento criado!', {
             description: `${baseData.titulo} - ${format(parseISO(isoData), 'dd/MM/yyyy', { locale: pt })} (${timeRangeOnly})`,
             duration: 4000
           });
@@ -504,15 +445,17 @@ const AppointmentCalendar = () => {
   const handleEventDrop = async (appointment: Appointment, newDate: Date) => {
     try {
       const dataStr = format(newDate, 'yyyy-MM-dd');
-      const horaStr = format(newDate, 'HH:mm');
+      const isAllDayAppt = isAllDayAppointment(appointment);
+      // Eventos "Todo o dia" mantêm a hora original ao arrastar
+      const horaStr = isAllDayAppt ? (appointment.hora || 'Todo o dia') : format(newDate, 'HH:mm');
 
       await updateAppointment(appointment.id, {
-        data: `${dataStr}T${horaStr}:00`,
+        data: `${dataStr}T${isAllDayAppt ? '00:00' : horaStr}:00`,
         hora: horaStr
       });
 
       toast.success('Agendamento movido com sucesso!', {
-        description: `${appointment.titulo} movido para ${format(newDate, "dd/MM 'às' HH:mm", { locale: pt })}`
+        description: `${appointment.titulo} movido para ${format(newDate, isAllDayAppt ? "dd/MM" : "dd/MM 'às' HH:mm", { locale: pt })}`
       });
     } catch (error) {
       console.error('Erro ao mover agendamento:', error);
@@ -605,60 +548,67 @@ const AppointmentCalendar = () => {
     if (showAvailabilities) {
       fetchAvailabilities();
     }
-  }, [showAvailabilities]);
+  }, [showAvailabilities, supabase]);
 
-  const getDayAppointments = (day: Date) => {
+  // Agrupamento por dia (O(1) por célula em vez de filtrar tudo a cada render)
+  const appointmentsByDay = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
+    appointments.forEach(apt => {
+      const key = format(parseISO(apt.data), 'yyyy-MM-dd');
+      const arr = map.get(key);
+      if (arr) arr.push(apt);
+      else map.set(key, [apt]);
+    });
+    map.forEach(arr => arr.sort((a, b) => a.data.localeCompare(b.data)));
+    return map;
+  }, [appointments]);
+
+  const getDayAppointments = (day: Date | undefined) => {
     if (!day) return [];
+    const dayAppointments = appointmentsByDay.get(format(day, 'yyyy-MM-dd')) || [];
 
-    return appointments.filter(appointment => {
-      const appointmentDate = parseISO(appointment.data);
-      const isSameDate = isSameDay(appointmentDate, day);
+    if (!searchQuery || searchQuery.trim() === '') return dayAppointments;
 
-      // Se não há pesquisa, retorna todos os appointments do dia
-      if (!searchQuery || searchQuery.trim() === '') {
-        return isSameDate;
-      }
-
-      // Se não é do mesmo dia, não mostrar
-      if (!isSameDate) return false;
-
-      // Filtrar por pesquisa (case-insensitive)
-      const query = searchQuery.toLowerCase().trim();
+    // Filtrar por pesquisa (case-insensitive): nome do cliente, ID manual, título, terapeuta, tipo
+    const query = searchQuery.toLowerCase().trim();
+    return dayAppointments.filter(appointment => {
       const clientInfo = appointment.clientes;
-
-      // Buscar em: nome do cliente, ID manual, título, terapeuta, tipo
-      const matchClientName = clientInfo?.nome?.toLowerCase().includes(query);
-      const matchClientId = clientInfo?.id_manual?.toLowerCase().includes(query);
-      const matchTitle = appointment.titulo?.toLowerCase().includes(query);
-      const matchTherapist = appointment.terapeuta?.toLowerCase().includes(query);
-      const matchType = appointment.tipo?.toLowerCase().includes(query);
-
-      return matchClientName || matchClientId || matchTitle || matchTherapist || matchType;
+      return (
+        clientInfo?.nome?.toLowerCase().includes(query) ||
+        clientInfo?.id_manual?.toLowerCase().includes(query) ||
+        appointment.titulo?.toLowerCase().includes(query) ||
+        appointment.terapeuta?.toLowerCase().includes(query) ||
+        appointment.tipo?.toLowerCase().includes(query)
+      );
     });
   };
 
+  // Indexar disponibilidades por dia da semana e por data exata
+  const availabilityIndex = useMemo(() => {
+    const byWeekday = new Map<number, any[]>();
+    const byDate = new Map<string, any[]>();
+    Object.values(clientAvailabilities).flat().forEach((avail: any) => {
+      if (avail.status !== 'ativo') return;
+      if (avail.recorrencia === 'diaria' && avail.valido_de) {
+        const arr = byDate.get(avail.valido_de);
+        if (arr) arr.push(avail);
+        else byDate.set(avail.valido_de, [avail]);
+      } else if (typeof avail.dia_semana === 'number') {
+        const arr = byWeekday.get(avail.dia_semana);
+        if (arr) arr.push(avail);
+        else byWeekday.set(avail.dia_semana, [avail]);
+      }
+    });
+    return { byWeekday, byDate };
+  }, [clientAvailabilities]);
+
   const getDayAvailabilities = (day: Date) => {
     if (!day || !showAvailabilities) return [];
-
-    const dayOfWeek = day.getDay();
     const dateString = format(day, 'yyyy-MM-dd');
-    const availabilities: any[] = [];
-
-    Object.values(clientAvailabilities).forEach((clientAvails) => {
-      clientAvails.forEach((avail: any) => {
-        if (avail.status !== 'ativo') return;
-
-        if (avail.recorrencia === 'diaria') {
-          if (avail.valido_de === dateString) {
-            availabilities.push(avail);
-          }
-        } else if (avail.dia_semana === dayOfWeek) {
-          availabilities.push(avail);
-        }
-      });
-    });
-
-    return availabilities;
+    return [
+      ...(availabilityIndex.byWeekday.get(day.getDay()) || []),
+      ...(availabilityIndex.byDate.get(dateString) || []),
+    ];
   };
 
   const getDayHoliday = (day: Date) => {
@@ -666,88 +616,101 @@ const AppointmentCalendar = () => {
     return isHoliday(dateString);
   };
 
-  const getHolidayColor = (holidayType: string) => {
-    switch (holidayType) {
-      case 'feriado':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'feriado_municipal':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'religioso':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'tradicao':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'cultural':
-        return 'bg-[#e6f2f3] text-[#3f9094] border-[#3f9094]';
-      case 'dia_importante':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const isLightColor = (hex: string): boolean => {
-    if (!hex || hex.length < 6) return false;
-    const c = hex.startsWith('#') ? hex.slice(1) : hex;
-    const r = parseInt(c.substring(0, 2), 16);
-    const g = parseInt(c.substring(2, 4), 16);
-    const b = parseInt(c.substring(4, 6), 16);
-    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-    return yiq >= 128;
-  };
-
-  const getAppointmentTypeColor = (type: AppointmentType | string, customColor?: string | null) => {
-    if (customColor) {
-      return isLightColor(customColor) ? 'text-gray-900 border-none font-medium' : 'text-white border-none';
-    }
-
-    const t = (type || '').toLowerCase();
-    
-    if (t.includes('avaliação')) return 'bg-purple-300 text-purple-900 border-none';
-    if (t.includes('neurofeedback')) return 'bg-blue-300 text-blue-900 border-none';
-    if (t.includes('discussão')) return 'bg-yellow-400 text-yellow-900 border-none';
-    if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) return 'bg-green-300 text-green-900 border-none';
-    if (t.includes('biorresonância') || t.includes('biorressonancia')) return 'bg-[#A4B734] text-white border-none';
-    if (t.includes('ofes')) return 'bg-red-500 text-white border-none';
-
-    switch (t) {
-      case 'sessão': return 'bg-[#3f9094] text-white border-none';
-      case 'consulta': return 'bg-yellow-500 text-white border-none';
-      default: return 'bg-[#3f9094] text-white border-none';
-    }
-  };
-
-  const getAppointmentStatusColor = (status: string) => {
+  const getStatusLabel = (status: string) => {
     switch (status) {
       case 'confirmado':
       case 'agendado':
-        return 'border-l-4 border-blue-500';
-      case 'pendente':
-        return 'border-l-4 border-orange-500';
-      case 'cancelado':
-        return 'border-l-4 border-red-500';
+        return 'Confirmado';
       case 'realizado':
-        return 'border-l-4 border-green-500';
+        return 'Realizado';
+      case 'cancelado':
+        return 'Cancelado';
       default:
-        return 'border-l-4 border-orange-500';
+        return 'Pendente';
     }
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
+  const getStatusChipStyle = (status: string) => {
+    switch (status) {
+      case 'confirmado':
+      case 'agendado':
+        return 'bg-blue-100 text-blue-800';
+      case 'realizado':
+        return 'bg-green-100 text-green-800';
+      case 'cancelado':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-orange-100 text-orange-800';
+    }
+  };
+
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    const step = direction === 'prev' ? -1 : 1;
     setCurrentDate(prev => {
       const newDate = new Date(prev);
-      if (direction === 'prev') {
-        newDate.setMonth(newDate.getMonth() - 1);
+      if (currentView === 'day') {
+        newDate.setDate(newDate.getDate() + step);
+      } else if (currentView === 'week' || currentView === 'agenda') {
+        newDate.setDate(newDate.getDate() + step * 7);
       } else {
-        newDate.setMonth(newDate.getMonth() + 1);
+        newDate.setMonth(newDate.getMonth() + step);
       }
       return newDate;
     });
+    if (currentView === 'day' || currentView === 'week') {
+      setSelectedDate(prev => {
+        const newDate = new Date(prev || currentDate);
+        if (currentView === 'day') {
+          newDate.setDate(newDate.getDate() + step);
+        } else {
+          newDate.setDate(newDate.getDate() + step * 7);
+        }
+        return newDate;
+      });
+    }
   };
+
+  // Atalhos de teclado estilo Google Calendar (D/S/M/A, T, setas) — handler via ref,
+  // registado uma única vez mas sempre com closures frescas
+  const keyboardHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  keyboardHandlerRef.current = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable || target.tagName === 'SELECT')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    const key = e.key.toLowerCase();
+    if (key === 'd') setCurrentView('day');
+    else if (key === 's') setCurrentView('week');
+    else if (key === 'm') setCurrentView('month');
+    else if (key === 'a') setCurrentView('agenda');
+    else if (key === 't') goToToday();
+    else if (e.key === 'ArrowLeft') navigatePeriod('prev');
+    else if (e.key === 'ArrowRight') navigatePeriod('next');
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => keyboardHandlerRef.current(e);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const goToToday = () => {
     const today = new Date();
     setCurrentDate(today);
     setSelectedDate(today);
+  };
+
+  const getToolbarTitle = () => {
+    if (currentView === 'day' && selectedDate) {
+      return format(selectedDate, "d 'de' MMMM 'de' yyyy", { locale: pt });
+    }
+    if (currentView === 'week') {
+      const ws = startOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
+      const we = endOfWeek(ws, { weekStartsOn: 0 });
+      return `${format(ws, 'd MMM', { locale: pt })} – ${format(we, 'd MMM yyyy', { locale: pt })}`;
+    }
+    if (currentView === 'agenda') return 'Agenda';
+    return format(currentDate, 'MMMM yyyy', { locale: pt });
   };
 
   const renderMiniCalendar = () => {
@@ -764,62 +727,68 @@ const AppointmentCalendar = () => {
     const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
     return (
-      <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-900">
+      <div className="p-3 rounded-lg hover:bg-gray-100/60">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-800">
             {format(currentDate, 'MMMM yyyy', { locale: pt })}
           </h3>
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigateMonth('prev')}
-              className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
+              onClick={() => navigatePeriod('prev')}
+              className="h-7 w-7 p-0 hover:bg-gray-200/70 rounded-full"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigateMonth('next')}
-              className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
+              onClick={() => navigatePeriod('next')}
+              className="h-7 w-7 p-0 hover:bg-gray-200/70 rounded-full"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 text-xs mb-2">
+        <div className="grid grid-cols-7 gap-y-0.5 text-[11px]">
           {weekDays.map((day, index) => (
-            <div key={`${day}-${index}`} className="text-center text-gray-500 font-medium py-2">
+            <div key={`${day}-${index}`} className="text-center text-gray-500 py-1.5">
               {day}
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1 text-xs">
+        <div className="grid grid-cols-7 gap-y-0.5 text-xs">
           {days.map(day => {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isDayToday = isToday(day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const dayHoliday = getDayHoliday(day);
+            const hasEvents = getDayAppointments(day).length > 0;
 
             return (
               <button
                 key={format(day, 'yyyy-MM-dd')}
                 onClick={() => setSelectedDate(day)}
-                className={`
-                  h-8 w-8 text-xs rounded-full flex items-center justify-center hover:bg-[#e6f2f3] transition-colors relative font-medium
-                  ${!isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}
-                  ${isDayToday ? 'bg-[#3f9094] text-white hover:bg-[#2d7a7e]' : ''}
-                  ${isSelected && !isDayToday ? 'bg-[#e6f2f3] text-[#3f9094]' : ''}
-                  ${dayHoliday && !isDayToday && !isSelected ? 'bg-red-50 text-red-600 font-semibold' : ''}
-                `}
+                className="relative flex items-center justify-center"
                 title={dayHoliday ? `${dayHoliday.name} (${dayHoliday.type})` : ''}
               >
-                {format(day, 'd')}
-                {dayHoliday && dayHoliday.type === 'feriado' && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></div>
+                <span
+                  className={`
+                    h-7 w-7 text-[11px] rounded-full flex items-center justify-center transition-colors font-medium
+                    ${!isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}
+                    ${isDayToday ? 'bg-[#1a73e8] text-white' : ''}
+                    ${isSelected && !isDayToday ? 'bg-[#d3e3fd] text-[#185abc]' : ''}
+                    ${!isDayToday && !isSelected ? 'hover:bg-gray-200/70' : ''}
+                    ${dayHoliday && dayHoliday.type === 'feriado' && !isDayToday && !isSelected ? 'text-red-600' : ''}
+                  `}
+                >
+                  {format(day, 'd')}
+                </span>
+                {hasEvents && (
+                  <span className={`absolute bottom-0.5 w-1 h-1 rounded-full ${isDayToday ? 'bg-white' : 'bg-[#1a73e8]'}`}></span>
                 )}
               </button>
             );
@@ -832,93 +801,59 @@ const AppointmentCalendar = () => {
   const DayEventsPanel = () => {
     if (!selectedDate) {
       return (
-        <Card className="mt-4">
-          <CardContent className="p-4 text-center text-sm text-gray-500">
-            Selecione um dia para ver os eventos.
-          </CardContent>
-        </Card>
+        <div className="mt-4 px-3 text-sm text-gray-500">
+          Selecione um dia para ver os eventos.
+        </div>
       );
     }
 
-    const dayEvents = getDayAppointments(selectedDate).sort((a, b) =>
-      compareAsc(parseISO(a.data), parseISO(b.data))
-    );
+    // Já vêm ordenados cronologicamente pelo índice appointmentsByDay
+    const dayEvents = getDayAppointments(selectedDate);
 
     const dayHoliday = getDayHoliday(selectedDate);
 
     return (
-      <div className="mt-4">
-        <h3 className="text-sm font-medium text-[#265255] mb-3">
-          Eventos de {format(selectedDate, 'd MMM', { locale: pt })}
+      <div className="mt-4 px-1">
+        <h3 className="text-sm font-medium text-gray-800 mb-2 px-2">
+          {format(selectedDate, "d 'de' MMMM", { locale: pt })}
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-0.5">
           {dayHoliday && (
-            <div className={`p-2 rounded-lg border ${getHolidayColor(dayHoliday.type)} opacity-60`}>
-              <p className="font-semibold text-sm opacity-70">{dayHoliday.name}</p>
-              <p className="text-xs opacity-50 capitalize">{dayHoliday.type.replace('_', ' ')}</p>
-              {dayHoliday.description && (
-                <p className="text-xs opacity-40 mt-1">{dayHoliday.description}</p>
-              )}
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-red-50/70">
+              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+              <span className="text-xs text-red-700 truncate" title={dayHoliday.name}>
+                {dayHoliday.name}
+              </span>
             </div>
           )}
 
           {dayEvents.length > 0 ? (
             dayEvents.map((appointment, index) => {
-              const statusConfig = {
-                pendente: { label: 'Pendente', bg: 'bg-orange-500', text: 'text-white' },
-                confirmado: { label: 'Confirmado', bg: 'bg-blue-500', text: 'text-white' },
-                agendado: { label: 'Confirmado', bg: 'bg-blue-500', text: 'text-white' },
-                realizado: { label: 'Realizado', bg: 'bg-green-500', text: 'text-white' },
-                cancelado: { label: 'Cancelado', bg: 'bg-red-500', text: 'text-white' },
-              };
-              const status = statusConfig[appointment.estado as keyof typeof statusConfig] || statusConfig.pendente;
+              const colors = getEventColors((appointment as any).cor, appointment.estado);
               const clientInfo = (appointment as any).clientes;
               const clientId = clientInfo?.id_manual;
 
               return (
-                <div
+                <button
                   key={`day-panel-${appointment.id}-${index}`}
                   onClick={() => handleEventClick(appointment)}
-                  className={`p-3 rounded-lg cursor-pointer transition-all hover:shadow-md ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${getAppointmentStatusColor(appointment.estado)}`}
-                  style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
+                  className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
                 >
-                  {/* Header com ID e Status */}
-                  <div className="flex items-center justify-between mb-1.5">
-                    {clientId ? (
-                      <span className="font-bold text-xs bg-white/90 text-gray-800 px-2 py-0.5 rounded shadow-sm">
-                        {clientId}
-                      </span>
-                    ) : (
-                      <span></span>
-                    )}
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${status.bg} ${status.text} shadow-sm`}>
-                      {status.label}
-                    </span>
-                  </div>
-                  {/* Nome do cliente - exibir só se não tiver ID */}
-                  {!clientId && (
-                    <p className="font-semibold text-sm">
-                      {clientInfo?.nome || appointment.titulo}
-                    </p>
-                  )}
-                  {/* ID do cliente - linha principal */}
-                  {clientId && (
-                    <p className="font-bold text-base">
-                      {clientId}
-                    </p>
-                  )}
-                  {/* Hora e tipo */}
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs opacity-90">{format(parseISO(appointment.data), 'HH:mm')}</p>
-                    {appointment.tipo && (
-                      <span className="text-xs opacity-70 capitalize">• {appointment.tipo}</span>
-                    )}
-                  </div>
-                </div>
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: colors.isCancelled ? '#5f6368' : (isValidHexColor((appointment as any).cor) ? (appointment as any).cor : '#3f9094') }}
+                  ></span>
+                  <span className={`text-xs text-gray-800 truncate ${colors.isCancelled ? 'line-through text-gray-500' : ''}`}>
+                    {clientId || clientInfo?.nome || appointment.titulo}
+                  </span>
+                  <span className="ml-auto text-[11px] text-gray-500 shrink-0">
+                    {format(parseISO(appointment.data), 'HH:mm')}
+                  </span>
+                </button>
               );
             })
           ) : !dayHoliday ? (
-            <p className="text-sm text-gray-500 text-center p-4 bg-white rounded-lg border border-gray-200">
+            <p className="text-xs text-gray-500 px-2 py-3">
               Nenhum evento para este dia.
             </p>
           ) : null}
@@ -944,45 +879,52 @@ const AppointmentCalendar = () => {
       weeks.push(days.slice(i, i + 7));
     }
 
+    const maxVisible = isMobile ? 1 : 3;
+
     return (
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-xs">
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-white">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-xs flex flex-col h-full">
+        <div className="grid grid-cols-7 border-b border-gray-200 bg-white shrink-0">
           {weekDays.map((day, idx) => (
-            <div key={`${day}-${idx}`} className={`text-center font-semibold text-gray-500 border-r border-gray-200 last:border-r-0 ${isMobile ? 'p-1 text-xs' : 'p-2 text-xs uppercase tracking-wider'}`}>
+            <div key={`${day}-${idx}`} className={`text-center font-medium text-gray-500 ${isMobile ? 'p-1 text-[10px]' : 'p-2 text-[11px] uppercase tracking-wider'}`}>
               {day}
             </div>
           ))}
         </div>
 
+        <div className="flex-1 flex flex-col min-h-0">
         {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className={`grid grid-cols-7 border-b border-gray-200 last:border-b-0 ${isMobile ? 'min-h-[70px]' : 'min-h-[120px]'}`}>
+          <div key={weekIndex} className={`grid grid-cols-7 flex-1 border-b border-gray-200 last:border-b-0 ${isMobile ? 'min-h-[64px]' : 'min-h-[110px]'}`}>
             {week.map(day => {
               const dayAppointments = getDayAppointments(day);
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isDayToday = isToday(day);
               const dayHoliday = getDayHoliday(day);
+              const visibleCount = dayHoliday && !isMobile ? maxVisible - 1 : maxVisible;
+              const overflow = dayAppointments.length - visibleCount;
 
               return (
                 <div
                   key={format(day, 'yyyy-MM-dd')}
                   className={`
-                    border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-blue-50/20 relative transition-colors
-                    ${isMobile ? 'p-0.5' : 'p-2'}
-                    ${!isCurrentMonth ? 'bg-gray-50/60' : 'bg-white'}
-                    ${isDayToday ? 'bg-blue-50/30' : ''}
-                    ${dayHoliday && dayHoliday.type === 'feriado' ? 'bg-red-50/50' : ''}
+                    border-r border-gray-200 last:border-r-0 cursor-pointer relative transition-colors min-w-0
+                    ${isMobile ? 'p-0.5' : 'p-1'}
+                    ${isDayToday ? 'bg-[#e8f0fe]/50' : 'bg-white hover:bg-gray-50'}
+                    ${!isCurrentMonth ? 'bg-gray-50/60' : ''}
                   `}
-                  onClick={() => openNewAppointmentDialog(day)}
+                  onClick={() => {
+                    setSelectedDate(day);
+                    openNewAppointmentDialog(day);
+                  }}
                   onDragOver={(e) => {
                     e.preventDefault();
-                    e.currentTarget.classList.add('bg-[#d1e8e9]');
+                    e.currentTarget.classList.add('bg-[#d3e3fd]');
                   }}
                   onDragLeave={(e) => {
-                    e.currentTarget.classList.remove('bg-[#d1e8e9]');
+                    e.currentTarget.classList.remove('bg-[#d3e3fd]');
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    e.currentTarget.classList.remove('bg-[#d1e8e9]');
+                    e.currentTarget.classList.remove('bg-[#d3e3fd]');
                     const appointmentId = e.dataTransfer.getData('appointmentId');
                     if (appointmentId) {
                       const appointment = appointments.find(a => a.id.toString() === appointmentId);
@@ -995,38 +937,36 @@ const AppointmentCalendar = () => {
                     }
                   }}
                 >
-                  <div className="flex justify-end mb-1">
-                    <div className={`
-                      font-medium relative flex items-center justify-center
-                      ${isMobile ? 'text-[10px]' : 'text-xs'}
-                      ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-700'}
-                      ${isDayToday ? 'bg-[#1a73e8] text-white w-6 h-6 rounded-full font-bold shadow-xs' : ''}
-                      ${dayHoliday && dayHoliday.type === 'feriado' && !isDayToday ? 'text-red-600 font-bold' : ''}
-                    `}>
+                  <div className="flex mb-0.5">
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDate(day);
+                      }}
+                      className={`
+                        font-medium relative flex items-center justify-center cursor-pointer
+                        ${isMobile ? 'text-[10px]' : 'text-xs'}
+                        ${isDayToday ? 'bg-[#1a73e8] text-white w-6 h-6 rounded-full font-semibold' : ''}
+                        ${!isDayToday ? (isCurrentMonth ? 'text-gray-700 hover:bg-gray-100 w-6 h-6 rounded-full' : 'text-gray-400 w-6 h-6 rounded-full hover:bg-gray-100') : ''}
+                        ${dayHoliday && dayHoliday.type === 'feriado' && !isDayToday ? 'text-red-600' : ''}
+                      `}
+                    >
                       {format(day, 'd')}
-                      {dayHoliday && dayHoliday.type === 'feriado' && !isDayToday && (
-                        <div className={`absolute bg-red-500 rounded-full ${isMobile ? '-top-0.5 -right-0.5 w-1 h-1' : '-top-1 -right-1 w-1.5 h-1.5'}`}></div>
-                      )}
                     </div>
                   </div>
-                  <div className={isMobile ? 'space-y-0.5' : 'space-y-1'}>
+                  <div className={isMobile ? 'space-y-0.5' : 'space-y-[2px]'}>
                     {dayHoliday && !isMobile && (
-                      <div className={`text-xs px-1 py-0.5 rounded truncate border ${getHolidayColor(dayHoliday.type)} opacity-50`}>
-                        <span className="opacity-70">{dayHoliday.name}</span>
+                      <div className="text-[11px] px-1.5 py-[1px] rounded bg-red-50 text-red-700 truncate" title={dayHoliday.name}>
+                        {dayHoliday.name}
                       </div>
                     )}
 
-                    {dayAppointments.slice(0, dayHoliday ? 1 : (isMobile ? 1 : 2)).map((appointment, index) => {
-                      const statusConfig = {
-                        pendente: { label: 'P', labelFull: 'Pend', bg: 'bg-orange-500', text: 'text-white', border: 'border-l-orange-500' },
-                        confirmado: { label: 'C', labelFull: 'Conf', bg: 'bg-blue-500', text: 'text-white', border: 'border-l-blue-500' },
-                        agendado: { label: 'C', labelFull: 'Conf', bg: 'bg-blue-500', text: 'text-white', border: 'border-l-blue-500' },
-                        realizado: { label: 'R', labelFull: 'Real', bg: 'bg-green-500', text: 'text-white', border: 'border-l-green-500' },
-                        cancelado: { label: 'X', labelFull: 'Canc', bg: 'bg-red-500', text: 'text-white', border: 'border-l-red-500' },
-                      };
-                      const status = statusConfig[appointment.estado as keyof typeof statusConfig] || statusConfig.pendente;
+                    {dayAppointments.slice(0, visibleCount).map((appointment, index) => {
+                      const colors = getEventColors((appointment as any).cor, appointment.estado);
                       const clientInfo = (appointment as any).clientes;
                       const clientId = clientInfo?.id_manual;
+                      const allDay = isAllDayAppointment(appointment);
+                      const timeStr = allDay ? null : format(parseISO(appointment.data), 'HH:mm');
 
                       return (
                         <div
@@ -1040,59 +980,24 @@ const AppointmentCalendar = () => {
                             e.dataTransfer.setData('appointmentId', appointment.id.toString());
                             e.dataTransfer.effectAllowed = 'move';
                           }}
-                          className={`relative text-xs rounded cursor-pointer hover:opacity-80 transition-opacity border-l-4 ${status.border} ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${isMobile ? 'px-1 py-0.5' : 'px-1.5 py-0.5'}`}
-                          style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
+                          className="relative flex items-center gap-1 rounded px-1.5 py-[1px] text-[11px] leading-4 cursor-pointer hover:brightness-95 transition-all"
+                          style={{
+                            backgroundColor: colors.backgroundColor,
+                            color: colors.color,
+                            borderLeft: `3px solid ${colors.statusColor}`,
+                          }}
                         >
-                          {/* Mobile: Layout compacto */}
-                          {isMobile ? (
-                            <div className="flex items-center gap-1">
-                              {/* ID e Hora */}
-                              {clientId ? (
-                                <>
-                                  <span className="font-bold text-[9px] flex-1">
-                                    {clientId}
-                                  </span>
-                                  <span className="text-[8px] opacity-90 shrink-0">
-                                    {format(parseISO(appointment.data), 'HH:mm')}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="font-medium truncate text-[9px] flex-1">
-                                  {appointment.titulo?.substring(0, 10)}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <>
-                              {/* Desktop: Apenas ID e Hora */}
-                              {clientId ? (
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-bold text-sm flex-1">
-                                    {clientId}
-                                  </span>
-                                  <span className="text-[10px] opacity-80 shrink-0">
-                                    {format(parseISO(appointment.data), 'HH:mm')}
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium truncate text-xs leading-tight flex-1">
-                                    {appointment.titulo}
-                                  </span>
-                                  <span className="text-[10px] opacity-80 shrink-0">
-                                    {format(parseISO(appointment.data), 'HH:mm')}
-                                  </span>
-                                </div>
-                              )}
-                            </>
-                          )}
+                          {timeStr && <span className={`shrink-0 ${colors.isCancelled ? 'line-through' : ''}`}>{timeStr}</span>}
+                          <span className={`font-medium truncate ${allDay ? 'font-semibold' : ''} ${colors.isCancelled ? 'line-through' : ''}`}>
+                            {clientId || appointment.titulo}
+                          </span>
                         </div>
                       );
                     })}
 
                     {/* Mostrar Disponibilidades - apenas desktop */}
                     {!isMobile && showAvailabilities && getDayAvailabilities(day).length > 0 && (
-                      <div className="mt-1 space-y-0.5">
+                      <div className="mt-0.5 space-y-0.5">
                         {getDayAvailabilities(day).slice(0, 2).map((avail: any, idx: number) => (
                           <div
                             key={`avail-${avail.id}-${idx}`}
@@ -1109,18 +1014,16 @@ const AppointmentCalendar = () => {
                         )}
                       </div>
                     )}
-                    {dayAppointments.length > (dayHoliday ? 1 : (isMobile ? 1 : 2)) && (
+                    {overflow > 0 && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setOverflowDay({ date: day, appointments: dayAppointments });
                         }}
-                        className={`text-[#1a73e8] dark:text-blue-400 font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded px-1 py-0.5 transition-colors cursor-pointer text-left w-full ${
-                          isMobile ? 'text-[9px]' : 'text-xs'
-                        }`}
+                        className="text-xs text-[#1a73e8] dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded px-1.5 py-[1px] transition-colors cursor-pointer text-left w-full"
                       >
-                        +{dayAppointments.length - (dayHoliday ? 1 : (isMobile ? 1 : 2))}{isMobile ? '' : ' mais'}
+                        +{overflow} mais
                       </button>
                     )}
                   </div>
@@ -1129,6 +1032,7 @@ const AppointmentCalendar = () => {
             })}
           </div>
         ))}
+        </div>
       </div>
     );
   };
@@ -1142,7 +1046,6 @@ const AppointmentCalendar = () => {
         appointments={appointments}
         onTimeSlotClick={openNewAppointmentDialog}
         onEventClick={handleEventClick}
-        onDateChange={(newDate) => setSelectedDate(newDate)}
         isDailyView={true}
         availabilities={clientAvailabilities}
         showAvailabilities={showAvailabilities}
@@ -1163,7 +1066,6 @@ const AppointmentCalendar = () => {
         appointments={appointments}
         onTimeSlotClick={openNewAppointmentDialog}
         onEventClick={handleEventClick}
-        onDateChange={(newDate) => setSelectedDate(newDate)}
         availabilities={clientAvailabilities}
         showAvailabilities={showAvailabilities}
         holidays={holidays}
@@ -1173,75 +1075,67 @@ const AppointmentCalendar = () => {
   };
 
   const renderAgendaView = () => {
-    const today = new Date();
+    // Janela de 7 dias a partir da data atual (navegável com ‹ ›)
+    const windowStart = currentDate;
     const nextSevenDays = eachDayOfInterval({
-      start: today,
-      end: addDays(today, 6),
+      start: windowStart,
+      end: addDays(windowStart, 6),
     });
 
     const upcomingAppointments = nextSevenDays.flatMap(day => {
       const appointmentsForDay = getDayAppointments(day);
       return appointmentsForDay.map(app => ({ ...app, day: day }));
-    }).sort((a, b) => compareAsc(parseISO(a.data), parseISO(b.data)));
+    });
+
+    if (upcomingAppointments.length === 0) {
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 flex flex-col items-center justify-center py-16 text-gray-500">
+          <Calendar className="h-12 w-12 text-gray-300" />
+          <p className="mt-3 text-sm">Nenhum agendamento para os próximos 7 dias.</p>
+        </div>
+      );
+    }
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl text-[#265255]">Próximos 7 Dias</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {upcomingAppointments.length > 0 ? (
-            <ul className="space-y-4">
-              {upcomingAppointments.map((appointment, index) => {
-                const showDateHeader = index === 0 || !isSameDay(parseISO(appointment.data), parseISO(upcomingAppointments[index - 1].data));
-                return (
-                  <React.Fragment key={`${appointment.id}-${index}`}>
-                    {showDateHeader && (
-                      <h3 className="text-lg font-semibold pt-4 text-[#265255] border-t mt-4 first:mt-0 first:border-t-0">
-                        {format(appointment.day, "eeee, dd/MM/yyyy", { locale: pt })}
-                      </h3>
-                    )}
-                    <li 
-                      onClick={() => handleEventClick(appointment)} 
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer ${getAppointmentTypeColor(appointment.tipo as AppointmentType, (appointment as any).cor)} ${getAppointmentStatusColor(appointment.estado)}`}
-                      style={(appointment as any).cor ? { backgroundColor: (appointment as any).cor } : {}}
-                    >
-                      <div className="font-bold text-base">{format(parseISO(appointment.data), 'HH:mm')}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {(appointment.clientes as any)?.id_manual && (
-                            <span className="font-bold text-xs bg-white/90 text-gray-800 px-2 py-0.5 rounded shadow-sm">
-                              {(appointment.clientes as any)?.id_manual}
-                            </span>
-                          )}
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold shadow-sm ${appointment.estado === 'realizado' ? 'bg-green-500 text-white' :
-                            appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'bg-blue-500 text-white' :
-                              appointment.estado === 'cancelado' ? 'bg-red-500 text-white' :
-                                'bg-orange-500 text-white'
-                            }`}>
-                            {appointment.estado === 'realizado' ? 'Realizado' :
-                              appointment.estado === 'confirmado' || appointment.estado === 'agendado' ? 'Confirmado' :
-                                appointment.estado === 'cancelado' ? 'Cancelado' : 'Pendente'}
-                          </span>
-                        </div>
-                        {!(appointment.clientes as any)?.id_manual && (
-                          <p className="font-semibold truncate">{appointment.clientes?.nome || appointment.titulo}</p>
-                        )}
-                        <p className="text-sm opacity-80 capitalize">{appointment.tipo}</p>
-                      </div>
-                    </li>
-                  </React.Fragment>
-                )
-              })}
-            </ul>
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2">Nenhum agendamento para os próximos 7 dias.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 overflow-y-auto h-full">
+        <div className="max-w-3xl mx-auto">
+          {upcomingAppointments.map((appointment, index) => {
+            const showDateHeader = index === 0 || !isSameDay(parseISO(appointment.data), parseISO(upcomingAppointments[index - 1].data));
+            const colors = getEventColors((appointment as any).cor, appointment.estado);
+            const clientInfo = (appointment as any).clientes;
+            const clientId = clientInfo?.id_manual;
+
+            return (
+              <React.Fragment key={`${appointment.id}-${index}`}>
+                {showDateHeader && (
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider pt-5 pb-2 border-b border-gray-200 mt-2 first:mt-0 first:pt-0">
+                    {format(appointment.day, "eeee, d 'de' MMMM 'de' yyyy", { locale: pt })}
+                  </h3>
+                )}
+                <div
+                  onClick={() => handleEventClick(appointment)}
+                  className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                >
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: colors.isCancelled ? '#5f6368' : (isValidHexColor((appointment as any).cor) ? (appointment as any).cor : '#3f9094') }}
+                  ></span>
+                  <span className={`text-sm text-gray-700 w-24 shrink-0 ${colors.isCancelled ? 'line-through' : ''}`}>
+                    {format(parseISO(appointment.data), 'HH:mm')}
+                  </span>
+                  <span className={`flex-1 min-w-0 text-sm text-gray-900 truncate ${colors.isCancelled ? 'line-through text-gray-500' : 'font-medium'}`}>
+                    {clientId && <span className="font-semibold mr-1.5">{clientId}</span>}
+                    {clientId ? appointment.titulo : (clientInfo?.nome || appointment.titulo)}
+                  </span>
+                  <span className={`hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${getStatusChipStyle(appointment.estado)}`}>
+                    {getStatusLabel(appointment.estado)}
+                  </span>
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
     );
   };
 
@@ -1272,133 +1166,106 @@ const AppointmentCalendar = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 p-2 sm:p-3 shrink-0">
-        <div className="flex flex-col gap-2 sm:gap-0 sm:flex-row sm:items-center sm:justify-between">
-          {/* Primeira linha: Título e navegação */}
-          <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="h-9 w-9 rounded-full hover:bg-gray-100 text-gray-700 shrink-0 hidden md:flex"
-                title={isSidebarOpen ? "Recolher menu lateral" : "Expandir menu lateral"}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-[#3f9094]" />
-              <h1 className="text-lg sm:text-xl font-medium text-[#265255]">Calendário</h1>
-            </div>
+    <div className="h-full flex flex-col bg-white">
+      {/* Toolbar */}
+      <header className="bg-white border-b border-gray-200 p-2 sm:px-4 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Toggle da barra lateral */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="h-9 w-9 rounded-full hover:bg-gray-100 text-gray-600 shrink-0 hidden md:flex"
+            title={isSidebarOpen ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
 
-            {/* Navegação do mês - sempre visível */}
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')} className="h-8 w-8 hover:bg-gray-100 rounded-full">
-                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-              <h2 className="text-base sm:text-lg font-medium text-gray-700 min-w-[100px] sm:min-w-[140px] text-center capitalize">
-                {format(currentDate, isMobile ? 'MMM yy' : 'MMMM yyyy', { locale: pt })}
-              </h2>
-              <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} className="h-8 w-8 hover:bg-gray-100 rounded-full">
-                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            </div>
+          {/* Criar */}
+          <Button
+            onClick={() => openNewAppointmentDialog()}
+            className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white rounded-full pl-3 pr-4 h-10 font-medium shadow-sm"
+            title="Criar (C)"
+          >
+            <Plus className="h-5 w-5" />
+            <span className="hidden sm:inline ml-1">Criar</span>
+          </Button>
+
+          {/* Hoje + navegação + título */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              onClick={goToToday}
+              className="rounded-full h-9 px-4 border-gray-300 font-medium text-gray-700"
+            >
+              Hoje
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigatePeriod('prev')} className="h-9 w-9 hover:bg-gray-100 rounded-full">
+              <ChevronLeft className="h-5 w-5 text-gray-600" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigatePeriod('next')} className="h-9 w-9 hover:bg-gray-100 rounded-full">
+              <ChevronRight className="h-5 w-5 text-gray-600" />
+            </Button>
+            <h2 className="text-base sm:text-xl font-normal text-gray-800 ml-1 capitalize truncate max-w-[180px] sm:max-w-none" title={getToolbarTitle()}>
+              {getToolbarTitle()}
+            </h2>
           </div>
 
-          {/* Segunda linha: Botões de ação */}
-          <div className="flex items-center justify-between sm:justify-end gap-2">
-            {/* Botões principais - desktop */}
-            <div className="hidden md:flex items-center gap-2">
-              <Button
-                onClick={() => openNewAppointmentDialog()}
-                className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white rounded-full px-4 py-2 font-medium shadow-sm"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Criar
-              </Button>
+          <div className="flex-1 min-w-2" />
+
+          {/* Ações à direita */}
+          <div className="flex items-center gap-2">
+            <div className="relative hidden lg:block">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Pesquisar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-44 rounded-full bg-gray-50 border-gray-200 focus:bg-white"
+              />
+            </div>
+
+            <Select value={currentView} onValueChange={(value: CalendarView) => setCurrentView(value)}>
+              <SelectTrigger className="w-[110px] h-9 rounded-full border-gray-300 text-sm text-gray-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">Dia</SelectItem>
+                <SelectItem value="week">Semana</SelectItem>
+                <SelectItem value="month">Mês</SelectItem>
+                <SelectItem value="agenda">Agenda</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="hidden md:block">
               <SmartScheduling />
-              <Button
-                variant="outline"
-                onClick={goToToday}
-                className="border-gray-300 font-medium"
-              >
-                Hoje
-              </Button>
             </div>
 
-            {/* Botões Mobile */}
-            <div className="flex md:hidden items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToToday}
-                className="h-8 px-2 text-xs"
-              >
-                Hoje
-              </Button>
-              <Button
-                onClick={() => openNewAppointmentDialog()}
-                size="sm"
-                className="h-8 bg-[#3f9094] hover:bg-[#2d7a7e] text-white px-2"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Selector de vista e pesquisa */}
-            <div className="flex items-center gap-2">
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Pesquisar..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-40"
-                />
-              </div>
-              <Select value={currentView} onValueChange={(value: CalendarView) => setCurrentView(value)}>
-                <SelectTrigger className="w-24 sm:w-28 h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">Dia</SelectItem>
-                  <SelectItem value="week">Semana</SelectItem>
-                  <SelectItem value="month">Mês</SelectItem>
-                  <SelectItem value="agenda">Agenda</SelectItem>
-                </SelectContent>
-              </Select>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importar de Ficheiro
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <div className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 cursor-default">
-                    <div className="flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span className="text-sm">SMS Automático</span>
-                    </div>
-                    <Switch
-                      checked={isAutomationEnabled}
-                      onCheckedChange={toggleAutomation}
-                      className="scale-75"
-                    />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-gray-100 rounded-full">
+                  <MoreHorizontal className="h-5 w-5 text-gray-600" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar de Ficheiro
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 cursor-default">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    <span className="text-sm">SMS Automático</span>
                   </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Definições
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                  <Switch
+                    checked={isAutomationEnabled}
+                    onCheckedChange={toggleAutomation}
+                    className="scale-75"
+                  />
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -1407,108 +1274,61 @@ const AppointmentCalendar = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
         <aside className={`
-          transition-all duration-300 ease-in-out bg-gray-50 border-r border-gray-200 overflow-y-auto hidden md:block shrink-0
-          ${isSidebarOpen ? 'w-64 p-4 opacity-100' : 'w-0 p-0 border-none opacity-0 overflow-hidden'}
+          transition-all duration-300 ease-in-out bg-white border-r border-gray-200 overflow-y-auto hidden md:block shrink-0
+          ${isSidebarOpen ? 'w-[260px] p-3 opacity-100' : 'w-0 p-0 border-none opacity-0 overflow-hidden'}
         `}>
           {renderMiniCalendar()}
           <DayEventsPanel />
 
-          {/* Legenda de Cores */}
-          <div className="p-4 bg-white rounded-lg border border-gray-200">
-            <h3 className="text-sm font-medium text-[#265255] mb-3">Tipos de Eventos</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-purple-300 rounded"></div>
-                <span className="text-xs text-gray-700">Avaliação</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-blue-300 rounded"></div>
-                <span className="text-xs text-gray-700">Neurofeedback</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-yellow-400 rounded"></div>
-                <span className="text-xs text-gray-700">Discussão de Resultados</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-green-300 rounded"></div>
-                <span className="text-xs text-gray-700">Yoga Nidra</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-[#A4B734] rounded"></div>
-                <span className="text-xs text-gray-700">Biorresonância Magnética</span>
-              </div>
-            </div>
+          <div className="mt-4 px-1 space-y-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start h-8 text-xs text-gray-600 hover:bg-gray-100">
+                  <Info className="h-3.5 w-3.5 mr-2" />
+                  Legenda de cores
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="right" align="start" className="w-64 p-3 text-xs">
+                <p className="font-medium text-gray-700 mb-1.5">Tipos de Eventos</p>
+                <div className="grid grid-cols-2 gap-1.5 mb-3">
+                  {[
+                    { c: '#D8B4FE', n: 'Avaliação' },
+                    { c: '#93C5FD', n: 'Neurofeedback' },
+                    { c: '#FACC15', n: 'Discussão' },
+                    { c: '#86EFAC', n: 'Yoga Nidra' },
+                    { c: '#A4B734', n: 'Biorresonância' },
+                    { c: '#3f9094', n: 'Sessão' },
+                  ].map(({ c, n }) => (
+                    <div key={n} className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: c }}></span>
+                      <span className="text-gray-600 truncate">{n}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="font-medium text-gray-700 mb-1.5">Estado</p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5"><span className="w-1 h-3 bg-[#e8710a]"></span><span className="text-gray-600">Pendente</span></div>
+                  <div className="flex items-center gap-1.5"><span className="w-1 h-3 bg-[#1a73e8]"></span><span className="text-gray-600">Confirmado</span></div>
+                  <div className="flex items-center gap-1.5"><span className="w-1 h-3 bg-[#188038]"></span><span className="text-gray-600">Realizado</span></div>
+                  <div className="flex items-center gap-1.5"><span className="w-1 h-3 bg-[#d93025]"></span><span className="text-gray-600">Cancelado (riscado)</span></div>
+                </div>
+              </PopoverContent>
+            </Popover>
 
-            <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Status de Eventos</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-orange-500 border border-orange-600"></div>
-                <span className="text-xs text-gray-700">Pendente</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500 border border-blue-600"></div>
-                <span className="text-xs text-gray-700">Confirmado</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-green-500 border border-green-600"></div>
-                <span className="text-xs text-gray-700">Realizado</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-red-500 border border-red-600"></div>
-                <span className="text-xs text-gray-700">Cancelado</span>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2 italic">
-              * Badge de status aparece no topo de cada agendamento
-            </p>
-
-            <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Disponibilidades</h3>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center px-2">
               <Checkbox
                 id="show-availabilities"
                 checked={showAvailabilities}
                 onCheckedChange={(checked) => setShowAvailabilities(checked === true)}
               />
-              <label htmlFor="show-availabilities" className="text-xs text-gray-700 cursor-pointer">
-                Mostrar disponibilidades dos clientes
+              <label htmlFor="show-availabilities" className="ml-2 text-xs text-gray-700 cursor-pointer select-none">
+                Mostrar disponibilidades
               </label>
             </div>
-            {showAvailabilities && (
-              <div className="mt-2 space-y-1">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
-                  <span className="text-xs text-gray-700">Horários disponíveis</span>
-                </div>
-              </div>
-            )}
 
-            <h3 className="text-sm font-medium text-[#265255] mb-3 mt-4">Feriados e Datas Especiais</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-red-100 border border-red-200 rounded"></div>
-                <span className="text-xs text-gray-700">Feriado Nacional</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-orange-100 border border-orange-200 rounded"></div>
-                <span className="text-xs text-gray-700">Feriado Municipal</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-purple-100 border border-purple-200 rounded"></div>
-                <span className="text-xs text-gray-700">Religioso</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
-                <span className="text-xs text-gray-700">Tradição</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-[#e6f2f3] border border-[#3f9094] rounded"></div>
-                <span className="text-xs text-gray-700">Cultural</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-yellow-100 border border-yellow-200 rounded"></div>
-                <span className="text-xs text-gray-700">Dia Importante</span>
-              </div>
-            </div>
+            <p className="text-[10px] text-gray-400 px-2 leading-4">
+              Atalhos: <kbd className="font-sans">D</kbd> dia · <kbd className="font-sans">S</kbd> semana · <kbd className="font-sans">M</kbd> mês · <kbd className="font-sans">A</kbd> agenda · <kbd className="font-sans">T</kbd> hoje · <kbd className="font-sans">←→</kbd> navegar
+            </p>
           </div>
         </aside>
 
@@ -1644,7 +1464,7 @@ const AppointmentCalendar = () => {
                 </div>
 
                 {/* Opções estilo Google Calendar: Todo o dia & Recorrência */}
-                <div className="flex flex-wrap items-center gap-6 py-3 px-3.5 border border-gray-200 bg-gray-50/80 rounded-lg">
+                <div className="flex flex-wrap items-center gap-4 py-3 px-3.5 border border-gray-200 bg-gray-50/80 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="todo_o_dia"
@@ -1662,7 +1482,7 @@ const AppointmentCalendar = () => {
                     </label>
                   </div>
 
-                  <div className="flex items-center space-x-2 flex-1 min-w-[200px]">
+                  <div className="flex items-center gap-2 flex-1 min-w-[240px]">
                     <Select
                       value={recurrenceType}
                       onValueChange={(val: string) => setRecurrenceType(val)}
@@ -1679,6 +1499,19 @@ const AppointmentCalendar = () => {
                         <SelectItem value="yearly">{getYearlyRecurrenceLabel(form.watch('data_inicio'))}</SelectItem>
                       </SelectContent>
                     </Select>
+                    {recurrenceType !== 'none' && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Input
+                          type="number"
+                          min={2}
+                          max={50}
+                          value={recurrenceCount}
+                          onChange={(e) => setRecurrenceCount(Math.max(2, Number(e.target.value)))}
+                          className="w-16 h-9 text-center"
+                        />
+                        <span className="text-xs text-gray-500 whitespace-nowrap">sessões</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1700,9 +1533,6 @@ const AppointmentCalendar = () => {
                       const selectedClient = clients.find(c => c.id === field.value);
                       const displayClients = clientSearchQuery ? filteredClients : clients;
 
-                      console.log('Total de clientes carregados:', clients.length);
-                      console.log('Clientes a exibir:', displayClients.length);
-
                       return (
                         <FormItem>
                           <FormLabel>Cliente (Opcional)</FormLabel>
@@ -1710,7 +1540,7 @@ const AppointmentCalendar = () => {
                             <div className="relative">
                               <Input
                                 type="text"
-                                placeholder={isLoadingClients ? "Carregando clientes..." : "🔍 Pesquisar por nome ou ID..."}
+                                placeholder={isLoadingClients ? "Carregando clientes..." : "Pesquisar por nome ou ID..."}
                                 value={clientSearchQuery}
                                 onChange={(e) => {
                                   setClientSearchQuery(e.target.value);
@@ -1727,7 +1557,6 @@ const AppointmentCalendar = () => {
 
                             <Select
                               onValueChange={(value) => {
-                                console.log('Cliente selecionado no Select:', value);
                                 field.onChange(value === "null" ? null : parseInt(value));
                                 setClientSearchQuery('');
                               }}
@@ -1773,7 +1602,7 @@ const AppointmentCalendar = () => {
                             {selectedClient && (
                               <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
                                 <span className="text-sm font-medium text-blue-900">
-                                  ✓ {selectedClient.id_manual ? `[${selectedClient.id_manual}] ` : `[ID: ${selectedClient.id}] `}
+                                  {selectedClient.id_manual ? `[${selectedClient.id_manual}] ` : `[ID: ${selectedClient.id}] `}
                                   {selectedClient.nome}
                                 </span>
                                 <button
@@ -1784,7 +1613,7 @@ const AppointmentCalendar = () => {
                                   }}
                                   className="text-blue-600 hover:text-blue-800 text-xs font-medium"
                                 >
-                                  ✕ Remover
+                                  Remover
                                 </button>
                               </div>
                             )}
@@ -1947,44 +1776,6 @@ const AppointmentCalendar = () => {
                   )}
                 />
 
-                {!selectedAppointment && (
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="font-medium text-gray-700">Repetir Agendamento</Label>
-                      <Select
-                        value={recurrenceType}
-                        onValueChange={(val: any) => setRecurrenceType(val)}
-                      >
-                        <SelectTrigger className="w-[180px] h-9">
-                          <SelectValue placeholder="Não repetir" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Não repetir</SelectItem>
-                          <SelectItem value="daily">Diariamente</SelectItem>
-                          <SelectItem value="weekly">Semanalmente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {recurrenceType !== 'none' && (
-                      <div className="flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                        <Label className="text-sm text-gray-600">Total de agendamentos a marcar:</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min={2}
-                            max={50}
-                            value={recurrenceCount}
-                            onChange={(e) => setRecurrenceCount(Math.max(2, Number(e.target.value)))}
-                            className="w-20 h-9 text-center"
-                          />
-                          <span className="text-xs text-gray-500">sessões</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 <FormField
                   control={form.control}
                   name="notas"
@@ -2035,17 +1826,6 @@ const AppointmentCalendar = () => {
                       <MessageSquare className="h-3 w-3" />
                       Enviar SMS
                     </Button>
-                  )}
-                  {selectedAppointment && smsStatus[selectedAppointment.id] && (
-                    <div className="flex items-center gap-1 text-[10px] text-gray-500 ml-2">
-                      {smsStatus[selectedAppointment.id].status === 'delivered' ? (
-                        <><CheckCircle2 className="h-3 w-3 text-green-500" /> Entregue</>
-                      ) : smsStatus[selectedAppointment.id].status === 'failed' || smsStatus[selectedAppointment.id].status === 'undelivered' ? (
-                        <><XCircle className="h-3 w-3 text-red-500" /> Falhou</>
-                      ) : (
-                        <><Clock className="h-3 w-3 text-amber-500" /> {smsStatus[selectedAppointment.id].status === 'sent' ? 'Enviado' : 'Pendente'}</>
-                      )}
-                    </div>
                   )}
                 </div>
                 <div className="flex space-x-2">
@@ -2147,6 +1927,9 @@ const AppointmentCalendar = () => {
         <DialogContent className="sm:max-w-[340px] p-0 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl bg-white dark:bg-gray-900">
           {overflowDay && (
             <div className="p-4 space-y-3">
+              <DialogTitle className="sr-only">
+                Agendamentos de {format(overflowDay.date, "d 'de' MMMM", { locale: pt })}
+              </DialogTitle>
               {/* Header com dia da semana e número grande */}
               <div className="flex items-center justify-between border-b pb-2 dark:border-gray-800 pr-8">
                 <div className="flex flex-col items-start">

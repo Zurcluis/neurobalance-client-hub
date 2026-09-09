@@ -560,7 +560,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card className="glassmorphism">
               <CardHeader>
-                <CardTitle className="text-lg">{t('monthlyRevenue')}</CardTitle>
+                <CardTitle className="text-base font-semibold">{t('monthlyRevenue')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[300px]">
@@ -591,7 +591,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
             
             <Card className="glassmorphism">
               <CardHeader>
-                <CardTitle className="text-lg">{t('paymentMethods')}</CardTitle>
+                <CardTitle className="text-base font-semibold">{t('paymentMethods')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">

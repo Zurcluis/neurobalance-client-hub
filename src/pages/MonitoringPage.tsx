@@ -1,13 +1,19 @@
 import PageLayout from '@/components/layout/PageLayout';
+import PageHeader from '@/components/shared/PageHeader';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from '@/components/ui/button';
-import { InfoIcon, HomeIcon } from 'lucide-react';
+import { InfoIcon, HomeIcon, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const MonitoringPage = () => {
   return (
     <PageLayout>
-      <h1 className="text-3xl font-bold gradient-heading mb-6">Monitorização de Sessão</h1>
+      <div className="space-y-6">
+        <PageHeader
+          title="Monitorização de Sessão"
+          description="Acompanhe a atividade das sessões em tempo real"
+          icon={<Activity className="h-5 w-5" />}
+        />
       
       <div className="flex flex-col items-center justify-center py-12">
         <Alert className="max-w-lg mx-auto">
@@ -32,6 +38,7 @@ const MonitoringPage = () => {
             </div>
           </AlertDescription>
         </Alert>
+      </div>
       </div>
     </PageLayout>
   );

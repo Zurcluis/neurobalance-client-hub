@@ -40,14 +40,14 @@ const PageLayout = ({ children, showBreadcrumbs = true }: PageLayoutProps) => {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#E6ECEA] dark:bg-gray-900">
+    <div className="flex min-h-screen bg-[#F2F6F5] dark:bg-gray-900">
       <Sidebar />
       <main
         id="main-content"
         tabIndex={-1}
         role="main"
         aria-label="Conteúdo principal"
-        className={`flex-1 transition-all duration-300 focus:outline-none ${isMobile
+        className={`flex-1 min-w-0 transition-all duration-300 focus:outline-none ${isMobile
             ? `pt-20 px-4 pb-8 ${isPortrait ? 'pb-safe' : ''}`
             : `p-4 sm:p-6 ${isSidebarCollapsed ? 'ml-20' : 'ml-64'}`
           }`}

@@ -103,22 +103,22 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       <CardContent className="space-y-4">
         {/* Métricas Principais */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 p-3 rounded-lg">
+          <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <Euro className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-900">Investimento</span>
+              <Euro className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <span className="text-sm font-medium text-red-900 dark:text-red-200">Investimento</span>
             </div>
-            <p className="text-lg font-bold text-blue-900">
+            <p className="text-lg font-bold text-red-900 dark:text-red-100 tabular-nums">
               {formatCurrency(campaign.investimento)}
             </p>
           </div>
-          
-          <div className="bg-green-50 p-3 rounded-lg">
+
+          <div className="bg-teal-50 dark:bg-teal-950/30 p-3 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <Euro className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Receita</span>
+              <Euro className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <span className="text-sm font-medium text-teal-900 dark:text-teal-200">Receita</span>
             </div>
-            <p className="text-lg font-bold text-green-900">
+            <p className="text-lg font-bold text-teal-900 dark:text-teal-100 tabular-nums">
               {formatCurrency(campaign.receita)}
             </p>
           </div>
@@ -161,14 +161,14 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
         {/* Métricas de Custo */}
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="bg-gray-50 p-2 rounded">
-            <p className="text-gray-600 text-xs">CPL (Custo por Lead)</p>
-            <p className="font-semibold">{formatCurrency(campaign.cpl)}</p>
+          <div className="bg-muted/70 p-2 rounded">
+            <p className="text-muted-foreground text-xs">CPL (Custo por Lead)</p>
+            <p className="font-semibold tabular-nums">{formatCurrency(campaign.cpl)}</p>
           </div>
-          
-          <div className="bg-gray-50 p-2 rounded">
-            <p className="text-gray-600 text-xs">CAC (Custo por Cliente)</p>
-            <p className="font-semibold">{formatCurrency(campaign.cac)}</p>
+
+          <div className="bg-muted/70 p-2 rounded">
+            <p className="text-muted-foreground text-xs">CAC (Custo por Cliente)</p>
+            <p className="font-semibold tabular-nums">{formatCurrency(campaign.cac)}</p>
           </div>
         </div>
 

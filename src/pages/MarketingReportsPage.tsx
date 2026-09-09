@@ -4,7 +4,7 @@ import { useMarketingContext } from '@/contexts/MarketingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -29,6 +29,9 @@ import { EmailSmsCampaignForm } from '@/components/marketing/EmailSmsCampaignFor
 import { EmailSmsCampaignCard } from '@/components/marketing/EmailSmsCampaignCard';
 import LeadKanbanBoard from '@/components/marketing/LeadKanbanBoard';
 import { SmsAutomationSettings } from '@/components/marketing/SmsAutomationSettings';
+import PageHeader from '@/components/shared/PageHeader';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus,
   Search,
@@ -48,7 +51,8 @@ import {
   MapPin,
   LayoutGrid,
   List,
-  Settings2
+  Settings2,
+  Megaphone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
@@ -481,135 +485,120 @@ const MarketingReportsPage = () => {
   const content = (
     <div className="space-y-6">
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t('marketing')}</h1>
-          <p className="text-gray-600">Gerencie campanhas, leads e análises de marketing</p>
-        </div>
+      <PageHeader
+        title={t('marketing')}
+        description="Gerencie campanhas, leads e análises de marketing"
+        icon={<Megaphone className="h-5 w-5" />}
+        actions={
+          <>
+            <TimeRangeSelector
+              selectedRange={periodFilter}
+              onRangeChange={setPeriodFilter}
+            />
+            <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsFormOpen(true)}>
+              <Plus className="h-4 w-4" />
+              {t('newCampaign')}
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex gap-2 items-center">
-          <TimeRangeSelector
-            selectedRange={periodFilter}
-            onRangeChange={setPeriodFilter}
+      {/* Dialog: Nova/Editar Campanha */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
+            </DialogTitle>
+          </DialogHeader>
+          <CampaignForm
+            campaign={editingCampaign || undefined}
+            onSubmit={handleSubmitCampaign}
+            onCancel={handleCancelForm}
+            isLoading={campaignsLoading || false}
           />
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90">
-                <Plus className="h-4 w-4" />
-                {t('newCampaign')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
-                </DialogTitle>
-              </DialogHeader>
-              <CampaignForm
-                campaign={editingCampaign || undefined}
-                onSubmit={handleSubmitCampaign}
-                onCancel={handleCancelForm}
-                isLoading={campaignsLoading || false}
-              />
-            </DialogContent>
-          </Dialog>
+        </DialogContent>
+      </Dialog>
 
-          <Dialog open={isLeadFormOpen} onOpenChange={(open) => {
-            setIsLeadFormOpen(open);
-            if (!open) setEditingLandingLead(null);
-          }}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Novo Lead
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingLandingLead ? 'Editar Lead' : 'Novo Lead'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingLandingLead ? 'Atualize as informações do lead e a sua fase no quadro.' : 'Preencha as informações para registar um novo lead diretamente no quadro.'}
-                </DialogDescription>
-              </DialogHeader>
-              <LandingLeadForm
-                initialData={editingLandingLead || undefined}
-                onSubmit={handleSubmitLandingLead}
-                onCancel={handleCancelLeadForm}
-                isLoading={landingLeadsLoading || leadsLoading}
-              />
-            </DialogContent>
-          </Dialog>
+      {/* Dialog: Novo/Editar Lead */}
+      <Dialog open={isLeadFormOpen} onOpenChange={(open) => {
+        setIsLeadFormOpen(open);
+        if (!open) setEditingLandingLead(null);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLandingLead ? 'Editar Lead' : 'Novo Lead'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingLandingLead ? 'Atualize as informações do lead e a sua fase no quadro.' : 'Preencha as informações para registar um novo lead diretamente no quadro.'}
+            </DialogDescription>
+          </DialogHeader>
+          <LandingLeadForm
+            initialData={editingLandingLead || undefined}
+            onSubmit={handleSubmitLandingLead}
+            onCancel={handleCancelLeadForm}
+            isLoading={landingLeadsLoading || leadsLoading}
+          />
+        </DialogContent>
+      </Dialog>
 
-          <Dialog open={showLeadImporter} onOpenChange={setShowLeadImporter}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Upload className="h-4 w-4" />
-                Importar Leads
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Importar Leads (PDF, Excel, CSV)</DialogTitle>
-                <DialogDescription>
-                  Carregue a folha de leads em PDF ou ficheiro Excel/CSV para registar automaticamente todos os contactos no sistema e no quadro.
-                </DialogDescription>
-              </DialogHeader>
-              <FileImporter
-                onDataImported={handleDataImported}
-                expectedType="lead-compra"
-                title="Carregar Folha de Leads (PDF / Excel)"
-                description="Arraste o PDF de leads ou clique para selecionar"
-              />
-            </DialogContent>
-          </Dialog>
+      {/* Dialog: Importar Leads */}
+      <Dialog open={showLeadImporter} onOpenChange={setShowLeadImporter}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Importar Leads (PDF, Excel, CSV)</DialogTitle>
+            <DialogDescription>
+              Carregue a folha de leads em PDF ou ficheiro Excel/CSV para registar automaticamente todos os contactos no sistema e no quadro.
+            </DialogDescription>
+          </DialogHeader>
+          <FileImporter
+            onDataImported={handleDataImported}
+            expectedType="lead-compra"
+            title="Carregar Folha de Leads (PDF / Excel)"
+            description="Arraste o PDF de leads ou clique para selecionar"
+          />
+        </DialogContent>
+      </Dialog>
 
-          <Dialog open={isEmailSmsFormOpen} onOpenChange={setIsEmailSmsFormOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-2">
-                <Mail className="h-4 w-4" />
-                Email/SMS
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingEmailSmsCampaign ? 'Editar Campanha Email/SMS' : 'Nova Campanha Email/SMS'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingEmailSmsCampaign
-                    ? 'Atualize as informações da campanha de email/SMS e os clientes destinatários.'
-                    : 'Crie uma nova campanha de email ou SMS para enviar aos seus clientes.'}
-                </DialogDescription>
-              </DialogHeader>
-              <EmailSmsCampaignForm
-                campaign={editingEmailSmsCampaign || undefined}
-                onSubmit={async (data) => {
-                  try {
-                    if (editingEmailSmsCampaign) {
-                      await updateEmailSmsCampaign(editingEmailSmsCampaign.id, data);
-                      toast.success('Campanha atualizada com sucesso!');
-                    } else {
-                      await addEmailSmsCampaign(data);
-                      toast.success('Campanha criada com sucesso!');
-                    }
-                    setIsEmailSmsFormOpen(false);
-                    setEditingEmailSmsCampaign(null);
-                  } catch (error) {
-                    console.error('Erro ao salvar campanha:', error);
-                  }
-                }}
-                onCancel={() => {
-                  setIsEmailSmsFormOpen(false);
-                  setEditingEmailSmsCampaign(null);
-                }}
-                isLoading={emailSmsLoading || false}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+      {/* Dialog: Nova/Editar Campanha Email/SMS */}
+      <Dialog open={isEmailSmsFormOpen} onOpenChange={setIsEmailSmsFormOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingEmailSmsCampaign ? 'Editar Campanha Email/SMS' : 'Nova Campanha Email/SMS'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingEmailSmsCampaign
+                ? 'Atualize as informações da campanha de email/SMS e os clientes destinatários.'
+                : 'Crie uma nova campanha de email ou SMS para enviar aos seus clientes.'}
+            </DialogDescription>
+          </DialogHeader>
+          <EmailSmsCampaignForm
+            campaign={editingEmailSmsCampaign || undefined}
+            onSubmit={async (data) => {
+              try {
+                if (editingEmailSmsCampaign) {
+                  await updateEmailSmsCampaign(editingEmailSmsCampaign.id, data);
+                  toast.success('Campanha atualizada com sucesso!');
+                } else {
+                  await addEmailSmsCampaign(data);
+                  toast.success('Campanha criada com sucesso!');
+                }
+                setIsEmailSmsFormOpen(false);
+                setEditingEmailSmsCampaign(null);
+              } catch (error) {
+                console.error('Erro ao salvar campanha:', error);
+              }
+            }}
+            onCancel={() => {
+              setIsEmailSmsFormOpen(false);
+              setEditingEmailSmsCampaign(null);
+            }}
+            isLoading={emailSmsLoading || false}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Tabs Reorganizadas: 8 → 4 */}
       <Tabs defaultValue="overview" className="w-full">
@@ -695,7 +684,7 @@ const MarketingReportsPage = () => {
 
             {/* Campanhas de Marketing */}
             <TabsContent value="marketing" className="space-y-6 mt-4">
-              {/* Barra de Busca */}
+              {/* Barra de ações contextual */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -709,10 +698,14 @@ const MarketingReportsPage = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowFilters(!showFilters)}
-                  className={showFilters ? 'bg-blue-50 border-blue-200' : ''}
+                  className={showFilters ? 'bg-[#E6F2F1] border-[#3f9094]/30' : ''}
                 >
                   <Filter className="h-4 w-4 mr-2" />
                   Filtros
+                </Button>
+                <Button className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsFormOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Nova Campanha
                 </Button>
                 {(searchTerm || Object.keys(filters).length > 0) && (
                   <Button variant="outline" onClick={handleClearFilters}>
@@ -732,17 +725,21 @@ const MarketingReportsPage = () => {
               )}
 
               {/* Resumo */}
-              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                <p className="text-sm text-blue-900 dark:text-blue-100">
-                  Mostrando <strong>{filteredCampaigns.length}</strong> de <strong>{campaigns.length}</strong> campanhas
-                  {(searchTerm || Object.keys(filters).length > 0) && ' (filtradas)'}
-                </p>
+              <div className="bg-muted/70 text-muted-foreground p-3 rounded-lg text-sm">
+                Mostrando <strong className="text-foreground">{filteredCampaigns.length}</strong> de <strong className="text-foreground">{campaigns.length}</strong> campanhas
+                {(searchTerm || Object.keys(filters).length > 0) && ' (filtradas)'}
               </div>
 
               {/* Lista de Campanhas */}
               {campaignsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Card key={i} className="p-5 space-y-3">
+                      <Skeleton className="h-5 w-2/3" />
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-20 w-full" />
+                    </Card>
+                  ))}
                 </div>
               ) : filteredCampaigns.length === 0 ? (
                 <div className="text-center py-8">
@@ -779,7 +776,7 @@ const MarketingReportsPage = () => {
 
             {/* Email/SMS Campanhas */}
             <TabsContent value="email-sms" className="space-y-6 mt-4">
-              {/* Barra de Busca */}
+              {/* Barra de ações contextual */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -790,21 +787,32 @@ const MarketingReportsPage = () => {
                     className="pl-10"
                   />
                 </div>
+                <Button
+                  className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => setIsEmailSmsFormOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Nova Campanha Email/SMS
+                </Button>
               </div>
 
               {/* Resumo */}
-              <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg">
-                <p className="text-sm text-purple-900 dark:text-purple-100">
-                  Mostrando <strong>{emailSmsCampaigns.filter(c =>
-                    !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
-                  ).length}</strong> de <strong>{emailSmsCampaigns.length}</strong> campanhas
-                </p>
+              <div className="bg-muted/70 text-muted-foreground p-3 rounded-lg text-sm">
+                Mostrando <strong className="text-foreground">{emailSmsCampaigns.filter(c =>
+                  !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
+                ).length}</strong> de <strong className="text-foreground">{emailSmsCampaigns.length}</strong> campanhas
               </div>
 
               {/* Lista de Campanhas Email/SMS */}
               {emailSmsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} className="p-5 space-y-3">
+                      <Skeleton className="h-5 w-2/3" />
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-20 w-full" />
+                    </Card>
+                  ))}
                 </div>
               ) : emailSmsCampaigns.filter(c =>
                 !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
@@ -968,7 +976,7 @@ const MarketingReportsPage = () => {
 
             {/* Lista View - Leads tradicionais */}
             <TabsContent value="lista" className="space-y-4 mt-4">
-              {/* Barra de busca e filtros para leads */}
+              {/* Barra de ações contextual */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
@@ -989,6 +997,18 @@ const MarketingReportsPage = () => {
                   <Filter className="h-4 w-4" />
                   Filtros
                   {showLeadFilters && <X className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setShowLeadImporter(true)}
+                >
+                  <Upload className="h-4 w-4" />
+                  Importar Leads
+                </Button>
+                <Button className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsLeadFormOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Novo Lead
                 </Button>
               </div>
 
@@ -1048,98 +1068,197 @@ const MarketingReportsPage = () => {
 
               {/* Lista de leads */}
               {leadsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-gray-500">Carregando leads...</div>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {filteredLeads.map((lead) => (
-                    <Card key={lead.id} className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2 flex-wrap">
-                            <h3 className="font-semibold text-lg">{lead.nome}</h3>
-                            <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>
-                              {lead.tipo}
-                            </Badge>
-                            {lead.status && (
-                              <Badge variant="outline" className="border-teal-300 text-teal-700 bg-teal-50 font-medium">
-                                {lead.status}
-                              </Badge>
-                            )}
-                            {lead.genero && (
-                              <Badge variant="outline">
-                                {lead.genero}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                            {lead.email && (
-                              <div className="flex items-center gap-2">
-                                <Mail className="h-4 w-4" />
-                                {lead.email}
-                              </div>
-                            )}
-                            {lead.telefone && (
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4" />
-                                {lead.telefone}
-                              </div>
-                            )}
-                            {lead.cidade && (
-                              <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                {lead.cidade}
-                              </div>
-                            )}
-                            {lead.idade && (
-                              <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                {lead.idade} anos
-                              </div>
-                            )}
-                            {lead.valor_pago && lead.valor_pago > 0 && (
-                              <div className="flex items-center gap-2">
-                                <Euro className="h-4 w-4" />
-                                €{lead.valor_pago}
-                              </div>
-                            )}
-                            {lead.data_evento && (
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                {new Date(lead.data_evento).toLocaleDateString('pt-PT')}
-                              </div>
-                            )}
-                          </div>
-                          {lead.origem_campanha && (
-                            <p className="mt-2 text-sm text-gray-700">
-                              <strong>Campanha:</strong> {lead.origem_campanha}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 ml-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditLeadFromList(lead)}
-                            title="Editar Lead"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteLeadFromList(lead.id)}
-                            className="text-red-600 hover:text-red-700"
-                            title="Eliminar Lead"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Card key={i} className="p-4 space-y-2">
+                      <Skeleton className="h-5 w-1/3" />
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-4 w-1/2" />
                     </Card>
                   ))}
                 </div>
+              ) : filteredLeads.length === 0 ? (
+                <div className="text-center py-8">
+                  <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {leads.length === 0
+                      ? 'Nenhum lead registado ainda.'
+                      : 'Nenhum lead encontrado com os filtros aplicados.'
+                    }
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Tabela densa (desktop) */}
+                  <Card className="hidden md:block overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Contacto</TableHead>
+                          <TableHead>Cidade</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredLeads.map((lead) => (
+                          <TableRow key={lead.id} className="hover:bg-muted/40">
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{lead.nome}</span>
+                                <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                                  {lead.tipo}
+                                </Badge>
+                              </div>
+                              {lead.origem_campanha && (
+                                <span className="text-xs text-muted-foreground">{lead.origem_campanha}</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-0.5 text-xs text-muted-foreground">
+                                {lead.email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3" />{lead.email}</div>}
+                                {lead.telefone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3" />{lead.telefone}</div>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{lead.cidade || '—'}</TableCell>
+                            <TableCell>
+                              {lead.status ? (
+                                <Badge variant="outline" className="border-teal-300 text-teal-700 bg-teal-50 dark:bg-teal-950/40 dark:text-teal-300 font-medium text-[10px] px-1.5 py-0">
+                                  {lead.status}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {lead.valor_pago && lead.valor_pago > 0
+                                ? `€${lead.valor_pago}`
+                                : <span className="text-muted-foreground">—</span>}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              {lead.data_evento ? new Date(lead.data_evento).toLocaleDateString('pt-PT') : '—'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleEditLeadFromList(lead)}
+                                  title="Editar Lead"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleDeleteLeadFromList(lead.id)}
+                                  title="Eliminar Lead"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+
+                  {/* Cards (mobile) */}
+                  <div className="grid gap-4 md:hidden">
+                    {filteredLeads.map((lead) => (
+                      <Card key={lead.id} className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
+                              <h3 className="font-semibold text-lg">{lead.nome}</h3>
+                              <Badge variant={lead.tipo === 'Compra' ? 'default' : 'secondary'}>
+                                {lead.tipo}
+                              </Badge>
+                              {lead.status && (
+                                <Badge variant="outline" className="border-teal-300 text-teal-700 bg-teal-50 font-medium">
+                                  {lead.status}
+                                </Badge>
+                              )}
+                              {lead.genero && (
+                                <Badge variant="outline">
+                                  {lead.genero}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                              {lead.email && (
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-4 w-4" />
+                                  {lead.email}
+                                </div>
+                              )}
+                              {lead.telefone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4" />
+                                  {lead.telefone}
+                                </div>
+                              )}
+                              {lead.cidade && (
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4" />
+                                  {lead.cidade}
+                                </div>
+                              )}
+                              {lead.idade && (
+                                <div className="flex items-center gap-2">
+                                  <Users className="h-4 w-4" />
+                                  {lead.idade} anos
+                                </div>
+                              )}
+                              {lead.valor_pago && lead.valor_pago > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Euro className="h-4 w-4" />
+                                  €{lead.valor_pago}
+                                </div>
+                              )}
+                              {lead.data_evento && (
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4" />
+                                  {new Date(lead.data_evento).toLocaleDateString('pt-PT')}
+                                </div>
+                              )}
+                            </div>
+                            {lead.origem_campanha && (
+                              <p className="mt-2 text-sm text-gray-700">
+                                <strong>Campanha:</strong> {lead.origem_campanha}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditLeadFromList(lead)}
+                              title="Editar Lead"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteLeadFromList(lead.id)}
+                              className="text-red-600 hover:text-red-700"
+                              title="Eliminar Lead"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
           </Tabs>

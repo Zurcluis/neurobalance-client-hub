@@ -4,6 +4,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Home, Briefcase, Wrench, Beaker, FileText, PiggyBank } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import KpiCard from '@/components/shared/KpiCard';
+import { formatCurrency } from '@/utils/formatUtils';
+import { tooltipStyle } from '@/utils/chartUtils';
 
 interface MonthlyAnalysisProps {
   payments: any[];
@@ -216,65 +219,38 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({ payments, expe
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-white to-green-50 border-l-4 border-l-green-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Faturação</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              €{monthlyData.totalRevenue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {monthlyData.paymentsCount} pagamentos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-white to-red-50 border-l-4 border-l-red-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Despesas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              €{monthlyData.totalExpenses.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {monthlyData.expensesCount} despesas
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-white to-blue-50 border-l-4 border-l-blue-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Lucro</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${monthlyData.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              €{monthlyData.profit.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Margem: {monthlyData.profitMargin.toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-white to-purple-50 border-l-4 border-l-purple-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Taxa de Eficiência</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {(100 - (monthlyData.totalRevenue > 0 ? (monthlyData.totalExpenses / monthlyData.totalRevenue) * 100 : 0)).toFixed(1)}%
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Rentabilidade operacional
-            </p>
-          </CardContent>
-        </Card>
+        <KpiCard
+          icon={PiggyBank}
+          label="Faturação"
+          value={formatCurrency(monthlyData.totalRevenue)}
+          sub={`${monthlyData.paymentsCount} pagamentos`}
+          tone="emerald"
+        />
+        <KpiCard
+          icon={FileText}
+          label="Despesas"
+          value={formatCurrency(monthlyData.totalExpenses)}
+          sub={`${monthlyData.expensesCount} despesas`}
+          tone="red"
+        />
+        <KpiCard
+          icon={Home}
+          label="Lucro"
+          value={formatCurrency(monthlyData.profit)}
+          sub={`Margem: ${monthlyData.profitMargin.toFixed(1)}%`}
+          tone="blue"
+        />
+        <KpiCard
+          icon={Briefcase}
+          label="Taxa de Eficiência"
+          value={`${(100 - (monthlyData.totalRevenue > 0 ? (monthlyData.totalExpenses / monthlyData.totalRevenue) * 100 : 0)).toFixed(1)}%`}
+          sub="Rentabilidade operacional"
+          tone="purple"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-gradient-to-br from-white to-gray-50">
+        <Card>
           <CardHeader>
             <CardTitle>Despesas por Categoria</CardTitle>
           </CardHeader>
@@ -298,7 +274,7 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({ payments, expe
                   </Pie>
                   <Tooltip 
                     formatter={(value: any) => [`€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 'Valor']}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb' }}
+                    contentStyle={tooltipStyle}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -306,7 +282,7 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({ payments, expe
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-white to-gray-50">
+        <Card>
           <CardHeader>
             <CardTitle>Comparação de Categorias</CardTitle>
           </CardHeader>
@@ -319,7 +295,7 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({ payments, expe
                   <YAxis type="category" dataKey="name" width={150} fontSize={12} />
                   <Tooltip 
                     formatter={(value: any) => [`€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`, 'Valor']}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb' }}
+                    contentStyle={tooltipStyle}
                   />
                   <Bar dataKey="value" name="Despesa">
                     {monthlyData.categoryData.map((entry, index) => (
@@ -333,7 +309,7 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({ payments, expe
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-br from-white to-gray-50">
+      <Card>
         <CardHeader>
           <CardTitle>Detalhamento por Categoria</CardTitle>
         </CardHeader>
@@ -383,9 +359,9 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({ payments, expe
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-l-4 border-l-blue-500">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-blue-800">Categorias de Despesas</CardTitle>
+          <CardTitle className="text-base font-semibold">Categorias de Despesas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {Object.entries(EXPENSE_CATEGORIES).map(([key, config]) => {

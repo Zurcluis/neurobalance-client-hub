@@ -11,6 +11,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, RefreshCw, Filter, TrendingUp } from 'lucide-react';
+import PageHeader from '@/components/shared/PageHeader';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useMarketData } from '@/hooks/useMarketData';
 import { InvestmentCard } from '@/components/investments/InvestmentCard';
@@ -166,40 +167,36 @@ const InvestmentsPage = () => {
           isMobile && "pt-20"
         )}>
           {/* Header Melhorado */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent">
-                Portfólio de Investimentos
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Acompanhe e gerencie seus investimentos em tempo real
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefreshPrices}
-                disabled={marketLoading || investments.length === 0}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={cn("h-4 w-4", marketLoading && "animate-spin")} />
-                {!isMobile && "Atualizar Preços"}
-              </Button>
-              
-              <Button
-                onClick={() => {
-                  setEditingInvestment(null);
-                  setIsFormOpen(true);
-                }}
-                className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90 flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                {!isMobile && "Novo Investimento"}
-              </Button>
-            </div>
-          </div>
+          <PageHeader
+            title="Portfólio de Investimentos"
+            description="Acompanhe e gerencie seus investimentos em tempo real"
+            icon={<TrendingUp className="h-5 w-5" />}
+            actions={
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshPrices}
+                  disabled={marketLoading || investments.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={cn("h-4 w-4", marketLoading && "animate-spin")} />
+                  {!isMobile && "Atualizar Preços"}
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    setEditingInvestment(null);
+                    setIsFormOpen(true);
+                  }}
+                  className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90 flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {!isMobile && "Novo Investimento"}
+                </Button>
+              </>
+            }
+          />
 
           {/* Portfolio Summary */}
           {investments.length > 0 && (

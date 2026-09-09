@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { parseISO, format } from 'date-fns';
-import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
+import { useScreenSize } from '@/hooks/use-mobile';
 
 interface Appointment {
   id: string;
@@ -18,9 +18,8 @@ interface UpcomingAppointmentsTableProps {
 }
 
 const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTableProps) => {
-  const isMobile = useIsMobile();
-  const { isPortrait } = useScreenSize();
-  
+  const { isMobile: isBelowLg } = useScreenSize('lg');
+
   const getAppointmentTypeLabel = (type: string) => {
     if (!type) return 'Sessão';
     const t = type.toLowerCase();
@@ -48,8 +47,8 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
     }
   };
   
-  // Renderização mobile adaptada
-  if (isMobile && isPortrait) {
+  // Renderização em cartões para telemóvel e tablet (abaixo de lg)
+  if (isBelowLg) {
     return (
       <div className="space-y-2">
         {appointments.map((appointment) => {
@@ -62,29 +61,29 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
           const formattedEndTime = format(endTime, 'HH:mm');
           
           return (
-            <div 
-              key={appointment.id} 
-              className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+            <div
+              key={appointment.id}
+              className="bg-card/60 p-3 rounded-lg shadow-sm border border-border"
             >
               <div className="flex justify-between items-start mb-1.5">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{appointment.title}</div>
-                  <Link to={`/clients/${appointment.clientId}`} className="text-xs text-[#265255] hover:underline">
+                  <Link to={`/clients/${appointment.clientId}`} className="text-xs text-primary hover:underline">
                     {appointment.clientName}
                   </Link>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-medium text-gray-600">
+                  <div className="text-xs font-medium text-muted-foreground">
                     {formattedStartTime} - {formattedEndTime}
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between mt-1">
                 <Badge className={`${getAppointmentTypeColor(appointment.type)} text-xs px-2 py-0.5`}>
                   {getAppointmentTypeLabel(appointment.type)}
                 </Badge>
-                <Badge variant="outline" className={`text-xs ${appointment.confirmed ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
+                <Badge variant="outline" className={`text-xs ${appointment.confirmed ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
                   {appointment.confirmed ? "Confirmado" : "Pendente"}
                 </Badge>
               </div>
@@ -93,7 +92,7 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
         })}
         
         {appointments.length === 0 && (
-          <div className="text-center py-4 text-gray-500 text-sm">
+          <div className="text-center py-4 text-muted-foreground text-sm">
             Sem agendamentos
           </div>
         )}
@@ -101,12 +100,12 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
     );
   }
   
-  // Versão desktop ou mobile em landscape
+  // Versão tabela (ecrãs lg e acima)
   return (
     <div className="overflow-x-auto table-container">
       <table className="w-full">
         <thead>
-          <tr className="text-left text-xs uppercase tracking-wider text-[#265255] bg-[#E6ECEA]/40">
+          <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/50">
             <th className="py-2 px-4 font-medium">Horário</th>
             <th className="py-2 px-4 font-medium">Cliente</th>
             <th className="py-2 px-4 font-medium">Tipo</th>
@@ -124,17 +123,15 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
             const formattedEndTime = format(endTime, 'HH:mm');
             
             return (
-              <tr key={appointment.id} className="border-t border-white/20 hover:bg-white/10">
-                <td className="py-3 px-4 text-[#265255]">
+              <tr key={appointment.id} className="border-t border-border hover:bg-muted/40 transition-colors">
+                <td className="py-3 px-4 text-sm text-muted-foreground tabular-nums">
                   {formattedStartTime} - {formattedEndTime}
                 </td>
                 <td className="py-3 px-4">
-                  <Link to={`/clients/${appointment.clientId}`} className="hover:underline text-[#265255] font-medium">
+                  <Link to={`/clients/${appointment.clientId}`} className="hover:underline text-foreground font-medium text-sm">
                     {appointment.clientName}
                   </Link>
-                  {!isMobile && (
-                    <div className="text-xs text-gray-600">ID: {appointment.clientId}</div>
-                  )}
+                  <div className="text-xs text-muted-foreground">ID: {appointment.clientId}</div>
                 </td>
                 <td className="py-3 px-4">
                   <Badge className={`${getAppointmentTypeColor(appointment.type)}`}>
@@ -142,7 +139,7 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
                   </Badge>
                 </td>
                 <td className="py-3 px-4">
-                  <Badge variant="outline" className={appointment.confirmed ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
+                  <Badge variant="outline" className={`text-xs ${appointment.confirmed ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
                     {appointment.confirmed ? "Confirmado" : "Pendente"}
                   </Badge>
                 </td>
@@ -152,7 +149,7 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
           
           {appointments.length === 0 && (
             <tr>
-              <td colSpan={4} className="text-center py-4 text-gray-500">
+              <td colSpan={4} className="text-center py-4 text-muted-foreground">
                 Sem agendamentos
               </td>
             </tr>

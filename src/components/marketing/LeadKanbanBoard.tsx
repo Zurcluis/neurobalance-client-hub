@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +26,7 @@ import {
   MessageSquare,
   RefreshCw,
   User,
+  Users,
   Search,
   Send,
   ExternalLink,
@@ -34,10 +34,13 @@ import {
   MapPin,
   UserPlus,
   Upload,
+  Plus,
+  TrendingUp,
 } from 'lucide-react';
 import { KANBAN_COLUMNS, LandingLead, LandingLeadStatus } from '@/types/landing-lead';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
 import { LandingLeadForm } from '@/components/marketing/LandingLeadForm';
+import KpiCard from '@/components/shared/KpiCard';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -57,6 +60,7 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onDragStart, onClick, onEdit,
   const email = (lead.email && !lead.email.includes('@neurobalance.local')) ? lead.email : 'Sem email';
   const telefone = lead.telefone || 'Sem telefone';
   const origem = lead.origem || 'Desconhecida';
+  const showOrigem = origem !== 'Desconhecida';
 
   const handleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-radix-dropdown-menu-trigger]')) return;
@@ -139,12 +143,13 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onDragStart, onClick, onEdit,
         </div>
       )}
 
-      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between pointer-events-none">
-        <Badge variant="outline" className="text-xs bg-teal-50 text-teal-700 border-teal-200">
-          {origem}
-        </Badge>
-        <span className="text-xs text-gray-400">Clique para detalhes</span>
-      </div>
+      {showOrigem && (
+        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between pointer-events-none">
+          <Badge variant="outline" className="text-xs bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800">
+            {origem}
+          </Badge>
+        </div>
+      )}
     </div>
   );
 };
@@ -160,10 +165,11 @@ interface KanbanColumnProps {
   onClickLead: (lead: LandingLead) => void;
   onEditLead: (lead: LandingLead) => void;
   onDeleteLead: (id: string) => void;
+  onAddLeadToColumn?: (status: LandingLeadStatus) => void;
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
-  column, leads, onDragStart, onDragOver, onDrop, onClickLead, onEditLead, onDeleteLead,
+  column, leads, onDragStart, onDragOver, onDrop, onClickLead, onEditLead, onDeleteLead, onAddLeadToColumn,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -191,8 +197,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 
   return (
     <div
-      className={`flex-1 min-w-0 flex flex-col bg-gray-50 rounded-xl p-2 transition-all duration-200 ${
-        isDragOver ? 'ring-2 ring-teal-400 bg-teal-50/50' : ''
+      className={`flex-1 min-w-0 flex flex-col bg-muted/60 dark:bg-gray-800/40 rounded-xl p-2 transition-all duration-200 ${
+        isDragOver ? 'ring-2 ring-teal-400 bg-teal-50/50 dark:bg-teal-950/30' : ''
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -201,13 +207,26 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       <div className="flex items-center justify-between mb-3 gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
           <div className={`w-2.5 h-2.5 flex-shrink-0 rounded-full ${column.color}`} />
-          <h3 className="font-semibold text-gray-700 text-xs lg:text-sm truncate" title={column.title}>
+          <h3 className="font-semibold text-gray-700 dark:text-gray-300 text-xs lg:text-sm truncate" title={column.title}>
             {column.title}
           </h3>
         </div>
-        <Badge variant="secondary" className="bg-white text-gray-600 text-[10px] px-1.5 py-0 flex-shrink-0">
-          {leads.length}
-        </Badge>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Badge variant="secondary" className="bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 text-[10px] px-1.5 py-0">
+            {leads.length}
+          </Badge>
+          {onAddLeadToColumn && (
+            <button
+              type="button"
+              onClick={() => onAddLeadToColumn(column.id)}
+              className="h-5 w-5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-teal-50 hover:text-teal-600 hover:border-teal-300 dark:hover:bg-teal-950/40 flex items-center justify-center transition-colors"
+              title={`Adicionar lead em ${column.title}`}
+              aria-label={`Adicionar lead em ${column.title}`}
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2 min-h-[200px] max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
@@ -258,6 +277,7 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
   const [selectedLead, setSelectedLead] = useState<LandingLead | null>(null);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
+  const [createLeadStatus, setCreateLeadStatus] = useState<LandingLeadStatus | undefined>(undefined);
   const [editForm, setEditForm] = useState({ observacoes: '' });
   const [emailForm, setEmailForm] = useState({ assunto: '', mensagem: '' });
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -431,32 +451,11 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
     <div className="space-y-4">
       {/* Header stats */}
       <div className="flex flex-col lg:flex-row gap-4 justify-between">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-3">
-              <p className="text-xs text-blue-600 font-medium">Total Leads</p>
-              <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-            <CardContent className="p-3">
-              <p className="text-xs text-yellow-600 font-medium">Novos</p>
-              <p className="text-2xl font-bold text-yellow-700">{stats.novos}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-3">
-              <p className="text-xs text-purple-600 font-medium">Em Progresso</p>
-              <p className="text-2xl font-bold text-purple-700">{stats.emProgresso}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-3">
-              <p className="text-xs text-green-600 font-medium">Convertidos</p>
-              <p className="text-2xl font-bold text-green-700">{stats.convertidos}</p>
-              <p className="text-xs text-green-600">({stats.taxaConversao}%)</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1">
+          <KpiCard icon={Users} label="Total Leads" value={stats.total} tone="blue" />
+          <KpiCard icon={UserPlus} label="Novos" value={stats.novos} tone="amber" />
+          <KpiCard icon={Clock} label="Em Progresso" value={stats.emProgresso} tone="purple" />
+          <KpiCard icon={TrendingUp} label="Convertidos" value={stats.convertidos} tone="emerald" sub={`${stats.taxaConversao}% de conversão`} />
         </div>
 
         <div className="flex gap-2">
@@ -503,6 +502,10 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
               onClickLead={handleClickLead}
               onEditLead={handleEditLead}
               onDeleteLead={handleDeleteLead}
+              onAddLeadToColumn={(status) => {
+                setCreateLeadStatus(status);
+                setIsCreateLeadOpen(true);
+              }}
             />
           ))}
         </div>
@@ -699,7 +702,10 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
       </Dialog>
 
       {/* Dialog Novo Lead no Quadro */}
-      <Dialog open={isCreateLeadOpen} onOpenChange={setIsCreateLeadOpen}>
+      <Dialog open={isCreateLeadOpen} onOpenChange={(open) => {
+        setIsCreateLeadOpen(open);
+        if (!open) setCreateLeadStatus(undefined);
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Novo Lead (Quadro)</DialogTitle>
@@ -708,11 +714,16 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
             </DialogDescription>
           </DialogHeader>
           <LandingLeadForm
+            initialData={createLeadStatus ? ({ status: createLeadStatus } as LandingLead) : undefined}
             onSubmit={async (data) => {
               await addLead({ ...data, email: data.email ?? '' });
               setIsCreateLeadOpen(false);
+              setCreateLeadStatus(undefined);
             }}
-            onCancel={() => setIsCreateLeadOpen(false)}
+            onCancel={() => {
+              setIsCreateLeadOpen(false);
+              setCreateLeadStatus(undefined);
+            }}
             isLoading={isLoading}
           />
         </DialogContent>

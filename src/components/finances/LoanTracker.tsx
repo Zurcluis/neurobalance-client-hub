@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+﻿import React, { useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -198,10 +198,10 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
 
     return (
       <Card className="overflow-hidden border-t-4 border-t-[#3f9094]">
-        <CardHeader className="bg-gradient-to-r from-[#3f9094]/5 to-transparent pb-4">
+        <CardHeader className="pb-4">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-xl flex items-center gap-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <PiggyBank className="h-5 w-5 text-[#3f9094]" />
                 {loan.name}
               </CardTitle>
@@ -351,9 +351,9 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
 
   return (
     <div className="space-y-6">
-      <Card className="border-2 border-[#3f9094]/20 bg-gradient-to-br from-[#3f9094]/5 to-white dark:to-gray-900">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
             <PiggyBank className="h-6 w-6 text-[#3f9094]" />
             Resumo Geral dos Empréstimos
           </CardTitle>

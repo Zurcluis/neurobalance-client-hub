@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -428,7 +428,7 @@ export const FinancialChatbot: React.FC = () => {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 z-50"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-[#3f9094] hover:from-blue-700 hover:to-indigo-700 z-50"
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
@@ -439,7 +439,7 @@ export const FinancialChatbot: React.FC = () => {
 
   if (isMinimized) {
     return (
-      <Card className="fixed bottom-6 right-6 w-80 shadow-2xl z-50 bg-gradient-to-br from-blue-600 to-indigo-600">
+      <Card className="fixed bottom-6 right-6 w-80 shadow-2xl z-50 bg-[#3f9094] border-none">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-white">
@@ -472,13 +472,13 @@ export const FinancialChatbot: React.FC = () => {
 
   return (
     <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col">
-      <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+      <CardHeader className="pb-3 bg-[#3f9094] text-white rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
             <div>
               <CardTitle className="text-base">Assistente Financeiro</CardTitle>
-              <p className="text-xs text-blue-100">Sempre atualizado • 2024</p>
+              <p className="text-xs text-white/80">Assistente inteligente</p>
             </div>
           </div>
           <div className="flex gap-1">
@@ -514,7 +514,7 @@ export const FinancialChatbot: React.FC = () => {
                 )}
               >
                 {message.type === 'bot' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#3f9094] flex items-center justify-center">
                     <Bot className="h-5 w-5 text-white" />
                   </div>
                 )}
@@ -546,7 +546,7 @@ export const FinancialChatbot: React.FC = () => {
                   </div>
                 </div>
                 {message.type === 'user' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center">
                     <User className="h-5 w-5 text-white" />
                   </div>
                 )}
@@ -555,7 +555,7 @@ export const FinancialChatbot: React.FC = () => {
             
             {isTyping && (
               <div className="flex gap-2 justify-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#3f9094] flex items-center justify-center">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
                 <div className="bg-gray-100 rounded-lg p-3">

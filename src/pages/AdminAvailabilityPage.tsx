@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
+import PageHeader from '@/components/shared/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, BarChart3, Sparkles, Users } from 'lucide-react';
 import { AdminAvailabilityDashboard } from '@/components/admin/availability/AdminAvailabilityDashboard';
@@ -13,14 +14,11 @@ const AdminAvailabilityPage = () => {
     <PageLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#3f9094] to-[#2A5854] bg-clip-text text-transparent">
-            Gestão de Disponibilidades
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Gerencie disponibilidades de clientes, gere sugestões automáticas e visualize analytics
-          </p>
-        </div>
+        <PageHeader
+          title="Gestão de Disponibilidades"
+          description="Gerencie disponibilidades de clientes, gere sugestões automáticas e visualize analytics"
+          icon={<Calendar className="h-5 w-5" />}
+        />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
