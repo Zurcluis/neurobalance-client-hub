@@ -46,3 +46,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     fetch: authedFetch,
   },
 });
+
+// Cliente Supabase com contexto anónimo garantido (sem sessão de utilizador anexada).
+// Permite que operações em tabelas públicas de marketing funcionem mesmo se
+// a sessão do utilizador autenticado encontrar políticas RLS restritivas.
+export const supabaseAnon = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});
+

@@ -1,7 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabaseAnon } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { LandingLead, LandingLeadStatus } from '@/types/landing-lead';
+
+const isRlsError = (err: unknown) => {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: string; message?: string };
+  return e.code === '42501' || (typeof e.message === 'string' && (
+    e.message.toLowerCase().includes('row-level security') ||
+    e.message.toLowerCase().includes('violates row-level') ||
+    e.message.toLowerCase().includes('permission denied')
+  ));
+};
 
 export const useLandingLeads = () => {
   const [leads, setLeads] = useState<LandingLead[]>([]);
@@ -13,10 +23,19 @@ export const useLandingLeads = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('landing_leads')
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (isRlsError(error)) {
+        const fallback = await supabaseAnon
+          .from('landing_leads')
+          .select('*')
+          .order('created_at', { ascending: false });
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
@@ -51,13 +70,24 @@ export const useLandingLeads = () => {
         observacoes: leadData.observacoes?.trim() || '',
       };
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('landing_leads')
         .insert([payload])
         .select()
         .single();
 
+      if (isRlsError(error)) {
+        const fallback = await supabaseAnon
+          .from('landing_leads')
+          .insert([payload])
+          .select()
+          .single();
+        data = fallback.data;
+        error = fallback.error;
+      }
+
       if (error) throw error;
+
 
       // Sincronizar com lead_compra para aparecer também na vista Lista e Relatórios
       const statusMapToCompra: Record<LandingLeadStatus, string> = {
@@ -70,7 +100,7 @@ export const useLandingLeads = () => {
       };
 
       try {
-        await supabase.from('lead_compra').upsert([{
+        const compraPayload = [{
           nome: payload.nome,
           email: emailNormalized,
           telefone: payload.telefone,
@@ -83,7 +113,11 @@ export const useLandingLeads = () => {
           status: statusMapToCompra[payload.status] || 'Marcaram avaliação',
           origem_campanha: payload.origem,
           observacoes: payload.observacoes
-        }], { onConflict: 'email' });
+        }];
+        const { error: syncErr } = await supabase.from('lead_compra').upsert(compraPayload, { onConflict: 'email' });
+        if (isRlsError(syncErr)) {
+          await supabaseAnon.from('lead_compra').upsert(compraPayload, { onConflict: 'email' });
+        }
       } catch (syncErr) {
         console.warn('Sincronização com lead_compra falhou (não bloqueante):', syncErr);
       }
@@ -106,13 +140,24 @@ export const useLandingLeads = () => {
 
   const updateLeadStatus = useCallback(async (id: string, newStatus: LandingLeadStatus) => {
     try {
-      const { error } = await supabase
+      let { error } = await supabase
         .from('landing_leads')
         .update({ 
           status: newStatus,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
+
+      if (isRlsError(error)) {
+        const fallback = await supabaseAnon
+          .from('landing_leads')
+          .update({ 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
@@ -133,9 +178,15 @@ export const useLandingLeads = () => {
       const currentLead = leads.find(l => l.id === id);
       if (currentLead) {
         if (currentLead.email) {
-          await supabase.from('lead_compra').update({ status: statusMapToCompra[newStatus] }).eq('email', currentLead.email);
+          const { error: cErr } = await supabase.from('lead_compra').update({ status: statusMapToCompra[newStatus] }).eq('email', currentLead.email);
+          if (isRlsError(cErr)) {
+            await supabaseAnon.from('lead_compra').update({ status: statusMapToCompra[newStatus] }).eq('email', currentLead.email);
+          }
         } else if (currentLead.telefone) {
-          await supabase.from('lead_compra').update({ status: statusMapToCompra[newStatus] }).eq('telefone', currentLead.telefone);
+          const { error: cErr } = await supabase.from('lead_compra').update({ status: statusMapToCompra[newStatus] }).eq('telefone', currentLead.telefone);
+          if (isRlsError(cErr)) {
+            await supabaseAnon.from('lead_compra').update({ status: statusMapToCompra[newStatus] }).eq('telefone', currentLead.telefone);
+          }
         }
       }
 
@@ -165,11 +216,21 @@ export const useLandingLeads = () => {
       }
 
       // Tentar atualizar por id sem .single() para evitar erro PGRST116 caso o id venha de outra tabela ou estado desatualizado
-      const { data: updatedRows, error: updateError } = await supabase
+      let { data: updatedRows, error: updateError } = await supabase
         .from('landing_leads')
         .update(payload)
         .eq('id', id)
         .select();
+
+      if (isRlsError(updateError)) {
+        const fallback = await supabaseAnon
+          .from('landing_leads')
+          .update(payload)
+          .eq('id', id)
+          .select();
+        updatedRows = fallback.data;
+        updateError = fallback.error;
+      }
 
       if (updateError) throw updateError;
 
@@ -205,12 +266,24 @@ export const useLandingLeads = () => {
         }
 
         if (existingId) {
-          const { data: reUpdated, error: reErr } = await supabase
+          let { data: reUpdated, error: reErr } = await supabase
             .from('landing_leads')
             .update(payload)
             .eq('id', existingId)
             .select()
             .single();
+
+          if (isRlsError(reErr)) {
+            const fallback = await supabaseAnon
+              .from('landing_leads')
+              .update(payload)
+              .eq('id', existingId)
+              .select()
+              .single();
+            reUpdated = fallback.data;
+            reErr = fallback.error;
+          }
+
           if (reErr) throw reErr;
           savedData = reUpdated;
         } else {
@@ -226,11 +299,21 @@ export const useLandingLeads = () => {
             observacoes: (payload.observacoes as string)?.trim() || ''
           };
 
-          const { data: inserted, error: insertError } = await supabase
+          let { data: inserted, error: insertError } = await supabase
             .from('landing_leads')
             .insert([insertPayload])
             .select()
             .single();
+
+          if (isRlsError(insertError)) {
+            const fallback = await supabaseAnon
+              .from('landing_leads')
+              .insert([insertPayload])
+              .select()
+              .single();
+            inserted = fallback.data;
+            insertError = fallback.error;
+          }
 
           if (insertError) throw insertError;
           savedData = inserted;
@@ -281,7 +364,7 @@ export const useLandingLeads = () => {
         }
 
         if (!updatedCompra) {
-          await supabase.from('lead_compra').upsert([{
+          const upsertPayload = [{
             nome: updateCompra.nome || savedData.nome,
             email: searchEmail || savedData.email,
             telefone: updateCompra.telefone || savedData.telefone,
@@ -294,7 +377,11 @@ export const useLandingLeads = () => {
             status: updateCompra.status || 'Marcaram avaliação',
             origem_campanha: updateCompra.origem_campanha || savedData.origem || 'Instagram',
             observacoes: updateCompra.observacoes || savedData.observacoes || ''
-          }], { onConflict: 'email' });
+          }];
+          const { error: upErr } = await supabase.from('lead_compra').upsert(upsertPayload, { onConflict: 'email' });
+          if (isRlsError(upErr)) {
+            await supabaseAnon.from('lead_compra').upsert(upsertPayload, { onConflict: 'email' });
+          }
         }
       } catch (syncErr) {
         console.warn('Erro ao sincronizar edição com lead_compra:', syncErr);
@@ -327,20 +414,34 @@ export const useLandingLeads = () => {
     try {
       const leadToDelete = leads.find(l => l.id === id);
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('landing_leads')
         .delete()
         .eq('id', id);
+
+      if (isRlsError(error)) {
+        const fallback = await supabaseAnon
+          .from('landing_leads')
+          .delete()
+          .eq('id', id);
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
       // Sincronizar deleção em lead_compra
       if (leadToDelete) {
         if (leadToDelete.email) {
-          await supabase.from('lead_compra').delete().eq('email', leadToDelete.email);
+          const { error: cErr } = await supabase.from('lead_compra').delete().eq('email', leadToDelete.email);
+          if (isRlsError(cErr)) {
+            await supabaseAnon.from('lead_compra').delete().eq('email', leadToDelete.email);
+          }
         }
         if (leadToDelete.telefone) {
-          await supabase.from('lead_compra').delete().eq('telefone', leadToDelete.telefone);
+          const { error: cErr } = await supabase.from('lead_compra').delete().eq('telefone', leadToDelete.telefone);
+          if (isRlsError(cErr)) {
+            await supabaseAnon.from('lead_compra').delete().eq('telefone', leadToDelete.telefone);
+          }
         }
       }
 

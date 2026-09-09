@@ -7,6 +7,9 @@ import {
 	useSupabaseClient
 } from './useSupabaseClient';
 import {
+	supabaseAnon
+} from '@/integrations/supabase/client';
+import {
 	toast
 } from 'sonner';
 import {
@@ -17,12 +20,23 @@ import {
 	ImportResult
 } from '@/types/lead-compra';
 
+const isRlsError = (err: unknown) => {
+	if (!err || typeof err !== 'object') return false;
+	const e = err as { code?: string; message?: string };
+	return e.code === '42501' || (typeof e.message === 'string' && (
+		e.message.toLowerCase().includes('row-level security') ||
+		e.message.toLowerCase().includes('violates row-level') ||
+		e.message.toLowerCase().includes('permission denied')
+	));
+};
+
 export const useLeadCompra = () => {
 	const supabase = useSupabaseClient();
 	const [leads, setLeads] = useState < LeadCompra[] > ([]);
 	const [statistics, setStatistics] = useState < LeadCompraStatistics | null > (null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState < string | null > (null);
+
 
 	const fetchLeads = useCallback(async (filters ? : LeadCompraFilters) => {
 		setIsLoading(true);
@@ -154,12 +168,23 @@ export const useLeadCompra = () => {
 			let resultData: LeadCompra;
 
 			if (existingLeadId) {
-				const { data, error } = await supabase
+				let { data, error } = await supabase
 					.from('lead_compra')
 					.update(payload)
 					.eq('id', existingLeadId)
 					.select()
 					.single();
+
+				if (isRlsError(error)) {
+					const fb = await supabaseAnon
+						.from('lead_compra')
+						.update(payload)
+						.eq('id', existingLeadId)
+						.select()
+						.single();
+					data = fb.data;
+					error = fb.error;
+				}
 
 				if (error) throw error;
 				resultData = data;
@@ -171,11 +196,21 @@ export const useLeadCompra = () => {
 				toast.success(`Lead existente (${existingLeadNome || 'Registo'}) atualizado com sucesso!`);
 				return sanitized;
 			} else {
-				const { data, error } = await supabase
+				let { data, error } = await supabase
 					.from('lead_compra')
 					.insert([payload])
 					.select()
 					.single();
+
+				if (isRlsError(error)) {
+					const fb = await supabaseAnon
+						.from('lead_compra')
+						.insert([payload])
+						.select()
+						.single();
+					data = fb.data;
+					error = fb.error;
+				}
 
 				if (error) throw error;
 				resultData = data;
@@ -199,14 +234,23 @@ export const useLeadCompra = () => {
 						? 'Novo'
 						: (statusMapToLanding[rawStatus] || statusMapToLanding[resultData.status] || 'Novo');
 					const lookupEmail = resultData.email || emailNormalized;
-					const { data: existingLanding } = await supabase
+					let { data: existingLanding, error: elErr } = await supabase
 						.from('landing_leads')
 						.select('id')
 						.eq('email', lookupEmail)
 						.maybeSingle();
 
+					if (isRlsError(elErr)) {
+						const fb = await supabaseAnon
+							.from('landing_leads')
+							.select('id')
+							.eq('email', lookupEmail)
+							.maybeSingle();
+						existingLanding = fb.data;
+					}
+
 					if (existingLanding) {
-						await supabase.from('landing_leads').update({
+						let { error: uErr } = await supabase.from('landing_leads').update({
 							nome: resultData.nome,
 							telefone: resultData.telefone,
 							morada: resultData.cidade,
@@ -215,8 +259,19 @@ export const useLeadCompra = () => {
 							observacoes: resultData.observacoes || '',
 							updated_at: new Date().toISOString()
 						}).eq('id', existingLanding.id);
+						if (isRlsError(uErr)) {
+							await supabaseAnon.from('landing_leads').update({
+								nome: resultData.nome,
+								telefone: resultData.telefone,
+								morada: resultData.cidade,
+								origem: resultData.origem_campanha || 'Instagram',
+								status: landingStatus,
+								observacoes: resultData.observacoes || '',
+								updated_at: new Date().toISOString()
+							}).eq('id', existingLanding.id);
+						}
 					} else {
-						await supabase.from('landing_leads').insert([{
+						let { error: iErr } = await supabase.from('landing_leads').insert([{
 							nome: resultData.nome,
 							email: lookupEmail,
 							telefone: resultData.telefone,
@@ -225,6 +280,17 @@ export const useLeadCompra = () => {
 							status: landingStatus,
 							observacoes: resultData.observacoes || ''
 						}]);
+						if (isRlsError(iErr)) {
+							await supabaseAnon.from('landing_leads').insert([{
+								nome: resultData.nome,
+								email: lookupEmail,
+								telefone: resultData.telefone,
+								morada: resultData.cidade,
+								origem: resultData.origem_campanha || 'Instagram',
+								status: landingStatus,
+								observacoes: resultData.observacoes || ''
+							}]);
+						}
 					}
 				} catch (syncErr) {
 					console.warn('Sync to landing_leads failed (non-blocking):', syncErr);
@@ -268,7 +334,7 @@ export const useLeadCompra = () => {
 				payload.cidade = typeof payload.cidade === 'string' ? payload.cidade.trim() : '';
 			}
 
-			const {
+			let {
 				data,
 				error
 			} = await supabase
@@ -277,6 +343,17 @@ export const useLeadCompra = () => {
 				.eq('id', id)
 				.select()
 				.single();
+
+			if (isRlsError(error)) {
+				const fb = await supabaseAnon
+					.from('lead_compra')
+					.update(payload)
+					.eq('id', id)
+					.select()
+					.single();
+				data = fb.data;
+				error = fb.error;
+			}
 
 			if (error) throw error;
 
@@ -310,9 +387,15 @@ export const useLeadCompra = () => {
 				}
 
 				if (searchEmail && !searchEmail.includes('@neurobalance.local')) {
-					await supabase.from('landing_leads').update(landingUpdates).eq('email', searchEmail);
+					let { error: uErr } = await supabase.from('landing_leads').update(landingUpdates).eq('email', searchEmail);
+					if (isRlsError(uErr)) {
+						await supabaseAnon.from('landing_leads').update(landingUpdates).eq('email', searchEmail);
+					}
 				} else if (searchPhone) {
-					await supabase.from('landing_leads').update(landingUpdates).eq('telefone', searchPhone);
+					let { error: uErr } = await supabase.from('landing_leads').update(landingUpdates).eq('telefone', searchPhone);
+					if (isRlsError(uErr)) {
+						await supabaseAnon.from('landing_leads').update(landingUpdates).eq('telefone', searchPhone);
+					}
 				}
 			} catch (syncErr) {
 				console.warn('Sync update to landing_leads failed:', syncErr);
@@ -349,12 +432,20 @@ export const useLeadCompra = () => {
 		try {
 			const leadToDelete = leads.find(l => l.id === id);
 
-			const {
+			let {
 				error
 			} = await supabase
 				.from('lead_compra')
 				.delete()
 				.eq('id', id);
+
+			if (isRlsError(error)) {
+				const fb = await supabaseAnon
+					.from('lead_compra')
+					.delete()
+					.eq('id', id);
+				error = fb.error;
+			}
 
 			if (error) throw error;
 
@@ -362,9 +453,15 @@ export const useLeadCompra = () => {
 			if (leadToDelete) {
 				try {
 					if (leadToDelete.email && !leadToDelete.email.includes('@neurobalance.local')) {
-						await supabase.from('landing_leads').delete().eq('email', leadToDelete.email);
+						let { error: dErr } = await supabase.from('landing_leads').delete().eq('email', leadToDelete.email);
+						if (isRlsError(dErr)) {
+							await supabaseAnon.from('landing_leads').delete().eq('email', leadToDelete.email);
+						}
 					} else if (leadToDelete.telefone) {
-						await supabase.from('landing_leads').delete().eq('telefone', leadToDelete.telefone);
+						let { error: dErr } = await supabase.from('landing_leads').delete().eq('telefone', leadToDelete.telefone);
+						if (isRlsError(dErr)) {
+							await supabaseAnon.from('landing_leads').delete().eq('telefone', leadToDelete.telefone);
+						}
 					}
 				} catch (syncErr) {
 					console.warn('Sync delete to landing_leads failed:', syncErr);
