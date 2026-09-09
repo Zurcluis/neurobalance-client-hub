@@ -1,7 +1,7 @@
-# PROGRESSO — NeuroBalance Client Hub
+﻿# PROGRESSO — NeuroBalance Client Hub
 
-> Última atualização: 09/09/2026 (sessão 3)
-> Estado: Redesign do Calendário estilo Google Calendar + revisão de lógica da página de Finanças concluídos e verificados. **Próximo passo: continuar redesign das restantes páginas (Estatísticas, Investimentos, Administração).**
+> Última atualização: 09/09/2026 (sessão 4 — agentes em paralelo)
+> Estado: Redesign do Calendário estilo Google Calendar + revisão de lógica da página de Finanças concluídos e verificados. **Feito até aqui: Estatísticas, Investimentos, Administração, Tokens, Monitorização, Ficha Técnica, Planta da Clínica. Pendente: revisão do utilizador + decidir arquitetura de policies das tabelas de marketing (SQL criado, não aplicado).**
 
 ---
 
@@ -46,6 +46,28 @@
 - TypeScript 0 erros, `npm run build` OK (58s), sem overflow horizontal a 390/820/1280px
 - Testado no browser: mês/semana/dia/agenda, popup "+N mais", dialog editar, atalhos de teclado, navegação ‹ ›
 - Screenshots de referência: `final-month.png`, `final-week.png` (apagar depois de rever)
+
+---
+
+## ✅ SESSÃO 4 (09/09 — agentes em paralelo: Investimentos, Administração, Tokens, Monitorização, Ficha Técnica, Planta)
+
+### Leads (bug reportado em produção)
+- **403 ao adicionar lead no CMS**: policies de produção cobrem `anon` mas não `authenticated` (testado via REST: anon 201). SQL corretivo criado em `supabase/migrations/20260909120000_reopen_marketing_tables_rls.sql` — **AINDA NÃO APLICADO** (correr no Supabase SQL Editor)
+- Dedup por id entre o add otimista e a subscription realtime; guard anti double-submit no formulário
+
+### Páginas (agentes em paralelo + verificação central)
+- **Investimentos**: loop infinito de refetch corrigido ( grave), double-submit, controlled reset, % PnL reais, chartUtils
+- **Administração**: skeletons, tokens de cor, handlers tipados, bug do estado vazio a abrir modo edição
+- **Tokens**: máscara + copiar, botão falso "Enviar Email" removido, ClientTokensPage passou a usar gestor Supabase (os tokens localStorage nunca funcionavam com o login)
+- **Monitorização**: de stub para real — KPIs + atividade recente de `client_access_tokens`/`admin_access_tokens` (nomes via 2.ª query; não há FK para clientes e 3 FKs ambíguas para admins), retry on error
+- **Ficha Técnica da Clínica**: reload no cancelar removido (draft state), website real, links condicionais, renderField anti-duplicação
+- **Planta da Clínica**: PageLayout, KpiCards, zero emojis, badge "Demo" (salas mock — `agendamentos` não tem coluna sala), overflow horizontal corrigido
+
+### Descoberta crítica de tooling
+- `npx tsc --noEmit` com o tsconfig raiz não verifica nada → **usar `npx tsc -b`** (convenção atualizada)
+
+### Verificação
+- `npx tsc -b` 0 erros · build OK · páginas testadas no browser · commits f49ed18, e7eff31, ea0acf6 + 7f655de pushed
 
 ---
 
