@@ -93,7 +93,8 @@ export const useLandingLeads = () => {
         email: data.email?.includes('@neurobalance.local') ? '' : data.email
       } as LandingLead;
 
-      setLeads(prev => [sanitized, ...prev]);
+      // Evitar duplicado caso a subscription realtime já tenha inserido a lead
+      setLeads(prev => prev.some(l => l.id === sanitized.id) ? prev : [sanitized, ...prev]);
       toast.success('Lead adicionado com sucesso!');
       return sanitized;
     } catch (err) {
@@ -368,11 +369,17 @@ export const useLandingLeads = () => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const rawLead = payload.new as LandingLead;
-            const sanitized = {
-              ...rawLead,
-              email: rawLead.email?.includes('@neurobalance.local') ? '' : rawLead.email
-            };
-            setLeads(prev => [sanitized, ...prev]);
+            setLeads(prev => {
+              // Se addLead já inseriu otimisticamente, apenas atualizar o registo
+              if (prev.some(l => l.id === rawLead.id)) {
+                return prev.map(l => l.id === rawLead.id ? { ...rawLead, email: rawLead.email?.includes('@neurobalance.local') ? '' : rawLead.email } : l);
+              }
+              const sanitized = {
+                ...rawLead,
+                email: rawLead.email?.includes('@neurobalance.local') ? '' : rawLead.email
+              };
+              return [sanitized, ...prev];
+            });
             toast.info('Novo lead recebido!');
           } else if (payload.eventType === 'UPDATE') {
             const rawLead = payload.new as LandingLead;

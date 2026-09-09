@@ -38,7 +38,7 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     setValue,
     watch,
     reset
@@ -194,9 +194,9 @@ export const LandingLeadForm: React.FC<LandingLeadFormProps> = ({
           <X className="h-4 w-4 mr-2" />
           Cancelar
         </Button>
-        <Button type="submit" disabled={isLoading} className="bg-[#3f9094] hover:bg-[#265255] text-white">
+        <Button type="submit" disabled={isLoading || isSubmitting} className="bg-[#3f9094] hover:bg-[#265255] text-white">
           <Save className="h-4 w-4 mr-2" />
-          {isLoading ? 'A guardar...' : (initialData ? 'Guardar Alterações' : 'Adicionar Lead ao Quadro')}
+          {(isLoading || isSubmitting) ? 'A guardar...' : (initialData ? 'Guardar Alterações' : 'Adicionar Lead ao Quadro')}
         </Button>
       </div>
     </form>

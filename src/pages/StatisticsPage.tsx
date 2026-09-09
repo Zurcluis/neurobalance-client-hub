@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
+import KpiCard from '@/components/shared/KpiCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import {
   PieChart,
   Pie,
   BarChart,
@@ -21,11 +21,10 @@ import {
   AreaChart,
   ComposedChart
 } from 'recharts';
-import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { 
-  differenceInYears, 
-  format, 
-  subMonths, 
+import {
+  differenceInYears,
+  format,
+  subMonths,
   subDays,
   startOfMonth,
   endOfMonth,
@@ -39,123 +38,157 @@ import { useClients } from '@/hooks/useClients';
 import { useAppointments } from '@/hooks/useAppointments';
 import { usePayments } from '@/hooks/usePayments';
 import {
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Calendar, 
+  Users,
+  Calendar,
   Euro,
   Target,
   Activity,
   Download,
-  Filter,
-  BarChart3,
-  PieChart as PieChartIcon,
-  LineChart as LineChartIcon
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CHART, tooltipStyle, axisProps, compactCurrency } from '@/utils/chartUtils';
+import { formatCurrency } from '@/utils/formatUtils';
 
-// Cores para os gráficos
-const COLORS = ['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#D8E6E3', '#265255'];
+type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all';
 
-interface KPICardProps {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  icon: React.ReactNode;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
-  color?: string;
+// Paleta institucional (gradientes de teal)
+const PIE_COLORS = ['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#D8E6E3', '#265255', '#7FB8BC'];
+
+interface Bucket {
+  label: string;
+  start: Date;
+  end: Date;
 }
 
-const KPICard: React.FC<KPICardProps> = ({ title, value, subtitle, icon, trend, color = '#3f9094' }) => (
-  <Card className="hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4" style={{ borderLeftColor: color }}>
-    <CardContent className="p-4 sm:p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-xl shadow-sm" style={{ backgroundColor: `${color}20` }}>
-            <div style={{ color }}>{icon}</div>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
-            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>}
-          </div>
-        </div>
-        {trend && (
-          <div className={`flex items-center space-x-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {trend.isPositive ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-            <span className="text-sm font-bold">{Math.abs(trend.value)}%</span>
-          </div>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-);
+/** Janelas temporais por período (mesma lógica do Dashboard). */
+const buildBuckets = (range: TimeRange): Bucket[] => {
+  const now = new Date();
+
+  if (range === '7d') {
+    return Array.from({ length: 7 }, (_, i) => {
+      const start = startOfDay(subDays(now, 6 - i));
+      return { label: format(start, 'd/M'), start, end: endOfDay(start) };
+    });
+  }
+
+  if (range === '30d' || range === '90d') {
+    const weeks = range === '30d' ? 4 : 13;
+    return Array.from({ length: weeks }, (_, i) => {
+      const end = subDays(now, (weeks - 1 - i) * 7);
+      const start = subDays(end, 6);
+      return { label: format(end, 'd/M'), start: startOfDay(start), end: endOfDay(end) };
+    });
+  }
+
+  const months = eachMonthOfInterval({ start: subMonths(now, 11), end: now });
+  return months.map(m => ({
+    label: format(m, 'MMM yy', { locale: pt }),
+    start: startOfMonth(m),
+    end: endOfMonth(m)
+  }));
+};
+
+const pctChange = (current: number, previous: number): number | null => {
+  if (previous <= 0) return null;
+  return ((current - previous) / previous) * 100;
+};
+
+const inRange = (dateStr: string | Date | null | undefined, start: Date, end: Date): boolean => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  return d >= start && d <= end;
+};
+
+const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 const StatisticsPage = () => {
   const { clients } = useClients();
   const { appointments } = useAppointments();
   const { payments } = usePayments();
-  
-  const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
+
+  const [selectedPeriod, setSelectedPeriod] = useState<TimeRange>('30d');
   const [selectedView, setSelectedView] = useState<'overview' | 'clients' | 'appointments' | 'financial'>('overview');
 
-  // Função para filtrar dados por período
-  const filterByPeriod = (data: any[], dateField: string) => {
-    if (selectedPeriod === 'all') return data;
+  // Janela do período selecionado
+  const periodRange = useMemo(() => {
     const now = new Date();
-    let startDate: Date;
-    switch (selectedPeriod) {
-      case '7d':
-        startDate = subDays(now, 7);
-        break;
-      case '30d':
-        startDate = subDays(now, 30);
-        break;
-      case '90d':
-        startDate = subDays(now, 90);
-        break;
-      case '1y':
-        startDate = subDays(now, 365);
-        break;
-      default:
-        return data;
+    const days: Record<Exclude<TimeRange, 'all'>, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+    if (selectedPeriod === 'all') {
+      const minDate = [
+        ...(clients || []).map(c => new Date(c.criado_em || 0)),
+        ...(appointments || []).map(a => new Date(a.data || 0)),
+        ...(payments || []).map(p => new Date(p.data || 0))
+      ].sort((a, b) => a.getTime() - b.getTime())[0];
+      const start = minDate && !isNaN(minDate.getTime()) ? startOfDay(minDate) : startOfDay(subMonths(now, 12));
+      return { start, end: endOfDay(now) };
     }
-    return data.filter(item => {
-      const itemDate = new Date(item[dateField]);
-      return itemDate >= startOfDay(startDate) && itemDate <= endOfDay(now);
-    });
-  };
+    const start = startOfDay(subDays(now, days[selectedPeriod]));
+    return { start, end: endOfDay(now) };
+  }, [selectedPeriod, clients, appointments, payments]);
 
-  // Dados filtrados
-  const filteredClients = useMemo(() => filterByPeriod(clients || [], 'criado_em'), [clients, selectedPeriod]);
-  const filteredAppointments = useMemo(() => filterByPeriod(appointments || [], 'criado_em'), [appointments, selectedPeriod]);
-  const filteredPayments = useMemo(() => filterByPeriod(payments || [], 'data'), [payments, selectedPeriod]);
+  // Período anterior (mesma duração) para variações reais
+  const previousRange = useMemo(() => {
+    if (selectedPeriod === 'all') return null;
+    const lengthMs = periodRange.end.getTime() - periodRange.start.getTime();
+    return {
+      start: new Date(periodRange.start.getTime() - lengthMs),
+      end: periodRange.start
+    };
+  }, [selectedPeriod, periodRange]);
 
-  // Cálculos de KPIs
+  // Dados do período (agendamentos pela DATA DA SESSÃO, não criação)
+  const periodData = useMemo(() => {
+    const { start, end } = periodRange;
+    return {
+      clients: (clients || []).filter(c => inRange(c.criado_em, start, end)),
+      appointments: (appointments || []).filter(a => inRange(a.data, start, end)),
+      payments: (payments || []).filter(p => inRange(p.data, start, end))
+    };
+  }, [clients, appointments, payments, periodRange]);
+
+  const previousData = useMemo(() => {
+    if (!previousRange) return null;
+    const { start, end } = previousRange;
+    return {
+      clients: (clients || []).filter(c => inRange(c.criado_em, start, end)),
+      appointments: (appointments || []).filter(a => inRange(a.data, start, end)),
+      payments: (payments || []).filter(p => inRange(p.data, start, end))
+    };
+  }, [clients, appointments, payments, previousRange]);
+
+  // Cálculo de KPIs
   const kpis = useMemo(() => {
-    const totalClients = filteredClients.length;
-    const totalAppointments = filteredAppointments.length;
-    const totalRevenue = filteredPayments.reduce((sum, payment) => sum + (payment.valor || 0), 0) || 0;
+    const totalClients = periodData.clients.length;
+    const totalAppointments = periodData.appointments.length;
+    const totalRevenue = periodData.payments.reduce((sum, p) => sum + (p.valor || 0), 0);
     const avgRevenuePerClient = totalClients > 0 ? totalRevenue / totalClients : 0;
-    // Agendamentos por estado
-    const appointmentsByStatus = filteredAppointments.reduce((acc, appointment) => {
+
+    const appointmentsByStatus = periodData.appointments.reduce((acc, appointment) => {
       const status = appointment.estado || 'pendente';
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     const completedAppointments = appointmentsByStatus['realizado'] || 0;
     const completionRate = totalAppointments > 0 ? (completedAppointments / totalAppointments) * 100 : 0;
-    // Clientes por estado
-    const clientsByStatus = filteredClients.reduce((acc, client) => {
+
+    const clientsByStatus = periodData.clients.reduce((acc, client) => {
       const status = client.estado || 'ongoing';
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     const activeClients = clientsByStatus['ongoing'] || 0;
     const conversionRate = totalClients > 0 ? (activeClients / totalClients) * 100 : 0;
+
+    // Variações reais vs. período anterior
+    const deltas = previousData
+      ? {
+          clients: pctChange(totalClients, previousData.clients.length),
+          appointments: pctChange(totalAppointments, previousData.appointments.length),
+          revenue: pctChange(totalRevenue, previousData.payments.reduce((sum, p) => sum + (p.valor || 0), 0))
+        }
+      : { clients: null, appointments: null, revenue: null };
+
     return {
       totalClients,
       totalAppointments,
@@ -165,103 +198,88 @@ const StatisticsPage = () => {
       conversionRate,
       activeClients,
       appointmentsByStatus,
-      clientsByStatus
+      clientsByStatus,
+      deltas
     };
-  }, [filteredClients, filteredAppointments, filteredPayments]);
+  }, [periodData, previousData]);
 
-  // Dados para gráficos temporais
+  // Série temporal com buckets do período selecionado
   const timelineData = useMemo(() => {
-    if (!filteredClients || !filteredAppointments || !filteredPayments) return [];
-    const now = new Date();
-    const startDate = subMonths(now, 6);
-    const months = eachMonthOfInterval({ start: startDate, end: now });
-    return months.map(month => {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
-      const monthClients = filteredClients.filter(client => {
-        const clientDate = new Date(client.criado_em);
-        return clientDate >= monthStart && clientDate <= monthEnd;
-      }).length;
-      const monthAppointments = filteredAppointments.filter(appointment => {
-        const appointmentDate = new Date(appointment.criado_em);
-        return appointmentDate >= monthStart && appointmentDate <= monthEnd;
-      }).length;
-      const monthRevenue = filteredPayments.filter(payment => {
-        const paymentDate = new Date(payment.data);
-        return paymentDate >= monthStart && paymentDate <= monthEnd;
-      }).reduce((sum, payment) => sum + (payment.valor || 0), 0);
-      return {
-        month: format(month, 'MMM yyyy', { locale: pt }),
-        clients: monthClients,
-        appointments: monthAppointments,
-        revenue: monthRevenue
-      };
-    });
-  }, [filteredClients, filteredAppointments, filteredPayments]);
+    const buckets = buildBuckets(selectedPeriod);
+    return buckets.map(bucket => ({
+      month: bucket.label,
+      clients: periodData.clients.filter(c => inRange(c.criado_em, bucket.start, bucket.end)).length,
+      appointments: periodData.appointments.filter(a => inRange(a.data, bucket.start, bucket.end)).length,
+      revenue: periodData.payments
+        .filter(p => inRange(p.data, bucket.start, bucket.end))
+        .reduce((sum, p) => sum + (p.valor || 0), 0)
+    }));
+  }, [periodData, selectedPeriod]);
 
-  // Dados para análise de géneros
-  const genderData = useMemo((): Array<{name: string, value: number}> => {
-    if (!filteredClients) return [];
-    const genderCounts = filteredClients.reduce((acc, client) => {
+  // Distribuição por género
+  const genderData = useMemo(() => {
+    const genderCounts = periodData.clients.reduce((acc, client) => {
       const gender = client.genero || 'Não especificado';
       acc[gender] = (acc[gender] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    return Object.entries(genderCounts).map(([name, value]) => ({ name, value: value as number }));
-  }, [filteredClients]);
+    return Object.entries(genderCounts).map(([name, value]) => ({ name, value }));
+  }, [periodData.clients]);
 
-  // Dados para análise de idades
-  const ageData = useMemo((): Array<{name: string, value: number}> => {
-    if (!filteredClients) return [];
-    const ageGroups = {
-      "0-18": 0,
-      "19-30": 0,
-      "31-40": 0,
-      "41-50": 0,
-      "51-60": 0,
-      "61+": 0
+  // Distribuição por idades
+  const ageData = useMemo(() => {
+    const ageGroups: Record<string, number> = {
+      '0-18': 0,
+      '19-30': 0,
+      '31-40': 0,
+      '41-50': 0,
+      '51-60': 0,
+      '61+': 0
     };
-    filteredClients.forEach(client => {
+    periodData.clients.forEach(client => {
       if (client.data_nascimento) {
         const age = differenceInYears(new Date(), new Date(client.data_nascimento));
-        if (age <= 18) ageGroups["0-18"]++;
-        else if (age <= 30) ageGroups["19-30"]++;
-        else if (age <= 40) ageGroups["31-40"]++;
-        else if (age <= 50) ageGroups["41-50"]++;
-        else if (age <= 60) ageGroups["51-60"]++;
-        else ageGroups["61+"]++;
+        if (age <= 18) ageGroups['0-18']++;
+        else if (age <= 30) ageGroups['19-30']++;
+        else if (age <= 40) ageGroups['31-40']++;
+        else if (age <= 50) ageGroups['41-50']++;
+        else if (age <= 60) ageGroups['51-60']++;
+        else ageGroups['61+']++;
       }
     });
     return Object.entries(ageGroups)
-      .filter(([_, value]) => value > 0)
-      .map(([name, value]) => ({ name, value: value as number }));
-  }, [filteredClients]);
+      .filter(([, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }));
+  }, [periodData.clients]);
 
-  // Dados para análise de tipos de agendamento
-  const appointmentTypeData = useMemo((): Array<{name: string, value: number}> => {
-    if (!filteredAppointments) return [];
-    const typeCounts = filteredAppointments.reduce((acc, appointment) => {
+  // Tipos de agendamento
+  const appointmentTypeData = useMemo(() => {
+    const typeCounts = periodData.appointments.reduce((acc, appointment) => {
       const type = appointment.tipo || 'Não especificado';
       acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    return Object.entries(typeCounts).map(([name, value]) => ({ name, value: value as number }));
-  }, [filteredAppointments]);
+    return Object.entries(typeCounts)
+      .map(([name, value]) => ({ name: capitalize(name), value }))
+      .sort((a, b) => b.value - a.value);
+  }, [periodData.appointments]);
 
-  // Dados para análise de métodos de pagamento
-  const paymentMethodData = useMemo((): Array<{name: string, value: number}> => {
-    if (!filteredPayments) return [];
-    const methodCounts = filteredPayments.reduce((acc, payment) => {
+  // Métodos de pagamento
+  const paymentMethodData = useMemo(() => {
+    const methodCounts = periodData.payments.reduce((acc, payment) => {
       const method = payment.tipo || 'Não especificado';
       acc[method] = (acc[method] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    return Object.entries(methodCounts).map(([name, value]) => ({ name, value: value as number }));
-  }, [filteredPayments]);
+    return Object.entries(methodCounts)
+      .map(([name, value]) => ({ name: capitalize(name), value }))
+      .sort((a, b) => b.value - a.value);
+  }, [periodData.payments]);
 
-  // Função para exportar dados
+  // Exportar dados
   const exportData = () => {
     const data = {
+      periodo: selectedPeriod,
       kpis,
       timelineData,
       genderData,
@@ -270,7 +288,7 @@ const StatisticsPage = () => {
       paymentMethodData,
       exportDate: new Date().toISOString()
     };
-    
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -278,42 +296,20 @@ const StatisticsPage = () => {
     a.download = `estatisticas-${format(new Date(), 'yyyy-MM-dd')}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    
     toast.success('Dados exportados com sucesso!');
   };
-
-  const chartConfig = {
-    primary: { 
-      label: "Primary",
-      color: "#3f9094" 
-    },
-    secondary: { 
-      label: "Secondary",
-      color: "#5DA399" 
-    },
-    tertiary: { 
-      label: "Tertiary",
-      color: "#8AC1BB" 
-    },
-    quaternary: { 
-      label: "Quaternary",
-      color: "#B1D4CF" 
-    },
-  } satisfies any;
 
   return (
     <PageLayout>
       <div className="space-y-6">
-        {/* Header Melhorado */}
         <PageHeader
           title="Estatísticas & Analytics"
           description="Análise completa do desempenho e insights da clínica"
-          icon={<BarChart className="h-5 w-5" />}
+          icon={<BarChart3 className="h-5 w-5" />}
           actions={
             <>
-              <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
+              <Select value={selectedPeriod} onValueChange={(value: TimeRange) => setSelectedPeriod(value)}>
                 <SelectTrigger className="w-48">
-                  <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -333,43 +329,52 @@ const StatisticsPage = () => {
           }
         />
 
-        {/* KPIs Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <KPICard
-            title="Total de Clientes"
+        {/* KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            icon={Users}
+            label="Novos clientes"
             value={kpis.totalClients}
-            subtitle={`${kpis.activeClients} ativos`}
-            icon={<Users className="h-6 w-6" />}
-            color="#3f9094"
+            sub={`${kpis.activeClients} ativos`}
+            delta={kpis.deltas.clients === null ? undefined : {
+              value: `${kpis.deltas.clients >= 0 ? '+' : ''}${kpis.deltas.clients.toFixed(1)}% vs período anterior`,
+              positive: kpis.deltas.clients >= 0
+            }}
+            tone="teal"
           />
-          
-          <KPICard
-            title="Agendamentos"
+          <KpiCard
+            icon={Calendar}
+            label="Agendamentos"
             value={kpis.totalAppointments}
-            subtitle={`${kpis.completionRate.toFixed(1)}% concluídos`}
-            icon={<Calendar className="h-6 w-6" />}
-            color="#5DA399"
+            sub={`${kpis.completionRate.toFixed(1)}% realizados`}
+            delta={kpis.deltas.appointments === null ? undefined : {
+              value: `${kpis.deltas.appointments >= 0 ? '+' : ''}${kpis.deltas.appointments.toFixed(1)}% vs período anterior`,
+              positive: kpis.deltas.appointments >= 0
+            }}
+            tone="emerald"
           />
-          
-          <KPICard
-            title="Receita Total"
-            value={`€${kpis.totalRevenue.toFixed(2)}`}
-            subtitle={`€${kpis.avgRevenuePerClient.toFixed(2)} por cliente`}
-            icon={<Euro className="h-6 w-6" />}
-            color="#8AC1BB"
+          <KpiCard
+            icon={Euro}
+            label="Receita"
+            value={formatCurrency(kpis.totalRevenue)}
+            sub={`${formatCurrency(kpis.avgRevenuePerClient)} por cliente`}
+            delta={kpis.deltas.revenue === null ? undefined : {
+              value: `${kpis.deltas.revenue >= 0 ? '+' : ''}${kpis.deltas.revenue.toFixed(1)}% vs período anterior`,
+              positive: kpis.deltas.revenue >= 0
+            }}
+            tone="blue"
           />
-          
-          <KPICard
-            title="Taxa de Conversão"
+          <KpiCard
+            icon={Target}
+            label="Taxa de conversão"
             value={`${kpis.conversionRate.toFixed(1)}%`}
-            subtitle="Clientes ativos"
-            icon={<Target className="h-6 w-6" />}
-            color="#B1D4CF"
+            sub="Clientes ativos"
+            tone="purple"
           />
-              </div>
+        </div>
 
-        {/* Navigation Tabs */}
-        <Tabs value={selectedView} onValueChange={(value: any) => setSelectedView(value)}>
+        {/* Tabs */}
+        <Tabs value={selectedView} onValueChange={(value) => setSelectedView(value as typeof selectedView)}>
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
@@ -389,144 +394,123 @@ const StatisticsPage = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
+          {/* Visão Geral */}
+          <TabsContent value="overview" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Timeline Chart */}
-          <Card>
-            <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <LineChartIcon className="h-5 w-5" />
-                    Evolução Temporal
-                  </CardTitle>
-            </CardHeader>
-            <CardContent>
-                  <ChartContainer className="h-80" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
+              <Card className="min-w-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Evolução Temporal</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={timelineData}>
-                        <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip content={<ChartTooltipContent />} />
+                        <XAxis dataKey="month" {...axisProps} />
+                        <YAxis {...axisProps} />
+                        <Tooltip contentStyle={tooltipStyle} />
                         <Legend />
-                        <Bar dataKey="clients" fill="#3f9094" name="Novos Clientes" />
-                        <Line 
-                          type="monotone" 
-                          dataKey="appointments" 
-                          stroke="#5DA399" 
+                        <Bar dataKey="clients" fill={CHART.primary} name="Novos Clientes" radius={[4, 4, 0, 0]} />
+                        <Line
+                          type="monotone"
+                          dataKey="appointments"
+                          stroke={CHART.green}
                           strokeWidth={3}
                           name="Agendamentos"
+                          dot={false}
                         />
                       </ComposedChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-          </CardContent>
-        </Card>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Revenue Chart */}
-              <Card>
-          <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Receita Mensal
-                  </CardTitle>
-          </CardHeader>
+              <Card className="min-w-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Receita</CardTitle>
+                </CardHeader>
                 <CardContent>
-                  <ChartContainer className="h-80" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={timelineData}>
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                    <Tooltip content={<ChartTooltipContent />} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="revenue" 
-                          stroke="#3f9094" 
-                          fill="#3f9094" 
-                          fillOpacity={0.6}
+                        <XAxis dataKey="month" {...axisProps} />
+                        <YAxis {...axisProps} tickFormatter={(value) => compactCurrency(value as number)} />
+                        <Tooltip formatter={(value) => [formatCurrency(value as number), 'Receita']} contentStyle={tooltipStyle} />
+                        <Area
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke={CHART.primary}
+                          fill={CHART.primary}
+                          fillOpacity={0.15}
                           name="Receita (€)"
                         />
                       </AreaChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-          {/* Clients Tab */}
-          <TabsContent value="clients" className="space-y-6">
+          {/* Clientes */}
+          <TabsContent value="clients" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Gender Distribution */}
-              <Card>
-          <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChartIcon className="h-5 w-5" />
-                    Distribuição por Género
-                  </CardTitle>
-          </CardHeader>
+              <Card className="min-w-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Distribuição por Género</CardTitle>
+                </CardHeader>
                 <CardContent>
-                  <ChartContainer className="h-80" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={genderData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {genderData.map((_entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltipContent />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-          </CardContent>
-        </Card>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={genderData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          dataKey="value"
+                        >
+                          {genderData.map((_entry, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={tooltipStyle} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Age Distribution */}
-              <Card>
-          <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Distribuição por Idade
-                  </CardTitle>
-          </CardHeader>
+              <Card className="min-w-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Distribuição por Idade</CardTitle>
+                </CardHeader>
                 <CardContent>
-                  <ChartContainer className="h-80" config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={ageData}>
-                        <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="value" fill="#3f9094" name="Clientes">
-                          {ageData.map((_entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+                        <XAxis dataKey="name" {...axisProps} />
+                        <YAxis allowDecimals={false} {...axisProps} />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Bar dataKey="value" name="Clientes" fill={CHART.primary} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-            {/* Client Status Summary */}
             <Card>
-        <CardHeader>
-                <CardTitle>Estado dos Clientes</CardTitle>
-        </CardHeader>
-        <CardContent>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold">Estado dos Clientes</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {Object.entries(kpis.clientsByStatus).map(([status, count]) => (
-                    <div key={status} className="text-center p-4 bg-gray-50 rounded-lg">
-                      <div className="text-2xl font-bold text-gray-900">{count as number}</div>
-                      <div className="text-sm text-gray-600 capitalize">{status}</div>
+                    <div key={status} className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold tabular-nums">{count}</div>
+                      <div className="text-sm text-muted-foreground capitalize">{status}</div>
                     </div>
                   ))}
                 </div>
@@ -534,19 +518,15 @@ const StatisticsPage = () => {
             </Card>
           </TabsContent>
 
-          {/* Appointments Tab */}
-          <TabsContent value="appointments" className="space-y-6">
+          {/* Agendamentos */}
+          <TabsContent value="appointments" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Appointment Types */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChartIcon className="h-5 w-5" />
-                    Tipos de Agendamento
-                  </CardTitle>
+              <Card className="min-w-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Tipos de Agendamento</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer className="h-80" config={chartConfig}>
+                  <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -556,52 +536,63 @@ const StatisticsPage = () => {
                           labelLine={false}
                           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                           outerRadius={80}
-                          fill="#8884d8"
                           dataKey="value"
                         >
                           {appointmentTypeData.map((_entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip content={<ChartTooltipContent />} />
+                        <Tooltip contentStyle={tooltipStyle} />
                       </PieChart>
                     </ResponsiveContainer>
-                  </ChartContainer>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Appointment Status */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Estado dos Agendamentos</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Estado dos Agendamentos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {Object.entries(kpis.appointmentsByStatus).map(([status, count]) => (
-                      <div key={status} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="capitalize font-medium">{status}</span>
-                        <Badge variant="secondary">{count as number} agendamentos</Badge>
-                </div>
-              ))}
+                  <div className="space-y-3">
+                    {Object.entries(kpis.appointmentsByStatus).map(([status, count]) => {
+                      const total = periodData.appointments.length || 1;
+                      const pct = ((count as number) / total) * 100;
+                      return (
+                        <div key={status} className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="capitalize font-medium text-sm">{status}</span>
+                            <span className="text-sm text-muted-foreground tabular-nums">
+                              {count} ({pct.toFixed(0)}%)
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[#3f9094]"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {Object.keys(kpis.appointmentsByStatus).length === 0 && (
+                      <p className="text-sm text-muted-foreground">Sem agendamentos no período.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          {/* Financial Tab */}
-          <TabsContent value="financial" className="space-y-6">
+          {/* Financeiro */}
+          <TabsContent value="financial" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Payment Methods */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChartIcon className="h-5 w-5" />
-                    Métodos de Pagamento
-                  </CardTitle>
+              <Card className="min-w-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Métodos de Pagamento</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer className="h-80" config={chartConfig}>
+                  <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -611,42 +602,42 @@ const StatisticsPage = () => {
                           labelLine={false}
                           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                           outerRadius={80}
-                          fill="#8884d8"
                           dataKey="value"
                         >
                           {paymentMethodData.map((_entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip content={<ChartTooltipContent />} />
+                        <Tooltip contentStyle={tooltipStyle} />
                       </PieChart>
                     </ResponsiveContainer>
-                  </ChartContainer>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Financial Summary */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Resumo Financeiro</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Resumo Financeiro</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                       <span className="font-medium">Receita Total</span>
-                      <span className="text-lg font-bold text-green-600">€{kpis.totalRevenue.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-emerald-600 tabular-nums">
+                        {formatCurrency(kpis.totalRevenue)}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                       <span className="font-medium">Receita por Cliente</span>
-                      <span className="text-lg font-bold">€{kpis.avgRevenuePerClient.toFixed(2)}</span>
+                      <span className="text-lg font-bold tabular-nums">{formatCurrency(kpis.avgRevenuePerClient)}</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                       <span className="font-medium">Total de Pagamentos</span>
-                      <span className="text-lg font-bold">{payments?.length || 0}</span>
+                      <span className="text-lg font-bold tabular-nums">{periodData.payments.length}</span>
                     </div>
                   </div>
-        </CardContent>
-      </Card>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
