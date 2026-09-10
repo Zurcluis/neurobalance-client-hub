@@ -24,26 +24,31 @@ const UpcomingAppointmentsTable = ({ appointments }: UpcomingAppointmentsTablePr
     if (!type) return 'Sessão';
     const t = type.toLowerCase();
     if (t === 'discussão de resultados') return 'Discussão';
+    if (t === 'consulta de psicologia' || t === 'psicologia') return 'Psicologia';
+    if (t === 'constelações familiares' || t === 'constelacoes familiares' || t === 'constelações' || t === 'constelacoes') return 'Constelações';
     if (t === 'ioga' || t === 'yoga' || t === 'yoga nidra') return 'Yoga Nidra';
     if (t === 'biorresonância magnética' || t === 'biorressonância magnética' || t === 'biorresonancia magnetica' || t === 'biorresonância' || t === 'biorressonância') return 'Biorresonância Magnética';
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
   
   const getAppointmentTypeColor = (type: string) => {
-    if (!type) return 'bg-[#3f9094] text-white border-none';
+    if (!type) return 'bg-[#039BE5] text-white border-none';
     const t = type.toLowerCase();
     
-    if (t.includes('avaliação')) return 'bg-purple-300 text-purple-900 border-none';
-    if (t.includes('neurofeedback')) return 'bg-blue-300 text-blue-900 border-none';
-    if (t.includes('discussão')) return 'bg-yellow-400 text-yellow-900 border-none';
-    if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) return 'bg-green-300 text-green-900 border-none';
-    if (t.includes('biorresonância') || t.includes('biorressonancia') || t.includes('biorresonancia')) return 'bg-orange-300 text-orange-900 border-none';
-    if (t.includes('ofes')) return 'bg-red-500 text-white border-none';
+    if (t.includes('reavaliação') || t.includes('reavaliacao')) return 'bg-[#3F51B5] text-white border-none';
+    if (t.includes('avaliação')) return 'bg-[#7986CB] text-white border-none';
+    if (t.includes('neurofeedback')) return 'bg-[#039BE5] text-white border-none';
+    if (t.includes('discussão')) return 'bg-[#F6BF26] text-gray-900 border-none font-medium';
+    if (t.includes('psicologia')) return 'bg-[#F4511E] text-white border-none';
+    if (t.includes('constelaç') || t.includes('constelac')) return 'bg-[#8E24AA] text-white border-none';
+    if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) return 'bg-[#33B679] text-white border-none';
+    if (t.includes('biorresonância') || t.includes('biorressonancia') || t.includes('biorresonancia')) return 'bg-[#7CB342] text-white border-none';
+    if (t.includes('ofes')) return 'bg-[#D50000] text-white border-none';
     
     switch (t) {
-      case 'sessão': return 'bg-[#3f9094] text-white border-none';
-      case 'consulta': return 'bg-yellow-500 text-white border-none';
-      default: return 'bg-gray-200 text-gray-800 border-none';
+      case 'sessão': return 'bg-[#039BE5] text-white border-none';
+      case 'consulta': return 'bg-[#0B8043] text-white border-none';
+      default: return 'bg-gray-600 text-white border-none';
     }
   };
   

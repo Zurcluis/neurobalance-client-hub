@@ -57,7 +57,7 @@ import CalendarImport from './CalendarImport';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Info } from 'lucide-react';
 
-type AppointmentType = 'sessão' | 'avaliação' | 'reavaliação' | 'consulta' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes' | 'biorresonância magnética';
+type AppointmentType = 'sessão' | 'avaliação' | 'reavaliação' | 'consulta' | 'consulta de psicologia' | 'constelações familiares' | 'discussão de resultados' | 'neurofeedback' | 'ioga' | 'ofes' | 'biorresonância magnética';
 type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
 
@@ -1292,12 +1292,16 @@ const AppointmentCalendar = () => {
                 <p className="font-medium text-gray-700 mb-1.5">Tipos de Eventos</p>
                 <div className="grid grid-cols-2 gap-1.5 mb-3">
                   {[
-                    { c: '#D8B4FE', n: 'Avaliação' },
-                    { c: '#93C5FD', n: 'Neurofeedback' },
-                    { c: '#FACC15', n: 'Discussão' },
-                    { c: '#86EFAC', n: 'Yoga Nidra' },
-                    { c: '#A4B734', n: 'Biorresonância' },
-                    { c: '#3f9094', n: 'Sessão' },
+                    { c: '#039BE5', n: 'Sessão' },
+                    { c: '#3F51B5', n: 'Reavaliação' },
+                    { c: '#7986CB', n: 'Avaliação' },
+                    { c: '#F4511E', n: 'Psicologia' },
+                    { c: '#8E24AA', n: 'Constelações' },
+                    { c: '#F6BF26', n: 'Discussão' },
+                    { c: '#0B8043', n: 'Consulta' },
+                    { c: '#7CB342', n: 'Biorresonância' },
+                    { c: '#33B679', n: 'Yoga Nidra' },
+                    { c: '#D50000', n: 'OFES / Bloqueio' },
                   ].map(({ c, n }) => (
                     <div key={n} className="flex items-center gap-1.5">
                       <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: c }}></span>
@@ -1643,17 +1647,19 @@ const AppointmentCalendar = () => {
                         <Select
                           onValueChange={(val) => {
                             field.onChange(val);
-                            let autoColor = '#3f9094';
+                            let autoColor = '#039BE5';
                             const t = val.toLowerCase();
                             if (t.includes('reavaliação') || t.includes('reavaliacao')) autoColor = '#3F51B5';
-                            else if (t.includes('avaliação')) autoColor = '#D8B4FE';
-                            else if (t.includes('neurofeedback')) autoColor = '#93C5FD';
-                            else if (t.includes('discussão')) autoColor = '#FACC15';
-                            else if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) autoColor = '#86EFAC';
-                            else if (t.includes('biorresonância') || t.includes('biorressonancia')) autoColor = '#A4B734';
-                            else if (t.includes('ofes')) autoColor = '#EF4444';
-                            else if (t.includes('sessão')) autoColor = '#3f9094';
-                            else if (t.includes('consulta')) autoColor = '#EAB308';
+                            else if (t.includes('avaliação')) autoColor = '#7986CB';
+                            else if (t.includes('neurofeedback')) autoColor = '#039BE5';
+                            else if (t.includes('discussão')) autoColor = '#F6BF26';
+                            else if (t.includes('psicologia')) autoColor = '#F4511E';
+                            else if (t.includes('constelaç') || t.includes('constelac')) autoColor = '#8E24AA';
+                            else if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) autoColor = '#33B679';
+                            else if (t.includes('biorresonância') || t.includes('biorressonancia')) autoColor = '#7CB342';
+                            else if (t.includes('ofes')) autoColor = '#D50000';
+                            else if (t.includes('sessão')) autoColor = '#039BE5';
+                            else if (t.includes('consulta')) autoColor = '#0B8043';
                             form.setValue('cor', autoColor);
                           }}
                           value={field.value}
@@ -1668,6 +1674,8 @@ const AppointmentCalendar = () => {
                             <SelectItem value="avaliação">Avaliação</SelectItem>
                             <SelectItem value="reavaliação">Reavaliação</SelectItem>
                             <SelectItem value="consulta">Consulta</SelectItem>
+                            <SelectItem value="consulta de psicologia">Consulta de Psicologia</SelectItem>
+                            <SelectItem value="constelações familiares">Constelações Familiares</SelectItem>
                             <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
                             <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
                             <SelectItem value="ioga">Yoga Nidra</SelectItem>
@@ -1732,14 +1740,17 @@ const AppointmentCalendar = () => {
                           {/* Paleta de cores predefinidas */}
                           <div className="flex flex-wrap gap-2">
                             {[
-                              { hex: '#D8B4FE', name: 'Avaliação' },
-                              { hex: '#93C5FD', name: 'Neurofeedback' },
-                              { hex: '#FACC15', name: 'Discussão de Resultados' },
-                              { hex: '#86EFAC', name: 'Yoga Nidra' },
-                              { hex: '#A4B734', name: 'Biorresonância Magnética' },
-                              { hex: '#3f9094', name: 'Sessão' },
-                              { hex: '#EAB308', name: 'Consulta' },
-                              { hex: '#EF4444', name: 'OFES' }
+                              { hex: '#039BE5', name: 'Neurofeedback / Sessão' },
+                              { hex: '#3F51B5', name: 'Reavaliação' },
+                              { hex: '#7986CB', name: 'Avaliação' },
+                              { hex: '#F4511E', name: 'Consulta de Psicologia' },
+                              { hex: '#8E24AA', name: 'Constelações Familiares' },
+                              { hex: '#F6BF26', name: 'Discussão de Resultados' },
+                              { hex: '#0B8043', name: 'Consulta' },
+                              { hex: '#7CB342', name: 'Biorresonância Magnética' },
+                              { hex: '#33B679', name: 'Yoga Nidra' },
+                              { hex: '#D50000', name: 'OFES / Bloqueio' },
+                              { hex: '#616161', name: 'Almoço / Intervalo' }
                             ].map((colorObj) => (
                               <button
                                 key={colorObj.hex}

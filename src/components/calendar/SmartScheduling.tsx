@@ -52,28 +52,36 @@ const SmartScheduling: React.FC = () => {
     switch (type.toLowerCase()) {
       case 'avaliação':
       case 'avaliação inicial':
-        return '#d8b4fe'; // purple-300
+        return '#7986CB'; // lavender
       case 'neurofeedback':
-        return '#93c5fd'; // blue-300
+        return '#039BE5'; // peacock blue
       case 'discussão de resultados':
       case 'discussão':
-        return '#facc15'; // yellow-400
+        return '#F6BF26'; // banana gold
       case 'ioga':
       case 'yoga':
       case 'yoga nidra':
-        return '#86efac'; // green-300
+        return '#33B679'; // sage green
       case 'biorresonância magnética':
       case 'biorressonância magnética':
       case 'biorresonância':
       case 'biorressonância':
       case 'biorresonancia':
-        return '#A4B734'; // lime green
+        return '#7CB342'; // avocado lime
       case 'ofes':
-        return '#ef4444'; // red-500
+        return '#D50000'; // tomato red
+      case 'consulta de psicologia':
+      case 'psicologia':
+        return '#F4511E'; // tangerine orange
+      case 'constelações familiares':
+      case 'constelacoes familiares':
+      case 'constelações':
+      case 'constelacoes':
+        return '#8E24AA'; // grape purple
       case 'sessão':
-        return '#3f9094';
+        return '#039BE5'; // peacock blue
       case 'consulta':
-        return '#EAB308';
+        return '#0B8043'; // basil green
       case 'reunião':
       case 'reuniao':
         return '#EF4444';
@@ -216,7 +224,7 @@ const SmartScheduling: React.FC = () => {
     // Padrões de regex expandidos para extrair informações
     const patterns = {
       // Tipos de agendamento expandidos
-      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta|consultas|neurofeedback|discussão de resultados|discussão|ioga|yoga nidra|yoga|ofes|reunião|reuniao|pagamento|follow-up|seguimento|terapia|workshop|biorresonância magnética|biorressonância magnética|biorresonância|biorressonância|biorresonancia)/i,
+      appointmentType: /(sessão|sessões|avaliação|avaliações|consulta de psicologia|psicologia|constelações familiares|constelacoes familiares|constelações|constelacoes|consulta|consultas|neurofeedback|discussão de resultados|discussão|ioga|yoga nidra|yoga|ofes|reunião|reuniao|pagamento|follow-up|seguimento|terapia|workshop|biorresonância magnética|biorressonância magnética|biorresonância|biorressonância|biorresonancia)/i,
       
       // Dias da semana
       days: /(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo|seg|ter|qua|qui|sex|sab|dom)/gi,
@@ -719,6 +727,8 @@ const SmartScheduling: React.FC = () => {
                                   <SelectItem value="sessão">Sessão</SelectItem>
                                   <SelectItem value="avaliação">Avaliação</SelectItem>
                                   <SelectItem value="consulta">Consulta</SelectItem>
+                                  <SelectItem value="consulta de psicologia">Consulta de Psicologia</SelectItem>
+                                  <SelectItem value="constelações familiares">Constelações Familiares</SelectItem>
                                   <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
                                   <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
                                   <SelectItem value="ioga">Yoga Nidra</SelectItem>
