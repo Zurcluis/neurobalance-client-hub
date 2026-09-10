@@ -13,26 +13,28 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { 
-  Key, 
-  Plus, 
-  Copy, 
-  RefreshCw, 
-  Trash2, 
-  Eye, 
+import {
+  Key,
+  Plus,
+  Copy,
+  RefreshCw,
+  Trash2,
+  Eye,
   EyeOff,
   User,
   Shield,
   AlertTriangle,
-  Link,
-  Send
+  Link
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
+import type { AdminToken } from '@/hooks/useAdminTokens';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 interface Admin {
   id: string;
@@ -40,15 +42,6 @@ interface Admin {
   email: string;
   role: 'admin' | 'assistant' | 'partner';
   ativo: boolean;
-}
-
-interface AdminToken {
-  id: string;
-  admin_id: string;
-  token: string;
-  expires_at: string;
-  created_at: string;
-  is_active: boolean;
 }
 
 interface AdminTokenManagerProps {
@@ -70,12 +63,13 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   const [selectedAdminId, setSelectedAdminId] = useState<string>('');
   const [showTokens, setShowTokens] = useState<{ [key: string]: boolean }>({});
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [tokenToDelete, setTokenToDelete] = useState<AdminToken | null>(null);
 
   const [expirationOption, setExpirationOption] = useState<string>('30d');
 
   // Criar novo token
   const handleCreateToken = async (adminId: string) => {
-    let expiresAt = new Date();
+    const expiresAt = new Date();
     switch (expirationOption) {
       case '1h':
         expiresAt.setHours(expiresAt.getHours() + 1);
@@ -109,10 +103,15 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
     }
   };
 
-  // Renovar token
-  const handleRefreshToken = async (_tokenId: string) => {
-    toast.error('Funcionalidade a ser implementada na base de dados.');
-    // Na base de dados, a renovação seria criar um novo token e desativar o antigo, ou estender a data.
+  // Renovar token: emite um novo token para a mesma administrativa (validade de 1 mês) e elimina o atual
+  const handleRenewToken = async (token: AdminToken) => {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    const created = await onCreateToken(token.admin_id, expiresAt.toISOString());
+    if (created) {
+      await onDeleteToken(token.id);
+      toast.success('Token renovado: foi emitido um novo token com validade de 1 mês.');
+    }
   };
 
   // Desativar / Ativar token
@@ -138,30 +137,23 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   };
 
   // Enviar link por email
-  const sendLoginLink = async (token: string, adminEmail: string) => {
-    try {
-      generateAdminLoginLink(token);
-      
-      // Simular envio do email
-      toast.success(`Link de acesso enviado para ${adminEmail}`);
-      
-      // Em produção, você implementaria o envio real do email aqui
-    } catch (error) {
-      toast.error('Erro ao enviar link');
-    }
-  };
+  // (sem envio real disponível; o link pode ser copiado e partilhado manualmente)
 
   // Eliminar token
-  const handleDeleteToken = async (tokenId: string) => {
-    if (confirm('Tem certeza que deseja eliminar este token?')) {
-      await onDeleteToken(tokenId);
-    }
+  const handleDeleteToken = async () => {
+    if (!tokenToDelete) return;
+    await onDeleteToken(tokenToDelete.id);
+    setTokenToDelete(null);
   };
 
   // Copiar token
-  const handleCopyToken = (token: string) => {
-    navigator.clipboard.writeText(token);
-    toast.success('Token copiado para a área de transferência!');
+  const handleCopyToken = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(token);
+      toast.success('Token copiado para a área de transferência!');
+    } catch (error) {
+      toast.error('Erro ao copiar token');
+    }
   };
 
   // Toggle visibilidade do token
@@ -195,12 +187,12 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Tokens de Acesso</h3>
-          <p className="text-sm text-gray-600">Gerir tokens de acesso para administrativas</p>
+          <p className="text-sm text-muted-foreground">Gerir tokens de acesso para administrativas</p>
         </div>
-        
+
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#3f9094] hover:bg-[#2d7a7e]">
+            <Button>
               <Plus className="h-4 w-4 mr-2" />
               Criar Token
             </Button>
@@ -208,6 +200,9 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Criar Novo Token de Acesso</DialogTitle>
+              <DialogDescription>
+                Escolha a administrativa e a validade do token de acesso.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -226,7 +221,7 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                             <User className="h-4 w-4 text-blue-500" />
                           )}
                           <span>{admin.nome}</span>
-                          <span className="text-xs text-gray-500">({admin.email})</span>
+                          <span className="text-xs text-muted-foreground">({admin.email})</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -251,7 +246,7 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -263,7 +258,7 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                 <Button
                   onClick={() => selectedAdminId && handleCreateToken(selectedAdminId)}
                   disabled={!selectedAdminId}
-                  className="flex-1 bg-[#3f9094] hover:bg-[#2d7a7e]"
+                  className="flex-1"
                 >
                   Criar Token
                 </Button>
@@ -278,11 +273,10 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
         {tokens.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <Key className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <Key className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
               <h3 className="text-xl font-medium mb-2">Nenhum token encontrado</h3>
-              <p className="text-gray-600 mb-6">Crie tokens de acesso para as administrativas</p>
-              <Button 
-                className="bg-[#3f9094] hover:bg-[#2d7a7e]"
+              <p className="text-muted-foreground mb-6">Crie tokens de acesso para as administrativas</p>
+              <Button
                 onClick={() => setIsCreateDialogOpen(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -297,12 +291,12 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
             const isExpiringSoon = isTokenExpiringSoon(token.expires_at);
             
             return (
-              <Card key={token.id} className={`${isExpired ? 'border-red-200 bg-red-50' : isExpiringSoon ? 'border-yellow-200 bg-yellow-50' : ''}`}>
+              <Card key={token.id} className={isExpired ? 'border-destructive/30 bg-destructive/5 dark:bg-destructive/10' : isExpiringSoon ? 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30' : ''}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                        <Key className="h-5 w-5 text-[#3f9094]" />
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base font-semibold flex items-center gap-2 flex-wrap">
+                        <Key className="h-5 w-5 text-primary shrink-0" />
                         Token de Acesso
                         {isExpired && (
                           <Badge variant="destructive" className="ml-2">
@@ -311,26 +305,26 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                           </Badge>
                         )}
                         {isExpiringSoon && !isExpired && (
-                          <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">
+                          <Badge className="ml-2 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             Expira em breve
                           </Badge>
                         )}
                       </CardTitle>
-                      
+
                       {admin && (
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant={admin.role === 'admin' ? "destructive" : admin.role === 'partner' ? "secondary" : "outline"}>
                             {admin.role === 'admin' ? 'Admin' : admin.role === 'partner' ? 'Parceiro' : 'Assistente'}
                           </Badge>
-                          <span className="text-sm text-gray-600">{admin.nome}</span>
+                          <span className="text-sm text-muted-foreground truncate">{admin.nome}</span>
                         </div>
                       )}
                     </div>
-                    
-                    <Badge 
+
+                    <Badge
                       variant={token.is_active && !isExpired ? "default" : "secondary"}
-                      className="cursor-pointer"
+                      className="cursor-pointer shrink-0"
                       onClick={() => handleToggleTokenStatus(token.id, token.is_active)}
                     >
                       {token.is_active && !isExpired ? "Ativo" : "Inativo"}
@@ -342,7 +336,7 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                   <div className="space-y-3">
                     {/* Token */}
                     <div>
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Token</label>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Token</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input
                           type={showTokens[token.id] ? "text" : "password"}
@@ -370,63 +364,50 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                     {/* Informações */}
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-500">Criado em:</span>
+                        <span className="text-muted-foreground">Criado em:</span>
                         <div>{new Date(token.created_at).toLocaleDateString('pt-PT')}</div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Expira em:</span>
-                        <div className={isExpired ? 'text-red-600 font-medium' : isExpiringSoon ? 'text-yellow-600 font-medium' : ''}>
+                        <span className="text-muted-foreground">Expira em:</span>
+                        <div className={isExpired ? 'text-destructive font-medium' : isExpiringSoon ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}>
                           {new Date(token.expires_at).toLocaleDateString('pt-PT')}
                         </div>
                       </div>
                     </div>
 
                     {/* Ações */}
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyLoginLink(token.token)}
-                          className="flex-1"
-                          disabled={!token.is_active || isExpired}
-                        >
-                          <Link className="h-4 w-4 mr-1" />
-                          {t('copyLink')}
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => sendLoginLink(token.token, admin?.email || '')}
-                          className="flex-1"
-                          disabled={!token.is_active || isExpired}
-                        >
-                          <Send className="h-4 w-4 mr-1" />
-                          {t('sendEmail')}
-                        </Button>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRefreshToken(token.id)}
-                          className="flex-1"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                          {t('renew')}
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteToken(token.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyLoginLink(token.token)}
+                        className="flex-1 min-w-[140px]"
+                        disabled={!token.is_active || isExpired}
+                      >
+                        <Link className="h-4 w-4 mr-1" />
+                        {t('copyLink')}
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRenewToken(token)}
+                        className="flex-1 min-w-[120px]"
+                        title="Emite um novo token (validade de 1 mês) e elimina o atual"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        {t('renew')}
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTokenToDelete(token)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -435,6 +416,15 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
           })
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!tokenToDelete}
+        onOpenChange={(open) => { if (!open) setTokenToDelete(null); }}
+        onConfirm={handleDeleteToken}
+        title="Eliminar token"
+        description="Tem a certeza que pretende eliminar este token? O link de acesso associado deixa de funcionar imediatamente."
+        confirmText="Eliminar"
+      />
     </div>
   );
 };

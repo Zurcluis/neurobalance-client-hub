@@ -102,8 +102,10 @@ const InvestmentsPage = () => {
   const handleRefreshPrices = async () => {
     if (investments.length === 0) return;
     toast.info('A atualizar preços...');
-    await refreshData(investments);
-    toast.success('Preços atualizados!');
+    const data = await refreshData(investments);
+    if (data && data.length > 0) {
+      toast.success('Preços atualizados!');
+    }
   };
 
   const filteredInvestments = investments.filter(investment => {
@@ -168,7 +170,7 @@ const InvestmentsPage = () => {
                   setEditingInvestment(null);
                   setIsFormOpen(true);
                 }}
-                className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+                className="gap-2"
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Novo Investimento</span>
@@ -188,10 +190,7 @@ const InvestmentsPage = () => {
                 Comece por adicionar o seu primeiro investimento para acompanhar a performance do
                 portefólio.
               </p>
-              <Button
-                onClick={() => setIsFormOpen(true)}
-                className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
-              >
+              <Button onClick={() => setIsFormOpen(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Adicionar Primeiro Investimento
               </Button>

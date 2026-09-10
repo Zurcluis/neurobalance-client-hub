@@ -166,7 +166,7 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
       <DialogContent className="sm:max-w-[620px] max-h-[92vh] overflow-y-auto">
         <DialogHeader className="pb-2 border-b">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-[#3f9094] flex items-center justify-center text-white font-bold text-lg shrink-0">
+            <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg shrink-0">
               {nome ? nome.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="min-w-0">
@@ -185,15 +185,15 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
           <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'info' | 'security' | 'permissions')} className="w-full">
             <TabsList className="grid grid-cols-3 w-full mb-4">
               <TabsTrigger value="info" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
-                <User className="h-4 w-4 text-[#3f9094]" />
+                <User className="h-4 w-4 text-primary" />
                 <span>{t('personalInfo') || 'Dados'}</span>
               </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
-                <Lock className="h-4 w-4 text-[#3f9094]" />
+                <Lock className="h-4 w-4 text-primary" />
                 <span>{t('security') || 'Segurança'}</span>
               </TabsTrigger>
               <TabsTrigger value="permissions" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
-                <Shield className="h-4 w-4 text-[#3f9094]" />
+                <Shield className="h-4 w-4 text-primary" />
                 <span>{t('permissions') || 'Permissões'}</span>
               </TabsTrigger>
             </TabsList>
@@ -202,7 +202,7 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label htmlFor="admin-nome" className="text-xs font-semibold flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5 text-[#3f9094]" />
+                    <User className="h-3.5 w-3.5 text-primary" />
                     {t('fullName') || 'Nome Completo'} *
                   </Label>
                   <Input
@@ -217,7 +217,7 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
 
                 <div className="space-y-1">
                   <Label htmlFor="admin-email" className="text-xs font-semibold flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-[#3f9094]" />
+                    <Mail className="h-3.5 w-3.5 text-primary" />
                     {t('email') || 'E-mail de Acesso'} *
                   </Label>
                   <Input
@@ -233,7 +233,7 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
 
                 <div className="space-y-1">
                   <Label htmlFor="admin-contacto" className="text-xs font-semibold flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-[#3f9094]" />
+                    <Phone className="h-3.5 w-3.5 text-primary" />
                     {t('contact') || 'Contacto Telefónico'}
                   </Label>
                   <Input
@@ -249,11 +249,11 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="admin-nasc" className="text-xs font-semibold flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-[#3f9094]" />
+                      <Calendar className="h-3.5 w-3.5 text-primary" />
                       {t('dateOfBirth') || 'Data de Nascimento'}
                     </Label>
                     {dataNascimento && (
-                      <span className="text-xs font-medium text-[#3f9094] tabular-nums">
+                      <span className="text-xs font-medium text-primary tabular-nums">
                         {calculateAge(dataNascimento)} anos
                       </span>
                     )}
@@ -269,7 +269,7 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
 
                 <div className="space-y-1">
                   <Label htmlFor="admin-morada" className="text-xs font-semibold flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-[#3f9094]" />
+                    <MapPin className="h-3.5 w-3.5 text-primary" />
                     {t('address') || 'Morada / Localidade'}
                   </Label>
                   <Input
@@ -297,7 +297,7 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label htmlFor="new-pass" className="text-xs font-semibold flex items-center gap-1.5">
-                    <Lock className="h-3.5 w-3.5 text-[#3f9094]" />
+                    <Lock className="h-3.5 w-3.5 text-primary" />
                     {t('newPassword') || 'Nova Palavra-passe'}
                   </Label>
                   <div className="relative">
@@ -321,7 +321,7 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
 
                 <div className="space-y-1">
                   <Label htmlFor="confirm-pass" className="text-xs font-semibold flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-[#3f9094]" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                     {t('confirmPassword') || 'Confirmar Nova Palavra-passe'}
                   </Label>
                   <div className="relative">

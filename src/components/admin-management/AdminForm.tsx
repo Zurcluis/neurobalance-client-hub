@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { UserCog, Mail, User, Shield, Calendar, MapPin, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
+import type { Admin } from '@/hooks/useAdmins';
 
 // Schema de validação dinâmico
 const getAdminSchema = (isEdit: boolean) => z.object({
@@ -61,8 +62,8 @@ type AdminFormData = z.infer<ReturnType<typeof getAdminSchema>>;
 interface AdminFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  admin?: any;
-  onSubmit: (data: AdminFormData) => void;
+  admin?: Admin | null;
+  onSubmit: (data: AdminFormData) => Promise<boolean> | boolean | void;
 }
 
 const AdminForm: React.FC<AdminFormProps> = ({
@@ -82,7 +83,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
       data_nascimento: admin?.data_nascimento || '',
       morada: admin?.morada || '',
       contacto: admin?.contacto || '',
-      role: admin?.role || 'assistant',
+      role: (admin?.role as AdminFormData['role']) || 'assistant',
       ativo: admin?.ativo ?? true,
       password: '',
     },
@@ -97,7 +98,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
         data_nascimento: admin.data_nascimento,
         morada: admin.morada,
         contacto: admin.contacto,
-        role: admin.role,
+        role: admin.role as AdminFormData['role'],
         ativo: admin.ativo,
         password: '',
       });
@@ -116,13 +117,10 @@ const AdminForm: React.FC<AdminFormProps> = ({
     }
   }, [admin, form, open]);
 
-  const handleSubmit = (data: AdminFormData) => {
-    console.log('AdminForm handleSubmit chamado com dados:', data);
-    try {
-      onSubmit(data);
+  const handleSubmit = async (data: AdminFormData) => {
+    const result = await onSubmit(data);
+    if (result !== false) {
       setShowPassword(false);
-    } catch (error) {
-      console.error('Erro na submissão do formulário:', error);
     }
   };
 
@@ -132,12 +130,14 @@ const AdminForm: React.FC<AdminFormProps> = ({
     onOpenChange(false);
   };
 
+  const isSubmitting = form.formState.isSubmitting;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserCog className="h-5 w-5 text-[#3f9094]" />
+            <UserCog className="h-5 w-5 text-primary" />
             {admin ? t('editAdministrative') : t('addAdministrative')}
           </DialogTitle>
           <DialogDescription>
@@ -149,9 +149,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
-            console.log('Erros de validação:', errors);
-          })} className="space-y-4 mt-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 mt-4">
             {/* Nome */}
             <FormField
               control={form.control}
@@ -266,7 +264,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Lock className="h-4 w-4" />
-                    Palavra-passe {admin && <span className="text-xs text-gray-500">(deixe em branco para manter)</span>}
+                    Palavra-passe {admin && <span className="text-xs text-muted-foreground">(deixe em branco para manter)</span>}
                   </FormLabel>
                   <div className="relative">
                     <FormControl>
@@ -280,7 +278,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -300,7 +298,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                     <Shield className="h-4 w-4" />
                     {t('accessType')}
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo de acesso" />
@@ -312,7 +310,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                           <Shield className="h-4 w-4 text-red-500" />
                           <div>
                             <div className="font-medium">{t('administrator')}</div>
-                            <div className="text-xs text-gray-500">{t('fullAccess')}</div>
+                            <div className="text-xs text-muted-foreground">{t('fullAccess')}</div>
                           </div>
                         </div>
                       </SelectItem>
@@ -321,7 +319,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                           <UserCog className="h-4 w-4 text-blue-500" />
                           <div>
                             <div className="font-medium">{t('assistant')}</div>
-                            <div className="text-xs text-gray-500">{t('limitedAccess')}</div>
+                            <div className="text-xs text-muted-foreground">{t('limitedAccess')}</div>
                           </div>
                         </div>
                       </SelectItem>
@@ -330,7 +328,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                           <Calendar className="h-4 w-4 text-emerald-500" />
                           <div>
                             <div className="font-medium">{t('partner')}</div>
-                            <div className="text-xs text-gray-500">{t('partnerAccess')}</div>
+                            <div className="text-xs text-muted-foreground">{t('partnerAccess')}</div>
                           </div>
                         </div>
                       </SelectItem>
@@ -351,7 +349,7 @@ const AdminForm: React.FC<AdminFormProps> = ({
                     <FormLabel className="text-base">
                       {t('activeAccount')}
                     </FormLabel>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                       {t('allowAccess')}
                     </div>
                   </div>
@@ -366,23 +364,22 @@ const AdminForm: React.FC<AdminFormProps> = ({
             />
 
             {/* Botões */}
-            <div className="flex gap-3 pt-6 border-t border-gray-200 mt-6">
+            <div className="flex gap-3 pt-6 border-t border-border mt-6">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleClose}
+                disabled={isSubmitting}
                 className="flex-1"
               >
                 {t('cancel')}
               </Button>
               <Button
-                type="button"
-                onClick={() => {
-                  form.handleSubmit(handleSubmit)();
-                }}
-                className="flex-1 bg-[#3f9094] hover:bg-[#2d7a7e] text-white"
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1"
               >
-                {admin ? t('update') : t('add')}
+                {isSubmitting ? t('loading') || 'A guardar...' : admin ? t('update') : t('add')}
               </Button>
             </div>
           </form>

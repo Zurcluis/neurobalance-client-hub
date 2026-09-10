@@ -19,7 +19,7 @@ import { formatCurrency } from '@/utils/formatUtils';
 const TYPE_META: Record<InvestmentType, { label: string; color: string }> = {
   crypto: { label: 'Criptomoedas', color: CHART.primary },
   stock: { label: 'Ações', color: CHART.soft },
-  etf: { label: 'ETFs', color: '#8AC1BB' },
+  etf: { label: 'ETFs', color: CHART.green },
 };
 
 interface PortfolioChartProps {
@@ -61,33 +61,35 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({ investments }) =
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle className="text-base font-semibold">Distribuição por tipo</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={typeData}
-                dataKey="value"
-                nameKey="label"
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={90}
-                strokeWidth={2}
-              >
-                {typeData.map(item => (
-                  <Cell key={item.type} fill={item.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={value => [formatCurrency(value as number), 'Valor']}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="min-w-0 overflow-hidden">
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={typeData}
+                  dataKey="value"
+                  nameKey="label"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={90}
+                  strokeWidth={2}
+                >
+                  {typeData.map(item => (
+                    <Cell key={item.type} fill={item.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={value => [formatCurrency(value as number), 'Valor']}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
           <div className="mt-4 space-y-1.5">
             {typeData.map(item => (
               <div
@@ -116,27 +118,29 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({ investments }) =
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle className="text-base font-semibold">Ganhos/Perdas por ativo</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={340}>
-            <BarChart data={pnlData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="symbol" {...axisProps} interval={0} />
-              <YAxis {...axisProps} width={56} tickFormatter={compactCurrency} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={value => [formatCurrency(value as number), 'Ganhos/Perdas']}
-              />
-              <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                {pnlData.map((item, index) => (
-                  <Cell key={`${item.symbol}-${index}`} fill={item.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="min-w-0 overflow-hidden">
+            <ResponsiveContainer width="100%" height={340}>
+              <BarChart data={pnlData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="symbol" {...axisProps} interval={0} />
+                <YAxis {...axisProps} width={56} tickFormatter={compactCurrency} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={value => [formatCurrency(value as number), 'Ganhos/Perdas']}
+                />
+                <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                  {pnlData.map((item, index) => (
+                    <Cell key={`${item.symbol}-${index}`} fill={item.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     </div>

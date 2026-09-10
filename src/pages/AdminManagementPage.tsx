@@ -23,8 +23,11 @@ import {
   Eye,
   EyeOff,
   Calendar,
-  User
+  User,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import AdminForm from '@/components/admin-management/AdminForm';
 import AdminTokenManager from '@/components/admin-management/AdminTokenManager';
 import { useAdmins, Admin, AdminFormData } from '@/hooks/useAdmins';
@@ -41,9 +44,11 @@ const AdminManagementPage = () => {
   const {
     admins,
     isLoading: isAdminsLoading,
+    error: adminsError,
     createAdmin,
     updateAdmin,
-    deleteAdmin
+    deleteAdmin,
+    refreshAdmins
   } = useAdmins();
 
   const {
@@ -58,6 +63,7 @@ const AdminManagementPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
+  const [adminToDelete, setAdminToDelete] = useState<Admin | null>(null);
   const [activeTab, setActiveTab] = useState('admins');
 
   useEffect(() => {
@@ -78,6 +84,7 @@ const AdminManagementPage = () => {
     if (success) {
       setIsFormOpen(false);
     }
+    return success;
   };
 
   const handleEditAdmin = (admin: Admin) => {
@@ -86,19 +93,20 @@ const AdminManagementPage = () => {
   };
 
   const handleUpdateAdmin = async (data: AdminFormData) => {
-    if (!editingAdmin) return;
+    if (!editingAdmin) return false;
 
     const success = await updateAdmin(editingAdmin.id, data);
     if (success) {
       setIsFormOpen(false);
       setEditingAdmin(null);
     }
+    return success;
   };
 
-  const handleDeleteAdmin = async (adminId: string, adminName: string) => {
-    if (confirm(`Tem a certeza que pretende eliminar a administrativa ${adminName}? Esta ação é permanente.`)) {
-      await deleteAdmin(adminId);
-    }
+  const handleDeleteAdmin = async () => {
+    if (!adminToDelete) return;
+    await deleteAdmin(adminToDelete.id);
+    setAdminToDelete(null);
   };
 
   const handleToggleAdminStatus = async (adminId: string) => {
@@ -187,6 +195,21 @@ const AdminManagementPage = () => {
           </TabsList>
 
           <TabsContent value="admins" className="space-y-4">
+            {adminsError && (
+              <Card className="border-destructive/30">
+                <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+                  <p className="text-sm text-muted-foreground flex-1">
+                    Erro ao carregar administrativas: {adminsError}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => refreshAdmins()}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Tentar novamente
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex items-center gap-4">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -201,13 +224,13 @@ const AdminManagementPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredAdmins.map((admin) => {
-                const isCurrentUser = session && (session.adminEmail?.toLowerCase() === admin.email?.toLowerCase() || String(session.adminId) === String(admin.id));
+                const isCurrentUser = !!session && (session.adminEmail?.toLowerCase() === admin.email?.toLowerCase() || String(session.adminId) === String(admin.id));
                 return (
                   <Card
                     key={admin.id}
                     className={cn(
                       "hover:shadow-md transition-shadow",
-                      isCurrentUser && "ring-1 ring-[#3f9094] bg-[#3f9094]/5 dark:bg-[#3f9094]/10"
+                      isCurrentUser && "ring-1 ring-primary bg-primary/5 dark:bg-primary/10"
                     )}
                   >
                     <CardHeader className="pb-3">
@@ -216,7 +239,7 @@ const AdminManagementPage = () => {
                           {admin.nome}
                         </CardTitle>
                         {isCurrentUser && (
-                          <Badge className="bg-[#3f9094] text-white text-[10px] px-1.5 py-0.5 shrink-0">
+                          <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 shrink-0">
                             Você
                           </Badge>
                         )}
@@ -234,20 +257,20 @@ const AdminManagementPage = () => {
                     <CardContent className="pt-0">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Mail className="h-4 w-4 text-[#3f9094]" />
+                          <Mail className="h-4 w-4 text-primary" />
                           <span className="truncate">{admin.email}</span>
                         </div>
 
                         {admin.contacto && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="h-4 w-4 text-[#3f9094]" />
+                            <Phone className="h-4 w-4 text-primary" />
                             <span>{admin.contacto}</span>
                           </div>
                         )}
 
                         {admin.data_nascimento && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4 text-[#3f9094]" />
+                            <Calendar className="h-4 w-4 text-primary" />
                             <span className="tabular-nums">{calculateAge(admin.data_nascimento)} anos</span>
                           </div>
                         )}
@@ -284,7 +307,10 @@ const AdminManagementPage = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleToggleAdminStatus(admin.id)}
-                          title={admin.ativo ? "Desativar" : "Ativar"}
+                          disabled={isCurrentUser}
+                          title={isCurrentUser
+                            ? "Não pode desativar a sua própria conta"
+                            : admin.ativo ? "Desativar" : "Ativar"}
                         >
                           {admin.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
@@ -292,9 +318,12 @@ const AdminManagementPage = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleDeleteAdmin(admin.id, admin.nome)}
+                          onClick={() => setAdminToDelete(admin)}
+                          disabled={isCurrentUser}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          title="Eliminar"
+                          title={isCurrentUser
+                            ? "Não pode eliminar a sua própria conta"
+                            : "Eliminar"}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -305,7 +334,7 @@ const AdminManagementPage = () => {
               })}
             </div>
 
-            {filteredAdmins.length === 0 && (
+            {!adminsError && filteredAdmins.length === 0 && (
               <Card>
                 <CardContent className="p-8 text-center">
                   <UserCog className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -343,6 +372,15 @@ const AdminManagementPage = () => {
           onOpenChange={setIsFormOpen}
           admin={editingAdmin}
           onSubmit={editingAdmin ? handleUpdateAdmin : handleAddAdmin}
+        />
+
+        <ConfirmDialog
+          open={!!adminToDelete}
+          onOpenChange={(open) => { if (!open) setAdminToDelete(null); }}
+          onConfirm={handleDeleteAdmin}
+          title="Eliminar administrativa"
+          description={`Tem a certeza que pretende eliminar ${adminToDelete?.nome}? Esta ação é permanente e não pode ser desfeita.`}
+          confirmText="Eliminar"
         />
 
         <AdminProfileDialog

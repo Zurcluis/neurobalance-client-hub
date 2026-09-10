@@ -105,16 +105,24 @@ const FinancesPage = () => {
 
   // Métricas do mês corrente com comparação real vs. mês anterior
   const metrics = useMemo(() => {
-    const thisMonth = format(new Date(), 'yyyy-MM');
-    const lastMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
+    const now = new Date();
+    const thisMonth = format(now, 'yyyy-MM');
+    const lastMonth = format(subMonths(now, 1), 'yyyy-MM');
+    const year = format(now, 'yyyy');
 
-    const sum = (items: { data?: string | null; valor?: number | null }[], month: string) =>
+    const sumByMonth = (items: { data?: string | null; valor?: number | null }[], month: string) =>
       items.filter(i => monthKey(i.data) === month).reduce((acc, i) => acc + (i.valor || 0), 0);
 
-    const revThis = sum(paymentsData, thisMonth);
-    const revLast = sum(paymentsData, lastMonth);
-    const expThis = sum(expenses, thisMonth);
-    const expLast = sum(expenses, lastMonth);
+    const sumByYear = (items: { data?: string | null; valor?: number | null }[], year: string) =>
+      items.filter(i => (i.data || '').startsWith(year)).reduce((acc, i) => acc + (i.valor || 0), 0);
+
+    const countByYear = (items: { data?: string | null }[], year: string) =>
+      items.filter(i => (i.data || '').startsWith(year)).length;
+
+    const revThis = sumByMonth(paymentsData, thisMonth);
+    const revLast = sumByMonth(paymentsData, lastMonth);
+    const expThis = sumByMonth(expenses, thisMonth);
+    const expLast = sumByMonth(expenses, lastMonth);
 
     return {
       revThis,
@@ -122,7 +130,12 @@ const FinancesPage = () => {
       expThis,
       expDelta: pctChange(expThis, expLast),
       netThis: revThis - expThis,
-      marginThis: revThis > 0 ? ((revThis - expThis) / revThis) * 100 : 0
+      marginThis: revThis > 0 ? ((revThis - expThis) / revThis) * 100 : 0,
+      year,
+      revYtd: sumByYear(paymentsData, year),
+      expYtd: sumByYear(expenses, year),
+      revYtdCount: countByYear(paymentsData, year),
+      expYtdCount: countByYear(expenses, year)
     };
   }, [paymentsData, expenses]);
 
@@ -266,6 +279,11 @@ const FinancesPage = () => {
                 value={formatCurrency(metrics.revThis)}
                 delta={formatDelta(metrics.revDelta) ?? undefined}
                 tone="emerald"
+                sub={
+                  metrics.revThis === 0 && metrics.revYtdCount > 0
+                    ? `Acumulado ${metrics.year}: ${formatCurrency(metrics.revYtd)} (${metrics.revYtdCount} transações)`
+                    : undefined
+                }
               />
               <KpiCard
                 icon={ArrowUpCircle}
@@ -276,13 +294,23 @@ const FinancesPage = () => {
                   positive: metrics.expDelta <= 0
                 }}
                 tone="red"
+                sub={
+                  metrics.expThis === 0 && metrics.expYtdCount > 0
+                    ? `Acumulado ${metrics.year}: ${formatCurrency(metrics.expYtd)} (${metrics.expYtdCount} transações)`
+                    : undefined
+                }
               />
               <KpiCard
                 icon={DollarSign}
                 label="Lucro líquido do mês"
                 value={formatCurrency(metrics.netThis)}
-                delta={{ value: `Margem: ${metrics.marginThis.toFixed(1)}%`, positive: metrics.netThis >= 0 }}
+                delta={metrics.revThis > 0 ? { value: `Margem: ${metrics.marginThis.toFixed(1)}%`, positive: metrics.netThis >= 0 } : undefined}
                 tone="blue"
+                sub={
+                  metrics.revThis === 0 && metrics.expThis === 0 && (metrics.revYtdCount > 0 || metrics.expYtdCount > 0)
+                    ? `Acumulado ${metrics.year}: ${formatCurrency(metrics.revYtd - metrics.expYtd)}`
+                    : undefined
+                }
               />
               <KpiCard
                 icon={Calendar}

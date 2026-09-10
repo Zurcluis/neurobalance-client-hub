@@ -296,11 +296,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
-              >
+              <Button type="submit" disabled={isSubmitting}>
                 {investment ? 'Atualizar' : 'Adicionar'}
               </Button>
             </DialogFooter>

@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { CHART, tooltipStyle, axisProps } from '@/utils/chartUtils';
 
 interface CashFlowDashboardProps {
-  payments: any[];
-  expenses: any[];
+  payments: Array<{ data?: string | null; valor?: number | null }>;
+  expenses: Array<{ data?: string | null; valor?: number | null }>;
 }
 
 export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, expenses }) => {
@@ -22,11 +22,13 @@ export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, 
       const monthEnd = endOfMonth(month);
 
       const monthPayments = payments.filter(payment => {
+        if (!payment?.data) return false;
         const paymentDate = parseISO(payment.data);
         return isWithinInterval(paymentDate, { start: monthStart, end: monthEnd });
       });
 
       const monthExpenses = expenses.filter(expense => {
+        if (!expense?.data) return false;
         const expenseDate = parseISO(expense.data);
         return isWithinInterval(expenseDate, { start: monthStart, end: monthEnd });
       });
@@ -36,7 +38,7 @@ export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, 
       const cashFlow = revenue - expensesTotal;
 
       months.push({
-        month: format(month, 'MMM yyyy', { locale: ptBR }),
+        month: format(month, 'MMM yyyy', { locale: pt }),
         receita: revenue,
         despesas: expensesTotal,
         fluxoCaixa: cashFlow,
@@ -73,8 +75,8 @@ export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, 
                 {...axisProps}
               />
               <Tooltip
-                formatter={(value: any, name: string) => [
-                  `€${value.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`,
+                formatter={(value, name) => [
+                  `€${Number(value).toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`,
                   name
                 ]}
                 contentStyle={tooltipStyle}

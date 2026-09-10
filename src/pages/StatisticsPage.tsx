@@ -30,7 +30,8 @@ import {
   endOfMonth,
   eachMonthOfInterval,
   startOfDay,
-  endOfDay
+  endOfDay,
+  parseISO
 } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,12 +48,15 @@ import {
   BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { CHART, tooltipStyle, axisProps, compactCurrency } from '@/utils/chartUtils';
+import { CHART, STATUS_META, tooltipStyle, axisProps, compactCurrency } from '@/utils/chartUtils';
+import { EVENT_STATUS_COLORS } from '@/utils/eventColors';
 import { formatCurrency } from '@/utils/formatUtils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonCard } from '@/components/shared/SkeletonCard';
 
 type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all';
 
-// Paleta institucional (gradientes de teal)
+// Escala institucional de teal para séries categóricas (pie charts)
 const PIE_COLORS = ['#3f9094', '#5DA399', '#8AC1BB', '#B1D4CF', '#D8E6E3', '#265255', '#7FB8BC'];
 
 interface Bucket {
@@ -62,7 +66,7 @@ interface Bucket {
 }
 
 /** Janelas temporais por período (mesma lógica do Dashboard). */
-const buildBuckets = (range: TimeRange): Bucket[] => {
+const buildBuckets = (range: TimeRange, periodStart: Date): Bucket[] => {
   const now = new Date();
 
   if (range === '7d') {
@@ -81,7 +85,8 @@ const buildBuckets = (range: TimeRange): Bucket[] => {
     });
   }
 
-  const months = eachMonthOfInterval({ start: subMonths(now, 11), end: now });
+  // '1y' e 'all': buckets mensais desde o início do período
+  const months = eachMonthOfInterval({ start: startOfMonth(periodStart), end: now });
   return months.map(m => ({
     label: format(m, 'MMM yy', { locale: pt }),
     start: startOfMonth(m),
@@ -96,35 +101,56 @@ const pctChange = (current: number, previous: number): number | null => {
 
 const inRange = (dateStr: string | Date | null | undefined, start: Date, end: Date): boolean => {
   if (!dateStr) return false;
-  const d = new Date(dateStr);
-  return d >= start && d <= end;
+  const d = dateStr instanceof Date ? dateStr : parseISO(dateStr);
+  return !isNaN(d.getTime()) && d >= start && d <= end;
 };
 
 const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
+const EmptyChart = ({ message }: { message: string }) => (
+  <div className="h-80 flex items-center justify-center px-4">
+    <p className="text-sm text-muted-foreground text-center">{message}</p>
+  </div>
+);
+
 const StatisticsPage = () => {
-  const { clients } = useClients();
-  const { appointments } = useAppointments();
-  const { payments } = usePayments();
+  const { clients, isLoading: clientsLoading, error: clientsError, refresh: refreshClients } = useClients();
+  const { appointments, isLoading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments } = useAppointments();
+  const { payments, isLoading: paymentsLoading, error: paymentsError, fetchPayments } = usePayments();
+
+  const isLoading = clientsLoading || appointmentsLoading || paymentsLoading;
+  const loadError = clientsError || appointmentsError || (paymentsError ? paymentsError.message : null);
+
+  const retryLoad = () => {
+    refreshClients();
+    refetchAppointments();
+    fetchPayments();
+  };
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimeRange>('30d');
   const [selectedView, setSelectedView] = useState<'overview' | 'clients' | 'appointments' | 'financial'>('overview');
 
-  // Janela do período selecionado
+  // Janela do período selecionado (alinhada com os buckets dos gráficos)
   const periodRange = useMemo(() => {
     const now = new Date();
-    const days: Record<Exclude<TimeRange, 'all'>, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
     if (selectedPeriod === 'all') {
-      const minDate = [
-        ...(clients || []).map(c => new Date(c.criado_em || 0)),
-        ...(appointments || []).map(a => new Date(a.data || 0)),
-        ...(payments || []).map(p => new Date(p.data || 0))
-      ].sort((a, b) => a.getTime() - b.getTime())[0];
-      const start = minDate && !isNaN(minDate.getTime()) ? startOfDay(minDate) : startOfDay(subMonths(now, 12));
+      const dates = [
+        ...(clients || []).map(c => (c.criado_em ? parseISO(c.criado_em) : null)),
+        ...(appointments || []).map(a => (a.data ? parseISO(a.data) : null)),
+        ...(payments || []).map(p => (p.data ? parseISO(p.data) : null))
+      ].filter((d): d is Date => d !== null && !isNaN(d.getTime()));
+      const minDate = dates.sort((a, b) => a.getTime() - b.getTime())[0];
+      const start = minDate ? startOfDay(minDate) : startOfDay(subMonths(now, 12));
       return { start, end: endOfDay(now) };
     }
-    const start = startOfDay(subDays(now, days[selectedPeriod]));
-    return { start, end: endOfDay(now) };
+    // 7d = 7 dias · 30d = 4 semanas · 90d = 13 semanas · 1y = 12 meses
+    const starts: Record<Exclude<TimeRange, 'all'>, Date> = {
+      '7d': startOfDay(subDays(now, 6)),
+      '30d': startOfDay(subDays(now, 27)),
+      '90d': startOfDay(subDays(now, 90)),
+      '1y': startOfMonth(subMonths(now, 11))
+    };
+    return { start: starts[selectedPeriod], end: endOfDay(now) };
   }, [selectedPeriod, clients, appointments, payments]);
 
   // Período anterior (mesma duração) para variações reais
@@ -133,7 +159,7 @@ const StatisticsPage = () => {
     const lengthMs = periodRange.end.getTime() - periodRange.start.getTime();
     return {
       start: new Date(periodRange.start.getTime() - lengthMs),
-      end: periodRange.start
+      end: new Date(periodRange.start.getTime() - 1)
     };
   }, [selectedPeriod, periodRange]);
 
@@ -162,7 +188,6 @@ const StatisticsPage = () => {
     const totalClients = periodData.clients.length;
     const totalAppointments = periodData.appointments.length;
     const totalRevenue = periodData.payments.reduce((sum, p) => sum + (p.valor || 0), 0);
-    const avgRevenuePerClient = totalClients > 0 ? totalRevenue / totalClients : 0;
 
     const appointmentsByStatus = periodData.appointments.reduce((acc, appointment) => {
       const status = appointment.estado || 'pendente';
@@ -179,6 +204,7 @@ const StatisticsPage = () => {
     }, {} as Record<string, number>);
     const activeClients = clientsByStatus['ongoing'] || 0;
     const conversionRate = totalClients > 0 ? (activeClients / totalClients) * 100 : 0;
+    const avgRevenuePerClient = activeClients > 0 ? totalRevenue / activeClients : 0;
 
     // Variações reais vs. período anterior
     const deltas = previousData
@@ -205,7 +231,7 @@ const StatisticsPage = () => {
 
   // Série temporal com buckets do período selecionado
   const timelineData = useMemo(() => {
-    const buckets = buildBuckets(selectedPeriod);
+    const buckets = buildBuckets(selectedPeriod, periodRange.start);
     return buckets.map(bucket => ({
       month: bucket.label,
       clients: periodData.clients.filter(c => inRange(c.criado_em, bucket.start, bucket.end)).length,
@@ -214,7 +240,7 @@ const StatisticsPage = () => {
         .filter(p => inRange(p.data, bucket.start, bucket.end))
         .reduce((sum, p) => sum + (p.valor || 0), 0)
     }));
-  }, [periodData, selectedPeriod]);
+  }, [periodData, selectedPeriod, periodRange]);
 
   // Distribuição por género
   const genderData = useMemo(() => {
@@ -280,6 +306,8 @@ const StatisticsPage = () => {
   const exportData = () => {
     const data = {
       periodo: selectedPeriod,
+      periodoInicio: format(periodRange.start, 'yyyy-MM-dd'),
+      periodoFim: format(periodRange.end, 'yyyy-MM-dd'),
       kpis,
       timelineData,
       genderData,
@@ -321,7 +349,7 @@ const StatisticsPage = () => {
                 </SelectContent>
               </Select>
 
-              <Button onClick={exportData} variant="outline" size="sm" className="flex items-center gap-2">
+              <Button onClick={exportData} variant="outline" size="sm" className="flex items-center gap-2" disabled={isLoading}>
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">Exportar Dados</span>
               </Button>
@@ -330,7 +358,12 @@ const StatisticsPage = () => {
         />
 
         {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             icon={Users}
             label="Novos clientes"
@@ -357,7 +390,7 @@ const StatisticsPage = () => {
             icon={Euro}
             label="Receita"
             value={formatCurrency(kpis.totalRevenue)}
-            sub={`${formatCurrency(kpis.avgRevenuePerClient)} por cliente`}
+            sub={`${formatCurrency(kpis.avgRevenuePerClient)} por cliente ativo`}
             delta={kpis.deltas.revenue === null ? undefined : {
               value: `${kpis.deltas.revenue >= 0 ? '+' : ''}${kpis.deltas.revenue.toFixed(1)}% vs período anterior`,
               positive: kpis.deltas.revenue >= 0
@@ -371,9 +404,36 @@ const StatisticsPage = () => {
             sub="Clientes ativos"
             tone="purple"
           />
-        </div>
+          </div>
+        )}
 
-        {/* Tabs */}
+        {/* Erro de carregamento */}
+        {!isLoading && loadError && (
+          <Card className="border-destructive/40 bg-destructive/5">
+            <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <p className="text-sm text-destructive">Não foi possível carregar alguns dados.</p>
+              <Button variant="outline" size="sm" onClick={retryLoad}>
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Gráficos */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <Skeleton className="h-80 w-full" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <Skeleton className="h-80 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
         <Tabs value={selectedView} onValueChange={(value) => setSelectedView(value as typeof selectedView)}>
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
@@ -459,6 +519,9 @@ const StatisticsPage = () => {
                   <CardTitle className="text-base font-semibold">Distribuição por Género</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {genderData.length === 0 ? (
+                    <EmptyChart message="Sem clientes no período selecionado." />
+                  ) : (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -479,6 +542,7 @@ const StatisticsPage = () => {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -487,6 +551,9 @@ const StatisticsPage = () => {
                   <CardTitle className="text-base font-semibold">Distribuição por Idade</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {ageData.length === 0 ? (
+                    <EmptyChart message="Sem idades registadas no período selecionado." />
+                  ) : (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={ageData}>
@@ -497,6 +564,7 @@ const StatisticsPage = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -510,7 +578,9 @@ const StatisticsPage = () => {
                   {Object.entries(kpis.clientsByStatus).map(([status, count]) => (
                     <div key={status} className="text-center p-4 bg-muted/50 rounded-lg">
                       <div className="text-2xl font-bold tabular-nums">{count}</div>
-                      <div className="text-sm text-muted-foreground capitalize">{status}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {STATUS_META[status]?.label || capitalize(status)}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -526,6 +596,9 @@ const StatisticsPage = () => {
                   <CardTitle className="text-base font-semibold">Tipos de Agendamento</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {appointmentTypeData.length === 0 ? (
+                    <EmptyChart message="Sem agendamentos no período selecionado." />
+                  ) : (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -546,6 +619,7 @@ const StatisticsPage = () => {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -568,8 +642,11 @@ const StatisticsPage = () => {
                           </div>
                           <div className="h-2 rounded-full bg-muted overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-[#3f9094]"
-                              style={{ width: `${pct}%` }}
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${pct}%`,
+                                backgroundColor: EVENT_STATUS_COLORS[status] || CHART.primary
+                              }}
                             />
                           </div>
                         </div>
@@ -592,6 +669,9 @@ const StatisticsPage = () => {
                   <CardTitle className="text-base font-semibold">Métodos de Pagamento</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {paymentMethodData.length === 0 ? (
+                    <EmptyChart message="Sem pagamentos no período selecionado." />
+                  ) : (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -612,6 +692,7 @@ const StatisticsPage = () => {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -623,7 +704,7 @@ const StatisticsPage = () => {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                       <span className="font-medium">Receita Total</span>
-                      <span className="text-lg font-bold text-emerald-600 tabular-nums">
+                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                         {formatCurrency(kpis.totalRevenue)}
                       </span>
                     </div>
@@ -641,6 +722,7 @@ const StatisticsPage = () => {
             </div>
           </TabsContent>
         </Tabs>
+        )}
       </div>
     </PageLayout>
   );
