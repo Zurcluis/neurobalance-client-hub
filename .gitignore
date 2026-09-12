@@ -26,3 +26,7 @@ dist-ssr
 # Test/build artifacts
 .playwright-mcp
 *.tsbuildinfo
+
+# Environment files
+.env*
+!.env.example
