@@ -1,7 +1,7 @@
 ﻿# PROGRESSO — NeuroBalance Client Hub
 
-> Última atualização: 12/09/2026 (sessão 8 — qualidade, segurança, performance, revisão total)
-> Estado: 222 testes Vitest verdes; bugs de refresh/realtime/parsers corrigidos; bundle de entrada 437→266KB; RLS proposto por aplicar. **Pendente: aplicar/rever 20260912120000_harden_rls_proposal.sql + rodar tokens de marketing + .env.production no git + setup SMS/email (ver Sessões 7-8).**
+> Última atualização: 12/09/2026 (sessão 8 — qualidade, segurança, performance, revisão total + pós-push)
+> Estado: publicado em produção (push até `8f55c18`); 222 testes Vitest verdes; bundle de entrada 437→266KB; guard `requireNonPartner` ativo; incidente "faltam abas no perfil" resolvido (sessão partner, comportamento por design). **Pendente: rever/aplicar 20260912120000_harden_rls_proposal.sql + rodar tokens de marketing + segredos no histórico do git + setup SMS/email (ver PENDENTES).**
 
 ---
 
@@ -33,6 +33,11 @@
 
 ### Verificação final
 - `npx tsc -b --force` 0 erros · **222 testes verdes** · build OK (33s) · smoke test browser sem erros de consola · entry 266KB eager, resto lazy
+
+### Pós-push (commits e incidente das tabs)
+- **Commits**: `eb73070` chore(security): untrack `.env.production` + `.gitignore` com `.env*` · `4bb5c66` fix: persistência de rota/tabs, realtime de agendamentos, bugs de parsers, suite Vitest, performance e revisão · `8f55c18` fix: guard `requireNonPartner` — partners bloqueados em Monitorização, Finanças, Estatísticas, Investimentos, Marketing e Gestão (correção do utilizador, verificada e publicada)
+- **Incidente "faltam abas no perfil"**: o utilizador tinha sessão com `role: 'partner'` — as contas partner (Telma, Paulo) veem apenas Perfil + Relatórios **por design** (regra pré-existente); confirmado via consulta REST de `admins` (roles corretas na BD) e reprodução no browser (conta admin → 7 tabs). Resolvido com login na conta certa + guard `requireNonPartner` para evitar acesso por URL
+- **Publicação**: push `0ef96a2..8f55c18 main` → Cloudflare Pages
 
 ---
 
@@ -293,20 +298,17 @@
 
 ---
 
-## 📌 PENDENTES (menor prioridade)
-- **SQL por correr**: `supabase/migrations/20260910220000_cleanup_agent_c_test_rows.sql` no SQL Editor (apaga 5 linhas de teste da atividade) e depois apagar o ficheiro
-- **SQL por confirmar**: `20260909120000_reopen_marketing_tables_rls.sql` (RLS de marketing) — confirmar se já foi aplicado
+## 📌 PENDENTES
+- **Segurança (rever/decidir)**: aplicar `20260912120000_harden_rls_proposal.sql` (proposta, NÃO aplicada) · rodar tokens de marketing após aplicar · **revogar access token pessoal `sbp_...`** · `.env.production` está no histórico do git — rodar segredos contidos (ficheiro já desrastreado)
 - **Setup Finnhub**: criar key gratuita → `.env.local` com `VITE_MARKET_DATA_API_KEY=...` (sem key, ações/ETF mostram "Preço não disponível")
-- Calendário: "Criar" ao clicar numa célula abre dialog completo (Google abre quick-create) — avaliar se se quer um popover rápido
-- `window.confirm` → `shared/ConfirmDialog.tsx` (8 sítios)
+- **SMS lembretes**: credenciais Twilio + cron hora-a-hora a invocar `reminders-run` (pg_cron + pg_net)
+- **Email marketing/follow-up**: deploy da Edge Function `send-lead-email` com `RESEND_API_KEY`
+- Calendário: "Criar" ao clicar numa célula abre dialog completo (Google abre quick-create) — avaliar popover rápido
 - Deduplicar campanhas na importação
-- Apagar leads associadas por correspondência frouxa em `useClients.tsx:164-180`
-- Refactor de componentes gigantes (AppointmentCalendar ~2100 linhas, ClientDetailPage 1227...)
-- `console.log` poluição (~342 chamadas)
-- Código morto: `components/admin/AdminTokenManager.tsx` e `components/clients/ClientTokenManager.tsx` não são importados por nada — remover
-- Realtime do Kanban deve voltar a funcionar (RLS pública) — confirmar
-- **Revogar o access token pessoal `sbp_...` fornecido nesta sessão** (Dashboard → Access Tokens)
-- Notificação de "sessão de marketing expirada" já não é necessária para dados (policies públicas), mas o ecrã de login de marketing continua a existir
+- Apagar leads associadas por correspondência frouxa em `useClients.tsx`
+- Refactor de componentes gigantes (AppointmentCalendar ~2100 linhas)
+- Realtime do Kanban deve voltar a funcionar — confirmar
+- Ecrã de login de marketing continua a existir (dados já públicos); decidir manter ou remover
 
 ---
 
