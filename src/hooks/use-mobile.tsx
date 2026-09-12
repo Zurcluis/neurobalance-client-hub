@@ -62,3 +62,43 @@ export function useIsMobile() {
   const { isMobile } = useScreenSize('md')
   return isMobile
 }
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed'
+
+/**
+ * Preferência de estado da sidebar: respeita a escolha explícita do utilizador
+ * (localStorage); sem preferência, colapsa por omissão abaixo de lg (1024px).
+ */
+export function getSidebarCollapsedPreference(): boolean {
+  const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+  if (stored === 'true') return true
+  if (stored === 'false') return false
+  return typeof window !== 'undefined' && window.innerWidth < SCREEN_SIZES.lg
+}
+
+/**
+ * Estado colapsado da sidebar sincronizado entre Sidebar e PageLayout
+ * via localStorage + evento 'sidebar-toggle' (e entre tabs via 'storage').
+ */
+export function useSidebarCollapsed() {
+  const [isCollapsed, setIsCollapsed] = React.useState(getSidebarCollapsedPreference)
+
+  React.useEffect(() => {
+    const handleSync = () => setIsCollapsed(getSidebarCollapsedPreference())
+    window.addEventListener('sidebar-toggle', handleSync)
+    window.addEventListener('storage', handleSync)
+    return () => {
+      window.removeEventListener('sidebar-toggle', handleSync)
+      window.removeEventListener('storage', handleSync)
+    }
+  }, [])
+
+  const toggle = React.useCallback(() => {
+    const next = !getSidebarCollapsedPreference()
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next))
+    setIsCollapsed(next)
+    window.dispatchEvent(new Event('sidebar-toggle'))
+  }, [])
+
+  return { isCollapsed, toggle }
+}

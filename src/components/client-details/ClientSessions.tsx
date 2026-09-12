@@ -1,30 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client'; // Importar diretamente
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AlertCircle, Calendar, Check, Clock, Edit, Filter, Link2Off, RefreshCw, SortAsc, SortDesc, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Check, Edit, FileText, Trash2, Filter, Clock, SortAsc, SortDesc, Clipboard, RefreshCw, Link2Off } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
-import { ClientDetailData, Session } from '@/types/client';
-import { Progress } from '@/components/ui/progress';
-import { parseISO, isBefore, format, compareDesc, isAfter } from 'date-fns';
-import { toast } from 'sonner';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -32,183 +13,118 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import useAppointments, { type Appointment } from '@/hooks/useAppointments';
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-
-// Estrutura de dados para o formulário de edição
-interface EditSessionFormData {
-  notes: string;
-  terapeuta?: string;
-  duration?: number;
-  filesToUpload?: FileList;
-  titulo?: string;
-  tipo?: string;
-  estado?: string;
-}
-
-// Definição do tipo de arquivo para resolver incompatibilidade de tipos
-interface SessionFile {
-  name: string;
-  path: string;
-  uploadedAt: string;
-}
-
-// Estrutura unificada para renderizar sessões realizadas
-interface RealizedSessionView extends Omit<Session, 'arquivos'> {
-  isFromCalendar: boolean;
-  calendarTitle?: string;
-  status?: string;
-  sessionType?: string;
-  duration?: number;
-  arquivos: SessionFile[];
-  time?: string;
-}
+} from '@/components/ui/table';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { Progress } from '@/components/ui/progress';
+import { parseISO, isAfter, isBefore, isValid, format } from 'date-fns';
+import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import KpiCard from '@/components/shared/KpiCard';
+import type { ClientDetailData, Session } from '@/types/client';
+import type { Appointment } from '@/hooks/useAppointments';
+import SessionEditDialog from './SessionEditDialog';
+import SessionSummaryDialog from './SessionSummaryDialog';
+import UpcomingAppointmentsCard from './UpcomingAppointmentsCard';
+import StatusBadge from './StatusBadge';
+import {
+  formatSessionDateTime,
+  formatSessionDuration,
+  getSessionTypeLabel,
+  loadSessionFilesMap,
+  mergeSessionFiles,
+  processSessionFiles,
+  type RealizedSessionView,
+} from './sessionView';
+import { readClientMoods } from '@/utils/sessionSummary';
 
 interface ClientSessionsProps {
   sessions: Session[];
   clientId: string;
-  onAddSession: (session: Session) => void;
+  client: ClientDetailData;
+  appointments: Appointment[];
+  isLoadingAppointments: boolean;
+  appointmentsError: string | null;
+  onRefetchAppointments: () => void;
   onUpdateClient: (client: ClientDetailData) => void;
   onUpdateSession: (session: Session) => void;
-  client: ClientDetailData;
+  onDeleteSession: (sessionId: string) => void;
   paidSessionsCount?: number;
 }
 
-const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }: ClientSessionsProps) => {
+const getAppointmentDate = (appointment: Appointment): Date | null => {
+  const parsed = parseISO(appointment.data);
+  return isValid(parsed) ? parsed : null;
+};
+
+const ClientSessions = ({
+  sessions,
+  clientId,
+  client,
+  appointments,
+  isLoadingAppointments,
+  appointmentsError,
+  onRefetchAppointments,
+  onUpdateClient,
+  onUpdateSession,
+  onDeleteSession,
+  paidSessionsCount,
+}: ClientSessionsProps) => {
+  const navigate = useNavigate();
   const [isMaxSessionsDialogOpen, setIsMaxSessionsDialogOpen] = useState(false);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [sessionToEdit, setSessionToEdit] = useState<RealizedSessionView | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [refreshTrigger] = useState<number>(0);
-  const [syncProgress, setSyncProgress] = useState<boolean>(false);
+  const [sessionToDelete, setSessionToDelete] = useState<RealizedSessionView | null>(null);
+  const [syncProgress, setSyncProgress] = useState(false);
+  const [sessionFilesMap, setSessionFilesMap] = useState<Record<string, RealizedSessionView['arquivos']>>(
+    () => loadSessionFilesMap()
+  );
   const lastUpdatedValueRef = useRef<number>(-1);
 
-  // Estados para filtragem e ordenação
   const [filterType, setFilterType] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchText, setSearchText] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-
-  // Obter dados de agendamentos e a função refetch do hook
-  const { appointments, isLoading: isLoadingAppointments, refetch: refetchAppointments } = useAppointments();
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   const maxSessionsForm = useForm<{ maxSessions: number }>({
-    defaultValues: { maxSessions: client.max_sessoes || 0 }
+    defaultValues: { maxSessions: client.max_sessoes || 0 },
   });
-  const editSessionForm = useForm<EditSessionFormData>();
+
+  useEffect(() => {
+    maxSessionsForm.reset({ maxSessions: client.max_sessoes || 0 });
+  }, [client.max_sessoes, maxSessionsForm]);
 
   const [pastCalendarAppointments, setPastCalendarAppointments] = useState<Appointment[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
-  const [completedSessionsPercentage, setCompletedSessionsPercentage] = useState(0);
-  const [totalRealizedCount, setTotalRealizedCount] = useState(0);
-  const [totalUpcomingCount, setTotalUpcomingCount] = useState(0);
-  // Remover estado de notas de sessão, pois virá direto dos agendamentos
-  // const [sessionNotes, setSessionNotes] = useState<{ [key: string]: string }>({});
-
-  // Remover a inicialização a partir do window
-  // const supabase = (window as any).supabase;
-
-  const loadFromStorage = <T extends unknown>(key: string, defaultValue: T): T => {
-    const storedData = localStorage.getItem(key);
-    return storedData ? JSON.parse(storedData) : defaultValue;
-  };
-
-  const saveToStorage = <T extends unknown>(key: string, data: T): void => {
-    localStorage.setItem(key, JSON.stringify(data));
-  };
-
-  // Função para forçar a atualização dos dados, agora buscando do servidor
-  const refreshData = () => {
-    refetchAppointments();
-    toast.success("Dados atualizados a partir do servidor");
-  };
 
   useEffect(() => {
-    // Filtrar agendamentos do cliente atual
-    if (!isLoadingAppointments && appointments && client && client.id) {
-      const clientAppointments = appointments.filter(apt => apt.id_cliente === client.id);
+    if (isLoadingAppointments || !client.id) return;
 
-      const now = new Date();
-      // Separar agendamentos passados e futuros
-      const pastAppointments = clientAppointments.filter(app => {
-        try {
-          const appDate = parseISO(app.data);
-          return !isNaN(appDate.getTime()) &&
-            (isBefore(appDate, now) || app.estado === 'realizado');
-        } catch (error) {
-          console.error(`Erro ao processar data do agendamento ${app.id}: ${app.data}`, error);
-          return false;
-        }
-      });
+    const clientAppointments = appointments.filter(apt => apt.id_cliente === client.id);
+    const now = new Date();
 
-      const futureAppointments = clientAppointments.filter(app => {
-        try {
-          const appDate = parseISO(app.data);
-          return !isNaN(appDate.getTime()) &&
-            isAfter(appDate, now) &&
-            app.estado !== 'realizado' &&
-            app.estado !== 'cancelado';
-        } catch (error) {
-          console.error(`Erro ao processar data do agendamento ${app.id}: ${app.data}`, error);
-          return false;
-        }
-      }).sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
-
-      setPastCalendarAppointments(pastAppointments);
-      setUpcomingAppointments(futureAppointments);
-      setTotalUpcomingCount(futureAppointments.length);
-    }
-  }, [appointments, isLoadingAppointments, client.id, refreshTrigger]);
-
-  // Remover a função que carregava notas da tabela 'sessoes'
-  /*
-  useEffect(() => {
-    const loadSessionNotes = async () => {
-      if (!supabase || !client.id) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('sessoes')
-          .select('id, notes')
-          .eq('id_cliente', client.id);
-        
-        if (error) throw error;
-        
-        const notesMap: { [key: string]: string } = {};
-        data.forEach((session: any) => {
-          if (session.notes) {
-            notesMap[session.id] = session.notes;
-          }
-        });
-        
-        setSessionNotes(notesMap);
-      } catch (error) {
-        console.error('Erro ao carregar notas das sessões:', error);
-      }
-    };
-    
-    loadSessionNotes();
-  }, [supabase, client.id, refreshTrigger]);
-  */
-
-  // Processar arquivos de sessão para novo formato
-  const processSessionFiles = (files: any[]): SessionFile[] => {
-    if (!files) return [];
-
-    return files.map(file => {
-      if (typeof file === 'string') {
-        return {
-          name: file.split('/').pop() || 'arquivo',
-          path: file,
-          uploadedAt: new Date().toISOString()
-        };
-      }
-      return file as SessionFile;
+    const pastAppointments = clientAppointments.filter(app => {
+      const appDate = getAppointmentDate(app);
+      return appDate !== null && (isBefore(appDate, now) || app.estado === 'realizado');
     });
-  };
+
+    const futureAppointments = clientAppointments.filter(app => {
+      const appDate = getAppointmentDate(app);
+      return appDate !== null &&
+        isAfter(appDate, now) &&
+        app.estado !== 'realizado' &&
+        app.estado !== 'cancelado';
+    }).sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+
+    setPastCalendarAppointments(pastAppointments);
+    setUpcomingAppointments(futureAppointments);
+  }, [appointments, isLoadingAppointments, client.id]);
 
   const allRealizedSessions = useMemo((): RealizedSessionView[] => {
     const manualSessionsView: RealizedSessionView[] = sessions.map(s => ({
@@ -216,17 +132,18 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
       isFromCalendar: false,
       sessionType: s.type || 'Sessão Manual',
       duration: s.duracao,
-      arquivos: processSessionFiles(s.arquivos || [])
+      arquivos: processSessionFiles(s.arquivos),
     }));
 
     const pastCalendarSessionsView: RealizedSessionView[] = pastCalendarAppointments.map(app => {
       const existingManualSession = sessions.find(s => s.id === app.id.toString());
-      // Usar 'app.notas' diretamente, em vez de 'sessionNotes'
       const sessionNote = existingManualSession?.notes || app.notas || '';
 
-      // Formatar a hora do agendamento para garantir consistência
       const appDate = parseISO(app.data);
-      const formattedTime = app.hora || format(appDate, 'HH:mm');
+      const formattedTime = app.hora || (isValid(appDate) ? format(appDate, 'HH:mm') : '');
+
+      const storedFiles = (sessionFilesMap[app.id.toString()] || []).map(file => ({ ...file }));
+      const arquivos = mergeSessionFiles(processSessionFiles(existingManualSession?.arquivos || []), storedFiles);
 
       if (existingManualSession) {
         return {
@@ -237,74 +154,72 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
           sessionType: app.tipo ?? undefined,
           notes: sessionNote,
           terapeuta: app.terapeuta ?? existingManualSession.terapeuta,
-          arquivos: processSessionFiles(existingManualSession.arquivos || []),
-          time: formattedTime // Adicionar o campo time para garantir consistência
-        };
-      } else {
-        return {
-          id: app.id?.toString() || '',
-          clientId: app.id_cliente?.toString() || '',
-          date: app.data || '',
-          notes: sessionNote,
-          paid: false,
-          terapeuta: app.terapeuta ?? '',
-          arquivos: [],
-          isFromCalendar: true,
-          calendarTitle: app.titulo || '',
-          status: app.estado || '',
-          sessionType: app.tipo || '',
-          time: formattedTime // Adicionar o campo time para garantir consistência
+          arquivos,
+          time: formattedTime,
         };
       }
+
+      return {
+        id: app.id?.toString() || '',
+        clientId: app.id_cliente?.toString() || clientId,
+        date: app.data || '',
+        notes: sessionNote,
+        paid: false,
+        terapeuta: app.terapeuta ?? '',
+        arquivos,
+        isFromCalendar: true,
+        calendarTitle: app.titulo || '',
+        status: app.estado || '',
+        sessionType: app.tipo || '',
+        time: formattedTime,
+      };
     });
 
     const combined = [...manualSessionsView, ...pastCalendarSessionsView];
 
-    // Remova duplicatas, preferindo sempre a versão do calendário se tiver status "realizado"
     const uniqueSessions = combined.reduce((acc, current) => {
       const existingIndex = acc.findIndex(item => item.id === current.id);
 
       if (existingIndex === -1) {
-        // Se não existe, adiciona
         return [...acc, current];
-      } else {
-        const existing = acc[existingIndex];
-
-        // Se a sessão atual é do calendário e tem status "realizado", ou a existente não tem
-        if ((current.isFromCalendar && current.status === 'realizado') ||
-          (existing.isFromCalendar === false && current.isFromCalendar)) {
-          // Substitui a existente
-          return acc.map((s, i) => i === existingIndex ? {
-            ...s,
-            ...current,
-            // Preserva os arquivos e notas da sessão manual se existirem
-            arquivos: existing.arquivos?.length ? existing.arquivos : current.arquivos,
-            notes: existing.notes || current.notes,
-          } : s);
-        }
-
-        // Caso contrário, mantém a existente
-        return acc;
       }
+
+      const existing = acc[existingIndex];
+      if (
+        (current.isFromCalendar && current.status === 'realizado') ||
+        (existing.isFromCalendar === false && current.isFromCalendar)
+      ) {
+        return acc.map((s, i) =>
+          i === existingIndex
+            ? {
+                ...s,
+                ...current,
+                arquivos: mergeSessionFiles(existing.arquivos, current.arquivos),
+                notes: existing.notes || current.notes,
+              }
+            : s
+        );
+      }
+
+      return acc;
     }, [] as RealizedSessionView[]);
 
-    return uniqueSessions.sort((a, b) => {
-      const dateA = parseISO(a.date);
-      const dateB = parseISO(b.date);
-      return sortOrder === 'desc' ? compareDesc(dateA, dateB) : compareDesc(dateB, dateA);
-    });
+    const getTimestamp = (session: RealizedSessionView): number => {
+      const parsed = parseISO(session.date);
+      return isValid(parsed) ? parsed.getTime() : 0;
+    };
 
-  }, [sessions, pastCalendarAppointments, refreshTrigger]);
+    return uniqueSessions.sort((a, b) =>
+      sortOrder === 'desc' ? getTimestamp(b) - getTimestamp(a) : getTimestamp(a) - getTimestamp(b)
+    );
+  }, [sessions, pastCalendarAppointments, sortOrder, clientId, sessionFilesMap]);
 
-  // Aplicar filtros à lista de sessões
   const filteredSessions = useMemo(() => {
     return allRealizedSessions.filter(session => {
-      // Filtro por tipo
       if (filterType !== 'all' && session.sessionType?.toLowerCase() !== filterType.toLowerCase()) {
         return false;
       }
 
-      // Filtro por status
       if (filterStatus !== 'all') {
         if (filterStatus === 'realizado' && session.status !== 'realizado') {
           return false;
@@ -314,7 +229,6 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
         }
       }
 
-      // Filtro por texto de busca
       if (searchText) {
         const searchLower = searchText.toLowerCase();
         const matchesType = session.sessionType?.toLowerCase().includes(searchLower);
@@ -322,246 +236,106 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
         const matchesTherapist = session.terapeuta?.toLowerCase().includes(searchLower);
         const matchesCalendarTitle = session.calendarTitle?.toLowerCase().includes(searchLower);
 
-        return matchesType || matchesNotes || matchesTherapist || matchesCalendarTitle;
+        return Boolean(matchesType || matchesNotes || matchesTherapist || matchesCalendarTitle);
       }
 
       return true;
     });
   }, [allRealizedSessions, filterType, searchText, filterStatus]);
 
-  // Função para sincronizar manualmente
+  const realizedCount = useMemo(
+    () => allRealizedSessions.filter(s => s.status === 'realizado').length,
+    [allRealizedSessions]
+  );
+
+  const summarySessions = useMemo(
+    () =>
+      filteredSessions.map(session => ({
+        date: session.date,
+        notes: session.notes,
+        status: session.status,
+      })),
+    [filteredSessions]
+  );
+  const cancelledCount = useMemo(
+    () => allRealizedSessions.filter(s => s.status === 'cancelado').length,
+    [allRealizedSessions]
+  );
+
+  const maxSessions = client.max_sessoes ?? 0;
+  const progressCount = paidSessionsCount !== undefined ? paidSessionsCount : realizedCount;
+  const completedSessionsPercentage = maxSessions > 0
+    ? Math.min(100, (progressCount / maxSessions) * 100)
+    : 0;
+
+  useEffect(() => {
+    if (
+      syncProgress &&
+      client.numero_sessoes !== realizedCount &&
+      lastUpdatedValueRef.current !== realizedCount
+    ) {
+      lastUpdatedValueRef.current = realizedCount;
+      onUpdateClient({
+        ...client,
+        numero_sessoes: realizedCount,
+      });
+    }
+  }, [realizedCount, syncProgress, client, onUpdateClient]);
+
+  const refreshData = () => {
+    onRefetchAppointments();
+    toast.success('Dados atualizados a partir do servidor');
+  };
+
   const syncSessionCount = () => {
-    const realizedCount = allRealizedSessions.filter(s => s.status === 'realizado').length;
     if (client.numero_sessoes !== realizedCount) {
       onUpdateClient({
         ...client,
-        numero_sessoes: realizedCount
+        numero_sessoes: realizedCount,
       });
       lastUpdatedValueRef.current = realizedCount;
-      toast.success("Contagem de sessões sincronizada com sucesso!");
+      toast.success('Contagem de sessões sincronizada com sucesso');
     } else {
-      toast.info("Contagem de sessões já está sincronizada!");
+      toast.info('A contagem de sessões já está sincronizada');
     }
-  };
-
-  useEffect(() => {
-    // Corrigir o status para 'realizado' em vez de 'confirmado'
-    const realizedCount = allRealizedSessions.filter(s => s.status === 'realizado').length;
-    setTotalRealizedCount(realizedCount);
-
-    const maxSessions = client.max_sessoes || 0;
-    let completedPercentage = 0;
-    if (maxSessions > 0) {
-      // Se o paidSessionsCount for fornecido, usar esse valor para o progresso
-      const countToUse = paidSessionsCount !== undefined ? paidSessionsCount : realizedCount;
-      completedPercentage = (countToUse / maxSessions) * 100;
-    }
-    setCompletedSessionsPercentage(completedPercentage > 100 ? 100 : completedPercentage);
-
-    // Atualização automática APENAS se sincProgress estiver ativado
-    // E se nunca tivermos atualizado antes ou se o valor mudou desde a última atualização
-    if (syncProgress &&
-      client.numero_sessoes !== realizedCount &&
-      lastUpdatedValueRef.current !== realizedCount) {
-      lastUpdatedValueRef.current = realizedCount;
-      onUpdateClient({
-        ...client,
-        numero_sessoes: realizedCount
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allRealizedSessions, client.max_sessoes]);
-
-  useEffect(() => {
-    if (sessionToEdit) {
-      editSessionForm.reset({
-        notes: sessionToEdit.notes || '',
-        terapeuta: sessionToEdit.terapeuta || '',
-        duration: sessionToEdit.duration,
-        filesToUpload: undefined,
-        titulo: sessionToEdit.calendarTitle || '',
-        tipo: sessionToEdit.sessionType || '',
-        estado: sessionToEdit.status || ''
-      });
-      setIsEditModalOpen(true);
-    } else {
-      setIsEditModalOpen(false);
-    }
-  }, [sessionToEdit, editSessionForm]);
-
-  const handleDeleteSession = (sessionId: string) => {
-    const sessionToDelete = sessions.find(s => s.id === sessionId);
-    if (!sessionToDelete) {
-      toast.error("Não é possível eliminar sessões originadas no calendário.");
-      return;
-    }
-
-    const allSessions = loadFromStorage<Session[]>('sessions', []);
-    const updatedSessions = allSessions.filter(session => session.id !== sessionId);
-    saveToStorage('sessions', updatedSessions);
-
-    if (client.id) {
-      const clients = loadFromStorage<ClientDetailData[]>('clients', []);
-      const updatedClients = clients.map(c => {
-        if (c.id === client.id) {
-          return {
-            ...c,
-            numero_sessoes: Math.max(0, (c.numero_sessoes || 0) - 1)
-          };
-        }
-        return c;
-      });
-      saveToStorage('clients', updatedClients);
-    }
-
-    toast.success("Sessão eliminada com sucesso");
-    window.location.reload();
   };
 
   const handleSetMaxSessions = (data: { maxSessions: number }) => {
-    const updatedClient = { ...client, max_sessoes: data.maxSessions };
-    onUpdateClient(updatedClient);
+    const value = Number.isNaN(data.maxSessions) ? 0 : Math.max(0, data.maxSessions);
+    onUpdateClient({ ...client, max_sessoes: value });
     setIsMaxSessionsDialogOpen(false);
-    toast.success("Número máximo de sessões definido com sucesso");
+    toast.success('Número máximo de sessões definido com sucesso');
   };
 
   const handleCompleteProcess = () => {
-    const updatedClient = { ...client, status: 'finished' as const };
-    onUpdateClient(updatedClient);
+    onUpdateClient({ ...client, estado: 'finished' });
     setIsCompleteDialogOpen(false);
-    toast.success("Processo concluído com sucesso");
-    setTimeout(() => { window.location.href = '/clients'; }, 1500);
+    toast.success('Processo concluído com sucesso');
+    navigate('/clients');
   };
 
-  const handleSaveEdit = async (data: EditSessionFormData) => {
-    if (!sessionToEdit || !supabase) {
-      toast.error("Erro: A sessão a editar não foi encontrada ou a ligação ao servidor falhou.");
-      return;
-    }
-
-    setIsUploading(true);
-
-    // 1. Upload de ficheiros (se existirem)
-    if (data.filesToUpload && data.filesToUpload.length > 0) {
-      const files = Array.from(data.filesToUpload);
-      const uploadPromises = files.map(async (file) => {
-        const filePath = `sessoes/${sessionToEdit.id}/${file.name}`;
-        const { data: uploadData, error } = await supabase.storage
-          .from('ficheiros')
-          .upload(filePath, file, { upsert: true });
-
-        if (error) {
-          console.error('Erro no upload:', error);
-          toast.error(`Erro ao carregar ${file.name}: ${error.message}`);
-          return null;
-        } else if (uploadData) {
-          return {
-            name: file.name,
-            path: uploadData.path,
-            uploadedAt: new Date().toISOString(),
-          };
-        }
-        return null;
-      });
-      await Promise.all(uploadPromises);
-    }
-
-    try {
-      // 2. Unificar a atualização para sempre usar a tabela 'agendamentos'
-      // A lista de "sessões" é na verdade uma vista dos agendamentos.
-      const sessionId = parseInt(sessionToEdit.id);
-      if (isNaN(sessionId)) {
-        toast.error("ID da sessão inválido.");
-        setIsUploading(false);
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('agendamentos')
-        .update({
-          titulo: data.titulo,
-          tipo: data.tipo,
-          estado: data.estado,
-          notas: data.notes,
-          terapeuta: data.terapeuta,
-          // Embora 'arquivos' não seja uma coluna padrão em 'agendamentos',
-          // se a sua lógica de visualização os lê de 'sessoes' ou de outro lugar,
-          // esta estrutura pode precisar de ajuste. Por agora, vamos focar nos campos principais.
-        })
-        .eq('id', sessionId);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Remover a sincronização com a tabela 'sessoes' que não existe
-      /*
-      const { error: sessionTableError } = await supabase
-          .from('sessoes')
-          .update({
-              notes: data.notes,
-              terapeuta: data.terapeuta,
-              duracao: data.duration,
-              arquivos: updatedSessionFiles,
-              type: data.tipo
-          })
-          .eq('id', sessionToEdit.id); // Usa o ID de sessão (pode ser string ou int)
-
-      if (sessionTableError) {
-          // Não bloquear se a atualização em 'sessoes' falhar, apenas registar
-          console.warn("Aviso: Falha ao sincronizar com a tabela 'sessoes'.", sessionTableError);
-      }
-      */
-
-
-      toast.success("Sessão atualizada com sucesso!");
-      refreshData();
-      setSessionToEdit(null);
-      setIsEditModalOpen(false);
-
-    } catch (error: any) {
-      console.error("Erro ao atualizar sessão:", error);
-      toast.error(`Falha ao atualizar sessão: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-    }
+  const confirmDeleteSession = () => {
+    if (!sessionToDelete) return;
+    onDeleteSession(sessionToDelete.id);
+    setSessionToDelete(null);
   };
 
-  const getSessionTypeLabel = (type: string | null | undefined) => {
-    if (!type) return 'N/A';
-
-    switch (type.toLowerCase()) {
-      case 'sessão':
-        return 'Neurofeedback';
-      case 'avaliação':
-        return 'Avaliação';
-      case 'consulta':
-        return 'Discussão';
-      default:
-        return type;
-    }
-  };
-
-  const getSessionTypeOptions = () => {
+  const getSessionTypeOptions = (): string[] => {
     const uniqueTypes = new Set<string>();
-
-    // Coletar todos os tipos únicos de sessão
     allRealizedSessions.forEach(session => {
       if (session.sessionType) {
         uniqueTypes.add(session.sessionType.toLowerCase());
       }
     });
-
-    // Converter para array e ordenar
     return Array.from(uniqueTypes).sort();
   };
 
   const toggleSortOrder = () => {
-    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
   };
 
   const viewSessionNotes = (session: RealizedSessionView) => {
-    const notes = session.notes || "Sem notas disponíveis para esta sessão.";
+    const notes = session.notes || 'Sem notas disponíveis para esta sessão.';
     toast.info(
       <div className="max-w-md">
         <h3 className="font-bold mb-2">Notas da Sessão</h3>
@@ -572,42 +346,48 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
       </div>,
       {
         duration: 10000,
-        className: "session-notes-toast"
+        className: 'session-notes-toast',
       }
     );
   };
 
+  const hasActiveFilters = Boolean(searchText) || filterType !== 'all' || filterStatus !== 'all';
+
+  const clearFilters = () => {
+    setSearchText('');
+    setFilterType('all');
+    setFilterStatus('all');
+  };
+
   return (
     <div className="space-y-6">
-      {(client.max_sessoes ?? 0) > 0 && (
-        <Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard icon={Check} label="Realizadas" value={realizedCount} tone="teal" />
+        <KpiCard icon={Calendar} label="Agendadas" value={upcomingAppointments.length} tone="blue" />
+        <KpiCard icon={AlertCircle} label="Canceladas" value={cancelledCount} tone="red" />
+      </div>
+
+      {maxSessions > 0 && (
+        <Card className="shadow-sm">
           <CardContent className="pt-6">
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <h4 className="text-sm font-medium">Progresso das Sessões</h4>
                 <span className="text-sm text-muted-foreground">
-                  <strong>{paidSessionsCount !== undefined ? paidSessionsCount : totalRealizedCount}</strong> de <strong>{client.max_sessoes}</strong> sessões pagas
+                  <strong className="text-foreground">{progressCount}</strong> de{' '}
+                  <strong className="text-foreground">{maxSessions}</strong> sessões pagas
                 </span>
               </div>
               <div className="relative w-full">
-                <Progress
-                  value={completedSessionsPercentage}
-                  className={`h-3 ${completedSessionsPercentage >= 100 ? 'bg-green-100' :
-                    completedSessionsPercentage >= 75 ? 'bg-emerald-100' :
-                      completedSessionsPercentage >= 50 ? 'bg-amber-100' :
-                        completedSessionsPercentage >= 25 ? 'bg-orange-100' :
-                          'bg-red-100'
-                    }`}
-                />
-                {/* Marcadores de Metas */}
-                {Array.from({ length: Math.floor((client.max_sessoes ?? 0) / 5) }).map((_, i) => {
+                <Progress value={completedSessionsPercentage} className="h-3" />
+                {Array.from({ length: Math.floor(maxSessions / 5) }).map((_, i) => {
                   const milestone = (i + 1) * 5;
-                  if (client.max_sessoes && milestone < client.max_sessoes) {
-                    const leftPosition = (milestone / client.max_sessoes) * 100;
+                  if (milestone < maxSessions) {
+                    const leftPosition = (milestone / maxSessions) * 100;
                     return (
                       <div
                         key={milestone}
-                        className="absolute top-0 h-full w-0.5 bg-gray-400"
+                        className="absolute top-0 h-full w-0.5 bg-muted-foreground/30"
                         style={{ left: `${leftPosition}%` }}
                         title={`Meta de ${milestone} sessões`}
                       />
@@ -616,17 +396,12 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                   return null;
                 })}
               </div>
-              <div className="flex justify-between items-center text-xs text-gray-500">
+              <div className="flex flex-wrap justify-between items-center gap-2 text-xs text-muted-foreground">
                 <span>{Math.round(completedSessionsPercentage)}% concluído</span>
-                <span>{(client.max_sessoes ?? 0) - totalRealizedCount} sessões restantes</span>
+                <span>{Math.max(0, maxSessions - progressCount)} sessões restantes</span>
               </div>
-              <div className="flex items-center justify-between space-x-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={syncSessionCount}
-                  className="text-xs"
-                >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={syncSessionCount} className="text-xs">
                   Sincronizar Contagem
                 </Button>
                 <div className="flex items-center gap-2">
@@ -636,8 +411,11 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                     onCheckedChange={setSyncProgress}
                     className="switch-checked"
                   />
-                  <Label htmlFor="sync-progress" className="text-xs cursor-pointer flex items-center gap-1">
-                    {syncProgress ? "Auto-Sincronizar" : "Manual"}
+                  <Label
+                    htmlFor="sync-progress"
+                    className="text-xs cursor-pointer flex items-center gap-1"
+                  >
+                    {syncProgress ? 'Auto-Sincronizar' : 'Manual'}
                     {!syncProgress && <Link2Off className="h-3 w-3" />}
                   </Label>
                 </div>
@@ -647,72 +425,31 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
         </Card>
       )}
 
-      {/* Nova seção: Próximos Agendamentos */}
-      {upcomingAppointments.length > 0 && (
-        <Card>
-          <CardHeader className="px-6">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Próximos Agendamentos ({totalUpcomingCount})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Notas</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {upcomingAppointments.map((appointment) => {
-                    const appointmentDate = parseISO(appointment.data);
-                    const appointmentTime = appointment.hora || format(appointmentDate, 'HH:mm');
-                    const formattedDateTime = `${format(appointmentDate, 'dd/MM/yyyy')} ${appointmentTime}`;
-                    return (
-                      <TableRow key={appointment.id}>
-                        <TableCell>{formattedDateTime}</TableCell>
-                        <TableCell>{appointment.titulo}</TableCell>
-                        <TableCell>{getSessionTypeLabel(appointment.tipo)}</TableCell>
-                        <TableCell>
-                          <div className={`px-2 py-1 rounded-full text-xs inline-block
-                            ${appointment.estado === 'confirmado' ? 'bg-green-100 text-green-800' :
-                              appointment.estado === 'agendado' ? 'bg-blue-100 text-blue-800' :
-                                appointment.estado === 'em_andamento' ? 'bg-amber-100 text-amber-800' :
-                                  appointment.estado === 'pausado' ? 'bg-purple-100 text-purple-800' :
-                                    appointment.estado === 'cancelado' ? 'bg-red-100 text-red-800' :
-                                      'bg-gray-100 text-gray-800'}`}>
-                            {appointment.estado.charAt(0).toUpperCase() + appointment.estado.slice(1)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {appointment.notas ? (
-                            <div className="max-w-xs truncate">{appointment.notas}</div>
-                          ) : (
-                            <span className="text-gray-500 text-sm">Sem notas</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+      <UpcomingAppointmentsCard appointments={upcomingAppointments} />
+
+      {appointmentsError && !isLoadingAppointments && (
+        <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20 shadow-sm">
+          <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm text-amber-800 dark:text-amber-200 flex-1">
+              Não foi possível atualizar os agendamentos a partir do servidor. Os dados apresentados
+              podem estar desatualizados.
+            </p>
+            <Button variant="outline" size="sm" onClick={refreshData}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      <div className="flex gap-2 flex-wrap md:flex-nowrap justify-between items-center">
-        <div className="flex gap-2 flex-wrap md:flex-nowrap flex-1">
+      <div className="flex flex-col lg:flex-row gap-2 lg:gap-3 lg:justify-between lg:items-center">
+        <div className="flex gap-2 flex-wrap lg:flex-nowrap lg:flex-1">
           <Input
-            placeholder="Buscar nas sessões..."
+            placeholder="Procurar nas sessões..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="max-w-xs"
+            className="w-full sm:max-w-xs"
           />
 
           <Popover>
@@ -726,53 +463,51 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
             <PopoverContent className="w-80">
               <div className="space-y-4">
                 <h4 className="font-medium">Filtrar por Tipo</h4>
-                <div className="grid gap-2">
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={filterType === 'all' ? 'default' : 'outline'}
+                    onClick={() => setFilterType('all')}
+                    className="w-auto"
+                    size="sm"
+                  >
+                    Todos
+                  </Button>
+
+                  {getSessionTypeOptions().map(type => (
                     <Button
-                      variant={filterType === 'all' ? "default" : "outline"}
-                      onClick={() => setFilterType('all')}
-                      className="w-full"
+                      key={type}
+                      variant={filterType === type ? 'default' : 'outline'}
+                      onClick={() => setFilterType(type)}
+                      className="w-auto"
                       size="sm"
                     >
-                      Todos
+                      {getSessionTypeLabel(type)}
                     </Button>
-
-                    {getSessionTypeOptions().map(type => (
-                      <Button
-                        key={type}
-                        variant={filterType === type ? "default" : "outline"}
-                        onClick={() => setFilterType(type)}
-                        className="w-full"
-                        size="sm"
-                      >
-                        {getSessionTypeLabel(type)}
-                      </Button>
-                    ))}
-                  </div>
+                  ))}
                 </div>
 
                 <h4 className="font-medium pt-2">Filtrar por Estado</h4>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
-                    variant={filterStatus === 'all' ? "default" : "outline"}
+                    variant={filterStatus === 'all' ? 'default' : 'outline'}
                     onClick={() => setFilterStatus('all')}
-                    className="w-full"
+                    className="w-auto"
                     size="sm"
                   >
                     Todos
                   </Button>
                   <Button
-                    variant={filterStatus === 'realizado' ? "default" : "outline"}
+                    variant={filterStatus === 'realizado' ? 'default' : 'outline'}
                     onClick={() => setFilterStatus('realizado')}
-                    className="w-full"
+                    className="w-auto"
                     size="sm"
                   >
                     Realizadas
                   </Button>
                   <Button
-                    variant={filterStatus === 'nao_realizado' ? "default" : "outline"}
+                    variant={filterStatus === 'nao_realizado' ? 'default' : 'outline'}
                     onClick={() => setFilterStatus('nao_realizado')}
-                    className="w-full"
+                    className="w-auto"
                     size="sm"
                   >
                     Não Realizadas
@@ -782,12 +517,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
             </PopoverContent>
           </Popover>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-10"
-            onClick={toggleSortOrder}
-          >
+          <Button variant="outline" size="sm" className="h-10" onClick={toggleSortOrder}>
             {sortOrder === 'desc' ? (
               <>
                 <SortDesc className="h-4 w-4 mr-2" />
@@ -801,25 +531,28 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
             )}
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-10"
-            onClick={refreshData}
-          >
+          <Button variant="outline" size="sm" className="h-10" onClick={refreshData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
+
+          <Button variant="outline" size="sm" className="h-10" onClick={() => setIsSummaryOpen(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Gerar resumo
+          </Button>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Dialog open={isMaxSessionsDialogOpen} onOpenChange={setIsMaxSessionsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Clock className="h-4 w-4 mr-2" />
-                Número de Sessões
-              </Button>
-            </DialogTrigger>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsMaxSessionsDialogOpen(true)}
+              className="h-10"
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Número de Sessões
+            </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Definir Número Máximo de Sessões</DialogTitle>
@@ -832,6 +565,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                   <FormField
                     control={maxSessionsForm.control}
                     name="maxSessions"
+                    rules={{ min: { value: 0, message: 'O valor não pode ser negativo' } }}
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Número Máximo</FormLabel>
@@ -840,7 +574,7 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                             type="number"
                             min="0"
                             {...field}
-                            onChange={e => field.onChange(parseInt(e.target.value))}
+                            onChange={e => field.onChange(parseInt(e.target.value, 10))}
                           />
                         </FormControl>
                         <FormMessage />
@@ -856,23 +590,27 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
           </Dialog>
 
           <Dialog open={isCompleteDialogOpen} onOpenChange={setIsCompleteDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Check className="h-4 w-4 mr-2" />
-                Completar Processo
-              </Button>
-            </DialogTrigger>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10"
+              onClick={() => setIsCompleteDialogOpen(true)}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Completar Processo
+            </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Completar Processo do Cliente</DialogTitle>
                 <DialogDescription>
-                  Tem certeza que deseja marcar este processo como concluído? Isso irá alterar o estado do cliente para "Finalizado".
+                  Confirme a conclusão do processo. Isto irá alterar o estado do cliente para
+                  "Finalizado".
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Cancelar</Button>
-                </DialogClose>
+                <Button variant="outline" onClick={() => setIsCompleteDialogOpen(false)}>
+                  Cancelar
+                </Button>
                 <Button onClick={handleCompleteProcess}>Confirmar</Button>
               </DialogFooter>
             </DialogContent>
@@ -880,21 +618,28 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
         </div>
       </div>
 
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader className="px-6">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Sessões Realizadas
+          <CardTitle className="flex items-center gap-3 text-base font-semibold">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Calendar className="h-4 w-4" />
+            </span>
+            Histórico de Sessões
+            {!isLoadingAppointments && (
+              <Badge variant="secondary" className="tabular-nums">{filteredSessions.length}</Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {isLoadingAppointments ? (
-            <div className="p-6 text-center">
-              Carregando sessões...
+            <div className="p-6 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
           ) : filteredSessions.length > 0 ? (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[760px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
@@ -907,289 +652,128 @@ const ClientSessions = ({ sessions, client, onUpdateClient, paidSessionsCount }:
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSessions.map((session) => {
-                    const sessionDate = parseISO(session.date);
-                    const sessionTime = session.time || format(sessionDate, 'HH:mm');
-                    const formattedDateTime = `${format(sessionDate, 'dd/MM/yyyy')} ${sessionTime}`;
-
-                    return (
-                      <TableRow key={session.id}>
-                        <TableCell>{formattedDateTime}</TableCell>
-                        <TableCell>
-                          {getSessionTypeLabel(session.sessionType)}
-                          {session.calendarTitle &&
-                            <div className="text-xs text-gray-500 mt-1">{session.calendarTitle}</div>
-                          }
-                        </TableCell>
-                        <TableCell>{session.terapeuta || "Não definido"}</TableCell>
-                        <TableCell>
-                          {session.duration ?
-                            `${Math.floor(session.duration / 3600)}h ${Math.floor((session.duration % 3600) / 60)}m` :
-                            "N/A"
-                          }
-                        </TableCell>
-                        <TableCell>
-                          <div className={`px-2 py-1 rounded-full text-xs inline-block 
-                            ${session.status === 'realizado' ? 'bg-green-100 text-green-800' :
-                              session.status === 'agendado' ? 'bg-blue-100 text-blue-800' :
-                                session.status === 'em_andamento' ? 'bg-amber-100 text-amber-800' :
-                                  session.status === 'pausado' ? 'bg-purple-100 text-purple-800' :
-                                    session.status === 'cancelado' ? 'bg-red-100 text-red-800' :
-                                      'bg-gray-100 text-gray-800'}`}>
-                            {session.status ? (session.status.charAt(0).toUpperCase() + session.status.slice(1)) : "N/A"}
+                  {filteredSessions.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {formatSessionDateTime(session.date, session.time)}
+                      </TableCell>
+                      <TableCell>
+                        {getSessionTypeLabel(session.sessionType)}
+                        {session.calendarTitle && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {session.calendarTitle}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {session.notes ? (
+                        )}
+                      </TableCell>
+                      <TableCell>{session.terapeuta || 'Não definido'}</TableCell>
+                      <TableCell>{formatSessionDuration(session.duration)}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={session.status} />
+                      </TableCell>
+                      <TableCell>
+                        {session.notes ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewSessionNotes(session)}
+                            className="h-8 px-2"
+                          >
+                            Ver Notas
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Sem notas</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setSessionToEdit(session)}
+                          >
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
+                          </Button>
+                          {!session.isFromCalendar && (
                             <Button
-                              variant="ghost"
                               size="sm"
-                              onClick={() => viewSessionNotes(session)}
-                              className="h-8 px-2"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              onClick={() => setSessionToDelete(session)}
                             >
-                              <Clipboard className="h-4 w-4 mr-1" />
-                              Ver Notas
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Eliminar</span>
                             </Button>
-                          ) : (
-                            <span className="text-gray-500 text-sm">Sem notas</span>
                           )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => setSessionToEdit(session)}
-                            >
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Editar</span>
-                            </Button>
-
-                            {!session.isFromCalendar && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-                                onClick={() => handleDeleteSession(session.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Eliminar</span>
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
           ) : (
-            <div className="p-6 text-center">
-              <p>Nenhuma sessão encontrada.</p>
-              {(searchText || filterType !== 'all' || filterStatus !== 'all') ? (
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    setSearchText('');
-                    setFilterType('all');
-                    setFilterStatus('all');
-                  }}
-                >
-                  Limpar filtros
-                </Button>
-              ) : null}
-            </div>
+            <EmptyState
+              icon={<Calendar className="h-10 w-10" />}
+              title={hasActiveFilters ? 'Nenhuma sessão encontrada' : 'Sem sessões registadas'}
+              description={
+                hasActiveFilters
+                  ? 'Ajuste ou limpe os filtros para ver mais resultados.'
+                  : 'As sessões deste cliente serão apresentadas aqui assim que existirem agendamentos ou registos.'
+              }
+              action={
+                hasActiveFilters
+                  ? {
+                      label: 'Limpar filtros',
+                      onClick: clearFilters,
+                      icon: <Filter className="h-4 w-4" />,
+                      variant: 'outline' as const,
+                    }
+                  : undefined
+              }
+            />
           )}
         </CardContent>
       </Card>
 
-      {/* Modal de Edição de Sessão */}
-      <Dialog open={isEditModalOpen} onOpenChange={(open) => !open && setSessionToEdit(null)}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Editar Sessão</DialogTitle>
-            <DialogDescription>
-              Atualize as informações da sessão selecionada.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...editSessionForm}>
-            <form onSubmit={editSessionForm.handleSubmit(handleSaveEdit)} className="space-y-4">
-              {sessionToEdit?.isFromCalendar && (
-                <>
-                  <FormField
-                    control={editSessionForm.control}
-                    name="titulo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Título</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Título da sessão" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
+      <SessionEditDialog
+        session={sessionToEdit}
+        clientId={clientId}
+        onClose={() => setSessionToEdit(null)}
+        onSaved={() => {
+          setSessionFilesMap(loadSessionFilesMap());
+          onRefetchAppointments();
+        }}
+        onUpdateManualSession={onUpdateSession}
+      />
 
-              <FormField
-                control={editSessionForm.control}
-                name="tipo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || ''}
-                      >
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sessão">Sessão</SelectItem>
-                          <SelectItem value="avaliação">Avaliação</SelectItem>
-                          <SelectItem value="consulta">Consulta</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <SessionSummaryDialog
+        open={isSummaryOpen}
+        onOpenChange={setIsSummaryOpen}
+        clientName={client.nome || ''}
+        sessions={summarySessions}
+        moods={isSummaryOpen ? readClientMoods(client.id) : []}
+        onSave={(summaryText) => {
+          onUpdateClient({
+            ...client,
+            notas: client.notas ? `${client.notas}\n\n${summaryText}` : summaryText,
+          });
+          toast.success('Resumo guardado nas notas do cliente');
+          setIsSummaryOpen(false);
+        }}
+      />
 
-              <FormField
-                control={editSessionForm.control}
-                name="estado"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || ''}
-                      >
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Selecione o estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pendente">Pendente</SelectItem>
-                          <SelectItem value="confirmado">Confirmado</SelectItem>
-                          <SelectItem value="cancelado">Cancelado</SelectItem>
-                          <SelectItem value="realizado">Realizado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editSessionForm.control}
-                name="terapeuta"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Terapeuta</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome do terapeuta" {...field} value={field.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editSessionForm.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Observações da sessão" className="min-h-[100px]" {...field} value={field.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editSessionForm.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duração</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => {
-                          const value = e.target.value ? parseInt(e.target.value) : undefined;
-                          field.onChange(value);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editSessionForm.control}
-                name="filesToUpload"
-                render={({ field: { value, onChange, ...fieldProps } }) => (
-                  <FormItem>
-                    <FormLabel>Adicionar Ficheiros</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="file"
-                        multiple
-                        {...fieldProps}
-                        onChange={(e) => {
-                          onChange(e.target.files || null);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {sessionToEdit && sessionToEdit.arquivos.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Ficheiros existentes:</h4>
-                  <div className="max-h-[100px] overflow-y-auto space-y-1 border rounded-md p-2">
-                    {sessionToEdit.arquivos.map((file, index) => (
-                      <div key={index} className="text-sm flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-500" />
-                        <span>{typeof file === 'string' ? (file as string).split('/').pop() : file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updatedFiles = [...sessionToEdit.arquivos];
-                            updatedFiles.splice(index, 1);
-                            setSessionToEdit({ ...sessionToEdit, arquivos: updatedFiles });
-                          }}
-                          className="ml-auto hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setSessionToEdit(null)}>Cancelar</Button>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading && <span className="animate-spin mr-2">⏳</span>}
-                  Guardar
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={sessionToDelete !== null}
+        onOpenChange={(open) => !open && setSessionToDelete(null)}
+        onConfirm={confirmDeleteSession}
+        title="Eliminar Sessão"
+        description="Tem a certeza que quer eliminar esta sessão? Esta ação não pode ser revertida."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </div>
   );
 };

@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_MARKET_DATA_API_KEY?: string;
+}
+
 // Declarações para Web Speech API
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;

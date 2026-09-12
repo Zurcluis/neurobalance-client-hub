@@ -11,6 +11,8 @@ import type { Database } from '@/integrations/supabase/types';
 import type { Appointment } from '@/hooks/useAppointments';
 import type { Payment } from '@/hooks/usePayments';
 import { useAdminContext } from '@/contexts/AdminContext';
+import { computeAllRisks } from '@/utils/clientInsights';
+import { RISK_BAND_LABEL } from '@/utils/clientInsights';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 
@@ -18,7 +20,7 @@ interface GlobalNotification {
   id: string;
   clientId: number;
   clientName: string;
-  type: 'pack_exhausted' | 'pack_ending' | 'treatment_ending' | 'treatment_finished';
+  type: 'pack_exhausted' | 'pack_ending' | 'treatment_ending' | 'treatment_finished' | 'churn_risk';
   title: string;
   message: string;
   severity: 'danger' | 'warning' | 'info';
@@ -101,6 +103,32 @@ const ClientNotificationsPanel = ({ clients, appointments, payments }: ClientNot
           });
         }
       }
+    });
+
+    const churnRisks = computeAllRisks({
+      clients,
+      appointments,
+      payments,
+      moods: [],
+    })
+      .filter(risk => risk.band !== 'baixo')
+      .slice(0, 3);
+
+    churnRisks.forEach(risk => {
+      const topFactor = [...risk.factors]
+        .filter(factor => factor.points > 0)
+        .sort((a, b) => b.points - a.points)[0];
+      list.push({
+        id: `churn_risk_${risk.clientId}`,
+        clientId: risk.clientId,
+        clientName: risk.nome,
+        type: 'churn_risk',
+        title: 'Risco de Churn',
+        message: `Score ${risk.score}/100 (banda ${RISK_BAND_LABEL[risk.band].toLowerCase()}).${
+          topFactor ? ` Fator principal: ${topFactor.label.toLowerCase()} — ${topFactor.detail}.` : ''
+        }`,
+        severity: risk.band === 'risco' ? 'danger' : 'warning'
+      });
     });
 
     return list;

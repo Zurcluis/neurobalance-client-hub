@@ -1,96 +1,148 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ClientDetailData } from '@/types/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Mail, 
-  Share2, 
-  Link, 
-  Copy, 
-  FileText, 
-  File, 
-  Facebook, 
-  Twitter,
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  Mail,
+  FileText,
+  File,
   Send,
-  Download,
-  Check,
-  Lock,
-  Eye
+  Download
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { readClientReports } from './reportHistoryStore';
+import type { StoredReport, StoredReportFormat } from './reportHistoryStore';
 
 interface ReportShareProps {
   client: ClientDetailData;
 }
 
+const formatIcons: Record<StoredReportFormat, typeof File> = {
+  pdf: File,
+  txt: FileText
+};
+
 const ReportShare = ({ client }: ReportShareProps) => {
-  const [activeTab, setActiveTab] = useState('email');
+  const clientId = typeof client.id === 'number' ? client.id : 0;
+
+  const availableReports = useMemo(() => readClientReports(clientId), [clientId]);
+  const [selectedReportIds, setSelectedReportIds] = useState<Set<string>>(new Set());
   const [emailAddresses, setEmailAddresses] = useState('');
   const [subject, setSubject] = useState(`Relatório do Cliente - ${client.nome}`);
-  const [message, setMessage] = useState(`Olá,\n\nSegue em anexo o relatório do cliente ${client.nome}.\n\nAtenciosamente,\nEquipe NeuroBalance`);
-  const [includeAttachments, setIncludeAttachments] = useState(true);
-  const [sendCopy, setSendCopy] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-  const [passwordProtect, setPasswordProtect] = useState(false);
-  const [password, setPassword] = useState('');
-  const [linkExpiration, setLinkExpiration] = useState('7');
-  
-  // Exemplo de relatórios disponíveis
-  const availableReports = [
-    { id: '1', title: 'Relatório Trimestral Q4', date: '2023-12-31', format: 'pdf', size: '392 KB' },
-    { id: '2', title: 'Relatório Financeiro', date: '2023-11-15', format: 'pdf', size: '256 KB' },
-    { id: '3', title: 'Histórico de Sessões', date: '2023-10-22', format: 'txt', size: '128 KB' },
-  ];
-  
-  // Exemplo de função para compartilhar por e-mail
+  const [message, setMessage] = useState(
+    `Olá,\n\nSegue em anexo o relatório do cliente ${client.nome}.\n\nMelhores cumprimentos,\nEquipa NeuroBalance`
+  );
+  const [expiration, setExpiration] = useState<'7' | '30' | 'never'>('7');
+
+  const selectedReports = availableReports.filter(report => selectedReportIds.has(report.id));
+
+  const toggleReport = (id: string, checked: boolean) => {
+    setSelectedReportIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const reportMetaText = (report: StoredReport) =>
+    `${format(new Date(report.createdAt), 'dd/MM/yyyy')} • ${report.format.toUpperCase()}`;
+
   const handleEmailShare = () => {
-    // Aqui seria a implementação real para enviar os relatórios por e-mail
-    alert(`E-mail(s) enviado(s) para: ${emailAddresses}`);
+    const recipients = emailAddresses.split(',').map(email => email.trim()).filter(Boolean);
+
+    if (recipients.length === 0) {
+      toast.error('Indique pelo menos um destinatário');
+      return;
+    }
+
+    if (recipients.some(email => !email.includes('@'))) {
+      toast.error('Existem endereços de e-mail inválidos');
+      return;
+    }
+
+    if (selectedReports.length === 0) {
+      toast.error('Selecione pelo menos um relatório');
+      return;
+    }
+
+    const body = [
+      message,
+      '',
+      'Relatórios incluídos:',
+      ...selectedReports.map(report => `- ${report.title} (${format(new Date(report.createdAt), 'dd/MM/yyyy')})`),
+      expiration === 'never' ? '' : `Esta partilha é válida por ${expiration} dias.`
+    ].filter(Boolean).join('\n');
+
+    const mailtoUrl = `mailto:${recipients.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
+
+    toast.success('Cliente de e-mail aberto com a mensagem pré-preenchida');
   };
-  
-  // Exemplo de função para gerar e copiar link
-  const handleCopyLink = () => {
-    // Aqui seria a implementação real para gerar um link compartilhável
-    const shareableLink = `https://neurobalance.app/share/report/${Math.random().toString(36).substring(2, 15)}`;
-    navigator.clipboard.writeText(shareableLink);
-    setLinkCopied(true);
-    
-    setTimeout(() => {
-      setLinkCopied(false);
-    }, 3000);
+
+  const downloadReport = (report: StoredReport) => {
+    const content = report.content || 'Sem conteúdo disponível';
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${report.fileName || report.title.replace(/\s+/g, '_')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
-  
-  // Exemplo de função para compartilhar nas redes sociais
-  const handleSocialShare = (platform: string) => {
-    // Aqui seria a implementação real para compartilhar nas redes sociais
-    alert(`Compartilhando no ${platform}`);
+
+  const handleDownloadSelected = () => {
+    if (selectedReports.length === 0) {
+      toast.error('Selecione pelo menos um relatório');
+      return;
+    }
+
+    selectedReports.forEach(downloadReport);
+    toast.success(`${selectedReports.length} relatório(s) descarregado(s)`);
   };
-  
+
+  if (availableReports.length === 0) {
+    return (
+      <EmptyState
+        icon={<FileText className="h-10 w-10" />}
+        title="Sem relatórios disponíveis"
+        description="Exporte relatórios na secção Templates para os poder partilhar ou descarregar aqui."
+      />
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <Tabs defaultValue="email" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 flex flex-wrap w-full">
+    <div className="space-y-6 min-w-0">
+      <Tabs defaultValue="email">
+        <TabsList className="mb-6 flex flex-wrap w-full h-auto">
           <TabsTrigger value="email" className="flex items-center gap-2 flex-1">
             <Mail className="h-4 w-4" />
             <span className="hidden sm:inline">E-mail</span>
           </TabsTrigger>
-          <TabsTrigger value="link" className="flex items-center gap-2 flex-1">
-            <Link className="h-4 w-4" />
-            <span className="hidden sm:inline">Link</span>
-          </TabsTrigger>
           <TabsTrigger value="download" className="flex items-center gap-2 flex-1">
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Download</span>
+            <span className="hidden sm:inline">Descarregar</span>
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="email">
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             <div className="grid gap-2">
               <Label htmlFor="recipients">Destinatários (separados por vírgula)</Label>
               <Input
@@ -100,7 +152,7 @@ const ReportShare = ({ client }: ReportShareProps) => {
                 onChange={(e) => setEmailAddresses(e.target.value)}
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="subject">Assunto</Label>
               <Input
@@ -110,7 +162,7 @@ const ReportShare = ({ client }: ReportShareProps) => {
                 onChange={(e) => setSubject(e.target.value)}
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="message">Mensagem</Label>
               <Textarea
@@ -121,229 +173,112 @@ const ReportShare = ({ client }: ReportShareProps) => {
                 onChange={(e) => setMessage(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-4">
-              <h4 className="text-sm font-medium mb-2">Selecione os relatórios a anexar:</h4>
+              <h4 className="text-sm font-semibold">Selecione os relatórios a incluir:</h4>
               <div className="grid gap-3">
-                {availableReports.map(report => (
-                  <div 
-                    key={report.id} 
-                    className="flex items-center space-x-2 border p-3 rounded-md bg-white/70"
-                  >
-                    <Checkbox id={`report-${report.id}`} defaultChecked />
-                    <div className="flex-1">
-                      <label 
+                {availableReports.map(report => {
+                  const FormatIcon = formatIcons[report.format];
+
+                  return (
+                    <div
+                      key={report.id}
+                      className="flex items-center gap-2 rounded-md border bg-card p-3 min-w-0"
+                    >
+                      <Checkbox
+                        id={`report-${report.id}`}
+                        checked={selectedReportIds.has(report.id)}
+                        onCheckedChange={(checked) => toggleReport(report.id, !!checked)}
+                      />
+                      <label
                         htmlFor={`report-${report.id}`}
-                        className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        className="flex flex-1 min-w-0 items-center gap-2 text-sm font-medium leading-none cursor-pointer"
                       >
-                        {report.format === 'pdf' ? <File className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        <FormatIcon className="h-4 w-4 shrink-0" />
                         <span className="truncate">{report.title}</span>
                       </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {format(new Date(report.date), 'dd/MM/yyyy')} • {report.format.toUpperCase()} • {report.size}
+                      <p className="text-xs text-muted-foreground whitespace-nowrap">
+                        {reportMetaText(report)}
                       </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-            
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="attachments"
-                  checked={includeAttachments}
-                  onCheckedChange={setIncludeAttachments}
-                />
-                <Label htmlFor="attachments">Incluir relatórios como anexos</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="send-copy"
-                  checked={sendCopy}
-                  onCheckedChange={setSendCopy}
-                />
-                <Label htmlFor="send-copy">Enviar uma cópia para mim</Label>
-              </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="expiration">Validade indicada na mensagem</Label>
+              <Select value={expiration} onValueChange={(value) => setExpiration(value as '7' | '30' | 'never')}>
+                <SelectTrigger id="expiration" className="w-full sm:w-[240px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Válido por 7 dias</SelectItem>
+                  <SelectItem value="30">Válido por 30 dias</SelectItem>
+                  <SelectItem value="never">Sem prazo indicado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            
-            <Button 
+
+            <Button
               onClick={handleEmailShare}
-              className="bg-[#3f9094] hover:bg-[#265255] w-full mt-4"
+              className="w-full mt-4"
               disabled={!emailAddresses}
             >
               <Send className="h-4 w-4 mr-2" />
-              Enviar E-mail
+              Preparar e-mail
             </Button>
           </div>
         </TabsContent>
-        
-        <TabsContent value="link">
-          <div className="space-y-6">
-            <div className="p-4 border rounded-md bg-white/70">
-              <h3 className="text-sm font-medium mb-4">Compartilhar via Link</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Gere um link seguro para compartilhar os relatórios selecionados. O link pode ser protegido por senha e ter um prazo de validade.
-              </p>
-              
-              <div className="space-y-4 mt-6">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="password-protect"
-                    checked={passwordProtect}
-                    onCheckedChange={setPasswordProtect}
-                  />
-                  <Label htmlFor="password-protect" className="flex items-center gap-2">
-                    <Lock className="h-4 w-4" />
-                    <span>Proteger com senha</span>
-                  </Label>
-                </div>
-                
-                {passwordProtect && (
-                  <div className="pl-2 sm:pl-6 border-l-2 border-gray-100">
-                    <div className="grid gap-2">
-                      <Label htmlFor="password">Senha</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Digite uma senha..."
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                      <p className="text-xs text-gray-500">
-                        A senha será necessária para acessar os relatórios.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="expiration">Expiração do Link</Label>
-                  <select
-                    id="expiration"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={linkExpiration}
-                    onChange={(e) => setLinkExpiration(e.target.value)}
-                  >
-                    <option value="1">1 dia</option>
-                    <option value="3">3 dias</option>
-                    <option value="7">7 dias</option>
-                    <option value="30">30 dias</option>
-                    <option value="never">Nunca expira</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Relatórios incluídos:</h4>
-                  <div className="pl-1 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                    {availableReports.map(report => (
-                      <div key={report.id} className="flex items-center gap-2 py-1 text-sm">
-                        <Checkbox id={`link-report-${report.id}`} defaultChecked />
-                        <label htmlFor={`link-report-${report.id}`} className="truncate">
-                          {report.title} ({report.format.toUpperCase()})
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4">
-                  <Button
-                    onClick={handleCopyLink}
-                    className="flex-1 bg-[#3f9094] hover:bg-[#265255]"
-                  >
-                    {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                    {linkCopied ? 'Link Copiado!' : 'Gerar e Copiar Link'}
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2"
-                    onClick={() => handleSocialShare('whatsapp')}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    <span className="sm:hidden">Compartilhar</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-center gap-2 flex-wrap pt-4">
-              <Button
-                variant="ghost"
-                className="flex items-center gap-2 flex-1 sm:flex-none"
-                onClick={() => handleSocialShare('facebook')}
-              >
-                <Facebook className="h-5 w-5" />
-                <span>Facebook</span>
-              </Button>
-              
-              <Button
-                variant="ghost"
-                className="flex items-center gap-2 flex-1 sm:flex-none"
-                onClick={() => handleSocialShare('twitter')}
-              >
-                <Twitter className="h-5 w-5" />
-                <span>Twitter</span>
-              </Button>
-            </div>
-          </div>
-        </TabsContent>
-        
+
         <TabsContent value="download">
-          <div className="space-y-4">
-            <div className="p-4 border rounded-md bg-white/70">
-              <h3 className="text-sm font-medium mb-2">Baixar Relatórios</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Selecione os relatórios que deseja baixar.
+          <div className="space-y-4 min-w-0">
+            <div className="rounded-md border bg-card p-4">
+              <h3 className="text-sm font-semibold mb-2">Descarregar Relatórios</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Selecione os relatórios que deseja descarregar.
               </p>
-              
+
               <div className="grid gap-3 mt-4">
                 {availableReports.map(report => (
-                  <div 
-                    key={report.id} 
-                    className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between p-3 border rounded-md bg-gray-50"
+                  <div
+                    key={report.id}
+                    className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between p-3 rounded-md border bg-muted/30 min-w-0"
                   >
-                    <div className="flex items-center gap-2 mb-2 sm:mb-0">
-                      <Checkbox id={`download-${report.id}`} defaultChecked />
-                      <div>
-                        <label 
-                          htmlFor={`download-${report.id}`}
-                          className="text-sm font-medium"
-                        >
-                          {report.title}
-                        </label>
-                        <p className="text-xs text-gray-500">
-                          {format(new Date(report.date), 'dd/MM/yyyy')} • {report.format.toUpperCase()} • {report.size}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Checkbox
+                        id={`download-${report.id}`}
+                        checked={selectedReportIds.has(report.id)}
+                        onCheckedChange={(checked) => toggleReport(report.id, !!checked)}
+                      />
+                      <label htmlFor={`download-${report.id}`} className="cursor-pointer min-w-0">
+                        <span className="block text-sm font-medium truncate">{report.title}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {reportMetaText(report)}
+                        </span>
+                      </label>
                     </div>
-                    
-                    <div className="flex gap-2 self-end sm:self-auto">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-gray-500"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-blue-600"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-muted-foreground shrink-0 sm:ml-2"
+                      onClick={() => downloadReport(report)}
+                    >
+                      <Download className="h-4 w-4" />
+                      <span className="sr-only">Descarregar {report.title}</span>
+                    </Button>
                   </div>
                 ))}
               </div>
-              
+
               <div className="flex justify-end mt-6">
-                <Button className="bg-[#3f9094] hover:bg-[#265255] w-full sm:w-auto">
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={handleDownloadSelected}
+                >
                   <Download className="h-4 w-4 mr-2" />
-                  Baixar Selecionados
+                  Descarregar Selecionados
                 </Button>
               </div>
             </div>
@@ -354,4 +289,4 @@ const ReportShare = ({ client }: ReportShareProps) => {
   );
 };
 
-export default ReportShare; 
+export default ReportShare;

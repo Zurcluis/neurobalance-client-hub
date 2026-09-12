@@ -27,9 +27,14 @@ interface PortfolioChartProps {
 }
 
 export const PortfolioChart: React.FC<PortfolioChartProps> = ({ investments }) => {
+  const pricedInvestments = investments.filter(
+    inv =>
+      Boolean(inv.priceUpdatedAt) && Number.isFinite(inv.currentPrice) && inv.currentPrice > 0
+  );
+
   const typeData = (Object.keys(TYPE_META) as InvestmentType[])
     .map(type => {
-      const items = investments.filter(inv => inv.type === type);
+      const items = pricedInvestments.filter(inv => inv.type === type);
       return {
         type,
         label: TYPE_META[type].label,
@@ -42,7 +47,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({ investments }) =
 
   const totalValue = typeData.reduce((sum, item) => sum + item.value, 0);
 
-  const pnlData = investments
+  const pnlData = pricedInvestments
     .map(inv => {
       const invested = inv.quantity * inv.buyPrice;
       const pnl = inv.quantity * (inv.currentPrice - inv.buyPrice);
@@ -57,6 +62,19 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({ investments }) =
 
   if (investments.length === 0) {
     return null;
+  }
+
+  if (pricedInvestments.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Sem preços de mercado atualizados. Os gráficos ficam disponíveis quando as cotações
+            forem obtidas.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

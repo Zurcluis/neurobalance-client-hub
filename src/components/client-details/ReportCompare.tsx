@@ -1,331 +1,244 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ClientDetailData } from '@/types/client';
-import { format, parseISO } from 'date-fns';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import { format } from 'date-fns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GitCompareArrows, ArrowLeftRight, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import { GitCompareArrows, ArrowLeftRight, Download, TrendingUp, TrendingDown, FileText } from 'lucide-react';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { formatCurrency } from '@/utils/formatUtils';
+import { readClientReports } from './reportHistoryStore';
+import type { StoredReportMetrics } from './reportHistoryStore';
+import { cn } from '@/lib/utils';
 
 interface ReportCompareProps {
   client: ClientDetailData;
 }
 
-type ReportType = 'completo' | 'financeiro' | 'progresso' | 'sessoes';
-type ReportFormat = 'pdf' | 'txt';
+type MetricFormat = 'count' | 'currency' | 'percent';
 
-interface HistoricalReport {
-  id: string;
-  title: string;
-  type: ReportType;
-  format: ReportFormat;
-  date: Date;
-  fileSize: number;
-  previewText?: string;
-  data?: {
-    sessionsCount?: number;
-    paymentsTotal?: number;
-    averagePayment?: number;
-    completionRate?: number;
-  };
+interface MetricDefinition {
+  key: keyof StoredReportMetrics;
+  label: string;
+  metricFormat: MetricFormat;
 }
 
-const ReportCompare = ({ client: _client }: ReportCompareProps) => {
-  // Exemplo de dados históricos para comparar
-  const availableReports: HistoricalReport[] = [
-    {
-      id: '1',
-      title: 'Relatório Trimestral Q1',
-      type: 'completo',
-      format: 'pdf',
-      date: parseISO('2023-03-31'),
-      fileSize: 345600,
-      data: {
-        sessionsCount: 12,
-        paymentsTotal: 720,
-        averagePayment: 60,
-        completionRate: 40
-      }
-    },
-    {
-      id: '2',
-      title: 'Relatório Trimestral Q2',
-      type: 'completo',
-      format: 'pdf',
-      date: parseISO('2023-06-30'),
-      fileSize: 364800,
-      data: {
-        sessionsCount: 15,
-        paymentsTotal: 900,
-        averagePayment: 60,
-        completionRate: 50
-      }
-    },
-    {
-      id: '3',
-      title: 'Relatório Trimestral Q3',
-      type: 'completo',
-      format: 'pdf',
-      date: parseISO('2023-09-30'),
-      fileSize: 376320,
-      data: {
-        sessionsCount: 18,
-        paymentsTotal: 1080,
-        averagePayment: 60,
-        completionRate: 60
-      }
-    },
-    {
-      id: '4',
-      title: 'Relatório Trimestral Q4',
-      type: 'completo',
-      format: 'pdf',
-      date: parseISO('2023-12-31'),
-      fileSize: 401408,
-      data: {
-        sessionsCount: 24,
-        paymentsTotal: 1440,
-        averagePayment: 60,
-        completionRate: 80
-      }
-    }
-  ];
+const metricDefinitions: MetricDefinition[] = [
+  { key: 'sessionsCount', label: 'Número de Sessões', metricFormat: 'count' },
+  { key: 'paymentsTotal', label: 'Total Pago', metricFormat: 'currency' },
+  { key: 'averagePayment', label: 'Média por Sessão', metricFormat: 'currency' },
+  { key: 'completionRate', label: 'Taxa de Conclusão', metricFormat: 'percent' }
+];
 
-  const [selectedReportAId, setSelectedReportAId] = useState<string>('1');
-  const [selectedReportBId, setSelectedReportBId] = useState<string>('4');
-  const [activeCompareTab, setActiveCompareTab] = useState('overview');
-  
-  // Obter relatórios selecionados
-  const reportA = availableReports.find(r => r.id === selectedReportAId);
-  const reportB = availableReports.find(r => r.id === selectedReportBId);
-  
-  // Calcular diferenças
-  const calculateDiff = (keyA: number | undefined, keyB: number | undefined) => {
-    if (keyA === undefined || keyB === undefined) return null;
-    const diff = keyB - keyA;
-    const percentage = keyA !== 0 ? (diff / keyA) * 100 : 0;
-    
-    return {
-      value: diff,
-      percentage: percentage,
-      increased: diff > 0
-    };
-  };
-  
-  // Trocar os relatórios selecionados
-  const switchReports = () => {
-    const tempId = selectedReportAId;
-    setSelectedReportAId(selectedReportBId);
-    setSelectedReportBId(tempId);
-  };
-  
-  // Formatação de diferenças
-  const formatDiff = (diff: { value: number, percentage: number, increased: boolean } | null) => {
-    if (diff === null) return 'N/A';
-    
-    const sign = diff.increased ? '+' : '';
-    return (
-      <span className={diff.increased ? 'text-green-600' : 'text-red-600'}>
-        {sign}{diff.value} ({sign}{diff.percentage.toFixed(1)}%)
-      </span>
-    );
-  };
-  
-  if (!reportA || !reportB) {
-    return <div>Selecione dois relatórios para comparar</div>;
+interface MetricDiff {
+  value: number;
+  percentage: number;
+  increased: boolean;
+}
+
+const formatMetricValue = (value: number | undefined, metricFormat: MetricFormat): string => {
+  if (value === undefined) return 'N/D';
+  switch (metricFormat) {
+    case 'currency':
+      return formatCurrency(value);
+    case 'percent':
+      return `${value}%`;
+    default:
+      return String(value);
   }
-  
+};
+
+const calculateDiff = (valueA: number | undefined, valueB: number | undefined): MetricDiff | null => {
+  if (valueA === undefined || valueB === undefined) return null;
+  const diff = valueB - valueA;
+  return {
+    value: diff,
+    percentage: valueA !== 0 ? (diff / valueA) * 100 : 0,
+    increased: diff > 0
+  };
+};
+
+const ReportCompare = ({ client }: ReportCompareProps) => {
+  const clientId = typeof client.id === 'number' ? client.id : 0;
+
+  const availableReports = useMemo(
+    () => readClientReports(clientId),
+    [clientId]
+  );
+
+  const [selectedReportAId, setSelectedReportAId] = useState<string | null>(null);
+  const [selectedReportBId, setSelectedReportBId] = useState<string | null>(null);
+
+  const defaultAId = availableReports[1]?.id ?? availableReports[0]?.id;
+  const defaultBId = availableReports[0]?.id;
+
+  const reportA = availableReports.find(r => r.id === (selectedReportAId ?? defaultAId));
+  const reportB = availableReports.find(r => r.id === (selectedReportBId ?? defaultBId));
+
+  const switchReports = () => {
+    setSelectedReportAId(selectedReportBId ?? defaultBId ?? null);
+    setSelectedReportBId(selectedReportAId ?? defaultAId ?? null);
+  };
+
+  const exportComparison = () => {
+    if (!reportA || !reportB) return;
+
+    const rows: string[][] = [
+      ['Métrica', `${reportA.title} (${format(new Date(reportA.createdAt), 'dd/MM/yyyy')})`, `${reportB.title} (${format(new Date(reportB.createdAt), 'dd/MM/yyyy')})`, 'Diferença'],
+      ...metricDefinitions.map((metric) => {
+        const valueA = reportA.metrics?.[metric.key];
+        const valueB = reportB.metrics?.[metric.key];
+        const diff = calculateDiff(valueA, valueB);
+        return [
+          metric.label,
+          formatMetricValue(valueA, metric.metricFormat),
+          formatMetricValue(valueB, metric.metricFormat),
+          diff ? `${diff.increased ? '+' : ''}${diff.value.toFixed(2)} (${diff.percentage.toFixed(1)}%)` : 'N/D'
+        ];
+      })
+    ];
+
+    const csvContent = rows.map(row => row.join(';')).join('\n');
+    const blob = new Blob([`\ufeff${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comparacao_relatorios_${client.nome ? client.nome.replace(/\s+/g, '_') + '_' : ''}${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast.success('Comparação exportada com sucesso');
+  };
+
+  if (availableReports.length < 2) {
+    return (
+      <EmptyState
+        icon={<FileText className="h-10 w-10" />}
+        title="Relatórios insuficientes"
+        description="Exporte pelo menos dois relatórios na secção Templates para poder compará-los aqui."
+      />
+    );
+  }
+
+  if (!reportA || !reportB || reportA.id === reportB.id) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Selecione dois relatórios diferentes para comparar.
+      </p>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Seleção de relatórios */}
-      <div className="flex items-center gap-2">
-        <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Select 
-            value={selectedReportAId}
-            onValueChange={setSelectedReportAId}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o primeiro relatório" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableReports.map(report => (
-                <SelectItem key={report.id} value={report.id}>
-                  {report.title} ({format(report.date, 'dd/MM/yyyy')})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <Button 
-          variant="ghost" 
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <Select value={reportA.id} onValueChange={setSelectedReportAId}>
+          <SelectTrigger className="w-full sm:max-w-sm">
+            <SelectValue placeholder="Selecione o primeiro relatório" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableReports.map(report => (
+              <SelectItem key={report.id} value={report.id}>
+                {report.title} ({format(new Date(report.createdAt), 'dd/MM/yyyy')})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="ghost"
           size="icon"
           onClick={switchReports}
-          className="h-10 w-10 shrink-0"
+          className="h-10 w-10 shrink-0 self-center"
+          aria-label="Trocar relatórios"
         >
           <ArrowLeftRight className="h-4 w-4" />
         </Button>
-        
-        <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Select 
-            value={selectedReportBId}
-            onValueChange={setSelectedReportBId}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o segundo relatório" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableReports.map(report => (
-                <SelectItem key={report.id} value={report.id}>
-                  {report.title} ({format(report.date, 'dd/MM/yyyy')})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+
+        <Select value={reportB.id} onValueChange={setSelectedReportBId}>
+          <SelectTrigger className="w-full sm:max-w-sm">
+            <SelectValue placeholder="Selecione o segundo relatório" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableReports.map(report => (
+              <SelectItem key={report.id} value={report.id}>
+                {report.title} ({format(new Date(report.createdAt), 'dd/MM/yyyy')})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      
-      {/* Área de comparação */}
-      <div className="bg-white/30 backdrop-blur-sm p-4 rounded-lg border border-white/20">
-        <div className="mb-4 flex items-center gap-4">
-          <div className="p-3 rounded-md bg-blue-100 text-blue-600">
+
+      <div className="rounded-lg border bg-card p-4 min-w-0">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
             <GitCompareArrows className="h-5 w-5" />
           </div>
-          <div>
-            <h4 className="text-lg font-medium">Comparação de Relatórios</h4>
-            <p className="text-sm text-gray-500">
-              Comparando {reportA.title} ({format(reportA.date, 'dd/MM/yyyy')}) com {reportB.title} ({format(reportB.date, 'dd/MM/yyyy')})
+          <div className="min-w-0">
+            <h4 className="text-base font-semibold">Comparação de Relatórios</h4>
+            <p className="text-sm text-muted-foreground truncate">
+              {reportA.title} ({format(new Date(reportA.createdAt), 'dd/MM/yyyy')}) vs. {reportB.title} ({format(new Date(reportB.createdAt), 'dd/MM/yyyy')})
             </p>
           </div>
         </div>
-        
-        <Tabs defaultValue="overview" value={activeCompareTab} onValueChange={setActiveCompareTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="sessions">Sessões</TabsTrigger>
-            <TabsTrigger value="financial">Financeiro</TabsTrigger>
-            <TabsTrigger value="progress">Progresso</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-              <div className="grid grid-cols-3 divide-x p-4">
-                <div className="px-4 py-2">
-                  <h3 className="text-sm font-medium text-center mb-4">Métricas</h3>
-                </div>
-                <div className="px-4 py-2">
-                  <h3 className="text-sm font-medium text-center mb-4">{reportA.title}</h3>
-                </div>
-                <div className="px-4 py-2">
-                  <h3 className="text-sm font-medium text-center mb-4">{reportB.title}</h3>
-                </div>
-              </div>
-              
-              <div className="border-t">
-                <div className="grid grid-cols-3 divide-x">
-                  <div className="px-4 py-3 bg-gray-50 font-medium">
-                    Número de Sessões
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportA.data?.sessionsCount || 'N/A'}
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportB.data?.sessionsCount || 'N/A'} {' '}
-                    ({formatDiff(calculateDiff(reportA.data?.sessionsCount, reportB.data?.sessionsCount))})
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-3 divide-x border-t">
-                  <div className="px-4 py-3 bg-gray-50 font-medium">
-                    Total Pago (€)
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportA.data?.paymentsTotal ? `€${reportA.data.paymentsTotal}` : 'N/A'}
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportB.data?.paymentsTotal ? `€${reportB.data.paymentsTotal}` : 'N/A'} {' '}
-                    ({formatDiff(calculateDiff(reportA.data?.paymentsTotal, reportB.data?.paymentsTotal))})
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-3 divide-x border-t">
-                  <div className="px-4 py-3 bg-gray-50 font-medium">
-                    Média por Sessão (€)
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportA.data?.averagePayment ? `€${reportA.data.averagePayment}` : 'N/A'}
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportB.data?.averagePayment ? `€${reportB.data.averagePayment}` : 'N/A'} {' '}
-                    ({formatDiff(calculateDiff(reportA.data?.averagePayment, reportB.data?.averagePayment))})
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-3 divide-x border-t">
-                  <div className="px-4 py-3 bg-gray-50 font-medium">
-                    Taxa de Conclusão (%)
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportA.data?.completionRate ? `${reportA.data.completionRate}%` : 'N/A'}
-                  </div>
-                  <div className="px-4 py-3 text-center">
-                    {reportB.data?.completionRate ? `${reportB.data.completionRate}%` : 'N/A'} {' '}
-                    ({formatDiff(calculateDiff(reportA.data?.completionRate, reportB.data?.completionRate))})
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-end mt-4 gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Exportar Comparação</span>
-              </Button>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="sessions">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Detalhes de comparação de sessões em desenvolvimento.
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="financial">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Detalhes de comparação financeira em desenvolvimento.
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="progress">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Detalhes de comparação de progresso em desenvolvimento.
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+
+        <div className="overflow-x-auto rounded-lg border min-w-0">
+          <table className="w-full min-w-[540px] text-sm">
+            <thead>
+              <tr className="border-b bg-muted/40">
+                <th className="px-4 py-3 text-left font-semibold">Métrica</th>
+                <th className="px-4 py-3 text-center font-semibold">{reportA.title}</th>
+                <th className="px-4 py-3 text-center font-semibold">{reportB.title}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {metricDefinitions.map((metric, index) => {
+                const valueA = reportA.metrics?.[metric.key];
+                const valueB = reportB.metrics?.[metric.key];
+                const diff = calculateDiff(valueA, valueB);
+
+                return (
+                  <tr key={metric.key} className={cn(index > 0 && 'border-t')}>
+                    <td className="px-4 py-3 font-medium bg-muted/20">{metric.label}</td>
+                    <td className="px-4 py-3 text-center tabular-nums">
+                      {formatMetricValue(valueA, metric.metricFormat)}
+                    </td>
+                    <td className="px-4 py-3 text-center tabular-nums">
+                      {formatMetricValue(valueB, metric.metricFormat)}
+                      {diff && diff.value !== 0 && (
+                        <span className={cn(
+                          'ml-2 inline-flex items-center gap-1 text-xs font-semibold',
+                          diff.increased ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                        )}>
+                          {diff.increased ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {diff.increased ? '+' : ''}{formatMetricValue(Math.abs(diff.value), metric.metricFormat)}
+                          <span className="font-normal text-muted-foreground">
+                            ({diff.percentage.toFixed(1)}%)
+                          </span>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-end mt-4">
+          <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={exportComparison}>
+            <Download className="h-4 w-4" />
+            <span>Exportar Comparação</span>
+          </Button>
+        </div>
       </div>
     </div>
   );
 };
 
-export default ReportCompare; 
+export default ReportCompare;

@@ -1,9 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
@@ -26,9 +25,14 @@ import {
   User,
   Calendar,
   RefreshCw,
+  Check,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { TableSkeleton } from '@/components/shared/SkeletonCard';
 import { format, parseISO, isBefore } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
@@ -124,6 +128,7 @@ const fallbackCopyToClipboard = (text: string): boolean => {
 };
 
 const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => {
+  const { logActivity } = useActivityLogger();
   const [tokens, setTokens] = useState<ClientToken[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,11 +137,20 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
   const [generatingToken, setGeneratingToken] = useState(false);
   const [showToken, setShowToken] = useState<number | null>(null);
   const [validityOption, setValidityOption] = useState('24h');
+  const [tokenToRevoke, setTokenToRevoke] = useState<ClientToken | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const expirationHours = getHoursFromOption(validityOption);
 
   useEffect(() => {
     fetchClients();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -227,6 +241,9 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
 
       if (error) throw error;
 
+      const clienteNome = clients.find(c => c.id === selectedClientId)?.nome || `#${selectedClientId}`;
+      logActivity('token_created', 'token_cliente', selectedClientId, `Token de acesso criado para o cliente ${clienteNome}`);
+
       toast.success('Token gerado com sucesso');
       await fetchTokens(selectedClientId);
 
@@ -253,6 +270,14 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
 
       if (error) throw error;
 
+      const token = tokens.find(t => t.id === tokenId);
+      logActivity(
+        'token_revoked',
+        'token_cliente',
+        tokenId,
+        `Token do cliente ${token?.cliente?.nome || 'desconhecido'} revogado`
+      );
+
       toast.success('Token revogado com sucesso');
       if (selectedClientId) {
         await fetchTokens(selectedClientId);
@@ -263,9 +288,16 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
     }
   };
 
-  const copyToken = async (token: string) => {
+  const setCopiedFeedback = (key: string) => {
+    setCopiedKey(key);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const copyToken = async (token: string, tokenId: number) => {
     const success = await copyToClipboard(token);
     if (success) {
+      setCopiedFeedback(`token-${tokenId}`);
       toast.success('Token copiado para a área de transferência');
     } else {
       toast.error('Erro ao copiar token');
@@ -277,10 +309,11 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
     return `${baseUrl}/client-login?token=${token}`;
   };
 
-  const copyLoginLink = async (token: string) => {
+  const copyLoginLink = async (token: string, tokenId: number) => {
     const link = generateClientLoginLink(token);
     const success = await copyToClipboard(link);
     if (success) {
+      setCopiedFeedback(`link-${tokenId}`);
       toast.success('Link de acesso copiado');
     } else {
       toast.error('Erro ao copiar link');
@@ -399,21 +432,13 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="h-28 w-full" />
-              </div>
+              <TableSkeleton rows={3} />
             ) : tokens.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                  <Key className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <p className="font-medium">Nenhum token gerado ainda</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Gere um token para permitir acesso ao dashboard do cliente
-                </p>
-              </div>
+              <EmptyState
+                icon={<Key className="h-10 w-10" />}
+                title="Nenhum token gerado ainda"
+                description="Gere um token para permitir acesso ao dashboard do cliente"
+              />
             ) : (
               <div className="space-y-4">
                 {tokens.map((token) => {
@@ -469,10 +494,14 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
                               size="sm"
                               variant="ghost"
                               className="h-8 w-8 p-0"
-                              onClick={() => copyToken(token.token)}
+                              onClick={() => copyToken(token.token, token.id)}
                               aria-label="Copiar token"
                             >
-                              <Copy className="h-4 w-4" />
+                              {copiedKey === `token-${token.id}` ? (
+                                <Check className="h-4 w-4 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </div>
@@ -482,16 +511,20 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => copyLoginLink(token.token)}
-                              className="gap-2"
+                              onClick={() => copyLoginLink(token.token, token.id)}
+                              className="gap-2 border-[#3f9094]/40 text-[#3f9094] hover:bg-[#3f9094]/10 hover:text-[#3f9094]"
                             >
-                              <Link className="h-4 w-4" />
-                              Copiar Link
+                              {copiedKey === `link-${token.id}` ? (
+                                <Check className="h-4 w-4" />
+                              ) : (
+                                <Link className="h-4 w-4" />
+                              )}
+                              {copiedKey === `link-${token.id}` ? 'Copiado' : 'Copiar Link'}
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => revokeToken(token.id)}
+                              onClick={() => setTokenToRevoke(token)}
                               className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -535,6 +568,24 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!tokenToRevoke}
+        onOpenChange={(open) => {
+          if (!open) setTokenToRevoke(null);
+        }}
+        onConfirm={async () => {
+          if (tokenToRevoke) {
+            await revokeToken(tokenToRevoke.id);
+            setTokenToRevoke(null);
+          }
+        }}
+        title="Revogar Token"
+        description={`Tem a certeza que deseja revogar o token de ${tokenToRevoke?.cliente.nome || 'cliente'}? O cliente perderá imediatamente o acesso ao portal.`}
+        confirmText="Revogar"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { AdminSession, AdminAuthRequest, AdminAuthResponse, ADMIN_PERMISSIONS, A
 import { logger } from '@/lib/logger';
 import { DEV_ADMINS } from '@/config/dev-credentials';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivityAs, resolveAdminActor } from '@/hooks/useActivityLogger';
 
 interface AdminAuthContextType {
   session: AdminSession | null;
@@ -254,6 +255,8 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
         // Atualizar data de último login do admin
         await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
 
+        logActivityAs({ id: admin.id, name: admin.nome }, 'login', undefined, undefined, 'Sessão iniciada via link de acesso');
+
         return {
           success: true,
           token: request.token,
@@ -346,6 +349,8 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
         // Atualizar último login
         await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', dbAdmin.id);
 
+        logActivityAs({ id: dbAdmin.id, name: dbAdmin.nome }, 'login', undefined, undefined, 'Sessão iniciada com email e palavra-passe');
+
         return {
           success: true,
           token,
@@ -399,6 +404,8 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
           localStorage.setItem('admin_session', JSON.stringify(newSession));
           toast.success(`Bem-vindo(a) (Desenvolvimento), ${devAdmin.nome}!`);
 
+          logActivityAs({ id: devAdmin.id, name: devAdmin.nome }, 'login', undefined, undefined, 'Sessão de desenvolvimento iniciada');
+
           return {
             success: true,
             token,
@@ -432,6 +439,14 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
   // Terminar sessão (Logout)
   const logout = useCallback(() => {
     if (session) {
+      logActivityAs(
+        { id: session.adminId, name: session.adminName },
+        'logout',
+        undefined,
+        undefined,
+        'Sessão terminada'
+      );
+
       // Opcionalmente, revogar na base de dados
       supabase
         .from('admin_access_tokens')
@@ -562,6 +577,13 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
       setSession(updatedSession);
       localStorage.setItem('admin_session', JSON.stringify(updatedSession));
       toast.success('Perfil atualizado com sucesso!');
+      logActivityAs(
+        resolveAdminActor(),
+        'profile_updated',
+        'administrativa',
+        session.adminId,
+        `Perfil de ${updatedData.nome} atualizado`
+      );
       return { success: true };
     } catch (err: any) {
       console.error('Erro ao atualizar perfil do utilizador:', err);

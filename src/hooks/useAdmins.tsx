@@ -3,6 +3,7 @@ import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 import { hashPassword } from './useAdminAuth';
+import { useActivityLogger } from './useActivityLogger';
 
 export type Admin = Database['public']['Tables']['admins']['Row'];
 export type NewAdmin = Database['public']['Tables']['admins']['Insert'];
@@ -21,6 +22,7 @@ export interface AdminFormData {
 
 export const useAdmins = () => {
     const supabase = useSupabaseClient();
+    const { logActivity } = useActivityLogger();
     const [admins, setAdmins] = useState < Admin[] > ([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState < string | null > (null);
@@ -59,13 +61,14 @@ export const useAdmins = () => {
             if (error) throw error;
             setAdmins(prev => [...prev, ...data]);
             toast.success("Administrador adicionado com sucesso!");
+            logActivity('admin_created', 'administrativa', data[0]?.id ?? null, `Administrativa ${formData.nome} criada`);
             return true;
         } catch (err: any) {
             console.error('Erro ao criar administrativa:', err);
             toast.error(err.message || "Não foi possível adicionar o administrador.");
             return false;
         }
-    }, [supabase]);
+    }, [supabase, logActivity]);
 
     const updateAdmin = useCallback(async (id: string, formData: AdminFormData) => {
         try {
@@ -84,13 +87,21 @@ export const useAdmins = () => {
             if (error) throw error;
             setAdmins(prev => prev.map(admin => admin.id === id ? data[0] : admin));
             toast.success("Administrador atualizado com sucesso!");
+            const previous = admins.find(admin => admin.id === id);
+            let details = `Perfil de ${formData.nome} atualizado`;
+            if (previous && previous.ativo !== formData.ativo) {
+                details = formData.ativo
+                    ? `Administrativa ${formData.nome} reativada`
+                    : `Administrativa ${formData.nome} desativada`;
+            }
+            logActivity('profile_updated', 'administrativa', id, details);
             return true;
         } catch (err: any) {
             console.error('Erro ao atualizar administrativa:', err);
             toast.error(err.message || "Não foi possível atualizar o administrador.");
             return false;
         }
-    }, [supabase]);
+    }, [supabase, admins, logActivity]);
 
     const deleteAdmin = useCallback(async (id: string) => {
         try {
@@ -100,13 +111,15 @@ export const useAdmins = () => {
             if (error) throw error;
             setAdmins(prev => prev.filter(admin => admin.id !== id));
             toast.success("Administrador removido com sucesso!");
+            const target = admins.find(admin => admin.id === id);
+            logActivity('admin_deleted', 'administrativa', id, `Administrativa ${target?.nome || `#${id}`} eliminada`);
             return true;
         } catch (err: any) {
             console.error('Erro ao eliminar administrativa:', err);
             toast.error(err.message || "Não foi possível remover o administrador.");
             return false;
         }
-    }, [supabase]);
+    }, [supabase, admins, logActivity]);
 
 
     const getAdminStats = useCallback(async () => {

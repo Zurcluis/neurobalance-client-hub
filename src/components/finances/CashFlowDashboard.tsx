@@ -2,58 +2,53 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { parseISO } from 'date-fns';
 import { CHART, tooltipStyle, axisProps } from '@/utils/chartUtils';
+import { formatCurrency } from '@/utils/formatUtils';
+import { FinancePeriod, getChartBuckets, isInWindow } from '@/utils/financePeriods';
 
 interface CashFlowDashboardProps {
   payments: Array<{ data?: string | null; valor?: number | null }>;
   expenses: Array<{ data?: string | null; valor?: number | null }>;
+  period: FinancePeriod;
 }
 
-export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, expenses }) => {
-  const cashFlowData = useMemo(() => {
-    const months = [];
+export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, expenses, period }) => {
+  const { cashFlowData, subtitle } = useMemo(() => {
     const now = new Date();
 
-    for (let i = 11; i >= 0; i--) {
-      const month = subMonths(now, i);
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
+    // Data mais antiga disponível (pagamentos + despesas)
+    let earliest: Date | null = null;
+    const trackEarliest = (dateStr?: string | null) => {
+      if (!dateStr) return;
+      const parsed = parseISO(dateStr);
+      if (Number.isNaN(parsed.getTime())) return;
+      if (!earliest || parsed < earliest) earliest = parsed;
+    };
+    payments.forEach(p => trackEarliest(p.data));
+    expenses.forEach(e => trackEarliest(e.data));
 
-      const monthPayments = payments.filter(payment => {
-        if (!payment?.data) return false;
-        const paymentDate = parseISO(payment.data);
-        return isWithinInterval(paymentDate, { start: monthStart, end: monthEnd });
-      });
+    const { buckets, subtitle: chartSubtitle } = getChartBuckets(period, earliest, now);
 
-      const monthExpenses = expenses.filter(expense => {
-        if (!expense?.data) return false;
-        const expenseDate = parseISO(expense.data);
-        return isWithinInterval(expenseDate, { start: monthStart, end: monthEnd });
-      });
-
-      const revenue = monthPayments.reduce((acc, p) => acc + (p.valor || 0), 0);
-      const expensesTotal = monthExpenses.reduce((acc, e) => acc + (e.valor || 0), 0);
-      const cashFlow = revenue - expensesTotal;
-
-      months.push({
-        month: format(month, 'MMM yyyy', { locale: pt }),
-        receita: revenue,
-        despesas: expensesTotal,
-        fluxoCaixa: cashFlow,
-        saldoAcumulado: 0
-      });
-    }
+    const sumIn = (items: Array<{ data?: string | null; valor?: number | null }>, start: Date, end: Date) =>
+      items.reduce((acc, it) => (isInWindow(it.data, start, end) ? acc + (it.valor || 0) : acc), 0);
 
     let accumulatedBalance = 0;
-    months.forEach(m => {
-      accumulatedBalance += m.fluxoCaixa;
-      m.saldoAcumulado = accumulatedBalance;
+    const cashFlowData = buckets.map(bucket => {
+      const revenue = sumIn(payments, bucket.start, bucket.end);
+      const expensesTotal = sumIn(expenses, bucket.start, bucket.end);
+      accumulatedBalance += revenue - expensesTotal;
+      return {
+        month: bucket.label,
+        receita: revenue,
+        despesas: expensesTotal,
+        fluxoCaixa: revenue - expensesTotal,
+        saldoAcumulado: accumulatedBalance
+      };
     });
 
-    return months;
-  }, [payments, expenses]);
+    return { cashFlowData, subtitle: chartSubtitle };
+  }, [payments, expenses, period]);
 
   return (
     <Card className="min-w-0">
@@ -62,21 +57,21 @@ export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, 
           <Activity className="h-4 w-4 text-primary" />
           Evolução do Fluxo de Caixa
         </CardTitle>
-        <span className="text-xs text-muted-foreground hidden sm:inline">Últimos 12 meses</span>
+        <span className="text-xs text-muted-foreground hidden sm:inline">{subtitle}</span>
       </CardHeader>
       <CardContent>
-        <div className="h-[350px]">
+        <div className="h-[350px] min-w-0 overflow-hidden">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={cashFlowData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
-              <XAxis dataKey="month" {...axisProps} />
+              <XAxis dataKey="month" minTickGap={16} {...axisProps} />
               <YAxis
                 tickFormatter={(value) => `€${value.toLocaleString('pt-PT')}`}
                 {...axisProps}
               />
               <Tooltip
                 formatter={(value, name) => [
-                  `€${Number(value).toLocaleString('pt-PT', { minimumFractionDigits: 2 })}`,
+                  formatCurrency(Number(value)),
                   name
                 ]}
                 contentStyle={tooltipStyle}
@@ -112,7 +107,7 @@ export const CashFlowDashboard: React.FC<CashFlowDashboardProps> = ({ payments, 
                 type="monotone"
                 dataKey="saldoAcumulado"
                 name="Saldo Acumulado"
-                stroke="#94a3b8"
+                stroke="hsl(var(--muted-foreground))"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}

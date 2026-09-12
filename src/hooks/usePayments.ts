@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { formatCurrency } from '@/utils/formatUtils';
 
 type PaymentRow = Database['public']['Tables']['pagamentos']['Row'];
 type NewPayment = Database['public']['Tables']['pagamentos']['Insert'];
@@ -118,6 +120,7 @@ export const createSamplePayment = async (supabase: any) => {
  */
 export function usePayments(clientId?: number) {
   const supabase = useSupabaseClient();
+  const { logActivity } = useActivityLogger();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -216,6 +219,12 @@ export function usePayments(clientId?: number) {
       }
 
       toast.success('Pagamento registrado com sucesso');
+      logActivity(
+        'payment_created',
+        'pagamento',
+        data?.id,
+        `Pagamento de ${formatCurrency(Number(newPayment.valor ?? 0))} registado`
+      );
 
       // Atualizar lista de pagamentos
       fetchPayments();

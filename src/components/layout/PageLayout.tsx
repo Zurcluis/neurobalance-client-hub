@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from "./Sidebar";
-import { useIsMobile, useScreenSize } from '@/hooks/use-mobile';
+import { useIsMobile, useScreenSize, useSidebarCollapsed } from '@/hooks/use-mobile';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { useGlobalKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
@@ -14,33 +14,18 @@ const PageLayout = ({ children, showBreadcrumbs = true }: PageLayoutProps) => {
   const isMobile = useIsMobile();
   const { isPortrait } = useScreenSize();
   const navigate = useNavigate();
-
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
-    return localStorage.getItem('sidebar_collapsed') === 'true';
-  });
-
-  React.useEffect(() => {
-    const handleToggle = () => {
-      setIsSidebarCollapsed(localStorage.getItem('sidebar_collapsed') === 'true');
-    };
-    window.addEventListener('sidebar-toggle', handleToggle);
-    window.addEventListener('storage', handleToggle);
-    return () => {
-      window.removeEventListener('sidebar-toggle', handleToggle);
-      window.removeEventListener('storage', handleToggle);
-    };
-  }, []);
+  const { isCollapsed: isSidebarCollapsed } = useSidebarCollapsed();
 
   // Registar atalhos de teclado globais
   useGlobalKeyboardShortcuts(
-    undefined, // onSearch
+    () => window.dispatchEvent(new Event('open-search')),
     undefined, // onHelp
     () => navigate('/clients?new=true'), // onNewClient
     (path: string) => navigate(path) // onNavigate
   );
 
   return (
-    <div className="flex min-h-screen bg-[#F2F6F5] dark:bg-gray-900">
+    <div className="flex min-h-screen bg-[hsl(var(--neuro-background))]">
       <Sidebar />
       <main
         id="main-content"

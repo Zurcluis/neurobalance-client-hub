@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TeamActivitySection from '@/components/monitoring/TeamActivitySection';
+import ClientRiskSection from '@/components/insights/ClientRiskSection';
 import {
   Activity,
   KeyRound,
@@ -16,8 +19,10 @@ import {
   AlertCircle,
   Info,
   User,
+  Users,
   CalendarClock,
   Key,
+  HeartPulse,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,6 +59,7 @@ const MonitoringPage = () => {
   const [activities, setActivities] = useState<TokenActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('acessos');
 
   useEffect(() => {
     document.title = 'Monitorização | NeuroBalance';
@@ -168,23 +174,42 @@ const MonitoringPage = () => {
     <PageLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Monitorização de Acessos"
-          description="Atividade recente dos tokens de acesso de clientes e administradores"
+          title="Monitorização"
+          description="Atividade da equipa e acessos via tokens de clientes e administradores"
           icon={<Activity className="h-5 w-5" />}
           actions={
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              onClick={fetchActivities}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
+            activeTab === 'acessos' ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={fetchActivities}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            ) : undefined
           }
         />
 
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid h-auto w-full grid-cols-3 md:inline-flex md:w-auto md:h-10">
+            <TabsTrigger value="acessos" className="gap-2">
+              <KeyRound className="h-4 w-4" />
+              Acessos
+            </TabsTrigger>
+            <TabsTrigger value="equipa" className="gap-2">
+              <Users className="h-4 w-4" />
+              Atividade da Equipa
+            </TabsTrigger>
+            <TabsTrigger value="risco" className="gap-2">
+              <HeartPulse className="h-4 w-4" />
+              Risco &amp; Retenção
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="acessos" className="space-y-6">
         {loading ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -296,6 +321,16 @@ const MonitoringPage = () => {
             </Alert>
           </>
         )}
+          </TabsContent>
+
+          <TabsContent value="equipa">
+            <TeamActivitySection />
+          </TabsContent>
+
+          <TabsContent value="risco">
+            <ClientRiskSection />
+          </TabsContent>
+        </Tabs>
       </div>
     </PageLayout>
   );

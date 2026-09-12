@@ -24,7 +24,11 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ summary }) =
         icon={Wallet}
         label="Valor atual"
         value={formatCurrency(summary.totalValue)}
-        sub="Valor de mercado"
+        sub={
+          summary.unpricedCount > 0
+            ? `${summary.unpricedCount} ${summary.unpricedCount === 1 ? 'posição sem' : 'posições sem'} preço atualizado`
+            : 'Valor de mercado'
+        }
         tone="blue"
       />
       <KpiCard
@@ -42,6 +46,11 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ summary }) =
           value: `${summary.totalPnLPercent >= 0 ? '+' : ''}${formatPercent(summary.totalPnLPercent)}`,
           positive: isProfit,
         }}
+        sub={
+          summary.unpricedCount > 0
+            ? 'Apenas posições com preço atualizado'
+            : undefined
+        }
         tone={isProfit ? 'emerald' : 'red'}
       />
       <KpiCard

@@ -8,7 +8,7 @@ import { Appointment } from '@/hooks/useAppointments';
 interface TimeGridViewProps {
   days: Date[];
   appointments: Appointment[];
-  onTimeSlotClick: (date: Date) => void;
+  onTimeSlotClick: (date: Date, anchorPoint?: { x: number; y: number }) => void;
   onEventClick: (appointment: Appointment) => void;
   isDailyView?: boolean;
   availabilities?: Record<number, any[]>;
@@ -427,7 +427,7 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
 
     const clickedDate = new Date(day);
     clickedDate.setHours(hour, minutes, 0, 0);
-    onTimeSlotClick(clickedDate);
+    onTimeSlotClick(clickedDate, { x: e.clientX, y: e.clientY });
   };
 
   const handleDragStart = (e: React.DragEvent, appointment: Appointment) => {

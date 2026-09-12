@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from 'sonner';
+import { useActivityLogger } from './useActivityLogger';
 
 export interface AdminToken {
   id: string;
@@ -13,6 +14,7 @@ export interface AdminToken {
 
 export const useAdminTokens = () => {
     const supabase = useSupabaseClient();
+    const { logActivity } = useActivityLogger();
     const [tokens, setTokens] = useState<AdminToken[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -50,6 +52,7 @@ export const useAdminTokens = () => {
             if (data && data.length > 0) {
                 setTokens(prev => [...prev, data[0]]);
                 toast.success('Token criado com sucesso!');
+                logActivity('token_created', 'token_admin', adminId, `Token de acesso administrativo criado (expira a ${expirationDate})`);
                 return data[0];
             }
             return null;
@@ -58,7 +61,7 @@ export const useAdminTokens = () => {
             toast.error(err.message || 'Não foi possível criar o token.');
             return null;
         }
-    }, [supabase]);
+    }, [supabase, logActivity]);
 
     const updateTokenStatus = useCallback(async (tokenId: string, isActive: boolean) => {
         try {
@@ -67,13 +70,16 @@ export const useAdminTokens = () => {
             
             setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, is_active: isActive } : t));
             toast.success(isActive ? 'Token ativado!' : 'Token desativado!');
+            if (!isActive) {
+                logActivity('token_revoked', 'token_admin', tokenId, 'Token de acesso administrativo revogado');
+            }
             return true;
         } catch (err: any) {
             console.error('Erro ao atualizar status do token:', err);
             toast.error('Não foi possível atualizar o token.');
             return false;
         }
-    }, [supabase]);
+    }, [supabase, logActivity]);
 
     const deleteToken = useCallback(async (tokenId: string) => {
         try {
@@ -82,13 +88,14 @@ export const useAdminTokens = () => {
             
             setTokens(prev => prev.filter(t => t.id !== tokenId));
             toast.success('Token eliminado com sucesso!');
+            logActivity('token_revoked', 'token_admin', tokenId, 'Token de acesso administrativo eliminado');
             return true;
         } catch (err: any) {
             console.error('Erro ao eliminar token:', err);
             toast.error('Não foi possível eliminar o token.');
             return false;
         }
-    }, [supabase]);
+    }, [supabase, logActivity]);
 
     useEffect(() => {
         fetchTokens();

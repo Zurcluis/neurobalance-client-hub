@@ -1,96 +1,58 @@
 export const smartSchedulingExamples = [
   {
-    category: "Agendamentos Específicos",
+    category: "Comando rápido (ID do cliente)",
     examples: [
-      "Reunião amanhã às 10:00 da manhã com o João",
-      "Pagamento no próximo sábado às 15:00 para a Maria",
-      "Avaliação hoje às 14:00 com o Pedro",
-      "Consulta inicial no dia 25 às 16:30 para a Ana",
-      "Workshop esta semana na quinta às 18:00"
+      "21A neurofeedback segunda 16:00",
+      "15B psicologia amanhã 10:00",
+      "21A avaliação dia 25 14:30",
+      "12 neurofeedback quarta 09:00",
     ]
   },
   {
-    category: "Agendamentos Recorrentes",
+    category: "Recorrentes (dias no plural)",
     examples: [
-      "Marcar sessões de neurofeedback para o João as terças e quintas às 18:00h até ao fim de setembro",
-      "Agendar consultas para a Maria às segundas às 14:30h até dezembro",
-      "Criar avaliações para o cliente 21A às sextas às 16:00h até novembro",
-      "Marcar sessões para a Ana às quartas às 10:00h até ao fim do mês"
+      "21A neurofeedback às segundas e quintas 16:00 até dezembro",
+      "15B psicologia às terças 10:00 até ao fim do ano",
+      "18 sessão às quartas 14:00",
     ]
   },
   {
-    category: "Diferentes Tipos de Agendamento",
+    category: "Reagendar sessão existente",
     examples: [
-      "Agendar avaliação inicial para o Pedro na segunda às 15:00h",
-      "Marcar reunião para a Sofia na quinta às 17:00h",
-      "Criar sessão de terapia para o Miguel na terça às 16:30h",
-      "Pagamento para o Carlos no próximo domingo às 19:00",
-      "Follow-up com a Joana amanhã às 11:00 da manhã",
-      "Workshop de mindfulness no dia 20 às 14:00"
+      "adiar a sessão da Ana para a próxima semana",
+      "remarcar para quinta 10:00",
+      "reagendar 21A para o dia 30 às 14:00",
     ]
   },
   {
-    category: "Múltiplos Dias",
+    category: "Séries mensais",
     examples: [
-      "Marcar sessões para o Carlos às segundas, quartas e sextas às 19:00h até outubro",
-      "Agendar consultas para a Joana às terças e quintas às 11:00h até ao fim do ano",
-      "Criar avaliações às segundas e sextas às 14:00h para o cliente 15B"
+      "marcar 4 sessões de outubro do 21A às 16:00",
+      "marcar 2 sessões de novembro do 15B às 10:00",
     ]
   },
   {
-    category: "Períodos Específicos",
+    category: "Com nome do cliente",
     examples: [
-      "Marcar sessões até ao fim de dezembro",
-      "Agendar consultas até novembro",
-      "Criar avaliações até ao fim do mês de outubro"
+      "neurofeedback para o João na quinta às 18:00",
+      "psicologia para a Maria amanhã às 15:00",
+      "avaliação para o Pedro no dia 20 às 11:00",
     ]
   }
 ];
 
-export const commandPatterns = {
-  appointmentTypes: [
-    "sessão", "sessões", "neurofeedback",
-    "avaliação", "avaliações", "avaliação inicial",
-    "consulta", "consultas", "consulta de seguimento",
-    "reunião", "reuniao", "meeting",
-    "pagamento", "cobrança",
-    "follow-up", "seguimento",
-    "terapia", "psicoterapia",
-    "workshop", "formação"
-  ],
-  days: [
-    "segunda", "segunda-feira", "seg",
-    "terça", "terça-feira", "ter", "terca",
-    "quarta", "quarta-feira", "qua",
-    "quinta", "quinta-feira", "qui",
-    "sexta", "sexta-feira", "sex",
-    "sábado", "sab", "sabado",
-    "domingo", "dom"
-  ],
-  relativeDates: [
-    "hoje", "amanhã", "amanha",
-    "próximo", "proximo",
-    "esta semana", "próxima semana",
-    "dia 15", "no dia 20"
-  ],
-  timeFormats: [
-    "às 18:00h", "às 18h", "às 18:00",
-    "na 18:00h", "na 18h", "às dezoito horas",
-    "às 14:30h", "às 14h30", "às duas e meia",
-    "às 10:00 da manhã", "às 15:00 da tarde", "às 20:00 da noite"
-  ],
-  periods: [
-    "até ao fim de setembro", "até setembro",
-    "até ao fim do mês", "até dezembro",
-    "até novembro", "até ao fim do ano"
-  ]
-};
-
 export const tips = [
-  "Para agendamentos únicos: 'Reunião amanhã às 10:00' ou 'Pagamento no próximo sábado às 15:00'",
-  "Para agendamentos recorrentes: especifique os dias da semana e período",
-  "Use nomes completos ou IDs manuais dos clientes para melhor reconhecimento",
-  "Especifique horários com contexto: 'às 10:00 da manhã', 'às 15:00 da tarde'",
-  "Tipos suportados: sessão, avaliação, consulta, reunião, pagamento, follow-up, terapia, workshop",
-  "Datas relativas: hoje, amanhã, próximo [dia], dia [número], esta semana"
-]; 
+  "Dite em qualquer página com duplo Ctrl: o comando chega aqui automaticamente",
+  "Enquanto dita, a pílula 'A ouvir...' aparece em baixo no diálogo",
+  "Silêncio de 2,5 s finaliza o ditado e agenda automaticamente; Esc cancela",
+  "Basta o ID do cliente + tipo + dia + hora: '21A neurofeedback segunda 16:00' — marca direto no calendário",
+  "Dia no plural cria sessões recorrentes: 'às segundas' repete até ao fim do mês, ou use 'até dezembro'",
+  "Dia no singular marca uma única sessão: 'segunda' = próxima segunda-feira",
+  "Datas relativas funcionam: hoje, amanhã, próxima segunda, dia 25, próxima semana",
+  "'adiar' ou 'remarcar' move a próxima sessão futura do cliente para a nova data e hora",
+  "'marcar 4 sessões de outubro' completa a série: as sessões já existentes contam e só faltam as que faltam",
+  "Se o horário estiver ocupado, o painel de conflito sugere 2-3 alternativas com base no padrão do cliente",
+  "Ao cancelar um agendamento, pode preencher o vazio com a lista de espera compatível",
+  "Se faltar alguma informação, complete na janela de revisão antes de confirmar",
+  "Também pode usar o nome do cliente em vez do ID",
+];

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   User,
   Calendar,
@@ -10,40 +11,62 @@ import {
   Bell,
   LogOut,
   Clock,
-  CheckCircle,
   CalendarDays,
   Euro,
   Activity,
   TrendingUp,
-  ArrowRight
+  ArrowRight,
+  MessageSquare,
+  RotateCcw,
+  AlertCircle,
+  type LucideIcon
 } from 'lucide-react';
-import { useClientAuth, useClientData, useClientNotifications } from '@/hooks/useClientAuth';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useClientAuth, useClientData, useClientMessages, useClientNotifications } from '@/hooks/useClientAuth';
+import { format, formatDistanceToNow } from 'date-fns';
+import { pt } from 'date-fns/locale';
 import { parseLocalISO } from '@/utils/dateUtils';
-
-const parseISO = parseLocalISO;
-
+import KpiCard from '@/components/shared/KpiCard';
 import ClientAppointments from '@/components/client-dashboard/ClientAppointments';
 import ClientPayments from '@/components/client-dashboard/ClientPayments';
-// import ClientChat from '@/components/client-dashboard/ClientChat';
+import ClientChat from '@/components/client-dashboard/ClientChat';
 import ClientProfile from '@/components/client-dashboard/ClientProfile';
 import ClientNotifications from '@/components/client-dashboard/ClientNotifications';
 import { ClientAvailabilityCalendar } from '@/components/availability';
 import { NotificationPanel } from '@/components/availability/NotificationPanel';
 import { cn } from '@/lib/utils';
 
+interface NavItem {
+  id: string;
+  icon: LucideIcon;
+  label: string;
+  badge?: number;
+}
+
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+};
+
 const ClientDashboardPage = () => {
   const { session, logout, isAuthenticated, loading: authLoading } = useClientAuth();
-  const { clientData, loading: clientLoading } = useClientData();
-  // const { messages, unreadCount: unreadMessages = 0 } = useClientMessages();
+  const { clientData, loading: clientLoading, error: clientError, refetch: refetchClientData } = useClientData();
+  const { unreadCount: unreadMessages = 0 } = useClientMessages();
   const { notifications, unreadCount: unreadNotifications = 0 } = useClientNotifications();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Redirecionar se não estiver autenticado
   useEffect(() => {
     if (!authLoading && !isAuthenticated && !clientLoading) {
       navigate('/client-login', { replace: true });
@@ -52,30 +75,29 @@ const ClientDashboardPage = () => {
 
   const handleLogout = () => {
     logout();
-    toast.success('Logout realizado com sucesso');
     navigate('/client-login', { replace: true });
   };
 
   if (clientLoading || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-cyan-50/20">
-        <div className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 animate-pulse" />
+      <div className="min-h-screen bg-background touch-manipulation">
+        <div className="h-16 bg-card border-b border-border" />
         <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-100 to-cyan-100 animate-pulse" />
+            <Skeleton className="h-16 w-16 rounded-2xl" />
             <div className="space-y-2">
-              <div className="h-6 w-48 bg-gray-200 rounded-lg animate-pulse" />
-              <div className="h-4 w-32 bg-gray-100 rounded-lg animate-pulse" />
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-white rounded-2xl border border-gray-100 animate-pulse" />
+              <Skeleton key={i} className="h-28 rounded-2xl" />
             ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[1, 2].map((i) => (
-              <div key={i} className="h-64 bg-white rounded-2xl border border-gray-100 animate-pulse" />
+              <Skeleton key={i} className="h-64 rounded-2xl" />
             ))}
           </div>
         </div>
@@ -84,50 +106,113 @@ const ClientDashboardPage = () => {
   }
 
   if (!session || !clientData) {
+    if (clientError) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-8 max-w-sm w-full text-center space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto">
+              <AlertCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-foreground">Não foi possível carregar o portal</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Ocorreu um erro ao obter os seus dados. Verifique a ligação e tente novamente.
+              </p>
+            </div>
+            <Button onClick={() => refetchClientData()} className="w-full h-11 rounded-xl">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      );
+    }
     return null;
   }
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  const progressPercentage = clientData.max_sessoes > 0
+    ? Math.round(((clientData.numero_sessoes || 0) / clientData.max_sessoes) * 100)
+    : 0;
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
-    return 'Boa noite';
-  };
+  const navItems: NavItem[] = [
+    { id: 'overview', icon: Activity, label: 'Visão Geral' },
+    { id: 'profile', icon: User, label: 'Perfil' },
+    { id: 'appointments', icon: Calendar, label: 'Agendamentos' },
+    { id: 'availability', icon: Clock, label: 'Disponibilidade' },
+    { id: 'payments', icon: CreditCard, label: 'Pagamentos' },
+    { id: 'chat', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
+    { id: 'notifications', icon: Bell, label: 'Avisos', badge: unreadNotifications },
+  ];
+
+  const mobileNavItems: NavItem[] = [
+    { id: 'overview', icon: Activity, label: 'Início' },
+    { id: 'appointments', icon: Calendar, label: 'Agenda' },
+    { id: 'availability', icon: Clock, label: 'Horários' },
+    { id: 'payments', icon: CreditCard, label: 'Pagam.' },
+    { id: 'chat', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
+  ];
+
+  const renderNavButton = (item: NavItem) => (
+    <button
+      key={item.id}
+      onClick={() => {
+        setActiveTab(item.id);
+        setSidebarOpen(false);
+      }}
+      className={cn(
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors duration-200",
+        activeTab === item.id
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+    >
+      <div className={cn(
+        "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+        activeTab === item.id
+          ? "bg-primary-foreground/15 text-primary-foreground"
+          : "bg-primary/10 text-primary"
+      )}>
+        <item.icon className="h-5 w-5" />
+      </div>
+      <span className="font-medium flex-1 truncate">{item.label}</span>
+      {item.badge && item.badge > 0 && (
+        <span className={cn(
+          "px-2 py-0.5 text-xs font-bold rounded-full",
+          activeTab === item.id
+            ? "bg-primary-foreground/25 text-primary-foreground"
+            : "bg-destructive text-destructive-foreground"
+        )}>
+          {item.badge > 9 ? '9+' : item.badge}
+        </span>
+      )}
+    </button>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-cyan-50/20 touch-manipulation">
-      {/* Header com Glassmorphism */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100/50 shadow-sm">
+    <div className="min-h-screen bg-background touch-manipulation">
+      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              {/* Mobile Menu Button */}
+            <div className="flex items-center gap-3 min-w-0">
               <Button
                 variant="ghost"
                 size="sm"
-                className="lg:hidden p-2 hover:bg-teal-50 rounded-xl transition-all"
+                className="lg:hidden p-2 hover:bg-muted rounded-xl transition-colors"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
+                aria-expanded={sidebarOpen}
               >
                 <div className="relative w-5 h-5">
                   <span className={cn(
-                    "absolute left-0 block w-5 h-0.5 bg-gray-600 transition-all duration-300",
+                    "absolute left-0 block w-5 h-0.5 bg-foreground transition-all duration-300",
                     sidebarOpen ? "top-2 rotate-45" : "top-1"
                   )} />
                   <span className={cn(
-                    "absolute left-0 top-2 block w-5 h-0.5 bg-gray-600 transition-all duration-300",
+                    "absolute left-0 top-2 block w-5 h-0.5 bg-foreground transition-all duration-300",
                     sidebarOpen && "opacity-0"
                   )} />
                   <span className={cn(
-                    "absolute left-0 block w-5 h-0.5 bg-gray-600 transition-all duration-300",
+                    "absolute left-0 block w-5 h-0.5 bg-foreground transition-all duration-300",
                     sidebarOpen ? "top-2 -rotate-45" : "top-3"
                   )} />
                 </div>
@@ -136,75 +221,71 @@ const ClientDashboardPage = () => {
               <img
                 src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
                 alt="NeuroBalance Logo"
-                className="h-24 w-auto sm:h-28 lg:h-32 transition-transform hover:scale-105"
+                className="h-10 sm:h-12 w-auto"
               />
               <div className="min-w-0 flex-1 hidden sm:block">
-                <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 via-teal-800 to-teal-600 bg-clip-text text-transparent whitespace-nowrap">
-                  {getGreeting()}, {clientData.nome.split(' ')[0]}! ✨
+                <h1 className="text-lg font-bold text-foreground whitespace-nowrap truncate">
+                  {getGreeting()}, {clientData.nome.split(' ')[0]}
                 </h1>
-                <p className="text-xs text-gray-500 font-medium">Bem-vindo ao seu portal pessoal</p>
+                <p className="text-xs text-muted-foreground font-medium">Bem-vindo ao seu portal pessoal</p>
               </div>
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2">
-              {/* Notificações */}
               <Button
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "relative p-2 h-10 w-10 rounded-xl transition-all duration-200",
+                  "relative p-2 h-10 w-10 rounded-xl transition-colors duration-200",
                   activeTab === 'notifications'
-                    ? "bg-teal-100 text-teal-700"
-                    : "hover:bg-gray-100 text-gray-600"
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-muted text-muted-foreground"
                 )}
                 onClick={() => setActiveTab('notifications')}
+                aria-label="Avisos"
               >
                 <Bell className="h-5 w-5" />
                 {unreadNotifications > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse shadow-lg">
+                  <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>
                 )}
               </Button>
 
-              {/* Mensagens - Ocultado temporariamente */}
-              {/* <Button
+              <Button
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "relative p-2 h-10 w-10 rounded-xl transition-all duration-200",
-                  activeTab === 'chat' 
-                    ? "bg-teal-100 text-teal-700" 
-                    : "hover:bg-gray-100 text-gray-600"
+                  "relative p-2 h-10 w-10 rounded-xl transition-colors duration-200",
+                  activeTab === 'chat'
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-muted text-muted-foreground"
                 )}
                 onClick={() => setActiveTab('chat')}
+                aria-label="Mensagens"
               >
                 <MessageSquare className="h-5 w-5" />
                 {unreadMessages > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse shadow-lg">
+                  <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                     {unreadMessages > 9 ? '9+' : unreadMessages}
                   </span>
                 )}
-              </Button> */}
+              </Button>
 
-              {/* Separador */}
-              <div className="hidden sm:block h-8 w-px bg-gray-200 mx-1" />
+              <div className="hidden sm:block h-8 w-px bg-border mx-1" />
 
-              {/* Avatar e Logout */}
               <div className="flex items-center gap-2">
-                <div className="relative group">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full opacity-0 group-hover:opacity-100 blur transition-opacity" />
-                  <Avatar className="relative h-9 w-9 ring-2 ring-white shadow-md">
-                    <AvatarFallback className="bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-sm font-bold">
-                      {getInitials(clientData.nome)}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
+                <Avatar className="h-9 w-9 ring-2 ring-background shadow-sm">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                    {getInitials(clientData.nome)}
+                  </AvatarFallback>
+                </Avatar>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="text-gray-500 hover:text-rose-600 hover:bg-rose-50 p-2 h-10 w-10 rounded-xl transition-all"
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-2 h-10 w-10 rounded-xl transition-colors"
+                  aria-label="Terminar sessão"
                 >
                   <LogOut className="h-5 w-5" />
                 </Button>
@@ -214,277 +295,173 @@ const ClientDashboardPage = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex flex-1 overflow-hidden">
-        {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            className="fixed inset-0 bg-foreground/50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
           />
         )}
 
-        {/* Sidebar Navigation - Moderna */}
         <div className={cn(
-          "w-72 bg-white/95 backdrop-blur-xl border-r border-gray-100/50 flex flex-col fixed lg:relative inset-y-0 left-0 z-50 shadow-2xl lg:shadow-none",
-          "transform transition-all duration-500 ease-out",
+          "w-72 bg-card border-r border-border flex flex-col fixed lg:relative inset-y-0 left-0 z-50 shadow-xl lg:shadow-none",
+          "transform transition-transform duration-300 ease-out",
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}>
-          {/* Header da Sidebar com Logo */}
-          <div className="p-5 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <img
-                src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
-                alt="NeuroBalance Logo"
-                className="h-28 w-auto"
-              />
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Menu</h2>
-                <p className="text-xs text-gray-500">Navegação rápida</p>
-              </div>
-            </div>
+          <div className="p-5 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground">Menu</h2>
+            <p className="text-xs text-muted-foreground">Navegação rápida</p>
           </div>
 
           <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-            {([
-              { id: 'overview', icon: Activity, label: 'Visão Geral', bgColor: 'bg-violet-100', iconColor: 'text-violet-600' },
-              { id: 'profile', icon: User, label: 'Perfil', bgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
-              { id: 'appointments', icon: Calendar, label: 'Agendamentos', bgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
-              { id: 'availability', icon: Clock, label: 'Minha Disponibilidade', bgColor: 'bg-amber-100', iconColor: 'text-amber-600' },
-              { id: 'payments', icon: CreditCard, label: 'Pagamentos', bgColor: 'bg-rose-100', iconColor: 'text-rose-600' },
-              // { id: 'chat', icon: MessageSquare, label: 'Chat', bgColor: 'bg-indigo-100', iconColor: 'text-indigo-600', badge: unreadMessages },
-            ] as { id: string; icon: any; label: string; bgColor: string; iconColor: string; badge?: number }[]).map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setSidebarOpen(false);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 group",
-                  activeTab === item.id
-                    ? "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/30"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )}
-              >
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all",
-                  activeTab === item.id
-                    ? "bg-white/20"
-                    : item.bgColor
-                )}>
-                  <item.icon className={cn(
-                    "h-5 w-5 transition-transform group-hover:scale-110",
-                    activeTab === item.id ? "text-white" : item.iconColor
-                  )} />
-                </div>
-                <span className="font-medium flex-1">{item.label}</span>
-                {item.badge && item.badge > 0 && (
-                  <span className={cn(
-                    "ml-auto px-2 py-0.5 text-xs font-bold rounded-full",
-                    activeTab === item.id
-                      ? "bg-white/30 text-white"
-                      : "bg-rose-100 text-rose-600"
-                  )}>
-                    {item.badge}
-                  </span>
-                )}
-                {activeTab === item.id && (
-                  <ArrowRight className="ml-auto h-4 w-4 text-white/70" />
-                )}
-              </button>
-            ))}
+            {navItems.map(renderNavButton)}
           </nav>
 
-          {/* Footer da Sidebar */}
-          <div className="p-4 border-t border-gray-100">
-            <div className="p-4 rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-100">
+          <div className="p-4 border-t border-border">
+            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-                  <TrendingUp className="h-4 w-4 text-white" />
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-primary-foreground" />
                 </div>
-                <span className="text-sm font-semibold text-gray-800">Progresso</span>
+                <span className="text-sm font-semibold text-foreground">Progresso</span>
               </div>
-              <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="relative h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full transition-all duration-1000"
-                  style={{ width: `${clientData.max_sessoes > 0 ? (clientData.numero_sessoes / clientData.max_sessoes) * 100 : 0}%` }}
+                  className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all duration-1000"
+                  style={{ width: `${progressPercentage}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {clientData.numero_sessoes} de {clientData.max_sessoes} sessões
+              <p className="text-xs text-muted-foreground mt-2">
+                {clientData.numero_sessoes || 0} de {clientData.max_sessoes || 0} sessões
               </p>
             </div>
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-w-0">
           <div className="p-4 sm:p-6">
-            {/* Overview Tab */}
             {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Saudação Mobile */}
+              <div className="space-y-6 min-w-0">
                 <div className="sm:hidden">
-                  <h1 className="text-xl font-bold text-gray-900">
-                    {getGreeting()}, {clientData.nome.split(' ')[0]}! ✨
+                  <h1 className="text-xl font-bold text-foreground">
+                    {getGreeting()}, {clientData.nome.split(' ')[0]}
                   </h1>
-                  <p className="text-sm text-gray-500">Aqui está o resumo do seu progresso</p>
+                  <p className="text-sm text-muted-foreground">Aqui está o resumo do seu progresso</p>
                 </div>
 
-                {/* Estatísticas - Design Moderno */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {/* Card Sessões */}
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4 sm:p-5 text-white shadow-lg shadow-emerald-500/30 group hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-300 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                    <div className="relative">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                      </div>
-                      <p className="text-xs sm:text-sm text-white/80 font-medium mb-1">Sessões</p>
-                      <p className="text-2xl sm:text-3xl font-bold">{clientData.numero_sessoes || 0}</p>
-                      <p className="text-xs text-white/60 mt-1">de {clientData.max_sessoes || 0} planejadas</p>
-                    </div>
-                  </div>
-
-                  {/* Card Pagamentos */}
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-4 sm:p-5 text-white shadow-lg shadow-violet-500/30 group hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-300 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                    <div className="relative">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <Euro className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                      </div>
-                      <p className="text-xs sm:text-sm text-white/80 font-medium mb-1">Total Pago</p>
-                      <p className="text-2xl sm:text-3xl font-bold">€{clientData.total_pago || 0}</p>
-                      <p className="text-xs text-white/60 mt-1">Valor investido</p>
-                    </div>
-                  </div>
-
-                  {/* Card Próxima Sessão */}
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 p-4 sm:p-5 text-white shadow-lg shadow-blue-500/30 group hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                    <div className="relative">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                      </div>
-                      <p className="text-xs sm:text-sm text-white/80 font-medium mb-1">Próxima Sessão</p>
-                      <p className="text-lg sm:text-xl font-bold">
-                        {clientData.proxima_sessao
-                          ? format(parseISO(clientData.proxima_sessao), 'dd MMM', { locale: ptBR })
-                          : 'Agendar'}
-                      </p>
-                      <p className="text-xs text-white/60 mt-1">
-                        {clientData.proxima_sessao
-                          ? (clientData.proxima_sessao_hora || format(parseISO(clientData.proxima_sessao), 'HH:mm', { locale: ptBR }))
-                          : 'Sem agendamento'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Card Progresso */}
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-4 sm:p-5 text-white shadow-lg shadow-amber-500/30 group hover:shadow-xl hover:shadow-amber-500/40 transition-all duration-300 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                    <div className="relative">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                      </div>
-                      <p className="text-xs sm:text-sm text-white/80 font-medium mb-1">Progresso</p>
-                      <p className="text-2xl sm:text-3xl font-bold">
-                        {clientData.max_sessoes > 0
-                          ? Math.round((clientData.numero_sessoes / clientData.max_sessoes) * 100)
-                          : 0}%
-                      </p>
-                      <div className="mt-2 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-white rounded-full transition-all duration-1000"
-                          style={{ width: `${clientData.max_sessoes > 0 ? (clientData.numero_sessoes / clientData.max_sessoes) * 100 : 0}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+                  <KpiCard
+                    icon={CalendarDays}
+                    label="Sessões"
+                    value={clientData.numero_sessoes || 0}
+                    sub={`de ${clientData.max_sessoes || 0} planeadas`}
+                    tone="teal"
+                  />
+                  <KpiCard
+                    icon={Euro}
+                    label="Total Pago"
+                    value={`€${clientData.total_pago || 0}`}
+                    sub="Valor investido"
+                    tone="emerald"
+                  />
+                  <KpiCard
+                    icon={Calendar}
+                    label="Próxima Sessão"
+                    value={clientData.proxima_sessao
+                      ? format(parseLocalISO(clientData.proxima_sessao), 'd MMM', { locale: pt })
+                      : '—'}
+                    sub={clientData.proxima_sessao
+                      ? (clientData.proxima_sessao_hora || format(parseLocalISO(clientData.proxima_sessao), 'HH:mm'))
+                      : 'Sem agendamento'}
+                    tone="blue"
+                  />
+                  <KpiCard
+                    icon={TrendingUp}
+                    label="Progresso"
+                    value={`${progressPercentage}%`}
+                    sub="do plano de sessões"
+                    tone="amber"
+                  />
                 </div>
 
-                {/* Resumo Rápido */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  {/* Card Próximos Agendamentos */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                    <div className="p-5 border-b border-gray-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                            <Calendar className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">Próximos Agendamentos</h3>
-                            <p className="text-xs text-gray-500">Suas sessões agendadas</p>
-                          </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
+                  <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden min-w-0">
+                    <div className="p-5 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Calendar className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">Próximos Agendamentos</h3>
+                          <p className="text-xs text-muted-foreground">As suas sessões agendadas</p>
                         </div>
                       </div>
                     </div>
                     <div className="p-5">
                       <div className="space-y-3">
                         {clientData.proxima_sessao ? (
-                          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-100 group hover:border-teal-200 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex flex-col items-center justify-center">
-                                <span className="text-xs text-gray-500 font-medium">
-                                  {format(parseISO(clientData.proxima_sessao), 'MMM', { locale: ptBR }).toUpperCase()}
+                          <div className="flex items-center justify-between gap-3 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-12 h-12 rounded-xl bg-card border border-border flex flex-col items-center justify-center flex-shrink-0">
+                                <span className="text-[10px] text-muted-foreground font-medium uppercase">
+                                  {format(parseLocalISO(clientData.proxima_sessao), 'MMM', { locale: pt })}
                                 </span>
-                                <span className="text-lg font-bold text-gray-900">
-                                  {format(parseISO(clientData.proxima_sessao), 'd')}
+                                <span className="text-lg font-bold text-foreground leading-tight">
+                                  {format(parseLocalISO(clientData.proxima_sessao), 'd')}
                                 </span>
                               </div>
-                              <div>
-                                <p className="font-semibold text-gray-900">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-foreground truncate">
                                   {clientData.proxima_sessao_titulo || 'Sessão'}
                                 </p>
-                                <p className="text-sm text-gray-500">
-                                  {format(parseISO(clientData.proxima_sessao), "EEEE", { locale: ptBR })} às {clientData.proxima_sessao_hora || format(parseISO(clientData.proxima_sessao), 'HH:mm', { locale: ptBR })}
-                                  {clientData.proxima_sessao_terapeuta && ` - ${clientData.proxima_sessao_terapeuta}`}
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {format(parseLocalISO(clientData.proxima_sessao), "EEEE 'às'", { locale: pt })}{' '}
+                                  {clientData.proxima_sessao_hora || format(parseLocalISO(clientData.proxima_sessao), 'HH:mm')}
+                                  {clientData.proxima_sessao_terapeuta && ` · ${clientData.proxima_sessao_terapeuta}`}
                                 </p>
                               </div>
                             </div>
                             <Badge className={
                               clientData.proxima_sessao_estado === 'confirmado'
-                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0"
-                                : "bg-amber-100 text-amber-700 hover:bg-amber-100 border-0"
+                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border-0"
+                                : "bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border-0"
                             }>
                               {clientData.proxima_sessao_estado === 'confirmado' ? 'Confirmado' : 'Pendente'}
                             </Badge>
                           </div>
                         ) : (
-                          <div className="text-center py-6 text-gray-500">
-                            <CalendarDays className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                          <div className="text-center py-6 text-muted-foreground">
+                            <CalendarDays className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
                             <p className="text-sm">Nenhuma sessão agendada</p>
                           </div>
                         )}
                         <Button
                           variant="outline"
-                          className="w-full rounded-xl h-11 font-medium hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 transition-colors"
+                          className="w-full rounded-xl h-11 font-medium hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
                           onClick={() => setActiveTab('appointments')}
                         >
-                          Ver Todos os Agendamentos
+                          Ver todos os agendamentos
                           <ArrowRight className="h-4 w-4 ml-2" />
                         </Button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card Notificações */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                    <div className="p-5 border-b border-gray-50">
-                      <div className="flex items-center justify-between">
+                  <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden min-w-0">
+                    <div className="p-5 border-b border-border">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-                            <Bell className="h-5 w-5 text-white" />
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Bell className="h-5 w-5 text-primary" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-900">Notificações</h3>
-                            <p className="text-xs text-gray-500">Atualizações recentes</p>
+                            <h3 className="font-semibold text-foreground">Avisos</h3>
+                            <p className="text-xs text-muted-foreground">Atualizações recentes</p>
                           </div>
                         </div>
                         {unreadNotifications > 0 && (
-                          <Badge className="bg-rose-100 text-rose-700 border-0">
+                          <Badge className="bg-destructive text-destructive-foreground border-0">
                             {unreadNotifications} novas
                           </Badge>
                         )}
@@ -493,39 +470,33 @@ const ClientDashboardPage = () => {
                     <div className="p-5">
                       <div className="space-y-3">
                         {notifications.length > 0 ? (
-                          notifications.slice(0, 3).map((notification, idx) => (
+                          notifications.slice(0, 3).map((notification) => (
                             <div
                               key={notification.id}
-                              className={cn(
-                                "flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-gray-50",
-                                idx === 0 && "bg-violet-50/50"
-                              )}
+                              className="flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-muted/50 min-w-0"
                             >
-                              <div className={cn(
-                                "w-2 h-2 rounded-full mt-2 flex-shrink-0",
-                                idx === 0 ? "bg-violet-500" : "bg-gray-300"
-                              )} />
+                              <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-primary" />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{notification.title}</p>
-                                <p className="text-xs text-gray-500 line-clamp-1">{notification.message}</p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {format(parseISO(notification.created_at), "d 'de' MMM, HH:mm", { locale: ptBR })}
+                                <p className="text-sm font-medium text-foreground truncate">{notification.title}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{notification.message}</p>
+                                <p className="text-xs text-muted-foreground/70 mt-1">
+                                  {formatDistanceToNow(parseLocalISO(notification.created_at), { addSuffix: true, locale: pt })}
                                 </p>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <div className="text-center py-6 text-gray-500">
-                            <Bell className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                            <p className="text-sm">Nenhuma notificação</p>
+                          <div className="text-center py-6 text-muted-foreground">
+                            <Bell className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+                            <p className="text-sm">Nenhum aviso</p>
                           </div>
                         )}
                         <Button
                           variant="outline"
-                          className="w-full rounded-xl h-11 font-medium hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 transition-colors"
+                          className="w-full rounded-xl h-11 font-medium hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
                           onClick={() => setActiveTab('notifications')}
                         >
-                          Ver Todas as Notificações
+                          Ver todos os avisos
                           <ArrowRight className="h-4 w-4 ml-2" />
                         </Button>
                       </div>
@@ -535,34 +506,28 @@ const ClientDashboardPage = () => {
               </div>
             )}
 
-            {/* Profile Tab */}
             {activeTab === 'profile' && (
-              <ClientProfile clientData={clientData} />
+              <ClientProfile clientData={clientData} onOpenChat={() => setActiveTab('chat')} />
             )}
 
-            {/* Appointments Tab */}
             {activeTab === 'appointments' && (
-              <ClientAppointments clientId={session.clientId} />
+              <ClientAppointments clientId={session.clientId} onOpenChat={() => setActiveTab('chat')} />
             )}
 
-            {/* Payments Tab */}
             {activeTab === 'payments' && (
               <ClientPayments clientId={session.clientId} />
             )}
 
-
-            {/* Chat Tab - Ocultado temporariamente */}
-            {/* {activeTab === 'chat' && (
+            {activeTab === 'chat' && (
               <ClientChat clientId={session.clientId} />
-              )} */}
+            )}
 
-            {/* Notifications Tab */}
             {activeTab === 'notifications' && (
               <ClientNotifications />
             )}
 
             {activeTab === 'availability' && clientData && (
-              <div className="space-y-6">
+              <div className="space-y-6 min-w-0">
                 <ClientAvailabilityCalendar clienteId={clientData.id} />
                 <NotificationPanel clienteId={clientData.id} />
               </div>
@@ -571,62 +536,42 @@ const ClientDashboardPage = () => {
         </div>
       </main>
 
-      {/* Mobile Bottom Navigation - Design Premium */}
       <nav className="fixed bottom-0 left-0 right-0 lg:hidden z-50 safe-area-bottom">
-        {/* Blur Background */}
-        <div className="absolute inset-0 bg-white/80 backdrop-blur-xl border-t border-gray-100/50" />
+        <div className="absolute inset-0 bg-card/95 backdrop-blur border-t border-border" />
 
-        {/* Navigation Items */}
-        <div className="relative flex justify-around items-center h-16 px-2">
-          {([
-            { id: 'overview', icon: Activity, label: 'Início' },
-            { id: 'appointments', icon: Calendar, label: 'Agenda' },
-            { id: 'availability', icon: Clock, label: 'Disp.' },
-            { id: 'payments', icon: CreditCard, label: 'Pagam.' },
-            // { id: 'chat', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
-          ] as { id: string; icon: any; label: string; badge?: number }[]).map((item) => (
+        <div className="relative flex justify-around items-stretch h-16 px-2">
+          {mobileNavItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className="relative flex flex-col items-center justify-center flex-1 h-full py-1 group"
+              className="relative flex flex-col items-center justify-center flex-1 py-1 group"
+              aria-label={item.label}
             >
-              {/* Pill Background Animado */}
               <div className={cn(
-                "absolute inset-x-2 top-1 bottom-1 rounded-2xl transition-all duration-300",
-                activeTab === item.id
-                  ? "bg-gradient-to-r from-teal-500/10 to-cyan-500/10 scale-100"
-                  : "scale-0"
+                "absolute inset-x-1.5 top-1 bottom-1 rounded-2xl transition-colors duration-300",
+                activeTab === item.id ? "bg-primary/10" : "bg-transparent"
               )} />
 
-              {/* Ícone */}
-              <div className={cn(
-                "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
-                activeTab === item.id
-                  ? "bg-gradient-to-r from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/30 -translate-y-1"
-                  : "group-hover:bg-gray-100"
-              )}>
-                <item.icon className={cn(
-                  "h-5 w-5 transition-colors",
-                  activeTab === item.id ? "text-white" : "text-gray-500 group-hover:text-gray-700"
-                )} />
+              <div className="relative">
+                <div className={cn(
+                  "w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300",
+                  activeTab === item.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground group-hover:text-foreground"
+                )}>
+                  <item.icon className="h-5 w-5" />
+                </div>
 
-                {/* Badge */}
                 {item.badge && item.badge > 0 && (
-                  <span className={cn(
-                    "absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center",
-                    activeTab === item.id
-                      ? "bg-white text-teal-600"
-                      : "bg-gradient-to-r from-rose-500 to-pink-500 text-white"
-                  )}>
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}
               </div>
 
-              {/* Label */}
               <span className={cn(
                 "text-[10px] font-medium mt-0.5 transition-colors",
-                activeTab === item.id ? "text-teal-600" : "text-gray-500"
+                activeTab === item.id ? "text-primary" : "text-muted-foreground"
               )}>
                 {item.label}
               </span>
@@ -635,7 +580,6 @@ const ClientDashboardPage = () => {
         </div>
       </nav>
 
-      {/* Spacer for bottom navigation on mobile */}
       <div className="h-20 lg:hidden" />
     </div>
   );

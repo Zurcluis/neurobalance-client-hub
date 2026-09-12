@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { formatCurrency } from '@/utils/formatUtils';
 
 // Definição de tipos
 // A tabela 'despesas' ainda não está refletida nos tipos gerados do Supabase,
@@ -19,6 +21,7 @@ type UpdateExpense = Partial<NewExpense>;
 
 export function useExpenses() {
   const supabase = useSupabaseClient();
+  const { logActivity } = useActivityLogger();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,6 +145,12 @@ export function useExpenses() {
             
             setExpenses(prev => [retryData as Expense, ...prev]);
             toast.success('Despesa adicionada com sucesso');
+            logActivity(
+              'expense_created',
+              'despesa',
+              (retryData as Expense)?.id,
+              `Despesa de ${formatCurrency(Number(expense.valor ?? 0))} (${expense.categoria}) registada`
+            );
             return retryData;
           }
         }
@@ -150,13 +159,19 @@ export function useExpenses() {
 
       setExpenses(prev => [data as Expense, ...prev]);
       toast.success('Despesa adicionada com sucesso');
+      logActivity(
+        'expense_created',
+        'despesa',
+        (data as Expense)?.id,
+        `Despesa de ${formatCurrency(Number(expense.valor ?? 0))} (${expense.categoria}) registada`
+      );
       return data;
     } catch (err) {
       console.error('Erro ao adicionar despesa:', err);
       toast.error('Falha ao adicionar despesa');
       throw err;
     }
-  }, [supabase]);
+  }, [supabase, logActivity]);
 
   // Atualizar despesa
   const updateExpense = useCallback(async (id: number, updates: UpdateExpense) => {

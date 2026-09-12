@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, RefreshCw, Filter, TrendingUp } from 'lucide-react';
+import { Plus, Search, RefreshCw, Filter, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useMarketData } from '@/hooks/useMarketData';
 import { InvestmentCard } from '@/components/investments/InvestmentCard';
@@ -43,36 +43,16 @@ const InvestmentsPage = () => {
     marketData,
     isLoading: marketLoading,
     lastUpdated,
-    fetchMarketData,
+    error: marketError,
     refreshData,
-  } = useMarketData();
+  } = useMarketData(investments);
 
   useEffect(() => {
     document.title = 'Investimentos | NeuroBalance';
   }, []);
 
-  const investmentsRef = useRef(investments);
   useEffect(() => {
-    investmentsRef.current = investments;
-  });
-
-  const symbolsKey = useMemo(
-    () => investments.map(inv => `${inv.type}:${inv.symbol.toUpperCase()}`).sort().join('|'),
-    [investments]
-  );
-
-  useEffect(() => {
-    if (symbolsKey) {
-      fetchMarketData(investmentsRef.current);
-    }
-  }, [symbolsKey, fetchMarketData]);
-
-  const lastMarketDataRef = useRef<typeof marketData | null>(null);
-  useEffect(() => {
-    if (marketData.length > 0 && marketData !== lastMarketDataRef.current) {
-      lastMarketDataRef.current = marketData;
-      updatePrices(marketData);
-    }
+    if (marketData.length > 0) updatePrices(marketData);
   }, [marketData, updatePrices]);
 
   const handleAddInvestment = (data: InvestmentFormData) => {
@@ -101,10 +81,13 @@ const InvestmentsPage = () => {
 
   const handleRefreshPrices = async () => {
     if (investments.length === 0) return;
-    toast.info('A atualizar preços...');
-    const data = await refreshData(investments);
-    if (data && data.length > 0) {
-      toast.success('Preços atualizados!');
+    const result = await refreshData();
+    if (result.error) {
+      toast.error(result.error);
+    } else if (result.quotes.length === 0) {
+      toast.error('Preços de mercado não disponíveis de momento.');
+    } else {
+      toast.success('Preços atualizados.');
     }
   };
 
@@ -231,10 +214,20 @@ const InvestmentsPage = () => {
                 </Select>
               </div>
 
-              {lastUpdated && (
-                <p className="text-sm text-muted-foreground shrink-0">
-                  Última atualização: {lastUpdated.toLocaleTimeString('pt-PT')}
-                </p>
+              {(lastUpdated || marketError) && (
+                <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
+                  {lastUpdated && (
+                    <p className="text-sm text-muted-foreground">
+                      Última atualização: {lastUpdated.toLocaleTimeString('pt-PT')}
+                    </p>
+                  )}
+                  {marketError && (
+                    <p className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      {marketError}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

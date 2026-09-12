@@ -31,6 +31,7 @@ import {
     RawPaymentData
 } from '@/lib/file-parsers-payment';
 import { usePaymentMatching } from '@/hooks/usePaymentMatching';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 // Estrutura final do pagamento para importar
 export interface PaymentImportData {
@@ -82,6 +83,7 @@ const PaymentImport: React.FC<PaymentImportProps> = ({
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { findClient, isLoading: isLoadingClients } = usePaymentMatching();
+    const { logActivity } = useActivityLogger();
 
     // Manipulador de upload de arquivos
     const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,6 +211,7 @@ const PaymentImport: React.FC<PaymentImportProps> = ({
             toast.error('Nenhum pagamento válido para importar.');
             return;
         }
+        logActivity('import_performed', 'pagamentos', undefined, `${validPayments.length} pagamentos importados via ficheiro`);
         onImportComplete(validPayments);
     };
 

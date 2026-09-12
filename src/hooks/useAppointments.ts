@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { format } from 'date-fns';
 
 export type Appointment = Database['public']['Tables']['agendamentos']['Row'] & {
   clientes: {
@@ -16,6 +18,15 @@ export type Appointment = Database['public']['Tables']['agendamentos']['Row'] & 
 export type NewAppointment = Omit<Database['public']['Tables']['agendamentos']['Insert'], 'id' | 'criado_em' | 'updated_at'>;
 
 const LOCAL_STORAGE_KEY = 'neurobalance_agendamentos_cache';
+
+// "2026-09-12" → "12/09" para os detalhes legíveis do registo de atividade
+const formatDayMonth = (date: string) => {
+  try {
+    return format(new Date(`${date}T00:00:00`), 'dd/MM');
+  } catch {
+    return date;
+  }
+};
 
 // Helper to sanitize id_cliente so 0, NaN, "", or invalid numbers become null
 const sanitizeClientId = (val: any): number | null => {
@@ -47,6 +58,7 @@ const saveToCache = (data: Appointment[]) => {
 
 export function useAppointments() {
   const supabase = useSupabaseClient();
+  const { logActivity } = useActivityLogger();
   const [appointments, setAppointments] = useState<Appointment[]>(() => loadFromCache());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +202,12 @@ export function useAppointments() {
       });
 
       toast.success('Agendamento adicionado com sucesso');
+      logActivity(
+        'appointment_created',
+        'agendamento',
+        newAppointment?.id,
+        `Agendamento de ${formatDayMonth(appointment.data)} às ${appointment.hora} criado${newAppointment?.clientes?.nome ? ` (${newAppointment.clientes.nome})` : ''}`
+      );
       return data;
     } catch (error: any) {
       console.warn('Erro ao inserir agendamento no Supabase, salvando localmente:', error);
@@ -212,7 +230,7 @@ export function useAppointments() {
       toast.success('Agendamento salvo localmente');
       return fallbackAppt;
     }
-  }, [supabase]);
+  }, [supabase, logActivity]);
 
   // Add multiple appointments (batch)
   const addAppointmentsBatch = useCallback(async (appointmentsList: Array<{
@@ -268,6 +286,12 @@ export function useAppointments() {
       });
 
       toast.success(`${inserts.length} agendamentos adicionados com sucesso`);
+      logActivity(
+        'appointment_created',
+        'agendamento',
+        undefined,
+        `${inserts.length} agendamentos criados em lote`
+      );
       return data;
     } catch (error: any) {
       console.warn('Erro ao adicionar lote no Supabase, salvando localmente:', error);
@@ -289,7 +313,7 @@ export function useAppointments() {
       toast.success(`${inserts.length} agendamentos salvos localmente`);
       return fallbackAppts;
     }
-  }, [supabase]);
+  }, [supabase, logActivity]);
 
   // Update appointment
   const updateAppointment = useCallback(async (id: number, appointment: {
@@ -303,6 +327,10 @@ export function useAppointments() {
     terapeuta?: string;
     cor?: string;
   }) => {
+    const previous = appointments.find(app => app.id === id);
+    const when = previous?.data ? ` de ${formatDayMonth(previous.data)}${previous.hora ? ` às ${previous.hora}` : ''}` : '';
+    const who = previous?.clientes?.nome || previous?.titulo || '';
+
     try {
       const updateData: any = {};
       if (appointment.titulo !== undefined) updateData.titulo = appointment.titulo;
@@ -346,6 +374,16 @@ export function useAppointments() {
       });
 
       toast.success('Agendamento atualizado com sucesso');
+      if (appointment.estado && previous && previous.estado !== appointment.estado) {
+        logActivity(
+          'appointment_status_changed',
+          'agendamento',
+          id,
+          `Agendamento${when}${who ? ` (${who})` : ''} marcado como ${appointment.estado}`
+        );
+      } else {
+        logActivity('appointment_updated', 'agendamento', id, `Agendamento${when}${who ? ` (${who})` : ''} atualizado`);
+      }
       return data;
     } catch (error) {
       console.error('Erro ao atualizar agendamento:', error);
@@ -359,7 +397,7 @@ export function useAppointments() {
       toast.success('Agendamento atualizado localmente');
       return null;
     }
-  }, [supabase]);
+  }, [supabase, appointments, logActivity]);
 
   // Delete appointment
   const deleteAppointment = useCallback(async (id: number) => {
@@ -379,6 +417,10 @@ export function useAppointments() {
         return next;
       });
       toast.success('Agendamento eliminado com sucesso');
+      const target = appointments.find(app => app.id === id);
+      const when = target?.data ? ` de ${formatDayMonth(target.data)}${target.hora ? ` às ${target.hora}` : ''}` : '';
+      const who = target?.clientes?.nome || target?.titulo || '';
+      logActivity('appointment_deleted', 'agendamento', id, `Agendamento${when}${who ? ` (${who})` : ''} eliminado`);
     } catch (err) {
       console.error('Erro ao eliminar agendamento:', err);
       setAppointments(prev => {
@@ -388,7 +430,7 @@ export function useAppointments() {
       });
       toast.success('Agendamento eliminado localmente');
     }
-  }, [supabase]);
+  }, [supabase, appointments, logActivity]);
 
   return {
     appointments,

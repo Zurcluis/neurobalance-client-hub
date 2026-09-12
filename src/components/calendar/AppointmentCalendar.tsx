@@ -53,7 +53,9 @@ import {
 } from '../ui/dropdown-menu';
 import SmartScheduling from './SmartScheduling';
 import TimeGridView, { isAllDayAppointment } from './TimeGridView';
+import QuickCreatePopover, { APPOINTMENT_TYPES, getAutoColorForType, QuickCreatePayload } from './QuickCreatePopover';
 import CalendarImport from './CalendarImport';
+import WaitlistFillPanel, { WaitlistSlot } from './WaitlistFillPanel';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Info } from 'lucide-react';
 
@@ -98,6 +100,13 @@ const AppointmentCalendar = () => {
   const [isAllDay, setIsAllDay] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('none');
   const [recurrenceCount, setRecurrenceCount] = useState<number>(8);
+
+  // Quick-create estilo Google (popover nas células/slots vazios)
+  const [quickCreate, setQuickCreate] = useState<{ date: Date; anchorPoint: { x: number; y: number } } | null>(null);
+  const [isQuickCreating, setIsQuickCreating] = useState(false);
+
+  // Lista de espera: slot libertado por um cancelamento
+  const [waitlistSlot, setWaitlistSlot] = useState<WaitlistSlot | null>(null);
 
   const getWeeklyRecurrenceLabel = (dateStr?: string) => {
     if (!dateStr) return 'Semanalmente';
@@ -240,6 +249,72 @@ const AppointmentCalendar = () => {
     setIsDialogOpen(true);
   };
 
+  const openQuickCreate = (date: Date, anchorPoint?: { x: number; y: number }) => {
+    setSelectedDate(date);
+    setQuickCreate({
+      date,
+      anchorPoint: anchorPoint || { x: window.innerWidth / 2, y: window.innerHeight / 3 },
+    });
+  };
+
+  const handleQuickCreate = async (payload: QuickCreatePayload) => {
+    setIsQuickCreating(true);
+    try {
+      const dateStr = format(payload.date, 'yyyy-MM-dd');
+      const startTime = format(payload.date, 'HH:mm');
+      const endTime = format(new Date(payload.date.getTime() + 60 * 60 * 1000), 'HH:mm');
+
+      await addAppointment({
+        titulo: payload.titulo,
+        data: `${dateStr}T${startTime}:00`,
+        hora: `${startTime} - ${endTime}`,
+        id_cliente: null,
+        tipo: payload.tipo,
+        notas: '',
+        estado: 'pendente',
+        terapeuta: '',
+        cor: getAutoColorForType(payload.tipo),
+      });
+
+      toast.success('Novo agendamento criado!', {
+        description: `${payload.titulo} - ${format(payload.date, "dd/MM/yyyy 'às' HH:mm", { locale: pt })}`,
+        duration: 4000
+      });
+      setQuickCreate(null);
+    } catch (error: any) {
+      console.error('Erro ao criar agendamento (quick-create):', error);
+      toast.error(`Erro: ${error?.message || 'Erro desconhecido ao criar agendamento'}`);
+    } finally {
+      setIsQuickCreating(false);
+    }
+  };
+
+  const handleWaitlistCreate = async (client: { id: number; nome: string }) => {
+    if (!waitlistSlot) return;
+    try {
+      const [h, m] = waitlistSlot.hora.split(':').map(Number);
+      const endH = Number.isNaN(h) ? 10 : (h + 1) % 24;
+      const endM = Number.isNaN(m) ? 0 : m;
+      const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+
+      await addAppointment({
+        titulo: `${waitlistSlot.tipo} - ${client.nome}`,
+        data: `${waitlistSlot.dateStr}T${waitlistSlot.hora}:00`,
+        hora: `${waitlistSlot.hora} - ${endTime}`,
+        id_cliente: client.id,
+        tipo: waitlistSlot.tipo,
+        notas: 'Preenchimento via lista de espera',
+        estado: 'pendente',
+        terapeuta: '',
+        cor: getAutoColorForType(waitlistSlot.tipo),
+      });
+      setWaitlistSlot(null);
+    } catch (error) {
+      console.error('Erro ao criar agendamento da lista de espera:', error);
+      toast.error('Erro ao criar agendamento da lista de espera');
+    }
+  };
+
   const handleEventClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setRecurrenceType('none');
@@ -331,12 +406,18 @@ const AppointmentCalendar = () => {
       };
 
       if (selectedAppointment) {
+        const previousEstado = selectedAppointment.estado;
         await updateAppointment(selectedAppointment.id, {
           ...baseData,
           data: isoData,
           hora: horaRange,
           id_cliente: clientId === null ? undefined : clientId
         });
+
+        if (data.estado === 'cancelado' && previousEstado !== 'cancelado' && !isAllDay) {
+          setWaitlistSlot({ dateStr: data.data_inicio, hora: data.hora_inicio, tipo: data.tipo });
+          toast.info('Agendamento cancelado. Sugestões da lista de espera disponíveis.');
+        }
 
         if (isMultiDay) {
           const startDateObj = parseISO(`${data.data_inicio}T00:00:00`);
@@ -911,9 +992,8 @@ const AppointmentCalendar = () => {
                     ${isDayToday ? 'bg-[#e8f0fe]/50' : 'bg-white hover:bg-gray-50'}
                     ${!isCurrentMonth ? 'bg-gray-50/60' : ''}
                   `}
-                  onClick={() => {
-                    setSelectedDate(day);
-                    openNewAppointmentDialog(day);
+                  onClick={(e) => {
+                    openQuickCreate(day, { x: e.clientX, y: e.clientY });
                   }}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -1044,7 +1124,7 @@ const AppointmentCalendar = () => {
       <TimeGridView
         days={[selectedDate]}
         appointments={appointments}
-        onTimeSlotClick={openNewAppointmentDialog}
+        onTimeSlotClick={(date, point) => openQuickCreate(date, point)}
         onEventClick={handleEventClick}
         isDailyView={true}
         availabilities={clientAvailabilities}
@@ -1064,7 +1144,7 @@ const AppointmentCalendar = () => {
       <TimeGridView
         days={weekDays}
         appointments={appointments}
-        onTimeSlotClick={openNewAppointmentDialog}
+        onTimeSlotClick={(date, point) => openQuickCreate(date, point)}
         onEventClick={handleEventClick}
         availabilities={clientAvailabilities}
         showAvailabilities={showAvailabilities}
@@ -1647,20 +1727,7 @@ const AppointmentCalendar = () => {
                         <Select
                           onValueChange={(val) => {
                             field.onChange(val);
-                            let autoColor = '#039BE5';
-                            const t = val.toLowerCase();
-                            if (t.includes('reavaliação') || t.includes('reavaliacao')) autoColor = '#3F51B5';
-                            else if (t.includes('avaliação')) autoColor = '#7986CB';
-                            else if (t.includes('neurofeedback')) autoColor = '#039BE5';
-                            else if (t.includes('discussão')) autoColor = '#F6BF26';
-                            else if (t.includes('psicologia')) autoColor = '#F4511E';
-                            else if (t.includes('constelaç') || t.includes('constelac')) autoColor = '#8E24AA';
-                            else if (t.includes('ioga') || t.includes('yoga') || t.includes('nidra')) autoColor = '#33B679';
-                            else if (t.includes('biorresonância') || t.includes('biorressonancia')) autoColor = '#7CB342';
-                            else if (t.includes('ofes')) autoColor = '#D50000';
-                            else if (t.includes('sessão')) autoColor = '#039BE5';
-                            else if (t.includes('consulta')) autoColor = '#0B8043';
-                            form.setValue('cor', autoColor);
+                            form.setValue('cor', getAutoColorForType(val));
                           }}
                           value={field.value}
                         >
@@ -1670,17 +1737,9 @@ const AppointmentCalendar = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="sessão">Sessão</SelectItem>
-                            <SelectItem value="avaliação">Avaliação</SelectItem>
-                            <SelectItem value="reavaliação">Reavaliação</SelectItem>
-                            <SelectItem value="consulta">Consulta</SelectItem>
-                            <SelectItem value="consulta de psicologia">Consulta de Psicologia</SelectItem>
-                            <SelectItem value="constelações familiares">Constelações Familiares</SelectItem>
-                            <SelectItem value="discussão de resultados">Discussão de Resultados</SelectItem>
-                            <SelectItem value="neurofeedback">Neurofeedback</SelectItem>
-                            <SelectItem value="ioga">Yoga Nidra</SelectItem>
-                            <SelectItem value="biorresonância magnética">Biorresonância Magnética</SelectItem>
-                            <SelectItem value="ofes">OFES</SelectItem>
+                            {APPOINTMENT_TYPES.map((t) => (
+                              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1933,6 +1992,17 @@ const AppointmentCalendar = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Lista de espera: preencher vazio de cancelamento */}
+      {waitlistSlot && (
+        <WaitlistFillPanel
+          open
+          onOpenChange={(open) => { if (!open) setWaitlistSlot(null); }}
+          slot={waitlistSlot}
+          appointments={appointments}
+          clients={clients}
+          onCreate={handleWaitlistCreate}
+        />
+      )}
       {/* Pop-up de agendamentos do dia (Estilo Google Calendar) */}
       <Dialog open={!!overflowDay} onOpenChange={(open) => !open && setOverflowDay(null)}>
         <DialogContent className="sm:max-w-[340px] p-0 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl bg-white dark:bg-gray-900">
@@ -2017,6 +2087,25 @@ const AppointmentCalendar = () => {
           )}
         </DialogContent>
       </Dialog>
+      {/* Quick-create estilo Google (célula/slot vazio) */}
+      {quickCreate && (
+        <QuickCreatePopover
+          open
+          onOpenChange={(o) => { if (!o) setQuickCreate(null); }}
+          anchorPoint={quickCreate.anchorPoint}
+          date={quickCreate.date}
+          isSubmitting={isQuickCreating}
+          onCreate={handleQuickCreate}
+          onMoreOptions={(date, draft) => {
+            openNewAppointmentDialog(date);
+            if (draft?.titulo) form.setValue('titulo', draft.titulo);
+            if (draft) {
+              form.setValue('tipo', draft.tipo as AppointmentType);
+              form.setValue('cor', getAutoColorForType(draft.tipo));
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

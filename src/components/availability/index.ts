@@ -5,4 +5,5 @@ export { AvailabilityList } from './AvailabilityList';
 export { AvailabilityStats } from './AvailabilityStats';
 export { SuggestedAppointmentsList } from './SuggestedAppointmentsList';
 export { NotificationPanel } from './NotificationPanel';
+export { default as SelfSchedulingPanel } from './SelfSchedulingPanel';
 

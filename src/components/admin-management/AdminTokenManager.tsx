@@ -29,7 +29,8 @@ import {
   User,
   Shield,
   AlertTriangle,
-  Link
+  Link,
+  CheckCircle2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
@@ -52,6 +53,50 @@ interface AdminTokenManagerProps {
   onDeleteToken: (tokenId: string) => Promise<boolean>;
 }
 
+type ExpirationOption = '1h' | '12h' | '1d' | '7d' | '30d' | '6m' | 'lifetime';
+
+const DEFAULT_EXPIRATION: ExpirationOption = '30d';
+
+const EXPIRATION_OPTIONS: { value: ExpirationOption; label: string }[] = [
+  { value: '1h', label: '1 Hora' },
+  { value: '12h', label: '12 Horas' },
+  { value: '1d', label: '1 Dia' },
+  { value: '7d', label: '1 Semana' },
+  { value: '30d', label: '1 Mês' },
+  { value: '6m', label: '6 Meses' },
+  { value: 'lifetime', label: 'Vitalício' },
+];
+
+const calculateExpirationDate = (option: ExpirationOption): Date => {
+  const expiresAt = new Date();
+  switch (option) {
+    case '1h':
+      expiresAt.setHours(expiresAt.getHours() + 1);
+      break;
+    case '12h':
+      expiresAt.setHours(expiresAt.getHours() + 12);
+      break;
+    case '1d':
+      expiresAt.setDate(expiresAt.getDate() + 1);
+      break;
+    case '7d':
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      break;
+    case '30d':
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      break;
+    case '6m':
+      expiresAt.setMonth(expiresAt.getMonth() + 6);
+      break;
+    case 'lifetime':
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+      break;
+    default:
+      expiresAt.setDate(expiresAt.getDate() + 30);
+  }
+  return expiresAt;
+};
+
 const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   admins,
   tokens,
@@ -65,36 +110,15 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [tokenToDelete, setTokenToDelete] = useState<AdminToken | null>(null);
 
-  const [expirationOption, setExpirationOption] = useState<string>('30d');
+  const [expirationOption, setExpirationOption] = useState<ExpirationOption>(DEFAULT_EXPIRATION);
+  const [tokenToRenew, setTokenToRenew] = useState<AdminToken | null>(null);
+  const [renewExpirationOption, setRenewExpirationOption] = useState<ExpirationOption>(DEFAULT_EXPIRATION);
+  const [renewedToken, setRenewedToken] = useState<AdminToken | null>(null);
+  const [isRenewing, setIsRenewing] = useState(false);
 
   // Criar novo token
   const handleCreateToken = async (adminId: string) => {
-    const expiresAt = new Date();
-    switch (expirationOption) {
-      case '1h':
-        expiresAt.setHours(expiresAt.getHours() + 1);
-        break;
-      case '12h':
-        expiresAt.setHours(expiresAt.getHours() + 12);
-        break;
-      case '1d':
-        expiresAt.setDate(expiresAt.getDate() + 1);
-        break;
-      case '7d':
-        expiresAt.setDate(expiresAt.getDate() + 7);
-        break;
-      case '30d':
-        expiresAt.setDate(expiresAt.getDate() + 30);
-        break;
-      case '6m':
-        expiresAt.setMonth(expiresAt.getMonth() + 6);
-        break;
-      case 'lifetime':
-        expiresAt.setFullYear(expiresAt.getFullYear() + 100);
-        break;
-      default:
-        expiresAt.setDate(expiresAt.getDate() + 30);
-    }
+    const expiresAt = calculateExpirationDate(expirationOption);
 
     const success = await onCreateToken(adminId, expiresAt.toISOString());
     if (success) {
@@ -103,14 +127,35 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
     }
   };
 
-  // Renovar token: emite um novo token para a mesma administrativa (validade de 1 mês) e elimina o atual
-  const handleRenewToken = async (token: AdminToken) => {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-    const created = await onCreateToken(token.admin_id, expiresAt.toISOString());
-    if (created) {
-      await onDeleteToken(token.id);
-      toast.success('Token renovado: foi emitido um novo token com validade de 1 mês.');
+  // Abrir dialog de renovação (default: validade mais usada)
+  const openRenewDialog = (token: AdminToken) => {
+    setTokenToRenew(token);
+    setRenewedToken(null);
+    setRenewExpirationOption(DEFAULT_EXPIRATION);
+    setIsRenewing(false);
+  };
+
+  const closeRenewDialog = () => {
+    setTokenToRenew(null);
+    setRenewedToken(null);
+    setIsRenewing(false);
+  };
+
+  // Renovar token: emite um novo token para a mesma administrativa com a validade escolhida e elimina o atual
+  const handleConfirmRenewToken = async () => {
+    if (!tokenToRenew || isRenewing) return;
+    setIsRenewing(true);
+    try {
+      const expiresAt = calculateExpirationDate(renewExpirationOption);
+      const created = await onCreateToken(tokenToRenew.admin_id, expiresAt.toISOString());
+      if (!created) return;
+      const removed = await onDeleteToken(tokenToRenew.id);
+      if (!removed) {
+        toast.error('O novo token foi criado, mas não foi possível eliminar o token antigo. Remova-o manualmente.');
+      }
+      setRenewedToken(created);
+    } finally {
+      setIsRenewing(false);
     }
   };
 
@@ -181,6 +226,8 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
     return admins.find(admin => admin.id === adminId);
   };
 
+  const renewAdmin = tokenToRenew ? getAdminById(tokenToRenew.admin_id) : null;
+
   return (
     <div className="space-y-6">
       {/* Header com botão criar token */}
@@ -231,18 +278,19 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
 
               <div>
                 <label className="text-sm font-medium">Validade do Token</label>
-                <Select value={expirationOption} onValueChange={setExpirationOption}>
+                <Select
+                  value={expirationOption}
+                  onValueChange={(value) => setExpirationOption(value as ExpirationOption)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a validade" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1h">1 Hora</SelectItem>
-                    <SelectItem value="12h">12 Horas</SelectItem>
-                    <SelectItem value="1d">1 Dia</SelectItem>
-                    <SelectItem value="7d">1 Semana</SelectItem>
-                    <SelectItem value="30d">1 Mês</SelectItem>
-                    <SelectItem value="6m">6 Meses</SelectItem>
-                    <SelectItem value="lifetime">Vitalício</SelectItem>
+                    {EXPIRATION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -391,9 +439,9 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleRenewToken(token)}
+                        onClick={() => openRenewDialog(token)}
                         className="flex-1 min-w-[120px]"
-                        title="Emite um novo token (validade de 1 mês) e elimina o atual"
+                        title="Emite um novo token com a validade escolhida e elimina o atual"
                       >
                         <RefreshCw className="h-4 w-4 mr-1" />
                         {t('renew')}
@@ -416,6 +464,120 @@ const AdminTokenManager: React.FC<AdminTokenManagerProps> = ({
           })
         )}
       </div>
+
+      <Dialog
+        open={!!tokenToRenew}
+        onOpenChange={(open) => { if (!open && !isRenewing) closeRenewDialog(); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renovar Token</DialogTitle>
+            <DialogDescription>
+              {renewedToken
+                ? 'O token anterior foi eliminado e deixou de funcionar. Copie e guarde o novo token.'
+                : 'Emite um novo token para a administrativa e elimina o token atual.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {renewedToken ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 dark:bg-primary/10 p-3">
+                <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium">Token renovado com sucesso</p>
+                  <p className="text-muted-foreground">
+                    Válido até {new Date(renewedToken.expires_at).toLocaleDateString('pt-PT')}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Novo token</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type={showTokens[renewedToken.id] ? 'text' : 'password'}
+                    value={renewedToken.token}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => toggleTokenVisibility(renewedToken.id)}
+                  >
+                    {showTokens[renewedToken.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCopyToken(renewedToken.token)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <Button className="w-full" onClick={closeRenewDialog}>
+                Concluir
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {renewAdmin && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Administrativa: </span>
+                  <span className="font-medium">{renewAdmin.nome}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium">Validade do Novo Token</label>
+                <Select
+                  value={renewExpirationOption}
+                  onValueChange={(value) => setRenewExpirationOption(value as ExpirationOption)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a validade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXPIRATION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-md bg-muted/50 p-3 text-sm">
+                <span className="text-muted-foreground">Novo token expira em: </span>
+                <span className="font-medium">
+                  {calculateExpirationDate(renewExpirationOption).toLocaleDateString('pt-PT')}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={closeRenewDialog}
+                  className="flex-1"
+                  disabled={isRenewing}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmRenewToken}
+                  disabled={isRenewing}
+                  className="flex-1"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRenewing ? 'animate-spin' : ''}`} />
+                  {isRenewing ? 'A renovar...' : 'Renovar token'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!tokenToDelete}

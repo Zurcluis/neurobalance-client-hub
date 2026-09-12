@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import KpiCard from '@/components/shared/KpiCard';
@@ -11,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   UserCog,
   Plus,
+  Activity,
   Search,
   Edit,
   Trash2,
@@ -41,6 +43,7 @@ import { cn } from '@/lib/utils';
 const AdminManagementPage = () => {
   const { t } = useLanguage();
   const { session } = useAdminAuth();
+  const navigate = useNavigate();
   const {
     admins,
     isLoading: isAdminsLoading,
@@ -160,6 +163,14 @@ const AdminManagementPage = () => {
           icon={<UserCog className="h-5 w-5" />}
           actions={
             <>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/monitoring')}
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                Monitorização
+              </Button>
+
               <Button
                 variant="outline"
                 onClick={() => setIsProfileDialogOpen(true)}

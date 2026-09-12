@@ -1,8 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, User, BarChart3, Home, Menu, X, MessageSquare, Mail, Phone, Search, PieChart, LogOut, TrendingUp, UserCog, Megaphone, Clock, FileText, Map } from 'lucide-react';
+import {
+  BarChart3,
+  Calendar,
+  Clock,
+  FileText,
+  Home,
+  LogOut,
+  Mail,
+  Map,
+  Megaphone,
+  Menu,
+  MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Phone,
+  Activity,
+  PieChart,
+  Search,
+  TrendingUp,
+  User,
+  UserCog,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useSidebarCollapsed } from '@/hooks/use-mobile';
 import {
   Drawer,
   DrawerContent,
@@ -10,6 +33,7 @@ import {
   DrawerClose
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import CommunicationsPanel from '@/components/communications/CommunicationsPanel';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { LanguageSwitch } from '@/components/language/LanguageSwitch';
@@ -23,26 +47,24 @@ import { NotificationBar } from '@/components/notifications/NotificationBar';
 import { DatabaseManagerDialog } from '@/components/dashboard/DatabaseManagerDialog';
 import { KeyboardShortcutsDialog } from '@/components/accessibility/KeyboardShortcutsDialog';
 
+interface NavItem {
+  name: string;
+  icon: LucideIcon;
+  path: string;
+}
+
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+type CommunicationType = 'sms' | 'email' | 'call';
+
 const Sidebar = () => {
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    return localStorage.getItem('sidebar_collapsed') === 'true';
-  });
-
+  const { isCollapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
   const [showProfileDialog, setShowProfileDialog] = useState(false);
-
-  useEffect(() => {
-    const handleSync = () => {
-      setIsCollapsed(localStorage.getItem('sidebar_collapsed') === 'true');
-    };
-    window.addEventListener('sidebar-toggle', handleSync);
-    window.addEventListener('storage', handleSync);
-    return () => {
-      window.removeEventListener('sidebar-toggle', handleSync);
-      window.removeEventListener('storage', handleSync);
-    };
-  }, []);
-
   const [showCommunications, setShowCommunications] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showCalendarSync, setShowCalendarSync] = useState(false);
   const location = useLocation();
@@ -51,7 +73,9 @@ const Sidebar = () => {
   const { t } = useLanguage();
   const { signOut } = useAuth();
 
-  // Get communication type from localStorage if exists
+  const iconOnly = isCollapsed && !isMobile;
+  const iconClass = isMobile ? 'h-6 w-6' : 'h-5 w-5';
+
   useEffect(() => {
     const commType = localStorage.getItem('communicationType');
     if (commType) {
@@ -59,48 +83,156 @@ const Sidebar = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const handleOpenSearch = () => setShowSearch(true);
+    window.addEventListener('open-search', handleOpenSearch);
+    return () => window.removeEventListener('open-search', handleOpenSearch);
+  }, []);
+
   const handleLogout = async () => {
     try {
       await signOut();
-      toast.success('Successfully logged out');
+      toast.success(t('logoutSuccess'));
       navigate('/login');
     } catch (error) {
       console.error('Error logging out:', error);
-      toast.error('Failed to log out');
+      toast.error(t('logoutError'));
     }
   };
 
-  const menuItems = [
-    { name: t('dashboard'), icon: <Home className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/' },
-    { name: t('clients'), icon: <User className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clients' },
-    { name: t('calendar'), icon: <Calendar className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/calendar' },
-    { name: 'Planta da Clínica', icon: <Map className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/floor-plan' },
-    { name: 'Disponibilidades', icon: <Clock className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin/availability' },
-    { name: t('finances'), icon: <BarChart3 className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/finances' },
-    { name: t('investments'), icon: <TrendingUp className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/investments' },
-    { name: t('marketing'), icon: <Megaphone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/marketing-reports' },
-    { name: t('statistics'), icon: <PieChart className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/statistics' },
-    { name: 'Ficha Técnica', icon: <FileText className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/clinic-info' },
-    { name: t('administrative'), icon: <UserCog className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, path: '/admin-management' },
+  const menuSections: NavSection[] = [
+    {
+      label: t('operation'),
+      items: [
+        { name: t('dashboard'), icon: Home, path: '/' },
+        { name: t('clients'), icon: User, path: '/clients' },
+        { name: t('calendar'), icon: Calendar, path: '/calendar' },
+        { name: t('availability'), icon: Clock, path: '/admin/availability' },
+        { name: t('floorPlan'), icon: Map, path: '/floor-plan' },
+      ],
+    },
+    {
+      label: t('management'),
+      items: [
+        { name: t('finances'), icon: BarChart3, path: '/finances' },
+        { name: t('investments'), icon: TrendingUp, path: '/investments' },
+        { name: t('statistics'), icon: PieChart, path: '/statistics' },
+        { name: t('marketing'), icon: Megaphone, path: '/marketing-reports' },
+      ],
+    },
+    {
+      label: t('system'),
+      items: [
+        { name: t('clinicProfile'), icon: FileText, path: '/clinic-info' },
+        { name: t('monitoring'), icon: Activity, path: '/monitoring' },
+        { name: t('administrative'), icon: UserCog, path: '/admin-management' },
+      ],
+    },
   ];
 
-  const communicationItems = [
-    { name: t('messages'), icon: <MessageSquare className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'sms' },
-    { name: t('email'), icon: <Mail className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'email' },
-    { name: t('call'), icon: <Phone className={isMobile ? "h-6 w-6" : "h-5 w-5"} />, action: () => setShowCommunications(true), type: 'call' },
+  const communicationItems: { name: string; icon: LucideIcon; type: CommunicationType }[] = [
+    { name: t('messages'), icon: MessageSquare, type: 'sms' },
+    { name: t('email'), icon: Mail, type: 'email' },
+    { name: t('call'), icon: Phone, type: 'call' },
   ];
+
+  const isActivePath = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
+  const getItemClass = (active: boolean) =>
+    cn(
+      'sidebar-item rounded-lg',
+      active ? 'sidebar-item-active' : 'sidebar-item-inactive',
+      isMobile ? 'px-4 py-3 text-base' : 'py-2.5 px-3',
+      iconOnly && 'justify-center px-2'
+    );
+
+  const renderNavLink = (item: NavItem) => {
+    const active = isActivePath(item.path);
+    if (iconOnly) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              to={item.path}
+              className={getItemClass(active)}
+              aria-label={item.name}
+              aria-current={active ? 'page' : undefined}
+            >
+              <item.icon className={iconClass} aria-hidden="true" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">{item.name}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return (
+      <Link
+        to={item.path}
+        className={getItemClass(active)}
+        aria-current={active ? 'page' : undefined}
+        onClick={isMobile ? () => setDrawerOpen(false) : undefined}
+      >
+        <item.icon className={iconClass} aria-hidden="true" />
+        <span className={cn('truncate', isMobile && 'font-medium')}>{item.name}</span>
+      </Link>
+    );
+  };
+
+  const renderCommunicationButton = (item: { name: string; icon: LucideIcon; type: CommunicationType }) => {
+    const handleClick = () => {
+      localStorage.setItem('communicationType', item.type);
+      setShowCommunications(true);
+    };
+    if (iconOnly) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleClick}
+              className={getItemClass(false)}
+              aria-label={item.name}
+            >
+              <item.icon className={iconClass} aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{item.name}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return (
+      <button type="button" onClick={handleClick} className={getItemClass(false)} aria-label={item.name}>
+        <item.icon className={iconClass} aria-hidden="true" />
+        <span className={cn('truncate', isMobile && 'font-medium')}>{item.name}</span>
+      </button>
+    );
+  };
+
+  const sectionLabelClass = cn(
+    'mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground',
+    isMobile ? 'px-4' : 'px-3'
+  );
 
   const renderSidebarContent = () => (
-    <div className={`p-4 flex flex-col h-full ${isMobile ? 'pt-safe mobile-menu-content' : ''}`}>
+    <div
+      className={cn(
+        'flex h-full flex-col',
+        iconOnly ? 'p-3' : 'p-4',
+        isMobile && 'pt-safe mobile-menu-content'
+      )}
+    >
       {isMobile && (
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <img
             src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
             alt="NeuroBalance Logo"
             className="h-10 w-auto app-logo"
           />
           <DrawerClose asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
               <X className="h-5 w-5" />
             </Button>
           </DrawerClose>
@@ -108,187 +240,137 @@ const Sidebar = () => {
       )}
 
       {!isMobile && (
-        <div className="flex flex-col items-center mb-8">
+        <div className={cn('flex flex-col items-center', iconOnly ? 'mb-4' : 'mb-6')}>
           <img
             src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
             alt="NeuroBalance Logo"
             className={cn(
-              "app-logo mb-4 transition-all duration-300 object-contain",
-              isCollapsed ? "w-12 h-12" : "w-32 h-32"
+              'app-logo object-contain transition-all duration-300',
+              iconOnly ? 'h-9 w-9' : 'h-14 w-14'
             )}
           />
-          {!isCollapsed && (
-            <div className="text-center">
-              <h1 className="font-bold text-lg text-[#3A726D] dark:text-[#E6ECEA]">NeuroBalance</h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Client Management</p>
+          {!iconOnly && (
+            <div className="mt-2 text-center">
+              <h1 className="text-base font-semibold text-primary dark:text-[hsl(var(--neuro-light-teal))]">
+                NeuroBalance
+              </h1>
+              <p className="text-xs text-muted-foreground">{t('clientManagement')}</p>
             </div>
           )}
           <Button
             variant="ghost"
-            size="sm"
-            className="mt-4 w-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={() => {
-              const nextState = !isCollapsed;
-              setIsCollapsed(nextState);
-              localStorage.setItem('sidebar_collapsed', String(nextState));
-              window.dispatchEvent(new Event('sidebar-toggle'));
-            }}
-            aria-label={isCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            size="icon"
+            className={cn('text-muted-foreground hover:bg-muted hover:text-foreground', iconOnly ? 'mt-2' : 'mt-3')}
+            onClick={toggleCollapsed}
+            aria-label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
             aria-expanded={!isCollapsed}
           >
-            {isCollapsed ? <Menu aria-hidden="true" /> : <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />}
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" aria-hidden="true" />
+            )}
           </Button>
         </div>
       )}
 
-      <div className="relative mb-8">
-        <Button
-          variant="outline"
-          className="w-full relative text-left flex items-center justify-between pl-3 py-2 h-auto rounded-lg"
-          onClick={() => setShowSearch(true)}
-          aria-label="Abrir busca rápida (Ctrl+K)"
-        >
-          <span className={cn(
-            "text-gray-500 dark:text-gray-400",
-            isCollapsed && !isMobile ? "hidden" : "block"
-          )}>
-            Pesquisar...
-          </span>
-          <Search className="h-5 w-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-        </Button>
+      <div className={cn('relative', iconOnly ? 'mb-6' : 'mb-8')}>
+        {iconOnly ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-center px-2"
+                onClick={() => setShowSearch(true)}
+                aria-label={`${t('openQuickSearch')} (Ctrl+K)`}
+              >
+                <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t('searchShortcut')}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full justify-between px-3 py-2 h-auto text-left"
+            onClick={() => setShowSearch(true)}
+            aria-label={`${t('openQuickSearch')} (Ctrl+K)`}
+          >
+            <span className="text-muted-foreground">{t('searchPlaceholder')}</span>
+            <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          </Button>
+        )}
       </div>
 
       <nav
         id="navigation"
         className="flex-1"
-        role="navigation"
-        aria-label="Menu principal"
+        aria-label={t('mainMenu')}
       >
-        <ul className={cn(
-          "space-y-1",
-          isMobile && "space-y-2"
-        )}>
-          {menuItems.map((item) => (
-            <li key={item.name}>
-              <Link
-                to={item.path}
-                className={cn(
-                  'sidebar-item',
-                  'rounded-lg py-3',
-                  isMobile && "text-base py-3.5 px-4",
-                  location.pathname === item.path
-                    ? 'sidebar-item-active'
-                    : 'sidebar-item-inactive',
-                  isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-start px-3'
-                )}
-                aria-current={location.pathname === item.path ? 'page' : undefined}
-                onClick={() => isMobile && document.querySelector('.drawer-close')?.dispatchEvent(new Event('click'))}
-              >
-                <span className={isMobile ? "text-xl" : "text-lg"} aria-hidden="true">{item.icon}</span>
-                {(!isCollapsed || isMobile) && <span className={cn("ml-3", isMobile && "font-medium")}>{item.name}</span>}
-              </Link>
-            </li>
+        <div className={cn('space-y-6', isMobile && 'space-y-8')}>
+          {menuSections.map((section) => (
+            <div key={section.label}>
+              {!iconOnly && <p className={sectionLabelClass}>{section.label}</p>}
+              <ul className={cn('space-y-1', isMobile && 'space-y-2')}>
+                {section.items.map((item) => (
+                  <li key={item.path}>{renderNavLink(item)}</li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
 
-        {/* Communication section */}
-        <div className={cn("mt-8", isMobile && "mt-10")} role="region" aria-label="Comunicações">
-          <h3 className={cn(
-            'text-[#3A726D] dark:text-[#E6ECEA] font-medium mb-2',
-            isMobile && "text-base px-4",
-            isCollapsed && !isMobile ? 'text-center text-xs' : 'px-3'
-          )}>
-            {(!isCollapsed || isMobile) ? t('communications') : 'Com.'}
-          </h3>
-          <ul className={cn(
-            "space-y-1",
-            isMobile && "space-y-2"
-          )}>
-            {communicationItems.map((item) => (
-              <li key={item.name}>
-                <button
-                  onClick={() => {
-                    setShowCommunications(true);
-                    localStorage.setItem('communicationType', item.type);
-                  }}
-                  className={cn(
-                    'sidebar-item sidebar-item-inactive w-full rounded-lg py-3',
-                    isMobile && "text-base py-3.5 px-4",
-                    isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-start px-3'
-                  )}
-                  aria-label={item.name}
-                >
-                  <span className={isMobile ? "text-xl" : "text-lg"} aria-hidden="true">{item.icon}</span>
-                  {(!isCollapsed || isMobile) && <span className={cn("ml-3", isMobile && "font-medium")}>{item.name}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div role="region" aria-label={t('communications')}>
+            {!iconOnly && <p className={sectionLabelClass}>{t('communications')}</p>}
+            <ul className={cn('space-y-1', isMobile && 'space-y-2')}>
+              {communicationItems.map((item) => (
+                <li key={item.type}>{renderCommunicationButton(item)}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       </nav>
 
-      <div className="mt-auto">
-        <div className={cn(
-          "flex items-center px-2",
-          isCollapsed && !isMobile ? "flex-col gap-2" : "justify-between"
-        )}>
-          <div className={cn(
-            "flex items-center",
-            isCollapsed && !isMobile ? "flex-col gap-2" : "gap-1"
-          )}>
+      <div className="mt-auto border-t border-border pt-3">
+        <div
+          className={cn(
+            'flex items-center',
+            iconOnly ? 'flex-wrap justify-center gap-1' : 'justify-between px-1'
+          )}
+        >
+          <div className={cn('flex items-center', iconOnly ? 'flex-wrap justify-center gap-1' : 'gap-1')}>
             <ThemeToggle />
             <LanguageSwitch />
-            <button
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 rounded-lg transition"
-              onClick={() => setShowCalendarSync(true)}
-              aria-label="Sincronizar com Google Calendar"
-            >
-              <Calendar className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <button
-              className="p-2 text-gray-500 hover:text-[#3f9094] dark:text-gray-400 dark:hover:text-[#3f9094] rounded-lg transition"
-              onClick={() => setShowProfileDialog(true)}
-              aria-label="Editar Perfil"
-              title="Editar Meu Perfil"
-            >
-              <User className="h-5 w-5" aria-hidden="true" />
-            </button>
+            {renderFooterAction({
+              label: t('syncGoogleCalendar'),
+              onClick: () => setShowCalendarSync(true),
+              icon: Calendar,
+            })}
+            {renderFooterAction({
+              label: t('editProfile'),
+              onClick: () => setShowProfileDialog(true),
+              icon: User,
+            })}
             <KeyboardShortcutsDialog />
             <DatabaseManagerDialog />
           </div>
-          <div className={cn(
-            isCollapsed && !isMobile ? "mt-2" : ""
-          )}>
-            <NotificationBar />
-          </div>
+          <NotificationBar />
         </div>
 
-        {(!isCollapsed || isMobile) && (
-          <>
-            <div className="text-xs text-center text-gray-600 dark:text-gray-400 mt-4">
-              <p>NeuroBalance Clinic</p>
-              <p className="mt-1">{t('system')} v1.0.0</p>
-            </div>
+        {renderLogout()}
 
-            <Button
-              variant="ghost"
-              className="w-full mt-4 flex items-center justify-center text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-              onClick={handleLogout}
-              aria-label="Fazer logout do sistema"
-            >
-              <LogOut className="h-5 w-5 mr-2" aria-hidden="true" />
-              {t('logout')}
-            </Button>
-          </>
+        {!iconOnly && (
+          <div className="mt-4 text-center text-xs text-muted-foreground">
+            <p>NeuroBalance Clinic</p>
+            <p className="mt-1">{t('system')} v1.0.0</p>
+          </div>
         )}
       </div>
 
-      {/* Communications Panel Drawer */}
       <Drawer open={showCommunications} onOpenChange={setShowCommunications}>
         <DrawerContent className="max-h-[90vh] overflow-y-auto">
           <div className="p-4 pt-safe">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Comunicações</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">{t('communications')}</h2>
               <DrawerClose asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <X className="h-4 w-4" />
@@ -299,74 +381,131 @@ const Sidebar = () => {
           </div>
         </DrawerContent>
       </Drawer>
-
-      {/* Search Dialog */}
-      <SearchDialog open={showSearch} onOpenChange={setShowSearch} />
-
-      {/* Google Calendar Sync Dialog */}
-      <GoogleCalendarSync open={showCalendarSync} onOpenChange={setShowCalendarSync} />
-
-      {/* Profile Dialog */}
-      <AdminProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
     </div>
+  );
+
+  const footerActionClass =
+    'rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
+
+  function renderFooterAction({ label, onClick, icon: Icon }: { label: string; onClick: () => void; icon: LucideIcon }) {
+    if (iconOnly) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" className={footerActionClass} onClick={onClick} aria-label={label}>
+              <Icon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{label}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return (
+      <button type="button" className={footerActionClass} onClick={onClick} aria-label={label} title={label}>
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </button>
+    );
+  }
+
+  function renderLogout() {
+    if (iconOnly) {
+      return (
+        <div className="mt-2 flex justify-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="rounded-lg p-2 text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive"
+                onClick={handleLogout}
+                aria-label={t('logoutSystem')}
+              >
+                <LogOut className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t('logout')}</TooltipContent>
+          </Tooltip>
+        </div>
+      );
+    }
+    return (
+      <Button
+        variant="ghost"
+        className="mt-4 flex w-full items-center justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+        onClick={handleLogout}
+        aria-label={t('logoutSystem')}
+      >
+        <LogOut className="mr-2 h-5 w-5" aria-hidden="true" />
+        {t('logout')}
+      </Button>
+    );
+  }
+
+  const renderDialogs = () => (
+    <>
+      <SearchDialog open={showSearch} onOpenChange={setShowSearch} />
+      <GoogleCalendarSync open={showCalendarSync} onOpenChange={setShowCalendarSync} />
+      <AdminProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
+    </>
   );
 
   if (isMobile) {
     return (
-      <div className="fixed top-0 left-0 z-40 w-full bg-white/90 dark:bg-[#1A1F2C]/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 flex justify-between items-center px-4 py-3 pt-safe">
-        <Drawer>
-          <DrawerTrigger asChild>
+      <>
+        <div className="fixed top-0 left-0 z-40 w-full bg-background/95 backdrop-blur-sm border-b border-border flex justify-between items-center px-4 py-3 pt-safe">
+          <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+            <DrawerTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 flex items-center justify-center rounded-full"
+                aria-label={t('openNavigationMenu')}
+              >
+                <Menu className="h-6 w-6" aria-hidden="true" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="h-[95vh] rounded-t-xl border-t-0">
+              {renderSidebarContent()}
+            </DrawerContent>
+          </Drawer>
+
+          <img
+            src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
+            alt="NeuroBalance Logo"
+            className="h-10 w-auto app-logo object-contain"
+          />
+
+          <div className="flex items-center gap-2">
+            <NotificationBar />
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full h-11 w-11 flex items-center justify-center"
-              aria-label="Abrir menu de navegação"
+              className="h-11 w-11 flex items-center justify-center rounded-full"
+              onClick={() => setShowSearch(true)}
+              aria-label={t('openQuickSearch')}
             >
-              <Menu className="h-6 w-6" aria-hidden="true" />
+              <Search className="h-5 w-5" aria-hidden="true" />
             </Button>
-          </DrawerTrigger>
-          <DrawerContent className="h-[95vh] rounded-t-xl border-t-0">
-            {renderSidebarContent()}
-          </DrawerContent>
-        </Drawer>
-
-        <img
-          src="/lovable-uploads/e18faaaf-ef2c-4678-98cf-d9e7b9fa5ea5.png"
-          alt="NeuroBalance Logo"
-          className="h-10 w-auto app-logo object-contain"
-        />
-
-        <div className="flex items-center gap-2">
-          <NotificationBar />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full h-11 w-11 flex items-center justify-center"
-            onClick={() => setShowSearch(true)}
-            aria-label="Abrir busca rápida"
-          >
-            <Search className="h-5 w-5" aria-hidden="true" />
-          </Button>
+          </div>
         </div>
-      </div>
+
+        {renderDialogs()}
+      </>
     );
   }
 
   return (
-    <div className={cn(
-      'fixed top-0 left-0 h-screen bg-white dark:bg-[#1A1F2C] border-r border-gray-200 dark:border-gray-800 z-40 transition-all duration-300 shadow-md overflow-y-auto',
-      isCollapsed ? 'w-20' : 'w-64',
-    )}>
-      {renderSidebarContent()}
-    </div>
+    <>
+      <div
+        className={cn(
+          'fixed top-0 left-0 h-screen bg-background border-r border-border z-40 transition-all duration-300 overflow-y-auto',
+          isCollapsed ? 'w-20 scrollbar-hide' : 'w-64',
+        )}
+      >
+        {renderSidebarContent()}
+      </div>
+      {renderDialogs()}
+    </>
   );
 };
-
-// Ícone personalizado para o menu compacto
-const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-);
 
 export default Sidebar;

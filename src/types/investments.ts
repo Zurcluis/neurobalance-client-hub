@@ -10,6 +10,8 @@ export interface Investment {
   currentPrice: number;
   purchaseDate: string;
   notes?: string;
+  priceCurrency?: string;
+  priceUpdatedAt?: string;
 }
 
 export interface InvestmentFormData {
@@ -29,6 +31,16 @@ export interface MarketData {
   changePercent24h: number;
   marketCap?: number;
   volume24h?: number;
+  currency: string;
+  lastUpdated: string;
+}
+
+export interface MarketQuote {
+  symbol: string;
+  price: number;
+  change24h: number;
+  changePercent24h: number;
+  currency: string;
   lastUpdated: string;
 }
 
@@ -39,6 +51,7 @@ export interface PortfolioSummary {
   totalPnLPercent: number;
   topGainer?: Investment & { pnl: number };
   topLoser?: Investment & { pnl: number };
+  unpricedCount: number;
 }
 
 export interface CryptoApiResponse {
@@ -48,14 +61,5 @@ export interface CryptoApiResponse {
     usd_market_cap?: number;
     usd_24h_vol?: number;
     last_updated_at: number;
-  };
-}
-
-export interface StockApiResponse {
-  'Global Quote': {
-    '01. symbol': string;
-    '05. price': string;
-    '09. change': string;
-    '10. change percent': string;
   };
 }

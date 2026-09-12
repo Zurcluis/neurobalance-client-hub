@@ -230,6 +230,27 @@ const translations = {
     expired: 'Expired',
     valid: 'Valid',
     invalid: 'Invalid',
+
+    // Sidebar
+    operation: 'Operations',
+    management: 'Management',
+    availability: 'Availability',
+    floorPlan: 'Clinic Floor Plan',
+    clinicProfile: 'Clinic Profile',
+    monitoring: 'Monitoring',
+    clientManagement: 'Client Management',
+    call: 'Call',
+    expandSidebar: 'Expand sidebar',
+    collapseSidebar: 'Collapse sidebar',
+    openQuickSearch: 'Open quick search',
+    searchPlaceholder: 'Search...',
+    searchShortcut: 'Search (Ctrl+K)',
+    syncGoogleCalendar: 'Sync with Google Calendar',
+    logoutSystem: 'Log out of the system',
+    mainMenu: 'Main menu',
+    openNavigationMenu: 'Open navigation menu',
+    logoutSuccess: 'Signed out successfully',
+    logoutError: 'Failed to sign out',
   },
   pt: {
     // Dashboard
@@ -450,6 +471,27 @@ const translations = {
     expired: 'Expirado',
     valid: 'Válido',
     invalid: 'Inválido',
+
+    // Sidebar
+    operation: 'Operação',
+    management: 'Gestão',
+    availability: 'Disponibilidades',
+    floorPlan: 'Planta da Clínica',
+    clinicProfile: 'Ficha Técnica',
+    monitoring: 'Monitorização',
+    clientManagement: 'Gestão de Clientes',
+    call: 'Chamada',
+    expandSidebar: 'Expandir menu lateral',
+    collapseSidebar: 'Recolher menu lateral',
+    openQuickSearch: 'Abrir busca rápida',
+    searchPlaceholder: 'Pesquisar...',
+    searchShortcut: 'Pesquisar (Ctrl+K)',
+    syncGoogleCalendar: 'Sincronizar com Google Calendar',
+    logoutSystem: 'Fazer logout do sistema',
+    mainMenu: 'Menu principal',
+    openNavigationMenu: 'Abrir menu de navegação',
+    logoutSuccess: 'Sessão terminada com sucesso',
+    logoutError: 'Falha ao terminar sessão',
   }
 };
 

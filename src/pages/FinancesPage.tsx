@@ -14,6 +14,7 @@ import FiscalDeadlines from '@/components/finances/FiscalDeadlines';
 import SmartTaxCalculator from '@/components/finances/SmartTaxCalculator';
 import FinancialChatbot from '@/components/finances/FinancialChatbot';
 import LoanTracker from '@/components/finances/LoanTracker';
+import ForecastAndAlertsTab from '@/components/finances/ForecastAndAlertsTab';
 import PaymentImport, { PaymentImportData } from '@/components/finances/PaymentImport';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,16 +39,23 @@ import {
   DollarSign,
   PiggyBank,
   Upload,
-  ChevronRight
+  ChevronRight,
+  TrendingUp
 } from 'lucide-react';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePayments } from '@/hooks/usePayments';
 import { formatCurrency } from '@/utils/formatUtils';
-import { format, differenceInDays, subMonths } from 'date-fns';
+import { format, differenceInDays, startOfYear, endOfDay } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { getUpcomingFiscalDeadlines } from '@/utils/fiscalCalendar';
-
-const monthKey = (dateStr?: string | null) => (dateStr || '').slice(0, 7);
+import {
+  FinancePeriod,
+  FINANCE_PERIOD_OPTIONS,
+  PERIOD_META,
+  getPeriodWindow,
+  sumInWindow,
+  countInWindow,
+} from '@/utils/financePeriods';
 
 /** Variação percentual; null quando não há base de comparação. */
 const pctChange = (current: number, previous: number): number | null => {
@@ -61,6 +69,7 @@ const FinancesPage = () => {
   const [analysisTab, setAnalysisTab] = useState<string>('monthly');
   const [taxTab, setTaxTab] = useState<string>('breakdown');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [period, setPeriod] = useState<FinancePeriod>('month');
   const currentYear = new Date().getFullYear();
 
   const { expenses, fetchExpenses: refreshExpenses } = useExpenses();
@@ -103,41 +112,47 @@ const FinancesPage = () => {
     }
   };
 
-  // Métricas do mês corrente com comparação real vs. mês anterior
+  // Métricas do período selecionado com comparação real vs. período equivalente anterior
   const metrics = useMemo(() => {
     const now = new Date();
-    const thisMonth = format(now, 'yyyy-MM');
-    const lastMonth = format(subMonths(now, 1), 'yyyy-MM');
+    const win = getPeriodWindow(period, now);
     const year = format(now, 'yyyy');
 
-    const sumByMonth = (items: { data?: string | null; valor?: number | null }[], month: string) =>
-      items.filter(i => monthKey(i.data) === month).reduce((acc, i) => acc + (i.valor || 0), 0);
+    const revThis = sumInWindow(paymentsData, win.start, win.end);
+    const expThis = sumInWindow(expenses, win.start, win.end);
+    const revPrev = sumInWindow(paymentsData, win.prevStart, win.prevEnd);
+    const expPrev = sumInWindow(expenses, win.prevStart, win.prevEnd);
 
-    const sumByYear = (items: { data?: string | null; valor?: number | null }[], year: string) =>
-      items.filter(i => (i.data || '').startsWith(year)).reduce((acc, i) => acc + (i.valor || 0), 0);
+    // Acumulado do ano corrente (fallback quando o período não tem dados)
+    const ytdStart = startOfYear(now);
+    const ytdEnd = endOfDay(now);
+    const revYtd = sumInWindow(paymentsData, ytdStart, ytdEnd);
+    const expYtd = sumInWindow(expenses, ytdStart, ytdEnd);
+    const revYtdCount = countInWindow(paymentsData, ytdStart, ytdEnd);
+    const expYtdCount = countInWindow(expenses, ytdStart, ytdEnd);
 
-    const countByYear = (items: { data?: string | null }[], year: string) =>
-      items.filter(i => (i.data || '').startsWith(year)).length;
-
-    const revThis = sumByMonth(paymentsData, thisMonth);
-    const revLast = sumByMonth(paymentsData, lastMonth);
-    const expThis = sumByMonth(expenses, thisMonth);
-    const expLast = sumByMonth(expenses, lastMonth);
+    // Total histórico (fallback do período Ano e base do período Tudo)
+    const revTotal = paymentsData.reduce((acc, p) => acc + (p.valor || 0), 0);
+    const expTotal = expenses.reduce((acc, e) => acc + (e.valor || 0), 0);
 
     return {
       revThis,
-      revDelta: pctChange(revThis, revLast),
+      revDelta: pctChange(revThis, revPrev),
       expThis,
-      expDelta: pctChange(expThis, expLast),
+      expDelta: pctChange(expThis, expPrev),
       netThis: revThis - expThis,
       marginThis: revThis > 0 ? ((revThis - expThis) / revThis) * 100 : 0,
       year,
-      revYtd: sumByYear(paymentsData, year),
-      expYtd: sumByYear(expenses, year),
-      revYtdCount: countByYear(paymentsData, year),
-      expYtdCount: countByYear(expenses, year)
+      revYtd,
+      expYtd,
+      revYtdCount,
+      expYtdCount,
+      revTotal,
+      expTotal,
+      revTotalCount: paymentsData.length,
+      expTotalCount: expenses.length
     };
-  }, [paymentsData, expenses]);
+  }, [period, paymentsData, expenses]);
 
   // Prazos fiscais reais (calculados a partir do calendário fiscal de FiscalDeadlines)
   const upcomingDeadlines = useMemo(() => getUpcomingFiscalDeadlines(3), []);
@@ -145,10 +160,29 @@ const FinancesPage = () => {
     d => differenceInDays(d.date, new Date()) <= 60
   );
 
-  const formatDelta = (pct: number | null) =>
-    pct === null
-      ? null
-      : { value: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs mês anterior`, positive: pct >= 0 };
+  const formatDelta = (pct: number | null) => {
+    const compare = PERIOD_META[period].compare;
+    if (pct === null || !compare) return null;
+    return { value: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% ${compare}`, positive: pct >= 0 };
+  };
+
+  // Sub-texto de fallback quando o período não tem dados:
+  // dia/semana/mês → acumulado do ano; ano → total histórico; tudo → nenhum
+  const fallbackSub = (periodValue: number, kind: 'rev' | 'exp'): string | undefined => {
+    if (periodValue !== 0 || period === 'all') return undefined;
+    const ytdTotal = kind === 'rev' ? metrics.revYtd : metrics.expYtd;
+    const ytdCount = kind === 'rev' ? metrics.revYtdCount : metrics.expYtdCount;
+    const totalCount = kind === 'rev' ? metrics.revTotalCount : metrics.expTotalCount;
+
+    if (period === 'year') {
+      return totalCount > 0
+        ? `Total histórico: ${formatCurrency(kind === 'rev' ? metrics.revTotal : metrics.expTotal)} (${totalCount} transações)`
+        : undefined;
+    }
+    return ytdCount > 0
+      ? `Acumulado ${metrics.year}: ${formatCurrency(ytdTotal)} (${ytdCount} transações)`
+      : undefined;
+  };
 
   const goToTab = (tab: string, nested?: string) => {
     if (nested) {
@@ -240,7 +274,7 @@ const FinancesPage = () => {
 
         {/* Tabs Principais */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto md:h-10">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 h-auto md:h-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Visão Geral</span>
@@ -257,6 +291,10 @@ const FinancesPage = () => {
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Análises</span>
             </TabsTrigger>
+            <TabsTrigger value="forecast" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Previsões &amp; Alertas</span>
+            </TabsTrigger>
             <TabsTrigger value="taxes" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Impostos</span>
@@ -272,56 +310,68 @@ const FinancesPage = () => {
 
           {/* Visão Geral */}
           <TabsContent value="overview" className="space-y-6 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard
-                icon={ArrowDownCircle}
-                label="Receitas do mês"
-                value={formatCurrency(metrics.revThis)}
-                delta={formatDelta(metrics.revDelta) ?? undefined}
-                tone="emerald"
-                sub={
-                  metrics.revThis === 0 && metrics.revYtdCount > 0
-                    ? `Acumulado ${metrics.year}: ${formatCurrency(metrics.revYtd)} (${metrics.revYtdCount} transações)`
-                    : undefined
-                }
-              />
-              <KpiCard
-                icon={ArrowUpCircle}
-                label="Despesas do mês"
-                value={formatCurrency(metrics.expThis)}
-                delta={metrics.expDelta === null ? undefined : {
-                  value: `${metrics.expDelta >= 0 ? '+' : ''}${metrics.expDelta.toFixed(1)}% vs mês anterior`,
-                  positive: metrics.expDelta <= 0
-                }}
-                tone="red"
-                sub={
-                  metrics.expThis === 0 && metrics.expYtdCount > 0
-                    ? `Acumulado ${metrics.year}: ${formatCurrency(metrics.expYtd)} (${metrics.expYtdCount} transações)`
-                    : undefined
-                }
-              />
-              <KpiCard
-                icon={DollarSign}
-                label="Lucro líquido do mês"
-                value={formatCurrency(metrics.netThis)}
-                delta={metrics.revThis > 0 ? { value: `Margem: ${metrics.marginThis.toFixed(1)}%`, positive: metrics.netThis >= 0 } : undefined}
-                tone="blue"
-                sub={
-                  metrics.revThis === 0 && metrics.expThis === 0 && (metrics.revYtdCount > 0 || metrics.expYtdCount > 0)
-                    ? `Acumulado ${metrics.year}: ${formatCurrency(metrics.revYtd - metrics.expYtd)}`
-                    : undefined
-                }
-              />
-              <KpiCard
-                icon={Calendar}
-                label="Prazos fiscais"
-                value={deadlinesSoon.length}
-                tone="amber"
-                sub="Próximos 60 dias"
-              />
-            </div>
+            {/* Seletor de período */}
+            <Tabs value={period} onValueChange={v => setPeriod(v as FinancePeriod)}>
+              <TabsList className="grid w-full grid-cols-5 h-9">
+                {FINANCE_PERIOD_OPTIONS.map(opt => (
+                  <TabsTrigger key={opt.value} value={opt.value} className="px-1 text-xs sm:text-sm">
+                    {opt.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
-            <CashFlowDashboard payments={paymentsData} expenses={expenses} />
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Skeleton className="h-[110px] w-full" />
+                <Skeleton className="h-[110px] w-full" />
+                <Skeleton className="h-[110px] w-full" />
+                <Skeleton className="h-[110px] w-full" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <KpiCard
+                  icon={ArrowDownCircle}
+                  label={`Receitas ${PERIOD_META[period].range}`}
+                  value={formatCurrency(metrics.revThis)}
+                  delta={formatDelta(metrics.revDelta) ?? undefined}
+                  tone="emerald"
+                  sub={fallbackSub(metrics.revThis, 'rev')}
+                />
+                <KpiCard
+                  icon={ArrowUpCircle}
+                  label={`Despesas ${PERIOD_META[period].range}`}
+                  value={formatCurrency(metrics.expThis)}
+                  delta={metrics.expDelta === null ? undefined : {
+                    value: `${metrics.expDelta >= 0 ? '+' : ''}${metrics.expDelta.toFixed(1)}% ${PERIOD_META[period].compare ?? ''}`.trim(),
+                    positive: metrics.expDelta <= 0
+                  }}
+                  tone="red"
+                  sub={fallbackSub(metrics.expThis, 'exp')}
+                />
+                <KpiCard
+                  icon={DollarSign}
+                  label={`Lucro líquido ${PERIOD_META[period].netRange}`}
+                  value={formatCurrency(metrics.netThis)}
+                  delta={metrics.revThis > 0 ? { value: `Margem: ${metrics.marginThis.toFixed(1)}%`, positive: metrics.netThis >= 0 } : undefined}
+                  tone="blue"
+                  sub={
+                    metrics.revThis === 0 && metrics.expThis === 0 && (metrics.revYtdCount > 0 || metrics.expYtdCount > 0) && period !== 'all' && period !== 'year'
+                      ? `Acumulado ${metrics.year}: ${formatCurrency(metrics.revYtd - metrics.expYtd)}`
+                      : undefined
+                  }
+                />
+                <KpiCard
+                  icon={Calendar}
+                  label="Prazos fiscais"
+                  value={deadlinesSoon.length}
+                  tone="amber"
+                  sub="Próximos 60 dias"
+                />
+              </div>
+            )}
+
+            <CashFlowDashboard payments={paymentsData} expenses={expenses} period={period} />
           </TabsContent>
 
           {/* Transações */}
@@ -394,6 +444,17 @@ const FinancesPage = () => {
                 <BalanceSheet payments={paymentsData} expenses={expenses} />
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          {/* Previsões & Alertas */}
+          <TabsContent value="forecast" className="mt-6">
+            <ForecastAndAlertsTab
+              payments={paymentsData}
+              expenses={expenses}
+              isLoading={isLoading}
+              error={error}
+              onRetry={fetchPayments}
+            />
           </TabsContent>
 
           {/* Impostos e Relatórios */}

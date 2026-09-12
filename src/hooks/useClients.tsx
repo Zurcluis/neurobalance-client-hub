@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
+import { useActivityLogger } from './useActivityLogger';
 
 type Client = Database['public']['Tables']['clientes']['Row'];
 type NewClient = Database['public']['Tables']['clientes']['Insert'];
@@ -9,6 +10,7 @@ type UpdateClient = Database['public']['Tables']['clientes']['Update'];
 
 export function useClients() {
   const supabase = useSupabaseClient();
+  const { logActivity } = useActivityLogger();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,11 +111,12 @@ export function useClients() {
       // Update the clients state with the new client
       setClients(prev => [...prev, newClient]);
       toast.success('Client added successfully');
+      logActivity('client_created', 'cliente', newClient.id, `Cliente ${newClient.nome} criado`);
     } catch (err) {
       console.error('Error adding client:', err);
       toast.error('Failed to add client');
     }
-  }, [supabase]);
+  }, [supabase, logActivity]);
 
   // Update client
   const updateClient = useCallback(async (id: number, updates: UpdateClient) => {
@@ -130,12 +133,13 @@ export function useClients() {
       // Refresh the clients list
       await loadClients();
       toast.success('Client updated successfully');
+      logActivity('client_updated', 'cliente', id, `Cliente ${updates.nome || `#${id}`} atualizado`);
     } catch (err) {
       console.error('Error updating client:', err);
       toast.error('Failed to update client');
       throw err;
     }
-  }, [loadClients, supabase]);
+  }, [loadClients, supabase, logActivity]);
 
   // Delete client
   const deleteClient = useCallback(async (id: number) => {
@@ -160,6 +164,9 @@ export function useClients() {
       // 3. Immediately update local client state
       setClients(prev => prev.filter(c => c.id !== id));
       toast.success('Cliente eliminado com sucesso!');
+      if (clientToDelete?.nome) {
+        logActivity('client_deleted', 'cliente', id, `Cliente ${clientToDelete.nome} eliminado`);
+      }
 
       // 4. Delete corresponding leads in landing_leads & lead_compra
       if (clientToDelete) {
@@ -182,7 +189,7 @@ export function useClients() {
       console.error('Error deleting client:', err);
       toast.error('Erro ao eliminar cliente');
     }
-  }, [supabase]);
+  }, [supabase, logActivity]);
 
   // Search clients
   const searchClients = useCallback((query: string) => {

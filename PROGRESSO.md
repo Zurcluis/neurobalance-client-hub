@@ -1,7 +1,101 @@
 ﻿# PROGRESSO — NeuroBalance Client Hub
 
-> Última atualização: 09/09/2026 (sessão 4 — agentes em paralelo)
-> Estado: Redesign do Calendário estilo Google Calendar + revisão de lógica da página de Finanças concluídos e verificados. **Feito até aqui: Estatísticas, Investimentos, Administração, Tokens, Monitorização, Ficha Técnica, Planta da Clínica. Pendente: revisão do utilizador + decidir arquitetura de policies das tabelas de marketing (SQL criado, não aplicado).**
+> Última atualização: 12/09/2026 (sessão 7 — 6 agentes em paralelo: camada "inteligente")
+> Estado: app enriquecida com agendamento inteligente (sugestões/conflitos/lista de espera), score de churn, previsões financeiras, atribuição de marketing, auto-agendamento no portal, lembretes SMS e pesquisa em lingu natural. **Pendente: setup externo de SMS/email (ver Sessão 7) + SQL de cleanup + key Finnhub (ver PENDENTES).**
+
+---
+
+## ✅ SESSÃO 7 (12/09 — 6 agentes em paralelo: camada "inteligente" em toda a app)
+
+### Agendamento inteligente (calendário)
+- Sugestão de slot ideal pelo padrão do cliente (últimas 8 sessões) + disponibilidade; conflitos com alternativas clicáveis; comandos novos no parser: "adiar a sessão da Ana para a próxima semana", séries mensais; lista de espera ao cancelar (sem tabelas novas)
+- Novos: `utils/slotSuggestions.ts`, `calendar/SlotSuggestionsPanel.tsx`, `calendar/WaitlistFillPanel.tsx`
+
+### Inteligência clínica (Monitorização)
+- Tab "Risco & Retenção": score de churn 0-100 (faltas 60d + afastamento da cadência + sessões por faturar + tendência de humor), clientes inativos com mensagem win-back, correlação humor × sessões (gráfico por nº de sessão)
+- Novos: `utils/clientInsights.ts` + `components/insights/*` (5 ficheiros); os 3 piores scores aparecem no painel de avisos de clientes
+
+### Finanças inteligentes
+- Tab "Previsões & Alertas": previsão de receita 30/60/90d (conservador/otimista a partir de packs recorrentes), deteção de anomalias (>2σ ou >2.5× mediana), renovações de pack com mensagem pronta a copiar
+- Novos: `utils/financeInsights.ts` + 4 componentes em `finances/`
+
+### Marketing inteligente
+- Tab "Inteligência": atribuição lead → cliente → LTV por campanha (ROAS), leads frios priorizados com follow-up por email via Edge Function, sugestão de próxima ação por lead
+- `send-lead-email` estendida com action `ping` (verifica config sem enviar)
+
+### Portal do cliente
+- Auto-agendamento em 2 passos (slots livres reais a partir de horários da clínica + disponibilidade do cliente, revalidação ao confirmar, estado 'pendente'); respostas rápidas no chat; lembretes 24-48h na `send-sms-reminder` (idempotente via `sms_history`) + secção "Os seus lembretes"
+- Novos: `availability/slotComputation.ts`, `SelfSchedulingPanel.tsx`, `ClientReminders.tsx`
+
+### IA transversal (sem APIs externas, heurística)
+- Ctrl+K agora entende lingu natural pt-PT: "pack a acabar", "pagamentos em atraso", "sessões de hoje", "leads frios", "receita de agosto" → resultados agrupados + navegação com filtro (`/clients?filter=pack-ending` suportado)
+- Resumo automático de sessão por template a partir das notas (dialog editável) em Sessões e Relatórios
+- Novos: `utils/nlpQuery.ts`, `utils/sessionSummary.ts`, `client-details/SessionSummaryDialog.tsx`
+
+### Setup externo pendente (features degradam graciosamente sem ele)
+- **SMS lembretes**: credenciais Twilio + agendar cron hora-a-hora a invocar `reminders-run` (pg_cron + pg_net, opcional `REMINDERS_CRON_SECRET`)
+- **Email marketing/follow-up**: deploy da `send-lead-email` com `RESEND_API_KEY`
+
+### Verificação
+- `npx tsc -b` 0 erros (3 erros de integração corrigidos) · build OK · ESLint 0 erros nos ficheiros novos
+
+---
+
+## ✅ SESSÃO 6 (12/09 — 3 agentes em paralelo: Perfil do cliente + Portal do cliente)
+
+### Perfil do cliente (visão admin) — núcleo
+- **Estrutura**: ClientDetailPage 957→438 linhas (hook `useClientDetailData` + `ClientDetailHeader`); ClientSessions quebrado em `SessionEditDialog`/`UpcomingAppointmentsCard`/`StatusBadge`/`sessionView`
+- **Bugs graves**: fetch duplicado de agendamentos (2 subscrições realtime); `addSession` morto com `(window as any).supabase` e tabela inexistente; "Completar Processo" escrevia `status` em vez de `estado`; uploads de sessão nunca persistidos (agora em `neurobalance_session_arquivos`); ficheiros do cliente só em localStorage (agora bucket `ficheiros` + signed URLs); eliminação de sessão com `window.location.reload()`
+- **Visual**: zero hex/gradientes; KpiCard; ConfirmDialog nas ações destrutivas; EmptyState no 404
+
+### Perfil do cliente — tabs de dados (tokens, avisos, pagamentos, gráficos, humor, relatórios)
+- **Aba Tokens**: de 3 botões com hex → cartão "Acesso do Cliente" (chip de estado, validade 30 dias, feedback de cópia)
+- **Aba Avisos**: cards refeitos com variantes danger/warning/info em tokens
+- **Bugs**: relatórios falsos hardcoded removidos de Histórico/Comparar/Partilhar — agora usam `reportHistoryStore.ts` (persistência real por cliente); link de partilha fictício substituído por mailto real; JSON.parse sem proteção nas notas; double-parse de datas em ClientPayments
+- ClientMoodTracker quebrado (−230 linhas, gráfico extraído); ClientCharts com chartUtils + min-w-0
+
+### Portal do cliente (/client-dashboard)
+- **Chat**: separadores de dia, Enter envia, autosize, badge "Online" fake removida, guard anti-refetch no markAsRead, erro com retry
+- **Bugs**: ordem cronológica do gráfico mensal de pagamentos (meses por inserção); notas a vazar entre dialogs de agendamento; tipado com `types.ts` (era `any`)
+- Perfil read-only com CTA para o chat (RLS impede o cliente de escrever em `clientes`)
+
+### Verificação
+- `npx tsc -b` 0 erros · ESLint 0 erros (1 warning pré-existente react-refresh) · build OK (1m32s) · smoke test no browser (0 erros de consola)
+
+---
+
+## ✅ SESSÃO 5 (10/09 — revisão do utilizador + features novas, vários agentes em paralelo)
+
+### Revisão do utilizador (Estatísticas, Investimentos, Administração)
+- **Estatísticas**: modo "Todos os dados" descartava dados antigos (buckets fixos); janelas KPI vs. gráficos desalinhadas; loading/erro agora com skeletons + retry; cores semânticas; estados vazios nos gráficos
+- **Investimentos**: 3 gradientes removidos, containers de gráfico `min-w-0 overflow-hidden`, toast de "preços atualizados" já não aparece quando o fetch falha
+- **Administração**: botão falso "Enviar Email" removido; "Renovar" token implementado (dialog com validade escolhível 1h–6m/lifetime, data resultante calculada, copiar token); guard anti-autodestruição (não elimina a própria conta); erro de fetch visível; `confirm()` → ConfirmDialog
+
+### Investimentos — API real de preços (decisão do utilizador)
+- Ações/ETFs: **Finnhub** (free 60 calls/min, CORS direto) · FX USD→EUR: **frankfurter.dev** (ECB, cache diária) · Cripto: CoinGecko (mantido)
+- **Zero dados falsos**: sem key/API indisponível → badge "Preço não disponível" + banner com instrução; timestamp "há X min" nos preços
+- Corrigido bug `topGainer/topLoser` (pnl===0); auto-refresh 5min implementado (guard de visibilidade); cache TTL 5min com dedupe
+- **Setup**: criar key em finnhub.io → `.env.local` com `VITE_MARKET_DATA_API_KEY=...`
+
+### Finanças — seletor de período na Vista Geral (pedido do utilizador)
+- **Dia · Semana · Mês · Ano · Tudo**: KPIs (comparação real vs. período anterior), gráfico de fluxo de caixa e sub-textos adaptáveis por granularidade
+- `utils/financePeriods.ts` novo (janelas + buckets date-fns, labels pt-PT); "Tudo" agrega por ano se > 24 meses
+
+### Sidebar — redesign (pedido do utilizador)
+- 11 itens agrupados em **Operação / Gestão / Sistema** com labels; ativo com pill indicadora via tokens
+- **Tablet 768–1023px**: rail de ícones por omissão (PENDENTE antigo resolvido); PageLayout sincronizado
+- Modo colapsado completo: tooltips em tudo, logout sempre acessível; Ctrl+K reparado (era no-op); drawer mobile controlado; toasts em pt-PT
+
+### Atividade das administrativas (novo — trio de agentes)
+- Tabela `admin_activity_log` (RLS SELECT/INSERT, realtime, imutável) — migration aplicada em produção
+- `hooks/useActivityLogger.ts` (contrato: `logActivity(action, entity?, entityId?, details?)`) + instrumentação: login/logout, clientes, agendamentos, pagamentos, despesas, importações, tokens, gestão de administrativas
+- Monitorização: tab "Atividade da Equipa" — feed por dia, filtros (administrativa/tipo), KPIs, realtime, estado "falta migration"
+
+### Calendário — paleta mantida
+- Mantidas (decisão do utilizador) as cores sólidas estilo Google + tipos novos "Consulta de Psicologia" e "Constelações Familiares" (patch reaplicado)
+
+### Verificação
+- `npx tsc -b` 0 erros · builds OK · páginas testadas no browser (390/820/1280px, dark mode)
 
 ---
 
@@ -169,23 +263,25 @@
 ---
 
 ## 📌 PENDENTES (menor prioridade)
-- **Continuar redesign visual**: Estatísticas, Investimentos, Administração (falta rever com o utilizador)
+- **SQL por correr**: `supabase/migrations/20260910220000_cleanup_agent_c_test_rows.sql` no SQL Editor (apaga 5 linhas de teste da atividade) e depois apagar o ficheiro
+- **SQL por confirmar**: `20260909120000_reopen_marketing_tables_rls.sql` (RLS de marketing) — confirmar se já foi aplicado
+- **Setup Finnhub**: criar key gratuita → `.env.local` com `VITE_MARKET_DATA_API_KEY=...` (sem key, ações/ETF mostram "Preço não disponível")
 - Calendário: "Criar" ao clicar numa célula abre dialog completo (Google abre quick-create) — avaliar se se quer um popover rápido
-- Finanças: KPIs do mês a zero quando o mês corrente não tem dados — considerar mostrar acumulado do ano em `sub`
 - `window.confirm` → `shared/ConfirmDialog.tsx` (8 sítios)
 - Deduplicar campanhas na importação
 - Apagar leads associadas por correspondência frouxa em `useClients.tsx:164-180`
 - Refactor de componentes gigantes (AppointmentCalendar ~2100 linhas, ClientDetailPage 1227...)
 - `console.log` poluição (~342 chamadas)
+- Código morto: `components/admin/AdminTokenManager.tsx` e `components/clients/ClientTokenManager.tsx` não são importados por nada — remover
 - Realtime do Kanban deve voltar a funcionar (RLS pública) — confirmar
 - **Revogar o access token pessoal `sbp_...` fornecido nesta sessão** (Dashboard → Access Tokens)
-- Sidebar desktop (256px fixa) espreme tablets 768–1023px — considerar colapsar para ícones abaixo de `lg`
 - Notificação de "sessão de marketing expirada" já não é necessária para dados (policies públicas), mas o ecrã de login de marketing continua a existir
 
 ---
 
 ## 🔧 CONVENÇÕES DO PROJETO
 
+- **Orquestração de agentes (regra do utilizador, 10/09)**: em trabalhos muito grandes, usar vários agentes em paralelo para ser mais rápido — com **âmbitos de ficheiros disjuntos** e **contrato partilhado definido antecipadamente** (ex.: trio da atividade: infraestrutura / instrumentação / UI). Em trabalhos pequenos, decidir caso a caso o que é mais eficiente (1 agente, trabalho direto ou nenhum). Quem decide é o agente principal, com base no tamanho/risco do trabalho
 - Stack: React + Vite + TypeScript + Tailwind + shadcn/ui + Supabase (anon key + RLS) + sonner
 - Ícones: lucide-react · Não usar emojis em código/UI · Commits: conventional commits em inglês
 - **Deploy**: build local para verificar → commit → push main → Cloudflare Pages

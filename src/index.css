@@ -450,15 +450,24 @@
 
 /* Sidebar styling updates */
 .sidebar-item {
-  @apply flex items-center p-3 rounded-lg transition-all duration-200;
+  @apply relative flex items-center p-3 rounded-lg outline-none transition-colors duration-200;
+}
+
+.sidebar-item:focus-visible {
+  @apply ring-2 ring-ring ring-offset-1 ring-offset-background;
 }
 
 .sidebar-item-active {
-  @apply bg-[#3A726D] text-white;
+  @apply bg-primary/10 font-medium text-primary dark:bg-primary/20 dark:text-[hsl(var(--neuro-light-teal))];
+}
+
+.sidebar-item-active::before {
+  content: '';
+  @apply absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary dark:bg-[hsl(var(--neuro-light-teal))];
 }
 
 .sidebar-item-inactive {
-  @apply hover:bg-[#E6ECEA] dark:hover:bg-[#2A5854]/40;
+  @apply text-foreground/80 hover:bg-muted hover:text-foreground;
 }
 
 /* Button styling */
@@ -1072,5 +1081,25 @@
   
   .no-scrollbar::-webkit-scrollbar {
     display: none;  /* Chrome, Safari and Opera */
+  }
+}
+
+/* Ditado por voz: pílula flutuante */
+.dictation-bar {
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  border-radius: 9999px;
+  background-color: #3f9094;
+  animation: dictation-eq 1s ease-in-out infinite;
+}
+
+@keyframes dictation-eq {
+  0%,
+  100% {
+    height: 6px;
+  }
+  50% {
+    height: 18px;
   }
 }

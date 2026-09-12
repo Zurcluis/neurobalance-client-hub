@@ -14,6 +14,7 @@ import { AdminProtectedRoute } from "./components/admin/AdminProtectedRoute";
 import { MarketingProtectedRoute } from "./components/marketing/MarketingProtectedRoute";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { SkipLinks } from "./components/accessibility/SkipLinks";
+import { DictationProvider } from "./components/dictation/DictationProvider";
 
 const Index = lazy(() => import("./pages/Index"));
 const ClientsPage = lazy(() => import("./pages/ClientsPage"));
@@ -63,8 +64,9 @@ const App = () => (
                     <TooltipProvider>
                       <Sonner />
                       <BrowserRouter>
-                        <SkipLinks />
-                        <Suspense fallback={<LoadingFallback />}>
+                        <DictationProvider>
+                          <SkipLinks />
+                          <Suspense fallback={<LoadingFallback />}>
                           <Routes>
                             {/* Admin Routes */}
                             <Route path="/login" element={<LoginPage />} />
@@ -262,7 +264,8 @@ const App = () => (
                             {/* 404 Route */}
                             <Route path="*" element={<NotFound />} />
                           </Routes>
-                        </Suspense>
+                          </Suspense>
+                        </DictationProvider>
                       </BrowserRouter>
                     </TooltipProvider>
                   </MarketingAuthProvider>

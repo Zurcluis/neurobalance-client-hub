@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import QuickCard from '@/components/shared/QuickCard';
@@ -81,6 +81,27 @@ const ClientsPage = () => {
   const [sortBy, setSortBy] = useState<string>('name');
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [clientView, setClientView] = useState<'all' | 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu'>('all');
+  const [packEndingFilter, setPackEndingFilter] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const validTabs = ['overview', 'clients', 'leads', 'tokens', 'chat', 'notifications'];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+
+    const statusParam = searchParams.get('status');
+    if (statusParam && ['all', 'ongoing', 'thinking', 'no-need', 'finished', 'desistiu'].includes(statusParam)) {
+      setClientView(statusParam as typeof clientView);
+      setActiveTab('clients');
+    }
+
+    if (searchParams.get('filter') === 'pack-ending') {
+      setPackEndingFilter(true);
+      setActiveTab('clients');
+    }
+  }, [searchParams]);
 
   // Estado para conversão de leads
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -98,6 +119,15 @@ const ClientsPage = () => {
     // Filtro por texto
     if (searchQuery) {
       filtered = searchClients(searchQuery);
+    }
+
+    // Filtro por packs a acabar
+    if (packEndingFilter) {
+      filtered = filtered.filter(client => {
+        const maxSessions = client.max_sessoes ?? 0;
+        const remaining = maxSessions - (client.numero_sessoes ?? 0);
+        return maxSessions > 0 && remaining <= 2;
+      });
     }
 
     // Filtro por período
@@ -189,7 +219,7 @@ const ClientsPage = () => {
     });
 
     return sorted;
-  }, [clients, searchQuery, datePeriod, dateRange, selectedGender, ageRange, sortBy, searchClients, appointments, payments]);
+  }, [clients, searchQuery, datePeriod, dateRange, selectedGender, ageRange, sortBy, searchClients, appointments, payments, packEndingFilter]);
 
   // Analytics dos clientes
   const clientAnalytics = useMemo(() => {
@@ -486,9 +516,10 @@ const ClientsPage = () => {
     setSelectedGender('all');
     setAgeRange('all');
     setSortBy('name');
+    setPackEndingFilter(false);
   };
 
-  const hasActiveFilters = searchQuery !== '' || selectedGender !== 'all' || ageRange !== 'all' || datePeriod !== 'all';
+  const hasActiveFilters = searchQuery !== '' || selectedGender !== 'all' || ageRange !== 'all' || datePeriod !== 'all' || packEndingFilter;
 
   if (isLoading) {
     const loadingContent = (

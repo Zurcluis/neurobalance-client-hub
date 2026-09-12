@@ -29,6 +29,7 @@ import { EmailSmsCampaignForm } from '@/components/marketing/EmailSmsCampaignFor
 import { EmailSmsCampaignCard } from '@/components/marketing/EmailSmsCampaignCard';
 import LeadKanbanBoard from '@/components/marketing/LeadKanbanBoard';
 import { SmsAutomationSettings } from '@/components/marketing/SmsAutomationSettings';
+import MarketingIntelligence from '@/components/marketing/MarketingIntelligence';
 import PageHeader from '@/components/shared/PageHeader';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,15 +53,18 @@ import {
   LayoutGrid,
   List,
   Settings2,
-  Megaphone
+  Megaphone,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
 import { useLanguage } from '@/hooks/use-language';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 const MarketingReportsPage = () => {
   const { isMarketingContext } = useMarketingContext();
   const { t } = useLanguage();
+  const { logActivity } = useActivityLogger();
 
   // Marketing Campaigns hooks
   const {
@@ -433,6 +437,7 @@ const MarketingReportsPage = () => {
 
       if (successCount > 0) {
         toast.success(`${successCount} campanhas importadas com sucesso!`);
+        logActivity('import_performed', 'campanhas', undefined, `${successCount} campanhas importadas via ficheiro`);
       }
 
       if (errorCount > 0) {
@@ -453,6 +458,7 @@ const MarketingReportsPage = () => {
 
       if (successCount > 0) {
         toast.success(`${successCount} leads importados com sucesso!`);
+        logActivity('import_performed', 'leads', undefined, `${successCount} leads importados via ficheiro`);
       }
 
       if (errorCount > 0) {
@@ -602,7 +608,7 @@ const MarketingReportsPage = () => {
 
       {/* Tabs Reorganizadas: 8 → 4 */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto md:h-10">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto md:h-10">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Visão Geral</span>
@@ -614,6 +620,10 @@ const MarketingReportsPage = () => {
           <TabsTrigger value="leads" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             <span className="hidden sm:inline">Leads</span>
+          </TabsTrigger>
+          <TabsTrigger value="intelligence" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">Inteligência</span>
           </TabsTrigger>
           <TabsTrigger value="tools" className="flex items-center gap-2">
             <Upload className="h-4 w-4" />
@@ -1262,6 +1272,16 @@ const MarketingReportsPage = () => {
               )}
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        <TabsContent value="intelligence" className="space-y-6 mt-6">
+          <MarketingIntelligence
+            landingLeads={landingLeads}
+            registros={leads}
+            campaigns={campaigns}
+            emailCampaigns={emailSmsCampaigns}
+            isLoading={landingLeadsLoading || leadsLoading || campaignsLoading}
+          />
         </TabsContent>
 
       </Tabs>

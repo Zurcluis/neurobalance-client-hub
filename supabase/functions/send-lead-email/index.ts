@@ -6,6 +6,7 @@ interface EmailRequest {
   subject: string;
   message: string;
   leadName: string;
+  action?: string;
 }
 
 serve(async (req) => {
@@ -15,7 +16,19 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, message, leadName } = await req.json() as EmailRequest;
+    const body = await req.json() as EmailRequest;
+
+    if (body.action === "ping") {
+      return new Response(
+        JSON.stringify({ configured: Boolean(Deno.env.get("RESEND_API_KEY")) }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
+
+    const { to, subject, message, leadName } = body;
 
     // Validação básica
     if (!to || !subject || !message) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Investment, InvestmentFormData, MarketData, PortfolioSummary } from '@/types/investments';
 import { toast } from 'sonner';
 
@@ -62,43 +62,75 @@ export const useInvestments = () => {
     toast.success('Investimento removido com sucesso');
   };
 
-  const updatePrices = (marketData: MarketData[]) => {
-    const updatedInvestments = investments.map(investment => {
-      const marketPrice = marketData.find(data => 
-        data.symbol.toLowerCase() === investment.symbol.toLowerCase()
-      );
-      
-      if (marketPrice) {
-        return {
-          ...investment,
-          currentPrice: marketPrice.price
-        };
-      }
-      
-      return investment;
-    });
+  const updatePrices = useCallback((marketData: MarketData[]) => {
+    if (marketData.length === 0) return;
 
-    setInvestments(updatedInvestments);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedInvestments));
-  };
+    setInvestments(previous => {
+      let changed = false;
+      const updated = previous.map(investment => {
+        const quote = marketData.find(
+          data => data.symbol.toLowerCase() === investment.symbol.toLowerCase()
+        );
+
+        if (
+          quote &&
+          Number.isFinite(quote.price) &&
+          quote.price > 0 &&
+          (quote.price !== investment.currentPrice ||
+            quote.lastUpdated !== investment.priceUpdatedAt)
+        ) {
+          changed = true;
+          return {
+            ...investment,
+            currentPrice: quote.price,
+            priceCurrency: quote.currency,
+            priceUpdatedAt: quote.lastUpdated,
+          };
+        }
+
+        return investment;
+      });
+
+      if (!changed) return previous;
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch (error) {
+        console.error('Erro ao salvar investimentos:', error);
+      }
+      return updated;
+    });
+  }, []);
 
   const getPortfolioSummary = (): PortfolioSummary => {
     const totalInvested = investments.reduce((sum, inv) => sum + (inv.quantity * inv.buyPrice), 0);
-    const totalValue = investments.reduce((sum, inv) => sum + (inv.quantity * inv.currentPrice), 0);
-    const totalPnL = totalValue - totalInvested;
-    const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
 
-    const investmentsWithPnL = investments.map(inv => {
+    const pricedInvestments = investments.filter(
+      inv => Boolean(inv.priceUpdatedAt) && Number.isFinite(inv.currentPrice) && inv.currentPrice > 0
+    );
+    const unpricedCount = investments.length - pricedInvestments.length;
+
+    const totalValue = pricedInvestments.reduce((sum, inv) => sum + (inv.quantity * inv.currentPrice), 0);
+    const totalPnL = pricedInvestments.reduce(
+      (sum, inv) => sum + (inv.currentPrice - inv.buyPrice) * inv.quantity,
+      0
+    );
+    const investedPriced = pricedInvestments.reduce((sum, inv) => sum + (inv.quantity * inv.buyPrice), 0);
+    const totalPnLPercent = investedPriced > 0 ? (totalPnL / investedPriced) * 100 : 0;
+
+    const investmentsWithPnL = pricedInvestments.map(inv => {
       const pnl = (inv.currentPrice - inv.buyPrice) * inv.quantity;
       return { ...inv, pnl };
     });
 
-    const topGainer = investmentsWithPnL.reduce((max, inv) => 
-      inv.pnl > (max?.pnl || -Infinity) ? inv : max, investmentsWithPnL[0]
+    const topGainer = investmentsWithPnL.reduce<Investment & { pnl: number } | null>(
+      (max, inv) => (max === null || inv.pnl > max.pnl ? inv : max),
+      null
     );
 
-    const topLoser = investmentsWithPnL.reduce((min, inv) => 
-      inv.pnl < (min?.pnl || Infinity) ? inv : min, investmentsWithPnL[0]
+    const topLoser = investmentsWithPnL.reduce<Investment & { pnl: number } | null>(
+      (min, inv) => (min === null || inv.pnl < min.pnl ? inv : min),
+      null
     );
 
     return {
@@ -106,8 +138,9 @@ export const useInvestments = () => {
       totalInvested,
       totalPnL,
       totalPnLPercent,
-      topGainer,
-      topLoser
+      topGainer: topGainer ?? undefined,
+      topLoser: topLoser ?? undefined,
+      unpricedCount
     };
   };
 
