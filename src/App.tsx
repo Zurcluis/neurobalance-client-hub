@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -106,7 +106,7 @@ const App = () => (
                             <Route
                               path="/monitoring"
                               element={
-                                <ProtectedRoute>
+                                <ProtectedRoute requireNonPartner>
                                   <MonitoringPage />
                                 </ProtectedRoute>
                               }
@@ -114,7 +114,7 @@ const App = () => (
                             <Route
                               path="/finances"
                               element={
-                                <ProtectedRoute>
+                                <ProtectedRoute requireNonPartner>
                                   <FinancesPage />
                                 </ProtectedRoute>
                               }
@@ -122,7 +122,7 @@ const App = () => (
                             <Route
                               path="/statistics"
                               element={
-                                <ProtectedRoute>
+                                <ProtectedRoute requireNonPartner>
                                   <StatisticsPage />
                                 </ProtectedRoute>
                               }
@@ -130,7 +130,7 @@ const App = () => (
                             <Route
                               path="/investments"
                               element={
-                                <ProtectedRoute>
+                                <ProtectedRoute requireNonPartner>
                                   <InvestmentsPage />
                                 </ProtectedRoute>
                               }
@@ -138,7 +138,7 @@ const App = () => (
                             <Route
                               path="/marketing-reports"
                               element={
-                                <ProtectedRoute>
+                                <ProtectedRoute requireNonPartner>
                                   <MarketingReportsPage />
                                 </ProtectedRoute>
                               }
@@ -147,7 +147,7 @@ const App = () => (
                             <Route
                               path="/admin-management"
                               element={
-                                <ProtectedRoute>
+                                <ProtectedRoute requireNonPartner>
                                   <AdminManagementPage />
                                 </ProtectedRoute>
                               }

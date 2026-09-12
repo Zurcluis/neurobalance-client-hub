@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
@@ -41,6 +41,7 @@ import { useLanguage } from '@/hooks/use-language';
 import SearchDialog from '@/components/search/SearchDialog';
 import GoogleCalendarSync from '@/components/calendar/GoogleCalendarSync';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 import AdminProfileDialog from '@/components/admin/AdminProfileDialog';
 import { toast } from 'sonner';
 import { NotificationBar } from '@/components/notifications/NotificationBar';
@@ -72,6 +73,8 @@ const Sidebar = () => {
   const isMobile = useIsMobile();
   const { t } = useLanguage();
   const { signOut } = useAuth();
+  const { session, logout: adminLogout } = useAdminAuth();
+  const isPartner = session?.role === 'partner';
 
   const iconOnly = isCollapsed && !isMobile;
   const iconClass = isMobile ? 'h-6 w-6' : 'h-5 w-5';
@@ -92,6 +95,7 @@ const Sidebar = () => {
   const handleLogout = async () => {
     try {
       await signOut();
+      adminLogout();
       toast.success(t('logoutSuccess'));
       navigate('/login');
     } catch (error) {
@@ -100,35 +104,49 @@ const Sidebar = () => {
     }
   };
 
-  const menuSections: NavSection[] = [
-    {
-      label: t('operation'),
-      items: [
-        { name: t('dashboard'), icon: Home, path: '/' },
-        { name: t('clients'), icon: User, path: '/clients' },
-        { name: t('calendar'), icon: Calendar, path: '/calendar' },
-        { name: t('availability'), icon: Clock, path: '/admin/availability' },
-        { name: t('floorPlan'), icon: Map, path: '/floor-plan' },
-      ],
-    },
-    {
-      label: t('management'),
-      items: [
-        { name: t('finances'), icon: BarChart3, path: '/finances' },
-        { name: t('investments'), icon: TrendingUp, path: '/investments' },
-        { name: t('statistics'), icon: PieChart, path: '/statistics' },
-        { name: t('marketing'), icon: Megaphone, path: '/marketing-reports' },
-      ],
-    },
-    {
-      label: t('system'),
-      items: [
-        { name: t('clinicProfile'), icon: FileText, path: '/clinic-info' },
-        { name: t('monitoring'), icon: Activity, path: '/monitoring' },
-        { name: t('administrative'), icon: UserCog, path: '/admin-management' },
-      ],
-    },
-  ];
+  const menuSections: NavSection[] = useMemo(() => {
+    const sections: NavSection[] = [
+      {
+        label: t('operation'),
+        items: [
+          { name: t('dashboard'), icon: Home, path: '/' },
+          { name: t('clients'), icon: User, path: '/clients' },
+          { name: t('calendar'), icon: Calendar, path: '/calendar' },
+          { name: t('availability'), icon: Clock, path: '/admin/availability' },
+          { name: t('floorPlan'), icon: Map, path: '/floor-plan' },
+        ],
+      },
+    ];
+
+    if (!isPartner) {
+      sections.push({
+        label: t('management'),
+        items: [
+          { name: t('finances'), icon: BarChart3, path: '/finances' },
+          { name: t('investments'), icon: TrendingUp, path: '/investments' },
+          { name: t('statistics'), icon: PieChart, path: '/statistics' },
+          { name: t('marketing'), icon: Megaphone, path: '/marketing-reports' },
+        ],
+      });
+      sections.push({
+        label: t('system'),
+        items: [
+          { name: t('clinicProfile'), icon: FileText, path: '/clinic-info' },
+          { name: t('monitoring'), icon: Activity, path: '/monitoring' },
+          { name: t('administrative'), icon: UserCog, path: '/admin-management' },
+        ],
+      });
+    } else {
+      sections.push({
+        label: t('system'),
+        items: [
+          { name: t('clinicProfile'), icon: FileText, path: '/clinic-info' },
+        ],
+      });
+    }
+
+    return sections;
+  }, [isPartner, t]);
 
   const communicationItems: { name: string; icon: LucideIcon; type: CommunicationType }[] = [
     { name: t('messages'), icon: MessageSquare, type: 'sms' },

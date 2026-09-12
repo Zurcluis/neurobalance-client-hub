@@ -1,13 +1,30 @@
+import { useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { toast } from "sonner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireNonPartner?: boolean;
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requireNonPartner = false }: ProtectedRouteProps) => {
   const { session, loading } = useAuth();
+  const { session: adminSession, loading: adminLoading } = useAdminAuth();
   const location = useLocation();
+
+  const isPartner = adminSession?.role === 'partner';
+
+  useEffect(() => {
+    if (requireNonPartner && isPartner) {
+      toast.error("Acesso restrito: esta página não está disponível para parceiros.");
+    }
+  }, [requireNonPartner, isPartner]);
+
+  if (requireNonPartner && isPartner) {
+    return <Navigate to="/clients" replace />;
+  }
 
   // Check if we're in development mode and should skip authentication
   const isDevMode = import.meta.env.DEV || import.meta.env.VITE_SKIP_AUTH === 'true';
@@ -17,12 +34,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <>{children}</>;
   }
 
-  if (loading) {
+  if (loading || adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold">Loading...</h2>
-          <p className="text-muted-foreground mt-2">Please wait while we check your authentication.</p>
+          <h2 className="text-xl font-semibold">A carregar...</h2>
+          <p className="text-muted-foreground mt-2">A verificar autenticação e permissões.</p>
         </div>
       </div>
     );

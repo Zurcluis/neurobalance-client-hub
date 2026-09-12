@@ -596,13 +596,101 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
 
   const isAuthenticated = session !== null && session.isValid;
 
-  // Efeito de inicialização
+  // Sincronizar sessão de admin com utilizador autenticado no Supabase Auth
+  const syncAdminWithSupabaseAuth = useCallback(async (authEmail?: string | null): Promise<AdminSession | null> => {
+    if (!authEmail) return null;
+    try {
+      const { data: dbAdmin, error: adminErr } = await supabase
+        .from('admins')
+        .select('*')
+        .ilike('email', authEmail.trim())
+        .eq('ativo', true)
+        .maybeSingle();
+
+      if (adminErr || !dbAdmin) {
+        return null;
+      }
+
+      const nowIso = new Date().toISOString();
+      const { data: tokenData } = await supabase
+        .from('admin_access_tokens')
+        .select('token, expires_at')
+        .eq('admin_id', dbAdmin.id)
+        .eq('is_active', true)
+        .gt('expires_at', nowIso)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let token = tokenData?.token;
+      let expiresAt = tokenData?.expires_at;
+
+      if (!token || !expiresAt) {
+        token = 'adm_tok_' + btoa(Math.random().toString(36).substring(2) + Date.now().toString(36));
+        expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        await supabase.from('admin_access_tokens').insert({
+          admin_id: dbAdmin.id,
+          token,
+          expires_at: expiresAt,
+          is_active: true
+        });
+      }
+
+      const syncedSession: AdminSession = {
+        token,
+        adminId: dbAdmin.id as any,
+        adminName: dbAdmin.nome,
+        adminEmail: dbAdmin.email,
+        role: dbAdmin.role as AdminRole,
+        permissions: getPermissionsByRole(dbAdmin.role),
+        expiresAt,
+        isValid: true,
+        contacto: dbAdmin.contacto || '',
+        morada: dbAdmin.morada || '',
+        data_nascimento: dbAdmin.data_nascimento || '',
+        created_at: dbAdmin.created_at || '',
+        last_login: dbAdmin.last_login || null,
+      };
+
+      setSession(syncedSession);
+      localStorage.setItem('admin_session', JSON.stringify(syncedSession));
+      return syncedSession;
+    } catch (err) {
+      logger.error('Erro ao sincronizar admin com utilizador autenticado:', err);
+      return null;
+    }
+  }, []);
+
+  // Efeito de inicialização e sincronização
   useEffect(() => {
     const initializeSession = async () => {
-      const savedSession = localStorage.getItem('admin_session');
-      if (savedSession) {
-        try {
-          const parsedSession: AdminSession = JSON.parse(savedSession);
+      try {
+        const { data: authData } = await supabase.auth.getSession();
+        const authUserEmail = authData?.session?.user?.email;
+
+        const savedSession = localStorage.getItem('admin_session');
+        let parsedSession: AdminSession | null = null;
+        if (savedSession) {
+          try {
+            parsedSession = JSON.parse(savedSession);
+          } catch {
+            localStorage.removeItem('admin_session');
+          }
+        }
+
+        // Se houver utilizador autenticado no Supabase Auth
+        if (authUserEmail) {
+          // Se a sessão guardada for de outro utilizador ou inexistente, sincronizar imediatamente
+          if (!parsedSession || parsedSession.adminEmail.toLowerCase() !== authUserEmail.toLowerCase()) {
+            const synced = await syncAdminWithSupabaseAuth(authUserEmail);
+            if (synced) {
+              setLoading(false);
+              return;
+            }
+          }
+        }
+
+        if (parsedSession) {
           const now = new Date();
           const expiresAt = new Date(parsedSession.expiresAt);
 
@@ -612,16 +700,31 @@ export const AdminAuthProvider = ({ children }: { children: React.ReactNode }) =
           } else {
             localStorage.removeItem('admin_session');
           }
-        } catch (error) {
-          logger.error('Erro ao carregar sessão administrativa:', error);
-          localStorage.removeItem('admin_session');
         }
+      } catch (error) {
+        logger.error('Erro ao carregar sessão administrativa:', error);
+        localStorage.removeItem('admin_session');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initializeSession();
-  }, [validateToken]);
+
+    // Ouvir alterações de estado de autenticação no Supabase Auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, authSession) => {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && authSession?.user?.email) {
+        await syncAdminWithSupabaseAuth(authSession.user.email);
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        localStorage.removeItem('admin_session');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [validateToken, syncAdminWithSupabaseAuth]);
 
   // Auto-renovação de tokens prestes a expirar (menos de 5 min)
   useEffect(() => {
