@@ -62,13 +62,15 @@ const TYPE_KEYWORDS: Array<{ canonical: string; keywords: string[] }> = [
   { canonical: 'workshop', keywords: ['workshop', 'formação'] },
 ];
 
+// Chaves normalizadas (sem acentos) para coincidirem com WEEKDAY_PATTERN;
+// label mantém o acento porque é o identificador usado nos resultados.
 const WEEKDAYS: Array<{ key: string; label: string; jsDay: number }> = [
   { key: 'segunda', label: 'segunda', jsDay: 1 },
-  { key: 'terça', label: 'terça', jsDay: 2 },
+  { key: 'terca', label: 'terça', jsDay: 2 },
   { key: 'quarta', label: 'quarta', jsDay: 3 },
   { key: 'quinta', label: 'quinta', jsDay: 4 },
   { key: 'sexta', label: 'sexta', jsDay: 5 },
-  { key: 'sábado', label: 'sábado', jsDay: 6 },
+  { key: 'sabado', label: 'sábado', jsDay: 6 },
   { key: 'domingo', label: 'domingo', jsDay: 0 },
 ];
 
@@ -105,6 +107,11 @@ const findType = (text: string): { canonical: string; keyword: string } | null =
   return candidates[0];
 };
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const matchesWholeWord = (text: string, term: string): boolean =>
+  term.length > 0 && new RegExp(`\\b${escapeRegExp(term)}\\b`).test(text);
+
 const findClient = (text: string, clients: ScheduleClient[]): ScheduleClient | null => {
   if (!text.trim() || clients.length === 0) return null;
 
@@ -125,10 +132,11 @@ const findClient = (text: string, clients: ScheduleClient[]): ScheduleClient | n
     }
   }
 
-  // 3. Nome completo (o maior primeiro para evitar falsos positivos)
+  // 3. Nome completo exato, com fronteiras de palavra ("ana" não pode
+  //    dar match dentro de "joana" nem "semana")
   const byFullName = [...clients]
     .sort((a, b) => b.nome.length - a.nome.length)
-    .find((c) => c.nome && text.includes(normalizeText(c.nome)));
+    .find((c) => c.nome && matchesWholeWord(text, normalizeText(c.nome)));
   if (byFullName) return byFullName;
 
   // 4. Primeiro nome apenas (com pelo menos 4 letras)
@@ -136,7 +144,7 @@ const findClient = (text: string, clients: ScheduleClient[]): ScheduleClient | n
     .sort((a, b) => b.nome.length - a.nome.length)
     .find((c) => {
       const firstName = normalizeText(c.nome.split(' ')[0] || '');
-      return firstName.length >= 4 && new RegExp(`\\b${firstName}\\b`).test(text);
+      return firstName.length >= 4 && matchesWholeWord(text, firstName);
     });
   if (byFirstName) return byFirstName;
 
@@ -394,6 +402,9 @@ export const parseScheduleCommand = (
       let year = now.getFullYear();
       if (month < now.getMonth()) year += 1;
       seriesMonth = new Date(year, month, 1);
+      // Remover o trecho da série (incluindo a contagem) para que o número
+      // não seja depois interpretado como ID/nome de cliente.
+      working = working.replace(seriesMatch[0], ' ');
     }
   }
 

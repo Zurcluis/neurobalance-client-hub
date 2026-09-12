@@ -232,7 +232,7 @@ const Sidebar = () => {
             className="h-10 w-auto app-logo"
           />
           <DrawerClose asChild>
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label="Fechar">
               <X className="h-5 w-5" />
             </Button>
           </DrawerClose>
@@ -372,7 +372,7 @@ const Sidebar = () => {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-2xl font-bold">{t('communications')}</h2>
               <DrawerClose asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="Fechar">
                   <X className="h-4 w-4" />
                 </Button>
               </DrawerClose>

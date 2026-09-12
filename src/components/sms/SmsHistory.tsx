@@ -13,14 +13,21 @@ interface SmsHistoryProps {
     clientId?: number;
 }
 
+const SMS_PAGE_SIZE = 50;
+
 const SmsHistory = ({ clientId }: SmsHistoryProps) => {
     const { smsHistory, fetchSmsHistory, isLoadingHistory, deleteSms } = useSms();
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [visibleCount, setVisibleCount] = useState(SMS_PAGE_SIZE);
 
     useEffect(() => {
         fetchSmsHistory(clientId);
     }, [fetchSmsHistory, clientId]);
+
+    useEffect(() => {
+        setVisibleCount(SMS_PAGE_SIZE);
+    }, [searchQuery, statusFilter]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -86,11 +93,13 @@ const SmsHistory = ({ clientId }: SmsHistoryProps) => {
         return matchesSearch && matchesStatus;
     });
 
+    const visibleHistory = filteredHistory.slice(0, visibleCount);
+
     return (
         <Card className="glassmorphism">
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                 <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-[#3f9094]" />
+                    <MessageSquare className="h-5 w-5 text-neurobalance-teal" />
                     <span>Histórico de SMS</span>
                     <Badge variant="secondary">{filteredHistory.length}</Badge>
                 </CardTitle>
@@ -137,8 +146,9 @@ const SmsHistory = ({ clientId }: SmsHistoryProps) => {
                         <p className="text-gray-500">A carregar histórico...</p>
                     </div>
                 ) : filteredHistory.length > 0 ? (
-                    <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                        {filteredHistory.map((sms) => (
+                    <>
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                        {visibleHistory.map((sms) => (
                             <div
                                 key={sms.id}
                                 className="p-4 rounded-lg bg-[#c5cfce]/40 border border-[#B1D4CF]/30 hover:shadow-sm transition-shadow"
@@ -158,7 +168,7 @@ const SmsHistory = ({ clientId }: SmsHistoryProps) => {
                                         <span className="font-medium">Para:</span>
                                         <span>{sms.telefone}</span>
                                         {sms.clientes && (
-                                            <span className="text-[#3f9094]">
+                                            <span className="text-neurobalance-teal">
                                                 ({sms.clientes.id_manual || ''} {sms.clientes.nome})
                                             </span>
                                         )}
@@ -195,7 +205,19 @@ const SmsHistory = ({ clientId }: SmsHistoryProps) => {
                                 </div>
                             </div>
                         ))}
-                    </div>
+                        </div>
+                        {filteredHistory.length > visibleCount && (
+                            <div className="text-center">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setVisibleCount((c) => c + SMS_PAGE_SIZE)}
+                                >
+                                    Mostrar mais ({filteredHistory.length - visibleCount})
+                                </Button>
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="py-8 text-center">
                         <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />

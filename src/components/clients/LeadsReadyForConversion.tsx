@@ -21,7 +21,7 @@ import { useLeadCompra } from '@/hooks/useLeadCompra';
 import { LandingLead } from '@/types/landing-lead';
 import { LeadCompra } from '@/types/lead-compra';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 
 interface LeadsReadyForConversionProps {
   onConvertLead: (lead: LandingLead | LeadCompra, type: 'landing' | 'compra') => void;
@@ -72,10 +72,10 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
 
   if (isLoading) {
     return (
-      <Card className="bg-gradient-to-br from-[#E6ECEA]/30 to-white">
+      <Card className="bg-gradient-to-br from-neurobalance-tertiary/30 to-white">
         <CardContent className="py-8">
           <div className="flex items-center justify-center gap-3">
-            <div className="h-5 w-5 border-2 border-[#3f9094] border-t-transparent rounded-full animate-spin" />
+            <div className="h-5 w-5 border-2 border-neurobalance-teal border-t-transparent rounded-full animate-spin" />
             <span className="text-gray-600">A carregar leads...</span>
           </div>
         </CardContent>
@@ -124,12 +124,12 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      <Card className="border-l-4 border-l-[#3f9094] bg-gradient-to-r from-[#E6ECEA]/40 to-white dark:from-[#3f9094]/10 dark:to-gray-900">
+      <Card className="border-l-4 border-l-neurobalance-teal bg-gradient-to-r from-neurobalance-tertiary/40 to-white dark:from-neurobalance-teal/10 dark:to-gray-900">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-[#3f9094]/10 rounded-lg">
-                <UserPlus className="h-5 w-5 text-[#3f9094]" />
+              <div className="p-2 bg-neurobalance-teal/10 rounded-lg">
+                <UserPlus className="h-5 w-5 text-neurobalance-teal" />
               </div>
               <div>
                 <CardTitle className="text-lg">Leads Prontas para Conversão</CardTitle>
@@ -144,11 +144,11 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
                 {highPriorityCount} prioritária{highPriorityCount !== 1 ? 's' : ''}
               </Badge>
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-[#3f9094]/10">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-neurobalance-teal/10" aria-label={isExpanded ? 'Recolher' : 'Expandir'}>
                   {isExpanded ? (
-                    <ChevronUp className="h-4 w-4 text-[#3f9094]" />
+                    <ChevronUp className="h-4 w-4 text-neurobalance-teal" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-[#3f9094]" />
+                    <ChevronDown className="h-4 w-4 text-neurobalance-teal" />
                   )}
                 </Button>
               </CollapsibleTrigger>
@@ -163,7 +163,7 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
                 {readyLeads.slice(0, 6).map((readyLead) => (
                   <Card 
                     key={`${readyLead.type}-${readyLead.lead.id}`}
-                    className="min-w-[280px] max-w-[300px] flex-shrink-0 hover:shadow-lg transition-all duration-200 hover:border-[#3f9094]/30 group"
+                    className="min-w-[280px] max-w-[300px] flex-shrink-0 hover:shadow-lg transition-all duration-200 hover:border-neurobalance-teal/30 group"
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
@@ -193,8 +193,8 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
                                 ? (readyLead.lead as LandingLead).created_at 
                                 : (readyLead.lead as LeadCompra).data_evento
                               ), 
-                              "dd MMM yyyy", 
-                              { locale: ptBR }
+                              "dd MMM yyyy",
+                              { locale: pt }
                             )}
                           </span>
                         </div>
@@ -202,7 +202,7 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
 
                       <Button
                         size="sm"
-                        className="w-full bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90 group-hover:shadow-md transition-all"
+                        className="w-full bg-gradient-brand hover:opacity-90 group-hover:shadow-md transition-all"
                         onClick={() => onConvertLead(readyLead.lead, readyLead.type)}
                       >
                         <UserPlus className="h-4 w-4 mr-2" />
@@ -214,12 +214,12 @@ const LeadsReadyForConversion: React.FC<LeadsReadyForConversionProps> = ({ onCon
                 ))}
 
                 {readyLeads.length > 6 && (
-                  <Card className="min-w-[200px] flex-shrink-0 border-dashed border-2 border-[#3f9094]/30 bg-[#3f9094]/5">
+                  <Card className="min-w-[200px] flex-shrink-0 border-dashed border-2 border-neurobalance-teal/30 bg-neurobalance-teal/5">
                     <CardContent className="p-4 h-full flex flex-col items-center justify-center text-center">
-                      <div className="p-3 bg-[#3f9094]/10 rounded-full mb-3">
-                        <Target className="h-6 w-6 text-[#3f9094]" />
+                      <div className="p-3 bg-neurobalance-teal/10 rounded-full mb-3">
+                        <Target className="h-6 w-6 text-neurobalance-teal" />
                       </div>
-                      <p className="font-medium text-[#3f9094]">
+                      <p className="font-medium text-neurobalance-teal">
                         +{readyLeads.length - 6} leads
                       </p>
                       <p className="text-sm text-gray-500 mt-1">

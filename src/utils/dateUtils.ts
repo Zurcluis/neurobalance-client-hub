@@ -37,8 +37,13 @@ export const formatDateToPT = (date: string | Date): string => {
  * @returns Date string in YYYY-MM-DD format
  */
 export const formatDateForInput = (date: string | Date): string => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return dateObj.toISOString().split('T')[0];
+  // Strings são parseadas como locais (parseLocalISO) para evitar que
+  // "YYYY-MM-DD" (UTC) recue um dia em fuso negativo.
+  const dateObj = typeof date === 'string' ? parseLocalISO(date) : date;
+  const year = dateObj.getFullYear();
+  const month = `${dateObj.getMonth() + 1}`.padStart(2, '0');
+  const day = `${dateObj.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 /**
@@ -59,7 +64,8 @@ export const isLegalAge = (birthDate: string | Date): boolean => {
  * @returns Date object in local timezone
  */
 export const parseLocalISO = (dateStr: string | Date | undefined | null): Date => {
-  if (!dateStr) return new Date();
+  // null, undefined e string vazia/whitespace seguem a mesma via: momento atual.
+  if (!dateStr || (typeof dateStr === 'string' && dateStr.trim() === '')) return new Date();
   if (dateStr instanceof Date) return dateStr;
   
   let normalizedStr = dateStr.trim();

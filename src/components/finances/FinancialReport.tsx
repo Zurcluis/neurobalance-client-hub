@@ -7,7 +7,7 @@ import { LineChart, Line } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, parseISO, subMonths, subDays, isWithinInterval } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
 import {
   Table,
@@ -67,9 +67,6 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   // Sincronizar localPayments quando hookPayments mudar
   useEffect(() => {
     if (hookPayments.length > 0) {
-      console.log('Sincronizando localPayments com hookPayments');
-      console.log('Primeiro pagamento:', hookPayments[0]);
-      console.log('cliente_id_manual:', (hookPayments[0] as any)?.cliente_id_manual);
       setLocalPayments(hookPayments);
     }
   }, [hookPayments]);
@@ -152,7 +149,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
   const getFilteredPaymentsByPeriod = (period: TimeRange) => {
     const now = new Date();
     let startDate: Date;
-    let endDate: Date = now;
+    const endDate: Date = now;
 
     switch (period) {
       case '7d':
@@ -247,7 +244,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     const today = new Date();
     for (let i = 0; i <= 6; i++) {
       const date = subMonths(today, i);
-      const month = format(date, 'MMM yyyy', { locale: ptBR });
+      const month = format(date, 'MMM yyyy', { locale: pt });
       monthlyData[month] = 0;
     }
     
@@ -255,7 +252,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     filteredPayments.forEach(payment => {
       try {
         const date = parseISO(payment.data);
-        const month = format(date, 'MMM yyyy', { locale: ptBR });
+        const month = format(date, 'MMM yyyy', { locale: pt });
         if (monthlyData[month] !== undefined) {
           monthlyData[month] += payment.valor;
         }
@@ -455,7 +452,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3f9094] mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neurobalance-teal mx-auto"></div>
           <p className="mt-2 text-gray-600">Carregando dados financeiros...</p>
         </div>
       </div>
@@ -507,7 +504,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
             <Card className="glassmorphism hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-[#3f9094]" />
+                  <DollarSign className="h-4 w-4 text-neurobalance-teal" />
                   {t('totalRevenue')}
                 </CardTitle>
           </CardHeader>
@@ -522,7 +519,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
             <Card className="glassmorphism hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[#3f9094]" />
+                  <Users className="h-4 w-4 text-neurobalance-teal" />
                   {t('averagePayment')}
                 </CardTitle>
           </CardHeader>
@@ -537,7 +534,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
             <Card className="glassmorphism hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-[#3f9094]" />
+                  <CreditCard className="h-4 w-4 text-neurobalance-teal" />
                   Método mais utilizado
                 </CardTitle>
           </CardHeader>
@@ -780,7 +777,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                     <TableRow>
                       <TableHead className="whitespace-nowrap w-20">ID Cliente</TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:text-[#3f9094] whitespace-nowrap"
+                        className="cursor-pointer hover:text-neurobalance-teal whitespace-nowrap"
                         onClick={() => handleSort('cliente_nome')}
                       >
                         Cliente
@@ -789,7 +786,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                         )}
                       </TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:text-[#3f9094] whitespace-nowrap"
+                        className="cursor-pointer hover:text-neurobalance-teal whitespace-nowrap"
                         onClick={() => handleSort('data')}
                       >
                         Data
@@ -798,7 +795,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                         )}
                       </TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:text-[#3f9094] whitespace-nowrap"
+                        className="cursor-pointer hover:text-neurobalance-teal whitespace-nowrap"
                         onClick={() => handleSort('valor')}
                       >
                         Valor
@@ -807,7 +804,7 @@ const FinancialReport = ({ initialPayments }: FinancialReportProps = {}) => {
                         )}
                       </TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:text-[#3f9094] whitespace-nowrap"
+                        className="cursor-pointer hover:text-neurobalance-teal whitespace-nowrap"
                         onClick={() => handleSort('tipo')}
                       >
                         Método
@@ -1124,7 +1121,7 @@ COMMENT ON TABLE public.pagamentos IS 'Tabela de pagamentos de clientes';`}
                   Cancelar
                 </Button>
                 <Button 
-                  className="bg-[#3f9094] hover:bg-[#2A5854]"
+                  className="bg-neurobalance-teal hover:bg-neurobalance-secondary"
                   onClick={handleSavePayment}
                 >
                   Salvar Alterações

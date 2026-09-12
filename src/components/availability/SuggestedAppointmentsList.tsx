@@ -11,7 +11,7 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import type { SuggestedAppointment } from '@/types/availability';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 interface SuggestedAppointmentsListProps {
@@ -125,14 +125,14 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#3f9094]" />
+              <Sparkles className="h-5 w-5 text-neurobalance-teal" />
               Sugestões Inteligentes
             </CardTitle>
             <Button
               onClick={handleGenerateSuggestions}
               disabled={isGenerating}
               size="sm"
-              className="bg-gradient-to-r from-[#3f9094] to-[#2A5854]"
+              className="bg-gradient-brand"
             >
               {isGenerating ? (
                 <>
@@ -168,7 +168,7 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#3f9094]" />
+            <Sparkles className="h-5 w-5 text-neurobalance-teal" />
             Sugestões Inteligentes ({suggestions.length})
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
               onClick={handleGenerateSuggestions}
               disabled={isGenerating}
               size="sm"
-              className="bg-gradient-to-r from-[#3f9094] to-[#2A5854]"
+              className="bg-gradient-brand"
             >
               {isGenerating ? (
                 <>
@@ -205,16 +205,16 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
         <div className="space-y-4">
           {suggestions.map((suggestion) => {
             const date = parseISO(suggestion.data_sugerida);
-            const formattedDate = format(date, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+            const formattedDate = format(date, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: pt });
             const reasons = (suggestion as SuggestedAppointment & { razoes_sugestao?: string }).razoes_sugestao?.split(';').map((r) => r.trim()) || [];
 
             return (
-              <Card key={suggestion.id} className="border-l-4 border-l-[#3f9094]">
+              <Card key={suggestion.id} className="border-l-4 border-l-neurobalance-teal">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="h-4 w-4 text-[#3f9094]" />
+                        <Calendar className="h-4 w-4 text-neurobalance-teal" />
                         <span className="font-semibold capitalize">{formattedDate}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export const SuggestedAppointmentsList: React.FC<SuggestedAppointmentsListProps>
                     <div className="flex items-center gap-2 text-xs text-gray-500 pt-2">
                       <AlertCircle className="h-3 w-3" />
                       <span>
-                        Expira em: {format(parseISO(suggestion.expira_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        Expira em: {format(parseISO(suggestion.expira_em), "dd/MM/yyyy 'às' HH:mm", { locale: pt })}
                       </span>
                     </div>
                   )}

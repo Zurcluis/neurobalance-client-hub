@@ -512,7 +512,7 @@ const ClientTokenManager: React.FC<ClientTokenManagerProps> = ({ clientId }) => 
                               size="sm"
                               variant="outline"
                               onClick={() => copyLoginLink(token.token, token.id)}
-                              className="gap-2 border-[#3f9094]/40 text-[#3f9094] hover:bg-[#3f9094]/10 hover:text-[#3f9094]"
+                              className="gap-2 border-neurobalance-teal/40 text-neurobalance-teal hover:bg-neurobalance-teal/10 hover:text-neurobalance-teal"
                             >
                               {copiedKey === `link-${token.id}` ? (
                                 <Check className="h-4 w-4" />

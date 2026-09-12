@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import QuickCard from '@/components/shared/QuickCard';
@@ -23,6 +23,10 @@ const parseISO = parseLocalISO;
 const Index = () => {
   const navigate = useNavigate();
   const { appointments } = useAppointments();
+
+  useEffect(() => {
+    document.title = 'Dashboard | NeuroBalance';
+  }, []);
 
   const quickMetrics = useMemo(() => {
     const now = new Date();

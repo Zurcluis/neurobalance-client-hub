@@ -7,8 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { MarketingCampaign, ExportOptions, MESES } from '@/types/marketing';
 import { Download, FileText, FileSpreadsheet, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -100,6 +98,11 @@ const ExportManager: React.FC<ExportManagerProps> = ({ campaigns }) => {
   };
 
   const exportToPDF = async (filteredCampaigns: MarketingCampaign[]) => {
+    // Carrega jsPDF + plugin de tabelas apenas quando o utilizador exporta
+    const [{ default: jsPDF }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const doc = new jsPDF();
     const metrics = calculateMetrics(filteredCampaigns);
 

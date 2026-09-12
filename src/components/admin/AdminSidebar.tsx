@@ -106,7 +106,7 @@ const AdminSidebar = () => {
             </div>
           </div>
           <DrawerClose asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10" aria-label="Fechar menu">
               <X className="h-5 w-5" />
             </Button>
           </DrawerClose>
@@ -125,7 +125,7 @@ const AdminSidebar = () => {
           />
           {!isCollapsed && (
             <div className="text-center">
-              <h1 className="font-bold text-lg text-[#3A726D]">NeuroBalance</h1>
+              <h1 className="font-bold text-lg text-neurobalance-primary">NeuroBalance</h1>
               <p className="text-xs text-gray-600">Área Administrativa</p>
             </div>
           )}
@@ -156,22 +156,22 @@ const AdminSidebar = () => {
           title="Clique para editar o seu perfil"
         >
           <div className="flex items-center gap-3">
-            <div className="bg-[#3f9094] group-hover:bg-[#2e6d70] transition-colors p-2 rounded-full flex-shrink-0 relative">
+            <div className="bg-neurobalance-teal group-hover:bg-neurobalance-secondary transition-colors p-2 rounded-full flex-shrink-0 relative">
               <User className="h-4 w-4 text-white" />
               <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-gray-900 rounded-full p-0.5 shadow-sm">
-                <Edit3 className="h-2.5 w-2.5 text-[#3f9094]" />
+                <Edit3 className="h-2.5 w-2.5 text-neurobalance-teal" />
               </div>
             </div>
             {(!isCollapsed || isMobile) && (
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-[#3f9094] transition-colors">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-neurobalance-teal transition-colors">
                     {session.adminName}
                   </p>
                 </div>
                 <div className="flex items-center justify-between gap-1 mt-1">
                   {getRoleBadge(session.role)}
-                  <span className="text-[10px] text-gray-400 group-hover:text-[#3f9094] transition-colors flex items-center gap-0.5">
+                  <span className="text-[10px] text-gray-400 group-hover:text-neurobalance-teal transition-colors flex items-center gap-0.5">
                     Editar
                   </span>
                 </div>
@@ -194,7 +194,7 @@ const AdminSidebar = () => {
                   'flex items-center rounded-lg py-3 px-3 text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800',
                   isMobile && "text-base py-3.5 px-4",
                   location.pathname === item.path
-                    ? 'bg-[#3f9094] text-white hover:bg-[#2d7a7e]'
+                    ? 'bg-neurobalance-teal text-white hover:bg-neurobalance-secondary'
                     : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100',
                   isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-start'
                 )}
@@ -233,6 +233,7 @@ const AdminSidebar = () => {
             size="icon"
             className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
             onClick={handleLogout}
+            aria-label="Terminar sessão"
           >
             <LogOut className="h-4 w-4" />
           </Button>
@@ -249,7 +250,7 @@ const AdminSidebar = () => {
       <div className="fixed top-0 left-0 z-40 w-full bg-white/90 backdrop-blur-sm border-b border-gray-200 flex justify-between items-center px-4 py-3 pt-safe">
         <Drawer>
           <DrawerTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 flex items-center justify-center">
+            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 flex items-center justify-center" aria-label="Abrir menu">
               <Menu className="h-6 w-6" />
             </Button>
           </DrawerTrigger>
@@ -270,9 +271,10 @@ const AdminSidebar = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full h-10 w-10 text-[#3f9094]"
+          className="rounded-full h-10 w-10 text-neurobalance-teal"
           onClick={() => setIsProfileOpen(true)}
           title="Meu Perfil"
+          aria-label="Meu Perfil"
         >
           <User className="h-5 w-5" />
         </Button>

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
@@ -172,7 +172,7 @@ const AppointmentCalendar = () => {
     // Gerar mensagem padrão com dados do agendamento
     const apptDate = selectedAppointment.data ? format(parseISO(selectedAppointment.data), 'dd/MM/yyyy') : '';
     const apptTime = selectedAppointment.hora || '';
-    const defaultMessage = `Olá ${client.nome || 'Estimado Cliente'},\n\nLembrete da sua sessão:\n📅 Data: ${apptDate}\n⏰ Hora: ${apptTime}\n\nNeuroBalance`;
+    const defaultMessage = `Olá ${client.nome || 'Estimado Cliente'},\n\nLembrete da sua sessão:\nData: ${apptDate}\nHora: ${apptTime}\n\nNeuroBalance`;
 
     setSmsMessage(defaultMessage);
     setSmsPreviewOpen(true);
@@ -200,7 +200,17 @@ const AppointmentCalendar = () => {
     }
   };
 
-  const holidays = getAllHolidaysUntil2040();
+  const holidays = useMemo(() => getAllHolidaysUntil2040(), []);
+
+  // Arrays de dias memoizados para as vistas dia/semana (identidade estável evita
+  // re-renders desnecessários do TimeGridView)
+  const dayViewDays = useMemo(() => (selectedDate ? [selectedDate] : []), [selectedDate]);
+
+  const weekViewDays = useMemo(() => {
+    const weekStart = startOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 });
+    return eachDayOfInterval({ start: weekStart, end: weekEnd });
+  }, [selectedDate, currentDate]);
 
   const form = useForm<AppointmentFormValues>({
     defaultValues: {
@@ -249,13 +259,13 @@ const AppointmentCalendar = () => {
     setIsDialogOpen(true);
   };
 
-  const openQuickCreate = (date: Date, anchorPoint?: { x: number; y: number }) => {
+  const openQuickCreate = useCallback((date: Date, anchorPoint?: { x: number; y: number }) => {
     setSelectedDate(date);
     setQuickCreate({
       date,
       anchorPoint: anchorPoint || { x: window.innerWidth / 2, y: window.innerHeight / 3 },
     });
-  };
+  }, []);
 
   const handleQuickCreate = async (payload: QuickCreatePayload) => {
     setIsQuickCreating(true);
@@ -308,6 +318,9 @@ const AppointmentCalendar = () => {
         terapeuta: '',
         cor: getAutoColorForType(waitlistSlot.tipo),
       });
+      toast.success(
+        `Sessão de ${client.nome} agendada para ${format(parseISO(`${waitlistSlot.dateStr}T00:00:00`), 'dd/MM (eeee)', { locale: pt })} às ${waitlistSlot.hora}`,
+      );
       setWaitlistSlot(null);
     } catch (error) {
       console.error('Erro ao criar agendamento da lista de espera:', error);
@@ -315,7 +328,7 @@ const AppointmentCalendar = () => {
     }
   };
 
-  const handleEventClick = (appointment: Appointment) => {
+  const handleEventClick = useCallback((appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setRecurrenceType('none');
 
@@ -366,7 +379,7 @@ const AppointmentCalendar = () => {
       cor: appointment.cor || '#039be5'
     });
     setIsDialogOpen(true);
-  };
+  }, [form]);
 
   const handleDeleteAppointment = async () => {
     if (selectedAppointment) {
@@ -523,7 +536,7 @@ const AppointmentCalendar = () => {
     }
   };
 
-  const handleEventDrop = async (appointment: Appointment, newDate: Date) => {
+  const handleEventDrop = useCallback(async (appointment: Appointment, newDate: Date) => {
     try {
       const dataStr = format(newDate, 'yyyy-MM-dd');
       const isAllDayAppt = isAllDayAppointment(appointment);
@@ -542,7 +555,12 @@ const AppointmentCalendar = () => {
       console.error('Erro ao mover agendamento:', error);
       toast.error('Erro ao mover agendamento');
     }
-  };
+  }, [updateAppointment]);
+
+  const handleTimeSlotClick = useCallback(
+    (date: Date, anchorPoint?: { x: number; y: number }) => openQuickCreate(date, anchorPoint),
+    [openQuickCreate]
+  );
 
   // Função para importar agendamentos do ficheiro
   const handleImportAppointments = async (importedAppointments: Array<{
@@ -879,7 +897,7 @@ const AppointmentCalendar = () => {
     );
   };
 
-  const DayEventsPanel = () => {
+  const renderDayEventsPanel = () => {
     if (!selectedDate) {
       return (
         <div className="mt-4 px-3 text-sm text-gray-500">
@@ -977,6 +995,7 @@ const AppointmentCalendar = () => {
           <div key={weekIndex} className={`grid grid-cols-7 flex-1 border-b border-gray-200 last:border-b-0 ${isMobile ? 'min-h-[64px]' : 'min-h-[110px]'}`}>
             {week.map(day => {
               const dayAppointments = getDayAppointments(day);
+              const dayAvailabilities = getDayAvailabilities(day);
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isDayToday = isToday(day);
               const dayHoliday = getDayHoliday(day);
@@ -1076,9 +1095,9 @@ const AppointmentCalendar = () => {
                     })}
 
                     {/* Mostrar Disponibilidades - apenas desktop */}
-                    {!isMobile && showAvailabilities && getDayAvailabilities(day).length > 0 && (
+                    {!isMobile && showAvailabilities && dayAvailabilities.length > 0 && (
                       <div className="mt-0.5 space-y-0.5">
-                        {getDayAvailabilities(day).slice(0, 2).map((avail: any, idx: number) => (
+                        {dayAvailabilities.slice(0, 2).map((avail: any, idx: number) => (
                           <div
                             key={`avail-${avail.id}-${idx}`}
                             className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 truncate cursor-help transition-all hover:bg-blue-100 dark:hover:bg-blue-900"
@@ -1087,9 +1106,9 @@ const AppointmentCalendar = () => {
                             {avail.clientes?.id_manual && `${avail.clientes.id_manual} - `}{avail.clientes?.nome || 'Cliente'}
                           </div>
                         ))}
-                        {getDayAvailabilities(day).length > 2 && (
+                        {dayAvailabilities.length > 2 && (
                           <div className="text-[10px] text-blue-600 dark:text-blue-400 px-1">
-                            +{getDayAvailabilities(day).length - 2} disponíveis
+                            +{dayAvailabilities.length - 2} disponíveis
                           </div>
                         )}
                       </div>
@@ -1118,13 +1137,13 @@ const AppointmentCalendar = () => {
   };
 
   const renderDayView = () => {
-    if (!selectedDate) return null;
+    if (dayViewDays.length === 0) return null;
 
     return (
       <TimeGridView
-        days={[selectedDate]}
+        days={dayViewDays}
         appointments={appointments}
-        onTimeSlotClick={(date, point) => openQuickCreate(date, point)}
+        onTimeSlotClick={handleTimeSlotClick}
         onEventClick={handleEventClick}
         isDailyView={true}
         availabilities={clientAvailabilities}
@@ -1136,15 +1155,11 @@ const AppointmentCalendar = () => {
   };
 
   const renderWeekView = () => {
-    const weekStart = startOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
-    const weekEnd = endOfWeek(selectedDate || currentDate, { weekStartsOn: 0 });
-    const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-
     return (
       <TimeGridView
-        days={weekDays}
+        days={weekViewDays}
         appointments={appointments}
-        onTimeSlotClick={(date, point) => openQuickCreate(date, point)}
+        onTimeSlotClick={handleTimeSlotClick}
         onEventClick={handleEventClick}
         availabilities={clientAvailabilities}
         showAvailabilities={showAvailabilities}
@@ -1238,8 +1253,8 @@ const AppointmentCalendar = () => {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Carregando calendário...</h2>
-          <p className="text-gray-500">Aguarde enquanto buscamos os seus agendamentos</p>
+          <h2 className="text-xl font-semibold mb-2">A carregar o calendário...</h2>
+          <p className="text-gray-500">Aguarde enquanto procuramos os seus agendamentos</p>
         </div>
       </div>
     );
@@ -1257,6 +1272,7 @@ const AppointmentCalendar = () => {
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="h-9 w-9 rounded-full hover:bg-gray-100 text-gray-600 shrink-0 hidden md:flex"
             title={isSidebarOpen ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+            aria-label={isSidebarOpen ? 'Recolher menu lateral' : 'Expandir menu lateral'}
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -1264,7 +1280,7 @@ const AppointmentCalendar = () => {
           {/* Criar */}
           <Button
             onClick={() => openNewAppointmentDialog()}
-            className="bg-[#3f9094] hover:bg-[#2d7a7e] text-white rounded-full pl-3 pr-4 h-10 font-medium shadow-sm"
+            className="bg-neurobalance-teal hover:bg-neurobalance-secondary text-white rounded-full pl-3 pr-4 h-10 font-medium shadow-sm"
             title="Criar (C)"
           >
             <Plus className="h-5 w-5" />
@@ -1280,10 +1296,10 @@ const AppointmentCalendar = () => {
             >
               Hoje
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => navigatePeriod('prev')} className="h-9 w-9 hover:bg-gray-100 rounded-full">
+            <Button variant="ghost" size="icon" onClick={() => navigatePeriod('prev')} className="h-9 w-9 hover:bg-gray-100 rounded-full" aria-label="Período anterior">
               <ChevronLeft className="h-5 w-5 text-gray-600" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => navigatePeriod('next')} className="h-9 w-9 hover:bg-gray-100 rounded-full">
+            <Button variant="ghost" size="icon" onClick={() => navigatePeriod('next')} className="h-9 w-9 hover:bg-gray-100 rounded-full" aria-label="Período seguinte">
               <ChevronRight className="h-5 w-5 text-gray-600" />
             </Button>
             <h2 className="text-base sm:text-xl font-normal text-gray-800 ml-1 capitalize truncate max-w-[180px] sm:max-w-none" title={getToolbarTitle()}>
@@ -1323,7 +1339,7 @@ const AppointmentCalendar = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-gray-100 rounded-full">
+                <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-gray-100 rounded-full" aria-label="Mais opções">
                   <MoreHorizontal className="h-5 w-5 text-gray-600" />
                 </Button>
               </DropdownMenuTrigger>
@@ -1358,7 +1374,7 @@ const AppointmentCalendar = () => {
           ${isSidebarOpen ? 'w-[260px] p-3 opacity-100' : 'w-0 p-0 border-none opacity-0 overflow-hidden'}
         `}>
           {renderMiniCalendar()}
-          <DayEventsPanel />
+          {renderDayEventsPanel()}
 
           <div className="mt-4 px-1 space-y-2">
             <Popover>
@@ -1624,7 +1640,7 @@ const AppointmentCalendar = () => {
                             <div className="relative">
                               <Input
                                 type="text"
-                                placeholder={isLoadingClients ? "Carregando clientes..." : "Pesquisar por nome ou ID..."}
+                                placeholder={isLoadingClients ? "A carregar clientes..." : "Pesquisar por nome ou ID..."}
                                 value={clientSearchQuery}
                                 onChange={(e) => {
                                   setClientSearchQuery(e.target.value);
@@ -1651,7 +1667,7 @@ const AppointmentCalendar = () => {
                                 <SelectTrigger>
                                   <SelectValue placeholder={
                                     isLoadingClients
-                                      ? "Carregando clientes..."
+                                      ? "A carregar clientes..."
                                       : selectedClient
                                         ? `${selectedClient.id_manual ? `[${selectedClient.id_manual}]` : `[ID: ${selectedClient.id}]`} ${selectedClient.nome}`
                                         : clientSearchQuery
@@ -1677,7 +1693,7 @@ const AppointmentCalendar = () => {
                                 )}
                                 {clients.length === 0 && !clientSearchQuery && !isLoadingClients && (
                                   <div className="px-2 py-3 text-center text-sm text-gray-500">
-                                    Nenhum cliente cadastrado
+                                    Nenhum cliente registado
                                   </div>
                                 )}
                               </SelectContent>
@@ -1904,7 +1920,7 @@ const AppointmentCalendar = () => {
                       Cancelar
                     </Button>
                   </DialogClose>
-                  <Button type="submit" className="bg-[#3f9094] hover:bg-[#265255]">
+                  <Button type="submit" className="bg-neurobalance-teal hover:bg-neurobalance-secondary">
                     {selectedAppointment ? 'Atualizar' : 'Criar'}
                   </Button>
                 </div>
@@ -1927,7 +1943,7 @@ const AppointmentCalendar = () => {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-[#3f9094]" />
+              <MessageSquare className="h-5 w-5 text-neurobalance-teal" />
               Pré-visualização do SMS
             </DialogTitle>
           </DialogHeader>
@@ -1956,7 +1972,7 @@ const AppointmentCalendar = () => {
             <Button
               onClick={handleSendManualSms}
               disabled={isSending || !smsMessage.trim()}
-              className="bg-[#3f9094] hover:bg-[#265255] gap-2"
+              className="bg-neurobalance-teal hover:bg-neurobalance-secondary gap-2"
             >
               {isSending ? (
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
@@ -2072,7 +2088,7 @@ const AppointmentCalendar = () => {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="text-xs gap-1.5 h-8 border-[#3f9094] text-[#3f9094] hover:bg-[#3f9094] hover:text-white"
+                  className="text-xs gap-1.5 h-8 border-neurobalance-teal text-neurobalance-teal hover:bg-neurobalance-teal hover:text-white"
                   onClick={() => {
                     const targetDate = overflowDay.date;
                     setOverflowDay(null);

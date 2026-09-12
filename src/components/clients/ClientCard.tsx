@@ -32,7 +32,7 @@ import { useAdminContext } from '@/contexts/AdminContext';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { getFirstAndLastName, getInitials } from '@/utils/nameUtils';
 import { format, parseISO, isValid } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -189,13 +189,13 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
 
   // Format next session date
   const nextSessionFormatted = client.proxima_sessao && isValid(parseISO(client.proxima_sessao))
-    ? format(parseISO(client.proxima_sessao), "dd MMM 'às' HH:mm", { locale: ptBR })
+    ? format(parseISO(client.proxima_sessao), "dd MMM 'às' HH:mm", { locale: pt })
     : null;
 
   // Get avatar colors based on name
   const getAvatarColor = (name: string) => {
     const colors = [
-      'from-[#3f9094] to-[#2A5854]',
+      'from-neurobalance-teal to-neurobalance-secondary',
       'from-blue-500 to-blue-700',
       'from-purple-500 to-purple-700',
       'from-pink-500 to-pink-700',
@@ -221,7 +221,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-bold text-gray-900 dark:text-white text-lg leading-tight group-hover:text-[#3f9094] transition-colors">
+              <h3 className="font-bold text-gray-900 dark:text-white text-lg leading-tight group-hover:text-neurobalance-teal transition-colors">
                 {getFirstAndLastName(client.nome)}
               </h3>
               {client.id_manual && (
@@ -259,9 +259,9 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete, statusClass =
           )}
           
           {nextSessionFormatted && (
-            <div className="flex items-center gap-2.5 text-[#3f9094]">
-              <div className="p-1.5 bg-[#3f9094]/10 rounded-md">
-                <Calendar className="h-3.5 w-3.5 text-[#3f9094]" />
+            <div className="flex items-center gap-2.5 text-neurobalance-teal">
+              <div className="p-1.5 bg-neurobalance-teal/10 rounded-md">
+                <Calendar className="h-3.5 w-3.5 text-neurobalance-teal" />
               </div>
               <span className="text-sm font-medium">Próxima: {nextSessionFormatted}</span>
             </div>

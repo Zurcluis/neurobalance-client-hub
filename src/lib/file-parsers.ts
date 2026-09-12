@@ -1,7 +1,4 @@
 import { ClientFormData } from "@/components/clients/ClientForm";
-import * as XLSX from 'xlsx';
-import { createWorker } from 'tesseract.js';
-import { PDFDocument } from 'pdf-lib';
 
 // Função para ler arquivos Excel (.xlsx)
 export async function readExcelFile(
@@ -10,9 +7,10 @@ export async function readExcelFile(
 ): Promise<Partial<ClientFormData>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
-    reader.onload = (e) => {
+
+    reader.onload = async (e) => {
       try {
+        const XLSX = await import('xlsx');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         
@@ -224,6 +222,7 @@ export async function readPDFText(file: File): Promise<string> {
         
         try {
           // Tenta usar pdf-lib para obter informações básicas
+          const { PDFDocument } = await import('pdf-lib');
           const pdfDoc = await PDFDocument.load(pdfData);
           const text = `PDF Document\nPages: ${pdfDoc.getPageCount()}\nTitle: ${file.name}\n`;
           resolve(text);
@@ -255,6 +254,7 @@ export async function extractTextFromImage(file: File): Promise<string> {
         const imageUrl = e.target?.result as string;
         
         // Inicializar o worker do Tesseract (OCR)
+        const { createWorker } = await import('tesseract.js');
         const worker = await createWorker('por');
         
         // Processa a imagem

@@ -74,6 +74,7 @@ export default {
 					tertiary: '#E6ECEA',
 					light: '#F5F7F7',
 					dark: '#1A1F2C',
+					teal: '#3f9094'
 				}
 			},
 			borderRadius: {
@@ -116,6 +117,7 @@ export default {
 			},
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+				'gradient-brand': 'linear-gradient(to right, #3f9094, #2A5854)',
 			}
 		}
 	},

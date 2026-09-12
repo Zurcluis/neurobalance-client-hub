@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
@@ -7,6 +8,26 @@ import { useActivityLogger } from './useActivityLogger';
 type Client = Database['public']['Tables']['clientes']['Row'];
 type NewClient = Database['public']['Tables']['clientes']['Insert'];
 type UpdateClient = Database['public']['Tables']['clientes']['Update'];
+
+// Partilha pedidos idênticos concorrentes (vários componentes montados em simultâneo)
+let clientsFetchInFlight: Promise<Client[]> | null = null;
+
+const fetchClientsShared = (supabase: SupabaseClient): Promise<Client[]> => {
+  if (!clientsFetchInFlight) {
+    clientsFetchInFlight = (async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('nome', { ascending: true });
+
+      if (error) throw error;
+      return (data || []) as Client[];
+    })().finally(() => {
+      clientsFetchInFlight = null;
+    });
+  }
+  return clientsFetchInFlight;
+};
 
 export function useClients() {
   const supabase = useSupabaseClient();
@@ -19,15 +40,7 @@ export function useClients() {
   const loadClients = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error: supabaseError } = await supabase
-        .from('clientes')
-        .select('*')
-        .order('nome', { ascending: true });
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
+      const data = await fetchClientsShared(supabase);
       setClients(data);
       setError(null);
     } catch (err) {

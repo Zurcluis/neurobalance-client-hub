@@ -203,7 +203,7 @@ const QuickCreatePopover: React.FC<QuickCreatePopoverProps> = ({
             <Button
               type="submit"
               size="sm"
-              className="h-8 px-4 text-xs bg-[#3f9094] hover:bg-[#2d7a7e] text-white"
+              className="h-8 px-4 text-xs bg-neurobalance-teal hover:bg-neurobalance-secondary text-white"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'A criar...' : 'Criar'}

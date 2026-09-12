@@ -17,7 +17,7 @@ export function DictationOverlay({ visible, transcript, onStop, onCancel }: Dict
         role="status"
         aria-label="Ditado por voz"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#3f9094] text-white">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neurobalance-teal text-white">
           <Mic className="h-4 w-4" aria-hidden="true" />
         </div>
         <div className="flex h-6 shrink-0 items-center gap-[3px]" aria-hidden="true">
@@ -37,7 +37,7 @@ export function DictationOverlay({ visible, transcript, onStop, onCancel }: Dict
         <button
           type="button"
           onClick={onStop}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#3f9094] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#357a7e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3f9094] focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-neurobalance-teal px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-neurobalance-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-neurobalance-teal focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
         >
           <Check className="h-3.5 w-3.5" aria-hidden="true" />
           Usar texto

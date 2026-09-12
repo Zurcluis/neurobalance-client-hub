@@ -118,7 +118,7 @@ export const AvailabilityAnalytics: React.FC = () => {
     <div className="space-y-6">
       {/* KPIs Resumidos */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-l-4 border-l-[#3f9094]">
+        <Card className="border-l-4 border-l-neurobalance-teal">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -177,7 +177,7 @@ export const AvailabilityAnalytics: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-[#3f9094]" />
+              <Calendar className="h-5 w-5 text-neurobalance-teal" />
               Disponibilidades por Dia da Semana
             </CardTitle>
             <CardDescription>
@@ -198,7 +198,7 @@ export const AvailabilityAnalytics: React.FC = () => {
             {insights && (
               <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  📊 Dia mais disponível:{' '}
+                  Dia mais disponível:{' '}
                   <strong>{DIAS_SEMANA[insights.mostAvailableDay.day]}</strong> com{' '}
                   {insights.mostAvailableDay.count} horários
                 </p>
@@ -211,7 +211,7 @@ export const AvailabilityAnalytics: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-[#3f9094]" />
+              <PieChart className="h-5 w-5 text-neurobalance-teal" />
               Distribuição de Preferências
             </CardTitle>
             <CardDescription>
@@ -261,7 +261,7 @@ export const AvailabilityAnalytics: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-[#3f9094]" />
+              <Clock className="h-5 w-5 text-neurobalance-teal" />
               Horários Preferidos
             </CardTitle>
             <CardDescription>Distribuição entre manhã, tarde e noite</CardDescription>
@@ -297,7 +297,7 @@ export const AvailabilityAnalytics: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[#3f9094]" />
+              <TrendingUp className="h-5 w-5 text-neurobalance-teal" />
               Top 10 - Taxa de Aceitação
             </CardTitle>
             <CardDescription>
@@ -318,7 +318,7 @@ export const AvailabilityAnalytics: React.FC = () => {
                 </ResponsiveContainer>
                 <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
                   <p className="text-sm text-green-900 dark:text-green-100">
-                    🏆 Melhor taxa: <strong>{topAcceptanceClients[0]?.name}</strong> com{' '}
+                    Melhor taxa: <strong>{topAcceptanceClients[0]?.name}</strong> com{' '}
                     {topAcceptanceClients[0]?.taxa.toFixed(1)}%
                   </p>
                 </div>

@@ -420,7 +420,6 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
       }
     });
 
-    console.log('Agendamentos parseados:', uniqueAppointments);
     setParsedAppointments(uniqueAppointments);
 
     if (uniqueAppointments.length > 0) {
@@ -639,6 +638,7 @@ export const CalendarImport: React.FC<CalendarImportProps> = ({
                     size="icon"
                     className="absolute top-2 right-2 h-6 w-6 text-gray-400 hover:text-red-500"
                     onClick={() => removeAppointment(index)}
+                    aria-label="Remover agendamento"
                   >
                     <X className="h-4 w-4" />
                   </Button>

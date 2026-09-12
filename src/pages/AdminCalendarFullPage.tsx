@@ -32,16 +32,16 @@ const AdminCalendarFullPage = () => {
 
   if (!canViewCalendar) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-muted/50">
         <AdminSidebar />
         <main className={cn(
           "flex-1 transition-all duration-300 flex items-center justify-center",
           isMobile ? "ml-0" : isSidebarCollapsed ? "ml-20" : "ml-64"
         )}>
           <div className="text-center">
-            <CalendarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Acesso Negado</h2>
-            <p className="text-gray-600">Você não tem permissão para ver o calendário.</p>
+            <CalendarIcon className="h-16 w-16 text-muted-foreground/60 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Acesso Negado</h2>
+            <p className="text-muted-foreground">Não tem permissão para ver o calendário.</p>
           </div>
         </main>
       </div>
@@ -49,7 +49,7 @@ const AdminCalendarFullPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-muted/50">
       <AdminSidebar />
       
       <main className={cn(

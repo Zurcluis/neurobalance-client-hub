@@ -1,10 +1,3 @@
-import * as XLSX from 'xlsx';
-import Tesseract from 'tesseract.js';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configurar worker do PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
 export interface RawPaymentData {
     data?: string;
     cliente?: string;
@@ -67,8 +60,9 @@ export const readPaymentExcel = async (file: File): Promise<RawPaymentData[]> =>
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
 
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
+                const XLSX = await import('xlsx');
                 const data = e.target?.result;
                 const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
                 const firstSheetName = workbook.SheetNames[0];
@@ -192,6 +186,7 @@ export const readPaymentCSV = async (file: File): Promise<RawPaymentData[]> => {
  * Extrai texto de imagem usando Tesseract.js (OCR básico no frontend)
  */
 export const extractTextFromPaymentImage = async (file: File): Promise<string> => {
+    const Tesseract = (await import('tesseract.js')).default;
     return new Promise((resolve, reject) => {
         Tesseract.recognize(
             file,
@@ -211,6 +206,9 @@ export const extractTextFromPaymentImage = async (file: File): Promise<string> =
  */
 export const readPaymentPDF = async (file: File): Promise<string> => {
     // Implementação básica: extrair todo o texto
+    const pdfjsLib = await import('pdfjs-dist');
+    // Configurar worker do PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';

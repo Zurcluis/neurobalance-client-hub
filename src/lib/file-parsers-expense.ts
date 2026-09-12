@@ -1,7 +1,4 @@
 import { ExpenseImportData } from "@/components/finances/ExpenseImport";
-import * as XLSX from 'xlsx';
-import { createWorker } from 'tesseract.js';
-import { PDFDocument } from 'pdf-lib';
 
 // Função para ler arquivos Excel (.xlsx)
 export async function readExcelFile(
@@ -10,9 +7,10 @@ export async function readExcelFile(
 ): Promise<Partial<ExpenseImportData>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
-    reader.onload = (e) => {
+
+    reader.onload = async (e) => {
       try {
+        const XLSX = await import('xlsx');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         
@@ -188,6 +186,7 @@ export async function readPDFText(file: File): Promise<string> {
         
         // Usa pdf-lib para obter informações básicas
         try {
+          const { PDFDocument } = await import('pdf-lib');
           const pdfData = new Uint8Array(arrayBuffer);
           const pdfDoc = await PDFDocument.load(pdfData);
           
@@ -225,6 +224,7 @@ export async function extractTextFromImage(file: File): Promise<string> {
         
         try {
           // Inicializar o worker do Tesseract para português
+          const { createWorker } = await import('tesseract.js');
           const worker = await createWorker('por');
           
           // Processa a imagem usando o Tesseract OCR

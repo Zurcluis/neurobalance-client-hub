@@ -14,7 +14,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   
   // In dev mode, skip authentication entirely
   if (isDevMode) {
-    console.log('Dev mode detected, skipping authentication');
     return <>{children}</>;
   }
 
@@ -30,7 +29,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!session) {
-    console.log('No session, redirecting to login page');
     // Redirect to login page but save the attempted url
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

@@ -339,7 +339,7 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Minha Disponibilidade</h3>
-                <p className="text-xs text-gray-500">Gerencie seus horários disponíveis</p>
+                <p className="text-xs text-gray-500">Gere os seus horários disponíveis</p>
               </div>
             </div>
             <Button 
@@ -431,7 +431,7 @@ export const ClientAvailabilityCalendar: React.FC<ClientAvailabilityCalendarProp
                 {getHolidayForDay(selectedDate) && (
                   <div className="mt-2 p-3 rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200">
                     <p className="text-sm font-semibold text-amber-800">
-                      🎉 {getHolidayForDay(selectedDate)?.name}
+                      {getHolidayForDay(selectedDate)?.name}
                     </p>
                   </div>
                 )}

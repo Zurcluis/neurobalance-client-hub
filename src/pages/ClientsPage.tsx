@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import useTabSync from '@/hooks/useTabSync';
 import useClients from '@/hooks/useClients';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useLandingLeads } from '@/hooks/useLandingLeads';
@@ -33,7 +34,7 @@ import { LandingLead } from '@/types/landing-lead';
 import { LeadCompra } from '@/types/lead-compra';
 import { Database } from '@/integrations/supabase/types';
 import { format, parseISO, isValid, subMonths, subDays, isAfter, isBefore, differenceInYears, addDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
@@ -55,6 +56,10 @@ const ClientsPage = () => {
   const isPartner = useAdminAuth().session?.role === 'partner';
   const { isAdminContext } = useAdminContext();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = 'Clientes | NeuroBalance';
+  }, []);
   const {
     clients,
     isLoading,
@@ -79,18 +84,15 @@ const ClientsPage = () => {
   const [selectedGender, setSelectedGender] = useState<string>('all');
   const [ageRange, setAgeRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name');
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useTabSync<string>(
+    'overview',
+    ['overview', 'clients', 'leads', 'tokens', 'chat', 'notifications']
+  );
   const [clientView, setClientView] = useState<'all' | 'ongoing' | 'thinking' | 'no-need' | 'finished' | 'desistiu'>('all');
   const [packEndingFilter, setPackEndingFilter] = useState(false);
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    const validTabs = ['overview', 'clients', 'leads', 'tokens', 'chat', 'notifications'];
-    if (tabParam && validTabs.includes(tabParam)) {
-      setActiveTab(tabParam);
-    }
-
     const statusParam = searchParams.get('status');
     if (statusParam && ['all', 'ongoing', 'thinking', 'no-need', 'finished', 'desistiu'].includes(statusParam)) {
       setClientView(statusParam as typeof clientView);
@@ -101,7 +103,7 @@ const ClientsPage = () => {
       setPackEndingFilter(true);
       setActiveTab('clients');
     }
-  }, [searchParams]);
+  }, [searchParams, setActiveTab]);
 
   // Estado para conversão de leads
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -111,6 +113,23 @@ const ClientsPage = () => {
 
   // Hook para atualizar status de landing leads após conversão
   const { updateLeadStatus } = useLandingLeads();
+
+  // Agregados por cliente calculados 1× (sessões e receita), reutilizados na ordenação e no top 10
+  const clientAggregates = useMemo(() => {
+    const sessionsByClient = new Map<number, number>();
+    appointments.forEach(apt => {
+      if (apt.id_cliente == null) return;
+      sessionsByClient.set(apt.id_cliente, (sessionsByClient.get(apt.id_cliente) || 0) + 1);
+    });
+
+    const revenueByClient = new Map<number, number>();
+    payments.forEach(pay => {
+      if (pay.id_cliente == null) return;
+      revenueByClient.set(pay.id_cliente, (revenueByClient.get(pay.id_cliente) || 0) + (pay.valor || 0));
+    });
+
+    return { sessionsByClient, revenueByClient };
+  }, [appointments, payments]);
 
   // Filtros avançados
   const filteredAndSortedClients = useMemo(() => {
@@ -204,13 +223,13 @@ const ClientsPage = () => {
           return dateB - dateA;
         }
         case 'sessions': {
-          const sessionsA = appointments.filter(apt => apt.id_cliente === a.id).length;
-          const sessionsB = appointments.filter(apt => apt.id_cliente === b.id).length;
+          const sessionsA = clientAggregates.sessionsByClient.get(a.id) || 0;
+          const sessionsB = clientAggregates.sessionsByClient.get(b.id) || 0;
           return sessionsB - sessionsA;
         }
         case 'revenue': {
-          const revenueA = payments.filter(pay => pay.id_cliente === a.id).reduce((sum, pay) => sum + (pay.valor || 0), 0);
-          const revenueB = payments.filter(pay => pay.id_cliente === b.id).reduce((sum, pay) => sum + (pay.valor || 0), 0);
+          const revenueA = clientAggregates.revenueByClient.get(a.id) || 0;
+          const revenueB = clientAggregates.revenueByClient.get(b.id) || 0;
           return revenueB - revenueA;
         }
         default:
@@ -219,7 +238,7 @@ const ClientsPage = () => {
     });
 
     return sorted;
-  }, [clients, searchQuery, datePeriod, dateRange, selectedGender, ageRange, sortBy, searchClients, appointments, payments, packEndingFilter]);
+  }, [clients, searchQuery, datePeriod, dateRange, selectedGender, ageRange, sortBy, searchClients, clientAggregates, packEndingFilter]);
 
   // Analytics dos clientes
   const clientAnalytics = useMemo(() => {
@@ -280,21 +299,17 @@ const ClientsPage = () => {
       }).length;
 
       monthlyEvolution.push({
-        month: format(month, 'MMM', { locale: ptBR }).replace('.', ''),
+        month: format(month, 'MMM', { locale: pt }).replace('.', ''),
         clientes: monthClients
       });
     }
 
     // Top clientes por receita
-    const topClientsByRevenue = filteredAndSortedClients.map(client => {
-      const clientRevenue = payments.filter(pay => pay.id_cliente === client.id).reduce((sum, pay) => sum + (pay.valor || 0), 0);
-      const clientSessions = appointments.filter(apt => apt.id_cliente === client.id).length;
-      return {
-        ...client,
-        revenue: clientRevenue,
-        sessions: clientSessions
-      };
-    }).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+    const topClientsByRevenue = filteredAndSortedClients.map(client => ({
+      ...client,
+      revenue: clientAggregates.revenueByClient.get(client.id) || 0,
+      sessions: clientAggregates.sessionsByClient.get(client.id) || 0
+    })).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
     // Clientes que precisam de atenção
     const clientsNeedingAttention = filteredAndSortedClients.filter(client => {
@@ -334,7 +349,7 @@ const ClientsPage = () => {
       clientsNeedingAttention,
       upcomingSessions
     };
-  }, [filteredAndSortedClients, clients, appointments, payments]);
+  }, [filteredAndSortedClients, clients, appointments, clientAggregates]);
 
   const clientsByStatus = useMemo(() => ({
     all: filteredAndSortedClients,
@@ -417,7 +432,7 @@ const ClientsPage = () => {
       await deleteClient(id);
     } catch (error) {
       console.error('Error deleting client:', error);
-      toast.error('Falha ao excluir cliente');
+      toast.error('Falha ao eliminar cliente');
     }
   };
 
@@ -542,7 +557,7 @@ const ClientsPage = () => {
     <div className="space-y-6">
       <PageHeader
         title="Gestão de Clientes"
-        description="Controle completo dos seus clientes e suas jornadas"
+        description="Controlo completo dos seus clientes e das suas jornadas"
         icon={<Users className="h-5 w-5" />}
         actions={
           <>
@@ -641,7 +656,7 @@ const ClientsPage = () => {
                 <div>
                   <CardTitle className="text-base font-semibold">Lista de Clientes</CardTitle>
                   <CardDescription className="mt-1">
-                    Gerencie e visualize todos os seus clientes
+                    Faça a gestão e visualize todos os seus clientes
                   </CardDescription>
                 </div>
                 <Popover>
@@ -829,7 +844,7 @@ const ClientsPage = () => {
           <DialogHeader>
             <DialogTitle>Importar Clientes</DialogTitle>
             <DialogDescription>
-              Importe múltiplos clientes de um arquivo CSV ou JSON
+              Importe múltiplos clientes de um ficheiro CSV ou JSON
             </DialogDescription>
           </DialogHeader>
           <ClientImport onImportComplete={handleImportClients} />
@@ -839,9 +854,9 @@ const ClientsPage = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar eliminação</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja eliminar o cliente <b>{clientToDelete?.nome}</b>? Esta ação não pode ser desfeita.
+              Tem a certeza que pretende eliminar o cliente <b>{clientToDelete?.nome}</b>? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

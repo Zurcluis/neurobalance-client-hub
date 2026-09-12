@@ -14,12 +14,16 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    document.title = 'Entrar | NeuroBalance';
+  }, []);
+
   // If user is already logged in, redirect to the attempted page or home
   useEffect(() => {
     if (session) {
-      console.log('LoginPage: User is logged in, redirecting');
-      const from = (location.state as any)?.from?.pathname || "/";
-      navigate(from, { replace: true });
+      const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from;
+      const target = from?.pathname ? `${from.pathname}${from.search || ''}` : "/";
+      navigate(target, { replace: true });
     }
   }, [session, navigate, location]);
 
@@ -35,7 +39,10 @@ const LoginPage = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const redirectTo = import.meta.env.VITE_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`;
+      const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from;
+      const nextPath = from?.pathname ? `${from.pathname}${from.search || ''}` : "/";
+      const base = import.meta.env.VITE_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`;
+      const redirectTo = `${base}${base.includes("?") ? "&" : "?"}next=${encodeURIComponent(nextPath)}`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -48,8 +55,8 @@ const LoginPage = () => {
       }
     } catch (error: any) {
       console.error('LoginPage: Login error:', error);
-      setError(error.message || 'Failed to login with Google');
-      toast.error("Failed to login with Google");
+      setError(error.message || 'Falha ao iniciar sessão com o Google');
+      toast.error("Falha ao iniciar sessão com o Google");
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +76,7 @@ const LoginPage = () => {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">NeuroBalance CMS</h1>
-            <p className="mt-2 text-muted-foreground">Sign in to your NeuroBalance professional account</p>
+            <p className="mt-2 text-muted-foreground">Inicie sessão na sua conta profissional NeuroBalance</p>
           </div>
         </div>
 
@@ -78,20 +85,21 @@ const LoginPage = () => {
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
+              <AlertTitle>Erro</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <Button
             onClick={handleGoogleLogin}
-            className="w-full h-12 text-base bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
+            variant="outline"
+            className="w-full h-12 text-base"
             disabled={isLoading}
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900 mr-2"></div>
-                Signing in...
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-foreground mr-2"></div>
+                A iniciar sessão...
               </div>
             ) : (
               <>
@@ -113,7 +121,7 @@ const LoginPage = () => {
                     fill="#EA4335"
                   />
                 </svg>
-                Continue with Google
+                Continue com Google
               </>
             )}
           </Button>
@@ -121,7 +129,7 @@ const LoginPage = () => {
 
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} NeuroBalance. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} NeuroBalance. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>

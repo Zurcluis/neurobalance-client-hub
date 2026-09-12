@@ -132,7 +132,7 @@ const LeadCompraDashboard: React.FC<LeadCompraDashboardProps> = ({ statistics })
     <div className="space-y-6">
       {/* Título */}
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">📊 LEAD COMPRA - NEUROBALANCE</h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Lead Compra - NeuroBalance</h2>
         <p className="text-gray-600">Dashboard completo de leads e conversões</p>
       </div>
 

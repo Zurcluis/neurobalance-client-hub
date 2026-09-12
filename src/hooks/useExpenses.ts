@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
@@ -19,31 +20,24 @@ export type Expense = {
 type NewExpense = Omit<Expense, 'id' | 'criado_em'>;
 type UpdateExpense = Partial<NewExpense>;
 
-export function useExpenses() {
-  const supabase = useSupabaseClient();
-  const { logActivity } = useActivityLogger();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Criar tabela despesas usando a função SQL que está no Supabase
-  const createExpensesTable = async () => {
+// Criar tabela despesas usando a função SQL que está no Supabase
+const createExpensesTable = async (supabaseClient: ReturnType<typeof useSupabaseClient>) => {
     try {
       // Usar a função create_despesas_table diretamente via RPC
-      const { error } = await supabase.rpc('create_despesas_table');
-      
+      const { error } = await supabaseClient.rpc('create_despesas_table');
+
       if (error) {
         console.error('Erro ao criar tabela despesas:', error);
-        
+
         // Se a função create_despesas_table não existir
         if (error.code === '42883') { // função inexistente
           toast.error('A função para criar tabela não existe no banco de dados. Entre em contato com o administrador.');
           return false;
         }
-        
+
         throw error;
       }
-      
+
       toast.success('Tabela de despesas criada com sucesso');
       return true;
     } catch (err) {
@@ -53,25 +47,29 @@ export function useExpenses() {
     }
   };
 
-  // Carregar despesas do Supabase
-  const fetchExpenses = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
+// Partilha pedidos idênticos concorrentes (vários componentes montados em simultâneo)
+type ExpensesQueryResult = { data: Expense[] | null; error: PostgrestError | null };
+
+const expensesFetchInFlight = new Map<string, Promise<ExpensesQueryResult>>();
+
+const fetchExpensesShared = (supabaseClient: ReturnType<typeof useSupabaseClient>): Promise<ExpensesQueryResult> => {
+  const key = 'all';
+  let request = expensesFetchInFlight.get(key);
+
+  if (!request) {
+    request = (async () => {
       // Verificar se a tabela existe
       try {
-        const { error: tableCheckError } = await supabase
+        const { error: tableCheckError } = await supabaseClient
           .from('despesas')
           .select('id')
           .limit(1);
-        
+
         if (tableCheckError) {
           // Tabela não existe ou erro de permissão
           if (tableCheckError.code === '42P01' || tableCheckError.code === '42501') {
             // Tabela não existe ou erro de RLS, criar/recriar tabela
-            console.log('Tabela não existe ou erro de permissão, tentando criar/recriar');
-            const created = await createExpensesTable();
+            const created = await createExpensesTable(supabaseClient);
             if (!created) {
               throw new Error('Falha ao criar tabela de despesas');
             }
@@ -82,12 +80,35 @@ export function useExpenses() {
       } catch (err) {
         console.error('Erro ao verificar tabela:', err);
       }
-      
-      const { data, error } = await supabase
+
+      return supabaseClient
         .from('despesas')
         .select('*')
         .order('data', { ascending: false });
-      
+    })().finally(() => {
+      expensesFetchInFlight.delete(key);
+    });
+    expensesFetchInFlight.set(key, request);
+  }
+
+  return request;
+};
+
+export function useExpenses() {
+  const supabase = useSupabaseClient();
+  const { logActivity } = useActivityLogger();
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Carregar despesas do Supabase
+  const fetchExpenses = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error } = await fetchExpensesShared(supabase);
+
       if (error) {
         if (error.code === '42P01') {
           // Ainda temos problemas com a tabela, exibir mensagem de erro específica
@@ -100,7 +121,7 @@ export function useExpenses() {
         }
         throw error;
       }
-      
+
       setExpenses(data || []);
       setError(null);
     } catch (err) {
@@ -129,8 +150,7 @@ export function useExpenses() {
       if (error) {
         // Se for erro de RLS, tentar recriar a tabela
         if (error.code === '42501') {
-          console.log('Erro de política RLS, tentando recriar as políticas');
-          const created = await createExpensesTable();
+          const created = await createExpensesTable(supabase);
           if (created) {
             // Tentar novamente após recriar
             const { data: retryData, error: retryError } = await supabase

@@ -2,8 +2,6 @@
 import { supabase } from '../integrations/supabase/client';
 
 async function syncAllSessions() {
-    console.log('Starting session synchronization...');
-
     // 1. Fetch all clients
     const { data: clients, error: clientsError } = await supabase
         .from('clientes')
@@ -13,8 +11,6 @@ async function syncAllSessions() {
         console.error('Error fetching clients:', clientsError);
         return;
     }
-
-    console.log(`Found ${clients?.length} clients.`);
 
     for (const client of clients || []) {
         // 2. Fetch all appointments for this client
@@ -50,7 +46,6 @@ async function syncAllSessions() {
 
         // 5. Update client if different
         if (totalRealizedCount !== client.numero_sessoes) {
-            console.log(`Updating client ${client.id}: ${client.numero_sessoes} -> ${totalRealizedCount}`);
             const { error: updateError } = await supabase
                 .from('clientes')
                 .update({ numero_sessoes: totalRealizedCount })
@@ -61,8 +56,6 @@ async function syncAllSessions() {
             }
         }
     }
-
-    console.log('Synchronization complete.');
 }
 
 // Since we can't easily run this from terminal with the same env, 

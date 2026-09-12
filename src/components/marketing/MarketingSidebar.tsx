@@ -77,7 +77,7 @@ const MarketingSidebar: React.FC = () => {
             </div>
           </div>
           <DrawerClose asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10" aria-label="Fechar menu">
               <X className="h-5 w-5" />
             </Button>
           </DrawerClose>
@@ -96,7 +96,7 @@ const MarketingSidebar: React.FC = () => {
           />
           {!isCollapsed && (
             <div className="text-center">
-              <h1 className="font-bold text-lg text-[#3A726D]">NeuroBalance</h1>
+              <h1 className="font-bold text-lg text-neurobalance-primary">NeuroBalance</h1>
               <p className="text-xs text-gray-600">Área Marketing</p>
             </div>
           )}
@@ -187,6 +187,7 @@ const MarketingSidebar: React.FC = () => {
             size="icon"
             className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
             onClick={handleLogout}
+            aria-label="Terminar sessão"
           >
             <LogOut className="h-4 w-4" />
           </Button>
@@ -200,7 +201,7 @@ const MarketingSidebar: React.FC = () => {
       <div className="fixed top-0 left-0 z-40 w-full bg-white/90 backdrop-blur-sm border-b border-gray-200 flex justify-between items-center px-4 py-3 pt-safe">
         <Drawer>
           <DrawerTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 flex items-center justify-center">
+            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 flex items-center justify-center" aria-label="Abrir menu">
               <Menu className="h-6 w-6" />
             </Button>
           </DrawerTrigger>

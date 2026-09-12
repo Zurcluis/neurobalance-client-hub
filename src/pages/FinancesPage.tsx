@@ -20,6 +20,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import useTabSync from '@/hooks/useTabSync';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +65,10 @@ const pctChange = (current: number, previous: number): number | null => {
 };
 
 const FinancesPage = () => {
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useTabSync<string>(
+    'overview',
+    ['overview', 'transactions', 'loans', 'analysis', 'forecast', 'taxes', 'tools']
+  );
   const [transactionTab, setTransactionTab] = useState<string>('income');
   const [analysisTab, setAnalysisTab] = useState<string>('monthly');
   const [taxTab, setTaxTab] = useState<string>('breakdown');
@@ -199,7 +203,7 @@ const FinancesPage = () => {
         {/* Header com ações rápidas */}
         <PageHeader
           title="Gestão Financeira"
-          description="Controle completo das suas finanças e obrigações fiscais"
+          description="Controlo completo das suas finanças e obrigações fiscais"
           icon={<DollarSign className="h-5 w-5" />}
           actions={
             <>
@@ -214,7 +218,7 @@ const FinancesPage = () => {
               </Button>
               <Button
                 size="sm"
-                className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+                className="gap-2"
                 onClick={() => goToTab('transactions', 'income')}
               >
                 <Plus className="h-4 w-4" />
@@ -401,7 +405,7 @@ const FinancesPage = () => {
                     <p className="text-red-500 font-medium mb-2">Erro ao carregar dados financeiros</p>
                     <p className="text-muted-foreground mb-4">{error.message}</p>
                     <Button onClick={fetchPayments} variant="outline">
-                      Tentar Novamente
+                      Tentar novamente
                     </Button>
                   </div>
                 ) : paymentsData.length === 0 ? (

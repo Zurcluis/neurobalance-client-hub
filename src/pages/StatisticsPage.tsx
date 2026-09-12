@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import KpiCard from '@/components/shared/KpiCard';
@@ -114,6 +114,10 @@ const EmptyChart = ({ message }: { message: string }) => (
 );
 
 const StatisticsPage = () => {
+  useEffect(() => {
+    document.title = 'Estatísticas | NeuroBalance';
+  }, []);
+
   const { clients, isLoading: clientsLoading, error: clientsError, refresh: refreshClients } = useClients();
   const { appointments, isLoading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments } = useAppointments();
   const { payments, isLoading: paymentsLoading, error: paymentsError, fetchPayments } = usePayments();

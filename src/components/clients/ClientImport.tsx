@@ -31,12 +31,12 @@ interface ClientImportProps {
 const ALLOWED_FILE_TYPES = {
   'image/png': { icon: <ImageIcon className="h-8 w-8 text-purple-500" />, label: 'Imagem PNG' },
   'application/pdf': { icon: <File className="h-8 w-8 text-red-500" />, label: 'Documento PDF' },
-  'text/plain': { icon: <FileText className="h-8 w-8 text-blue-500" />, label: 'Arquivo de Texto' },
+  'text/plain': { icon: <FileText className="h-8 w-8 text-blue-500" />, label: 'Ficheiro de Texto' },
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { 
     icon: <FileSpreadsheet className="h-8 w-8 text-green-500" />, 
     label: 'Planilha Excel' 
   },
-  'text/csv': { icon: <FileSpreadsheet className="h-8 w-8 text-green-500" />, label: 'Arquivo CSV' },
+  'text/csv': { icon: <FileSpreadsheet className="h-8 w-8 text-green-500" />, label: 'Ficheiro CSV' },
 };
 
 type FileType = keyof typeof ALLOWED_FILE_TYPES;
@@ -124,7 +124,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
 
     if (invalidFiles.length > 0) {
       toast.error(
-        `Tipos de arquivo não suportados: ${invalidFiles.join(', ')}. 
+        `Tipos de ficheiros não suportados: ${invalidFiles.join(', ')}. 
         Formatos aceitos: PNG, PDF, TXT, XLSX e CSV.`
       );
     }
@@ -138,11 +138,11 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(file => {
       if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error(`Tipo de arquivo não permitido: ${file.name}`);
+        toast.error(`Tipo de ficheiro não permitido: ${file.name}`);
         return false;
       }
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`Arquivo muito grande: ${file.name}`);
+        toast.error(`Ficheiro demasiado grande: ${file.name}`);
         return false;
       }
       return true;
@@ -441,7 +441,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
               if (!clientData.email) missingFields.push('Email');
               if (!clientData.telefone) missingFields.push('Telefone');
               
-              newErrors.push(`Arquivo ${file.name}: Campos obrigatórios faltando: ${missingFields.join(', ')}`);
+              newErrors.push(`Ficheiro ${file.name}: campos obrigatórios em falta: ${missingFields.join(', ')}`);
             }
           }
         } catch (err) {
@@ -460,7 +460,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
         setCurrentTab('preview');
         toast.success(`${extractedClients.length} cliente(s) extraído(s) com sucesso!`);
       } else {
-        toast.error('Não foi possível extrair dados de cliente dos arquivos.');
+        toast.error('Não foi possível extrair os dados de cliente dos ficheiros.');
       }
     } catch (err) {
       console.error('Erro ao processar arquivos:', err);
@@ -498,7 +498,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
           <CardHeader>
             <CardTitle>Importar Clientes</CardTitle>
             <CardDescription>
-              Arraste e solte arquivos ou clique para selecionar. Tipos suportados: PNG, PDF, TXT, XLSX, CSV.
+              Arraste e largue ficheiros ou clique para selecionar. Tipos suportados: PNG, PDF, TXT, XLSX, CSV.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -517,7 +517,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
               />
               <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <p className="text-sm text-gray-600 mb-2">
-                Arraste e solte seus arquivos aqui ou clique para selecionar
+                Arraste e largue os ficheiros aqui ou clique para selecionar
               </p>
               <p className="text-xs text-gray-500">
                 PNG (OCR), PDF, TXT, Excel (.xlsx) ou CSV
@@ -526,7 +526,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
 
             {isUploading && (
               <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">Processando...</p>
+                <p className="text-sm text-gray-600 mb-2">A processar...</p>
                 <Progress value={progress} className="h-2" />
               </div>
             )}
@@ -534,7 +534,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
             {files.length > 0 && (
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm font-medium">Arquivos Selecionados</h3>
+                  <h3 className="text-sm font-medium">Ficheiros Selecionados</h3>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -559,7 +559,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
                               {file.name}
                             </span>
                             <span className="text-xs text-gray-500">
-                              {ALLOWED_FILE_TYPES[fileType]?.label || 'Arquivo'} • {(file.size / 1024).toFixed(1)} KB
+                              {ALLOWED_FILE_TYPES[fileType]?.label || 'Ficheiro'} • {(file.size / 1024).toFixed(1)} KB
                             </span>
                           </div>
                         </div>
@@ -594,11 +594,11 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
           </CardContent>
           <CardFooter>
             <Button 
-              className="w-full bg-[#3A726D] hover:bg-[#265255]"
+              className="w-full bg-neurobalance-primary hover:bg-neurobalance-secondary"
               onClick={processFiles}
               disabled={files.length === 0 || isUploading}
             >
-              {isUploading ? 'Processando...' : 'Processar Arquivos'}
+              {isUploading ? 'A processar...' : 'Processar Ficheiros'}
             </Button>
           </CardFooter>
         </Card>
@@ -696,7 +696,7 @@ const ClientImport: React.FC<ClientImportProps> = ({ onImportComplete }) => {
               Voltar
             </Button>
             <Button 
-              className="bg-[#3A726D] hover:bg-[#265255]"
+              className="bg-neurobalance-primary hover:bg-neurobalance-secondary"
               onClick={importClients}
               disabled={extractedData.length === 0}
             >

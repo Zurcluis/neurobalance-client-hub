@@ -6,6 +6,7 @@ import {
   format,
   isAfter,
   parseISO,
+  startOfDay,
   startOfMonth,
   subMonths,
 } from 'date-fns';
@@ -148,7 +149,6 @@ export const detectRecurringPacks = (
   horizonMonths = 3
 ): RecurringPack[] => {
   const groups = groupRecurringPayments(payments);
-  const horizonEnd = endOfMonth(addMonths(now, horizonMonths));
   const packs: RecurringPack[] = [];
 
   groups.forEach(groupPayments => {
@@ -175,7 +175,10 @@ export const detectRecurringPacks = (
       groupPayments[0]?.cliente_nome ||
       (groupPayments[0]?.id_cliente != null ? `Cliente ${groupPayments[0].id_cliente}` : 'Sem cliente');
 
-    const horizonStart = startOfMonth(now);
+    // Horizonte alinhado com os meses projetados: renovações apenas a partir de
+    // agora (o próprio dia conta) e dentro de [now, fim do mês do último mês projetado].
+    const horizonStart = startOfDay(now);
+    const horizonEnd = endOfMonth(addMonths(now, horizonMonths - 1));
     const nextPayments: Array<{ date: Date; value: number }> = [];
     let next = addDays(lastPaymentDate, cadenceDays);
     let guard = 0;
@@ -437,6 +440,16 @@ export const buildPackRenewals = (
 
   const renewals: PackRenewal[] = [];
   groups.forEach(groupPayments => {
+    const lastPaymentDate =
+      groupPayments
+        .map(payment => toDate(payment.data))
+        .filter((date): date is Date => date !== null)
+        .sort((a, b) => b.getTime() - a.getTime())[0] || null;
+    // Packs sem data válida, com último pagamento no futuro ou inativos há mais de
+    // 180 dias (mesmo critério de deteção de packs ativos) não sugerem renovação.
+    if (!lastPaymentDate || isAfter(lastPaymentDate, now)) return;
+    if (differenceInCalendarDays(now, lastPaymentDate) > ACTIVE_PACK_WINDOW_DAYS) return;
+
     const clientId = groupPayments[0]?.id_cliente ?? null;
     const clientName =
       groupPayments[0]?.cliente_nome ||
@@ -445,13 +458,10 @@ export const buildPackRenewals = (
     const sessionsTotal = groupPayments.length * PACK_SESSIONS_PER_PAYMENT;
     const sessionsUsed = clientId != null ? realizedByClient.get(clientId) || 0 : 0;
     const remaining = sessionsTotal - sessionsUsed;
-    if (remaining > 3) return;
+    // Sobre-uso (remaining negativo) não é cenário de renovação.
+    if (remaining < 0 || remaining > 3) return;
 
     const medianValue = median(groupPayments.map(payment => Number(payment.valor) || 0));
-    const lastPaymentDate = groupPayments
-      .map(payment => toDate(payment.data))
-      .filter((date): date is Date => date !== null)
-      .sort((a, b) => b.getTime() - a.getTime())[0] || null;
 
     renewals.push({
       clientId,

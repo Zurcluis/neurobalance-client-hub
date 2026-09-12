@@ -22,12 +22,14 @@ import { PortfolioChart } from '@/components/investments/PortfolioChart';
 import type { Investment, InvestmentFormData, InvestmentType } from '@/types/investments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 const InvestmentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<InvestmentType | 'all'>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [investmentToDelete, setInvestmentToDelete] = useState<string | null>(null);
 
   const {
     investments,
@@ -74,9 +76,13 @@ const InvestmentsPage = () => {
   };
 
   const handleDeleteInvestment = (id: string) => {
-    if (confirm('Tem a certeza que deseja remover este investimento?')) {
-      deleteInvestment(id);
-    }
+    setInvestmentToDelete(id);
+  };
+
+  const confirmDeleteInvestment = () => {
+    if (!investmentToDelete) return;
+    deleteInvestment(investmentToDelete);
+    setInvestmentToDelete(null);
   };
 
   const handleRefreshPrices = async () => {
@@ -269,6 +275,19 @@ const InvestmentsPage = () => {
         onOpenChange={setIsFormOpen}
         onSubmit={editingInvestment ? handleUpdateInvestment : handleAddInvestment}
         investment={editingInvestment}
+      />
+
+      <ConfirmDialog
+        open={investmentToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setInvestmentToDelete(null);
+        }}
+        onConfirm={confirmDeleteInvestment}
+        title="Remover investimento"
+        description="Tem a certeza que deseja remover este investimento? Esta ação não pode ser desfeita."
+        confirmText="Remover"
+        cancelText="Cancelar"
+        variant="destructive"
       />
     </PageLayout>
   );

@@ -45,7 +45,6 @@ export const MarketingAuthProvider = ({ children }: { children: React.ReactNode 
       });
 
       if (error) {
-        console.log('Erro ao validar no Supabase, tentando localStorage:', error);
         return null;
       }
 

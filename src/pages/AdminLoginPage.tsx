@@ -16,7 +16,11 @@ const AdminLoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
+  useEffect(() => {
+    document.title = 'Área Administrativa | NeuroBalance';
+  }, []);
+
   const { login, isAuthenticated, loading, session } = useAdminAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -86,17 +90,17 @@ const AdminLoginPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#3f9094] mx-auto mb-4" />
-          <p className="text-gray-600">A carregar...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">A carregar...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Logo e Título */}
         <div className="text-center space-y-6">
@@ -108,18 +112,18 @@ const AdminLoginPage = () => {
             />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Área Administrativa</h1>
-            <p className="mt-2 text-gray-600">NeuroBalance - Sistema de Gestão</p>
+            <h1 className="text-3xl font-bold text-foreground">Área Administrativa</h1>
+            <p className="mt-2 text-muted-foreground">NeuroBalance - Sistema de Gestão</p>
           </div>
         </div>
 
         {/* Formulário de Login */}
         <Card className="border-0 shadow-xl">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-semibold text-center text-gray-900">
+            <CardTitle className="text-2xl font-semibold text-center text-foreground">
               Acesso Administrativo
             </CardTitle>
-            <CardDescription className="text-center text-gray-600">
+            <CardDescription className="text-center text-muted-foreground">
               {tokenParam 
                 ? 'Link de acesso detetado. Insira o e-mail e palavra-passe correspondente.'
                 : 'Insira o seu e-mail e palavra-passe para aceder ao sistema.'
@@ -134,8 +138,8 @@ const AdminLoginPage = () => {
             )}
 
             {tokenParam && (
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded text-xs text-teal-800 flex items-center gap-2">
-                <Shield className="h-4 w-4 text-teal-600 flex-shrink-0" />
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded text-xs text-teal-800 dark:bg-teal-950/40 dark:border-teal-900 dark:text-teal-300 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-teal-600 dark:text-teal-300 flex-shrink-0" />
                 <span>Link de acesso seguro ativo.</span>
               </div>
             )}
@@ -177,7 +181,8 @@ const AdminLoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -186,7 +191,7 @@ const AdminLoginPage = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-[#3f9094] hover:bg-[#2d7a7e] text-white font-medium mt-2"
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-medium mt-2"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -205,7 +210,7 @@ const AdminLoginPage = () => {
               <Button
                 variant="ghost"
                 onClick={() => setShowHelp(!showHelp)}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                className="text-sm text-muted-foreground hover:text-foreground"
               >
                 {showHelp ? (
                   <>
@@ -223,16 +228,16 @@ const AdminLoginPage = () => {
 
             {/* Seção de Ajuda */}
             {showHelp && (
-              <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="font-semibold text-slate-900 mb-2">Como aceder ao sistema:</h3>
-                <ul className="text-sm text-slate-700 space-y-1">
+              <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Como aceder ao sistema:</h3>
+                <ul className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
                   <li>• Utilize o e-mail administrativo registado.</li>
                   <li>• Insira a palavra-passe correspondente definida no perfil.</li>
                   <li>• Se estiver a usar um link de acesso gerado por token, certifique-se de introduzir a palavra-passe correta da sua conta.</li>
                   <li>• Se necessário, contacte o administrador principal para redefinir as suas credenciais.</li>
                 </ul>
-                <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                  <p className="text-xs text-blue-700 flex items-center gap-1.5">
+                <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200 dark:bg-blue-950/40 dark:border-blue-900">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
                     <Shield className="h-4 w-4 flex-shrink-0" />
                     <span>Acesso seguro com encriptação e tokens de sessão temporários.</span>
                   </p>
@@ -243,10 +248,10 @@ const AdminLoginPage = () => {
         </Card>
 
         {/* Informações de Segurança */}
-        <div className="text-center text-sm text-slate-500">
+        <div className="text-center text-sm text-muted-foreground">
           <p>
             Acesso restrito a pessoal autorizado.{' '}
-            <span className="text-slate-600 font-medium">
+            <span className="text-foreground font-medium">
               Todas as ações são registadas.
             </span>
           </p>

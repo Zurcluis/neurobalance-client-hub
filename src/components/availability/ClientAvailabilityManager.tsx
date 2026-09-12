@@ -67,16 +67,16 @@ export const ClientAvailabilityManager: React.FC<ClientAvailabilityManagerProps>
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header com Alerta */}
-      <Card className="border-l-4 border-l-[#3f9094]">
+      <Card className="border-l-4 border-l-neurobalance-teal">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <CardTitle className="text-2xl flex items-center gap-2">
-                <Calendar className="h-6 w-6 text-[#3f9094]" />
+                <Calendar className="h-6 w-6 text-neurobalance-teal" />
                 Minha Disponibilidade de Horários
               </CardTitle>
               <CardDescription className="mt-2">
-                Defina quando você está disponível para sessões e receba sugestões automáticas de agendamentos
+                    Indique quando está disponível para sessões e receba sugestões automáticas de agendamentos
               </CardDescription>
             </div>
             
@@ -98,11 +98,11 @@ export const ClientAvailabilityManager: React.FC<ClientAvailabilityManagerProps>
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    🎯 Comece definindo sua disponibilidade!
+                    Comece a definir a sua disponibilidade!
                   </h3>
                   <p className="text-sm text-blue-800 dark:text-blue-200 mb-4">
-                    Informe os dias e horários em que você está disponível para sessões. 
-                    Com isso, nosso sistema poderá sugerir automaticamente os melhores horários para você!
+                    Indique os dias e horários em que está disponível para sessões.
+                    Assim, o sistema poderá sugerir automaticamente os melhores horários!
                   </p>
                   <Button 
                     onClick={handleAdd}
@@ -128,7 +128,7 @@ export const ClientAvailabilityManager: React.FC<ClientAvailabilityManagerProps>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="manage" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            <span>Gerenciar Horários</span>
+            <span>Gerir Horários</span>
             {statistics.horarios_ativos > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {statistics.horarios_ativos}
@@ -161,7 +161,7 @@ export const ClientAvailabilityManager: React.FC<ClientAvailabilityManagerProps>
 
           {/* Formulário (Dialog/Inline) */}
           {isFormOpen && (
-            <Card className="border-2 border-[#3f9094]">
+            <Card className="border-2 border-neurobalance-teal">
               <CardHeader>
                 <CardTitle>
                   {editingAvailability ? 'Editar Horário' : 'Novo Horário Disponível'}

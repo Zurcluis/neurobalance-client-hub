@@ -732,4 +732,4 @@ const TimeGridView: React.FC<TimeGridViewProps> = ({
   );
 };
 
-export default TimeGridView;
+export default React.memo(TimeGridView);

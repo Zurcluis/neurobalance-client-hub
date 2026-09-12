@@ -8,7 +8,7 @@ import { useAvailabilityNotifications } from '@/hooks/useAvailabilityNotificatio
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { TipoNotificacao, PrioridadeNotificacao } from '@/types/availability';
 
@@ -81,7 +81,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-[#3f9094]" />
+            <Bell className="h-5 w-5 text-neurobalance-teal" />
             Notificações
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-2">
@@ -113,7 +113,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           <EmptyState
             icon={<BellOff className="h-12 w-12" />}
             title="Nenhuma Notificação"
-            description="Você não tem notificações no momento. Novas sugestões e atualizações aparecerão aqui."
+            description="Não tem notificações neste momento. Novas sugestões e atualizações aparecerão aqui."
           />
         ) : (
           <ScrollArea className="pr-4" style={{ maxHeight }}>
@@ -126,7 +126,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     key={notification.id}
                     className={cn(
                       'relative transition-all',
-                      isUnread && 'border-l-4 border-l-[#3f9094] bg-blue-50/30 dark:bg-blue-950/30'
+                      isUnread && 'border-l-4 border-l-neurobalance-teal bg-blue-50/30 dark:bg-blue-950/30'
                     )}
                   >
                     <CardContent className="p-4">
@@ -159,7 +159,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           <div className="flex items-center justify-between">
                             <p className="text-xs text-gray-500">
                               {format(parseISO(notification.enviada_em!), "dd/MM/yyyy 'às' HH:mm", {
-                                locale: ptBR,
+                                locale: pt,
                               })}
                             </p>
 

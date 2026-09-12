@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, AlertCircle, CheckCircle2, Clock, Bell, Filter } from 'lucide-react';
 import { format, isAfter, isBefore, addDays, differenceInDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
@@ -103,7 +103,7 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
               <span className={`font-medium ${
                 status.status === 'overdue' ? 'text-red-600' : 'text-gray-700'
               }`}>
-                {format(deadline.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                {format(deadline.date, "dd 'de' MMMM 'de' yyyy", { locale: pt })}
               </span>
               <span className={`px-2 py-1 rounded text-xs font-medium ${
                 status.status === 'overdue' ? 'bg-red-100 text-red-700' :
@@ -312,12 +312,12 @@ export const FiscalDeadlines: React.FC<FiscalDeadlinesProps> = ({ year = new Dat
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {Array.from({ length: 12 }, (_, i) => {
                   const month = i;
-                  const monthName = format(new Date(selectedYear, month), 'MMMM', { locale: ptBR });
+                  const monthName = format(new Date(selectedYear, month), 'MMMM', { locale: pt });
                   const monthDeadlines = filteredDeadlines.all.filter(d => d.date.getMonth() === month);
 
                   return (
                     <div key={month} className="border rounded-lg p-4">
-                      <h3 className="font-semibold mb-3 capitalize text-center bg-[#3f9094] text-white py-2 rounded">
+                      <h3 className="font-semibold mb-3 capitalize text-center bg-neurobalance-teal text-white py-2 rounded">
                         {monthName}
                       </h3>
                       <div className="space-y-2">

@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useEffect } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { format, addMonths, differenceInMonths, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 
 interface LoanTrackerProps {
   expenses: any[];
@@ -32,25 +32,6 @@ interface LoanData {
 }
 
 const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
-  
-  // Debug: Monitorar mudanças nas despesas
-  useEffect(() => {
-    console.log('LoanTracker - Despesas recebidas:', expenses?.length || 0);
-    if (expenses?.length > 0) {
-      // Mostrar categorias únicas para debug
-      const categorias = [...new Set(expenses.map(e => e.categoria))];
-      const tipos = [...new Set(expenses.map(e => e.tipo))];
-      console.log('LoanTracker - Categorias disponíveis:', categorias);
-      console.log('LoanTracker - Tipos disponíveis:', tipos);
-      
-      // Mostrar despesas de empréstimos
-      const emprestimos = expenses.filter(e => 
-        e.tipo?.toLowerCase() === 'empréstimos' || 
-        e.tipo?.toLowerCase() === 'emprestimos'
-      );
-      console.log('LoanTracker - Despesas de Empréstimos:', emprestimos);
-    }
-  }, [expenses]);
 
   const loansData = useMemo(() => {
     // Normalizar string para comparação (remover acentos e lowercase)
@@ -98,20 +79,6 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
       return isBPICategoria || isEmprestimoBPI;
     });
 
-    // Debug: mostrar quantas despesas foram encontradas
-    console.log('LoanTracker - Total despesas recebidas:', expenses.length);
-    console.log('LoanTracker - Despesas "Devolveu Dinheiro" encontradas:', devolveuDinheiroExpenses.length);
-    if (devolveuDinheiroExpenses.length > 0) {
-      console.log('LoanTracker - Detalhes Devolveu Dinheiro:', devolveuDinheiroExpenses.map(e => ({
-        id: e.id,
-        tipo: e.tipo,
-        categoria: e.categoria,
-        valor: e.valor,
-        data: e.data
-      })));
-    }
-    console.log('LoanTracker - Despesas "Banco BPI" encontradas:', bancoBPIExpenses.length);
-
     const calculateLoanData = (
       payments: any[], 
       name: string, 
@@ -150,7 +117,7 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
         : 0;
 
       const estimatedEndDate = remainingMonths > 0
-        ? format(addMonths(new Date(lastPaymentDate), remainingMonths), 'MMMM yyyy', { locale: ptBR })
+        ? format(addMonths(new Date(lastPaymentDate), remainingMonths), 'MMMM yyyy', { locale: pt })
         : 'Concluído';
 
       const progressPercentage = totalAmount > 0 
@@ -197,12 +164,12 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
     const isCompleted = loan.remainingAmount <= 0;
 
     return (
-      <Card className="overflow-hidden border-t-4 border-t-[#3f9094]">
+      <Card className="overflow-hidden border-t-4 border-t-neurobalance-teal">
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between">
             <div>
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <PiggyBank className="h-5 w-5 text-[#3f9094]" />
+                <PiggyBank className="h-5 w-5 text-neurobalance-teal" />
                 {loan.name}
               </CardTitle>
               <CardDescription className="mt-1">
@@ -215,7 +182,7 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
                 Concluído
               </Badge>
             ) : (
-              <Badge variant="outline" className="border-[#3f9094] text-[#3f9094]">
+              <Badge variant="outline" className="border-neurobalance-teal text-neurobalance-teal">
                 Em Andamento
               </Badge>
             )}
@@ -260,7 +227,7 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 Progresso do Empréstimo
               </span>
-              <span className="font-bold text-[#3f9094]">
+              <span className="font-bold text-neurobalance-teal">
                 {loan.progressPercentage.toFixed(1)}%
               </span>
             </div>
@@ -322,10 +289,10 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
                   <div className="flex items-center gap-2">
                     <ArrowRight className="h-4 w-4 text-gray-400" />
                     <span className="font-medium text-gray-700 dark:text-gray-300">
-                      {format(parseISO(payment.data), 'dd MMM yyyy', { locale: ptBR })}
+                      {format(parseISO(payment.data), 'dd MMM yyyy', { locale: pt })}
                     </span>
                   </div>
-                  <span className="font-bold text-[#3f9094]">
+                  <span className="font-bold text-neurobalance-teal">
                     €{payment.valor.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -354,7 +321,7 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <PiggyBank className="h-6 w-6 text-[#3f9094]" />
+            <PiggyBank className="h-6 w-6 text-neurobalance-teal" />
             Resumo Geral dos Empréstimos
           </CardTitle>
           <CardDescription>
@@ -394,7 +361,7 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({ expenses }) => {
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 Progresso Consolidado
               </span>
-              <span className="font-bold text-[#3f9094]">
+              <span className="font-bold text-neurobalance-teal">
                 {overallProgress.toFixed(1)}%
               </span>
             </div>

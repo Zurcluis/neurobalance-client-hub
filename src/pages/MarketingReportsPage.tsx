@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { useMarketingContext } from '@/contexts/MarketingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import useTabSync from '@/hooks/useTabSync';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,11 +61,21 @@ import { toast } from 'sonner';
 import TimeRangeSelector, { TimeRange } from '@/components/dashboard/TimeRangeSelector';
 import { useLanguage } from '@/hooks/use-language';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 const MarketingReportsPage = () => {
   const { isMarketingContext } = useMarketingContext();
   const { t } = useLanguage();
   const { logActivity } = useActivityLogger();
+
+  useEffect(() => {
+    document.title = 'Marketing | NeuroBalance';
+  }, []);
+
+  const [activeTab, setActiveTab] = useTabSync<string>(
+    'overview',
+    ['overview', 'campaigns', 'leads', 'intelligence', 'tools']
+  );
 
   // Marketing Campaigns hooks
   const {
@@ -117,6 +128,12 @@ const MarketingReportsPage = () => {
     tipo: 'Todos'
   });
   const [showLeadImporter, setShowLeadImporter] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { kind: 'campanha'; id: string }
+    | { kind: 'lead'; id: string }
+    | { kind: 'campanha-email-sms'; id: string }
+    | null
+  >(null);
 
   // Email/SMS Campaigns hooks
   const {
@@ -306,14 +323,43 @@ const MarketingReportsPage = () => {
     setIsFormOpen(true);
   };
 
-  const handleDeleteCampaign = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
+  const handleDeleteCampaign = (id: string) => {
+    setDeleteTarget({ kind: 'campanha', id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    if (target.kind === 'campanha') {
       try {
-        await deleteCampaign(id);
+        await deleteCampaign(target.id);
         toast.success('Campanha removida com sucesso!');
       } catch (error) {
         console.error('Erro ao remover campanha:', error);
       }
+    } else if (target.kind === 'lead') {
+      try {
+        const leadToDelete = leads.find(l => l.id === target.id);
+        await deleteLead(target.id);
+
+        if (leadToDelete) {
+          const matchLanding = landingLeads.find(l =>
+            (leadToDelete.email && l.email && l.email.toLowerCase() === leadToDelete.email.toLowerCase()) ||
+            (leadToDelete.telefone && l.telefone && l.telefone.trim() === leadToDelete.telefone.trim()) ||
+            l.id === target.id
+          );
+          if (matchLanding) {
+            await deleteLandingLead(matchLanding.id);
+          }
+        }
+        await Promise.all([fetchLandingLeads(), fetchLeads()]);
+        toast.success('Lead removido com sucesso!');
+      } catch (error) {
+        console.error('Erro ao remover lead:', error);
+      }
+    } else {
+      await deleteEmailSmsCampaign(target.id);
     }
   };
 
@@ -384,28 +430,8 @@ const MarketingReportsPage = () => {
     setIsLeadFormOpen(true);
   };
 
-  const handleDeleteLeadFromList = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este lead?')) {
-      try {
-        const leadToDelete = leads.find(l => l.id === id);
-        await deleteLead(id);
-
-        if (leadToDelete) {
-          const matchLanding = landingLeads.find(l =>
-            (leadToDelete.email && l.email && l.email.toLowerCase() === leadToDelete.email.toLowerCase()) ||
-            (leadToDelete.telefone && l.telefone && l.telefone.trim() === leadToDelete.telefone.trim()) ||
-            l.id === id
-          );
-          if (matchLanding) {
-            await deleteLandingLead(matchLanding.id);
-          }
-        }
-        await Promise.all([fetchLandingLeads(), fetchLeads()]);
-        toast.success('Lead removido com sucesso!');
-      } catch (error) {
-        console.error('Erro ao remover lead:', error);
-      }
-    }
+  const handleDeleteLeadFromList = (id: string) => {
+    setDeleteTarget({ kind: 'lead', id });
   };
 
   const handleCancelLeadForm = () => {
@@ -493,7 +519,7 @@ const MarketingReportsPage = () => {
       {/* Cabeçalho */}
       <PageHeader
         title={t('marketing')}
-        description="Gerencie campanhas, leads e análises de marketing"
+        description="Faça a gestão de campanhas, leads e análises de marketing"
         icon={<Megaphone className="h-5 w-5" />}
         actions={
           <>
@@ -501,7 +527,7 @@ const MarketingReportsPage = () => {
               selectedRange={periodFilter}
               onRangeChange={setPeriodFilter}
             />
-            <Button size="sm" className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsFormOpen(true)}>
+            <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsFormOpen(true)}>
               <Plus className="h-4 w-4" />
               {t('newCampaign')}
             </Button>
@@ -607,7 +633,7 @@ const MarketingReportsPage = () => {
       </Dialog>
 
       {/* Tabs Reorganizadas: 8 → 4 */}
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto md:h-10">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -631,7 +657,7 @@ const MarketingReportsPage = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* 📊 Visão Geral - Combinando dashboard + lead analytics */}
+        {/* Visão Geral - Combinando dashboard + lead analytics */}
         <TabsContent value="overview" className="space-y-6 mt-6">
           {/* Dashboard de Campanhas */}
           <MarketingDashboard
@@ -653,7 +679,7 @@ const MarketingReportsPage = () => {
           {/* Analytics de Leads */}
           <div className="mt-8">
             <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-[#3f9094]" />
+              <Users className="h-5 w-5 text-primary" />
               Analytics de Leads
             </h3>
             <LeadCompraDashboard
@@ -678,7 +704,7 @@ const MarketingReportsPage = () => {
           </div>
         </TabsContent>
 
-        {/* 📋 Campanhas - Marketing + Email/SMS juntos */}
+        {/* Campanhas - Marketing + Email/SMS juntos */}
         <TabsContent value="campaigns" className="space-y-6 mt-6">
           <Tabs defaultValue="marketing" className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -697,9 +723,9 @@ const MarketingReportsPage = () => {
               {/* Barra de ações contextual */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
-                    placeholder="Buscar campanhas por nome ou origem..."
+                    placeholder="Pesquisar campanhas por nome ou origem..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -708,12 +734,12 @@ const MarketingReportsPage = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowFilters(!showFilters)}
-                  className={showFilters ? 'bg-[#E6F2F1] border-[#3f9094]/30' : ''}
+                  className={showFilters ? 'bg-primary/10 border-primary/30' : ''}
                 >
                   <Filter className="h-4 w-4 mr-2" />
                   Filtros
                 </Button>
-                <Button className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsFormOpen(true)}>
+                <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsFormOpen(true)}>
                   <Plus className="h-4 w-4" />
                   Nova Campanha
                 </Button>
@@ -753,10 +779,10 @@ const MarketingReportsPage = () => {
                 </div>
               ) : filteredCampaigns.length === 0 ? (
                 <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <Calendar className="h-12 w-12 text-muted-foreground/60 mx-auto mb-4" />
+                  <p className="text-muted-foreground">
                     {campaigns.length === 0
-                      ? 'Nenhuma campanha cadastrada ainda.'
+                      ? 'Nenhuma campanha registada ainda.'
                       : 'Nenhuma campanha encontrada com os filtros aplicados.'
                     }
                   </p>
@@ -789,9 +815,9 @@ const MarketingReportsPage = () => {
               {/* Barra de ações contextual */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
-                    placeholder="Buscar campanhas por nome..."
+                    placeholder="Pesquisar campanhas por nome..."
                     value={emailSmsSearchTerm}
                     onChange={(e) => setEmailSmsSearchTerm(e.target.value)}
                     className="pl-10"
@@ -828,10 +854,10 @@ const MarketingReportsPage = () => {
                 !emailSmsSearchTerm || c.nome.toLowerCase().includes(emailSmsSearchTerm.toLowerCase())
               ).length === 0 ? (
                 <div className="text-center py-8">
-                  <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <Mail className="h-12 w-12 text-muted-foreground/60 mx-auto mb-4" />
+                  <p className="text-muted-foreground">
                     {emailSmsCampaigns.length === 0
-                      ? 'Nenhuma campanha de email/SMS cadastrada ainda.'
+                      ? 'Nenhuma campanha de email/SMS registada ainda.'
                       : 'Nenhuma campanha encontrada com os filtros aplicados.'
                     }
                   </p>
@@ -859,10 +885,8 @@ const MarketingReportsPage = () => {
                           setEditingEmailSmsCampaign(campaign);
                           setIsEmailSmsFormOpen(true);
                         }}
-                        onDelete={async (id) => {
-                          if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
-                            await deleteEmailSmsCampaign(id);
-                          }
+                        onDelete={(id) => {
+                          setDeleteTarget({ kind: 'campanha-email-sms', id });
                         }}
                       />
                     ))}
@@ -872,7 +896,7 @@ const MarketingReportsPage = () => {
           </Tabs>
         </TabsContent>
 
-        {/* ⚙️ Ferramentas - Import, Export, Filtros Consolidados */}
+        {/* Ferramentas - Import, Export, Filtros Consolidados */}
         <TabsContent value="tools" className="space-y-6 mt-6">
           <Tabs defaultValue="import" className="w-full">
             <TabsList className="grid w-full max-w-2xl grid-cols-2 md:grid-cols-4">
@@ -934,7 +958,7 @@ const MarketingReportsPage = () => {
         </TabsContent>
 
         {/* Leads */}
-        {/* 🎯 Leads - Com Kanban Board e Lista */}
+        {/* Leads - Com Kanban Board e Lista */}
         <TabsContent value="leads" className="space-y-6 mt-6">
           <Tabs defaultValue="kanban" className="w-full">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -949,7 +973,7 @@ const MarketingReportsPage = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Leads da Landing Page com gestão visual
               </p>
             </div>
@@ -990,9 +1014,9 @@ const MarketingReportsPage = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
-                      placeholder="Buscar leads..."
+                      placeholder="Pesquisar leads..."
                       value={leadSearchTerm}
                       onChange={(e) => setLeadSearchTerm(e.target.value)}
                       className="pl-10"
@@ -1016,7 +1040,7 @@ const MarketingReportsPage = () => {
                   <Upload className="h-4 w-4" />
                   Importar Leads
                 </Button>
-                <Button className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90" onClick={() => setIsLeadFormOpen(true)}>
+                <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsLeadFormOpen(true)}>
                   <Plus className="h-4 w-4" />
                   Novo Lead
                 </Button>
@@ -1051,13 +1075,13 @@ const MarketingReportsPage = () => {
                       />
                     </div>
                     <div>
-                      <Label>Gênero</Label>
+                      <Label>Género</Label>
                       <Select
                         value={leadFilters.genero || 'todos'}
                         onValueChange={(value) => setLeadFilters({ ...leadFilters, genero: value === 'todos' ? undefined : value as 'Masculino' | 'Feminino' | 'Outro' })}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Todos os gêneros" />
+                          <SelectTrigger>
+                          <SelectValue placeholder="Todos os géneros" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="todos">Todos</SelectItem>
@@ -1089,8 +1113,8 @@ const MarketingReportsPage = () => {
                 </div>
               ) : filteredLeads.length === 0 ? (
                 <div className="text-center py-8">
-                  <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <Target className="h-12 w-12 text-muted-foreground/60 mx-auto mb-4" />
+                  <p className="text-muted-foreground">
                     {leads.length === 0
                       ? 'Nenhum lead registado ainda.'
                       : 'Nenhum lead encontrado com os filtros aplicados.'
@@ -1191,7 +1215,7 @@ const MarketingReportsPage = () => {
                                 {lead.tipo}
                               </Badge>
                               {lead.status && (
-                                <Badge variant="outline" className="border-teal-300 text-teal-700 bg-teal-50 font-medium">
+                                <Badge variant="outline" className="border-teal-300 text-teal-700 bg-teal-50 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-900 font-medium">
                                   {lead.status}
                                 </Badge>
                               )}
@@ -1201,7 +1225,7 @@ const MarketingReportsPage = () => {
                                 </Badge>
                               )}
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
                               {lead.email && (
                                 <div className="flex items-center gap-2">
                                   <Mail className="h-4 w-4" />
@@ -1240,7 +1264,7 @@ const MarketingReportsPage = () => {
                               )}
                             </div>
                             {lead.origem_campanha && (
-                              <p className="mt-2 text-sm text-gray-700">
+                              <p className="mt-2 text-sm text-foreground">
                                 <strong>Campanha:</strong> {lead.origem_campanha}
                               </p>
                             )}
@@ -1285,6 +1309,31 @@ const MarketingReportsPage = () => {
         </TabsContent>
 
       </Tabs>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        onConfirm={confirmDelete}
+        title={
+          deleteTarget?.kind === 'lead'
+            ? 'Eliminar lead'
+            : deleteTarget?.kind === 'campanha-email-sms'
+              ? 'Eliminar campanha de email/SMS'
+              : 'Eliminar campanha'
+        }
+        description={
+          deleteTarget?.kind === 'lead'
+            ? 'Tem a certeza que deseja eliminar este lead? Esta ação não pode ser desfeita.'
+            : deleteTarget?.kind === 'campanha-email-sms'
+              ? 'Tem a certeza que deseja eliminar esta campanha de email/SMS? Esta ação não pode ser desfeita.'
+              : 'Tem a certeza que deseja eliminar esta campanha? Esta ação não pode ser desfeita.'
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </div>
   );
 

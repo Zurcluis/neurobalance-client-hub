@@ -25,8 +25,8 @@ const KNOWLEDGE_BASE = {
       '• **IVA Dedutível** = Despesas × 23%',
       '• **IVA a Pagar** = IVA Liquidado - IVA Dedutível',
       '',
-      '📅 **Declaração**: Trimestral (até dia 15 do 2º mês após o trimestre)',
-      '🗓️ **Prazos**:',
+      '**Declaração**: Trimestral (até dia 15 do 2º mês após o trimestre)',
+      '**Prazos**:',
       '- T1 (Jan-Mar): 15 de Maio',
       '- T2 (Abr-Jun): 15 de Agosto',
       '- T3 (Jul-Set): 15 de Novembro',
@@ -39,7 +39,7 @@ const KNOWLEDGE_BASE = {
     responses: [
       'O IRS (Imposto sobre o Rendimento) usa um sistema **progressivo por escalões**.',
       '',
-      '📊 **Escalões 2024**:',
+      '**Escalões 2024**:',
       '• Até €7.703: 14,5%',
       '• €7.703 - €11.623: 21%',
       '• €11.623 - €16.472: 26,5%',
@@ -50,9 +50,9 @@ const KNOWLEDGE_BASE = {
       '• €51.997 - €81.199: 45%',
       '• Acima de €81.199: 48%',
       '',
-      '💡 **Regime Simplificado**: Aplica coeficiente de 75% sobre o lucro',
-      '📅 **Declaração**: Até 30 de junho do ano seguinte (Modelo 3)',
-      '💰 **Pagamentos por Conta**: 3 prestações (Julho, Setembro, Dezembro)',
+      '**Regime Simplificado**: Aplica coeficiente de 75% sobre o lucro',
+      '**Declaração**: Até 30 de junho do ano seguinte (Modelo 3)',
+      '**Pagamentos por Conta**: 3 prestações (Julho, Setembro, Dezembro)',
     ],
     suggestions: ['Escalões IRS 2024', 'Como calcular IRS?', 'Pagamentos por conta']
   },
@@ -61,21 +61,21 @@ const KNOWLEDGE_BASE = {
     responses: [
       'A **Segurança Social** para trabalhadores independentes tem taxa de **21,4%**.',
       '',
-      '💶 **Cálculo**:',
+      '**Cálculo**:',
       '• Base = MAX(Receita Mensal Média, €871,58)',
       '• Contribuição Mensal = Base × 21,4%',
       '',
-      '📅 **Pagamento**: Até dia **20 de cada mês**',
-      '💳 **Base mínima**: €871,58 (2024)',
+      '**Pagamento**: Até dia **20 de cada mês**',
+      '**Base mínima**: €871,58 (2024)',
       '',
-      '⚠️ **Importante**: A base é calculada com base nos rendimentos declarados no ano anterior.',
+      '**Importante**: A base é calculada com base nos rendimentos declarados no ano anterior.',
     ],
     suggestions: ['Taxa Segurança Social', 'Base mínima SS', 'Como pagar SS?']
   },
   prazos: {
     keywords: ['prazo', 'quando pagar', 'data limite', 'entrega', 'obrigações'],
     responses: [
-      '📅 **Calendário Fiscal**:',
+      '**Calendário Fiscal**:',
       '',
       '**IVA (Trimestral)**:',
       '• 1º T: 15 de Maio',
@@ -97,7 +97,7 @@ const KNOWLEDGE_BASE = {
   calculo: {
     keywords: ['como calcular', 'calcular', 'formula', 'fórmula', 'conta'],
     responses: [
-      '🧮 **Fórmulas Principais**:',
+      '**Fórmulas Principais**:',
       '',
       '**IVA**:',
       '```',
@@ -117,14 +117,14 @@ const KNOWLEDGE_BASE = {
       'SS Mensal = Base × 21,4%',
       '```',
       '',
-      '💡 Use a **Calculadora Fiscal** na aba ao lado para cálculos automáticos!',
+      'Use a **Calculadora Fiscal** na aba ao lado para cálculos automáticos!',
     ],
     suggestions: ['Usar calculadora', 'Exemplo de cálculo']
   },
   despesas: {
     keywords: ['despesa', 'dedução', 'deduzir', 'deduções', 'custos'],
     responses: [
-      '💰 **Despesas Dedutíveis**:',
+      '**Despesas Dedutíveis**:',
       '',
       'Pode deduzir despesas relacionadas com a atividade:',
       '• Material de escritório',
@@ -135,15 +135,15 @@ const KNOWLEDGE_BASE = {
       '• Seguros',
       '• Contabilidade',
       '',
-      '⚠️ **Importante**: Guarde sempre as faturas e justificativos!',
-      '📋 Despesas devem estar em nome do profissional/empresa',
+      '**Importante**: Guarde sempre as faturas e justificativos!',
+      'Despesas devem estar em nome do profissional/empresa',
     ],
     suggestions: ['Despesas dedutíveis', 'Como guardar faturas?']
   },
   regime: {
     keywords: ['regime', 'simplificado', 'contabilidade organizada', 'tipo regime'],
     responses: [
-      '📊 **Regimes Fiscais**:',
+      '**Regimes Fiscais**:',
       '',
       '**Regime Simplificado**:',
       '• Coeficiente: 75% sobre o lucro',
@@ -157,25 +157,25 @@ const KNOWLEDGE_BASE = {
       '• Requer contabilista',
       '• Sem limite de faturação',
       '',
-      '💡 **Dica**: Até €200k/ano, simplificado é geralmente vantajoso',
+      '**Dica**: Até €200k/ano, simplificado é geralmente vantajoso',
     ],
     suggestions: ['Qual regime escolher?', 'Vantagens simplificado']
   },
   contabilista: {
     keywords: ['contabilista', 'toc', 'contador', 'ajuda profissional'],
     responses: [
-      '👨‍💼 **Quando Contratar um Contabilista?**',
+      '**Quando Contratar um Contabilista?**',
       '',
-      '✅ **Recomendado se**:',
+      '**Recomendado se**:',
       '• Faturação > €50.000/ano',
       '• Muitas despesas a gerir',
       '• Dúvidas sobre regime fiscal',
       '• Quer otimizar impostos',
       '• Pouco tempo para burocracia',
       '',
-      '💰 **Custo médio**: €50-150/mês',
+      '**Custo médio**: €50-150/mês',
       '',
-      '🎯 **Vantagens**:',
+      '**Vantagens**:',
       '• Garante conformidade fiscal',
       '• Otimiza carga tributária',
       '• Poupa tempo',
@@ -186,28 +186,28 @@ const KNOWLEDGE_BASE = {
   atualizacoes: {
     keywords: ['atualização', 'atualizado', 'mudanças', 'novidade', '2024', '2025'],
     responses: [
-      '📢 **Atualizações Fiscais 2024**:',
+      '**Atualizações Fiscais 2024**:',
       '',
-      '🆕 **IRS**:',
+      '**IRS**:',
       '• Escalões atualizados',
       '• Mínimo de existência: €10.640',
       '',
-      '🆕 **Segurança Social**:',
+      '**Segurança Social**:',
       '• Base mínima: €871,58',
       '• Taxa mantém-se: 21,4%',
       '',
-      '🆕 **IVA**:',
+      '**IVA**:',
       '• Taxa normal: 23% (mantém-se)',
       '• Faturação eletrónica obrigatória',
       '',
-      '⚠️ **Importante**: Consulte o Portal das Finanças para atualizações mais recentes.',
+      '**Importante**: Consulte o Portal das Finanças para atualizações mais recentes.',
     ],
     suggestions: ['Portal das Finanças', 'Onde ver atualizações?']
   },
   exemplo: {
     keywords: ['exemplo', 'prático', 'simulação', 'caso'],
     responses: [
-      '💡 **Exemplo Prático**:',
+      '**Exemplo Prático**:',
       '',
       '**Situação**: Clínica com receita de €40.000/ano e despesas de €12.000/ano',
       '',
@@ -225,50 +225,50 @@ const KNOWLEDGE_BASE = {
       '• Base: €3.333/mês',
       '• **SS: ~€8.560/ano** (€713/mês)',
       '',
-      '📊 **Total Impostos**: ~€19.515',
-      '💰 **Lucro Líquido**: ~€8.485',
+      '**Total Impostos**: ~€19.515',
+      '**Lucro Líquido**: ~€8.485',
     ],
     suggestions: ['Usar calculadora', 'Outro exemplo']
   },
   documentacao: {
     keywords: ['documento', 'documentação', 'fatura', 'recibo', 'guardar', 'organizar', 'arquivo', 'papel', 'digital'],
     responses: [
-      '📋 **Documentação Contabilística Essencial**:',
+      '**Documentação Contabilística Essencial**:',
       '',
       '**RECEITAS** (obrigatório guardar):',
-      '• ✅ Faturas emitidas (numeradas sequencialmente)',
-      '• ✅ Recibos de pagamento',
-      '• ✅ Extratos bancários (receitas)',
-      '• ✅ Livro de receitas atualizado',
+      '• Faturas emitidas (numeradas sequencialmente)',
+      '• Recibos de pagamento',
+      '• Extratos bancários (receitas)',
+      '• Livro de receitas atualizado',
       '',
       '**DESPESAS** (obrigatório guardar):',
-      '• ✅ Faturas recebidas **COM SEU NIF**',
-      '• ✅ Recibos de despesas',
-      '• ✅ Extratos bancários (pagamentos)',
-      '• ✅ Livro de despesas atualizado',
+      '• Faturas recebidas **COM SEU NIF**',
+      '• Recibos de despesas',
+      '• Extratos bancários (pagamentos)',
+      '• Livro de despesas atualizado',
       '',
       '**FISCAIS** (obrigatório guardar):',
-      '• ✅ Declarações de IVA (trimestrais)',
-      '• ✅ Declaração de IRS (anual)',
-      '• ✅ Comprovativos de pagamentos',
-      '• ✅ Comprovativos de Segurança Social',
+      '• Declarações de IVA (trimestrais)',
+      '• Declaração de IRS (anual)',
+      '• Comprovativos de pagamentos',
+      '• Comprovativos de Segurança Social',
       '',
       '**BANCÁRIOS** (obrigatório guardar):',
-      '• ✅ Extratos mensais',
-      '• ✅ Comprovativos de transferências',
-      '• ✅ Livro de caixa (se receber dinheiro)',
+      '• Extratos mensais',
+      '• Comprovativos de transferências',
+      '• Livro de caixa (se receber dinheiro)',
       '',
-      '⏰ **Prazo de Guarda**: 10 anos (mínimo)',
-      '💾 **Recomendado**: Versão digital de tudo',
+      '**Prazo de Guarda**: 10 anos (mínimo)',
+      '**Recomendado**: Versão digital de tudo',
       '',
-      '⚠️ **CRÍTICO**: Faturas SEM seu NIF não podem ser deduzidas!',
+      '**CRÍTICO**: Faturas SEM seu NIF não podem ser deduzidas!',
     ],
     suggestions: ['Como organizar documentos?', 'Prazo de guarda', 'Faturas sem NIF']
   },
   organizacao: {
     keywords: ['organizar', 'organização', 'arquivo', 'pasta', 'sistema', 'estrutura'],
     responses: [
-      '📁 **Sistema de Organização Recomendado**:',
+      '**Sistema de Organização Recomendado**:',
       '',
       '**Por Ano e Mês**:',
       '```',
@@ -293,16 +293,16 @@ const KNOWLEDGE_BASE = {
       '• Scanner de documentos (app)',
       '• Software contabilístico',
       '',
-      '💡 **Dica**: Organize mensalmente, não deixe acumular!',
+      '**Dica**: Organize mensalmente, não deixe acumular!',
     ],
     suggestions: ['Apps para scanner', 'Backup de documentos']
   }
 };
 
 const GREETING_MESSAGES = [
-  'Olá! 👋 Sou o assistente financeiro da NeuroBalance. Como posso ajudar com as suas dúvidas fiscais?',
+  'Olá! Sou o assistente financeiro da NeuroBalance. Como posso ajudar com as suas dúvidas fiscais?',
   'Bem-vindo! Posso ajudar com questões sobre IVA, IRS, Segurança Social e muito mais. Em que posso ajudar?',
-  'Oi! Estou aqui para responder dúvidas sobre impostos e finanças. O que gostaria de saber?'
+  'Olá! Estou aqui para responder dúvidas sobre impostos e finanças. O que gostaria de saber?'
 ];
 
 const QUICK_QUESTIONS = [
@@ -390,7 +390,7 @@ export const FinancialChatbot: React.FC = () => {
           type: 'bot',
           timestamp: new Date(),
           content: [
-            'Desculpe, não encontrei uma resposta específica para essa pergunta. 🤔',
+            'Desculpe, não encontrei uma resposta específica para essa pergunta.',
             '',
             'Mas posso ajudar com:',
             '• Cálculos de IVA, IRS e Segurança Social',
@@ -428,7 +428,7 @@ export const FinancialChatbot: React.FC = () => {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-[#3f9094] hover:from-blue-700 hover:to-indigo-700 z-50"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-neurobalance-teal hover:bg-neurobalance-secondary z-50"
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
@@ -439,7 +439,7 @@ export const FinancialChatbot: React.FC = () => {
 
   if (isMinimized) {
     return (
-      <Card className="fixed bottom-6 right-6 w-80 shadow-2xl z-50 bg-[#3f9094] border-none">
+      <Card className="fixed bottom-6 right-6 w-80 shadow-2xl z-50 bg-neurobalance-teal border-none">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-white">
@@ -452,6 +452,7 @@ export const FinancialChatbot: React.FC = () => {
                 size="icon"
                 onClick={() => setIsMinimized(false)}
                 className="h-8 w-8 text-white hover:bg-white/20"
+                aria-label="Maximizar"
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>
@@ -460,6 +461,7 @@ export const FinancialChatbot: React.FC = () => {
                 size="icon"
                 onClick={() => setIsOpen(false)}
                 className="h-8 w-8 text-white hover:bg-white/20"
+                aria-label="Fechar"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -472,7 +474,7 @@ export const FinancialChatbot: React.FC = () => {
 
   return (
     <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col">
-      <CardHeader className="pb-3 bg-[#3f9094] text-white rounded-t-lg">
+      <CardHeader className="pb-3 bg-neurobalance-teal text-white rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
@@ -487,6 +489,7 @@ export const FinancialChatbot: React.FC = () => {
               size="icon"
               onClick={() => setIsMinimized(true)}
               className="h-8 w-8 text-white hover:bg-white/20"
+              aria-label="Minimizar"
             >
               <Minimize2 className="h-4 w-4" />
             </Button>
@@ -495,6 +498,7 @@ export const FinancialChatbot: React.FC = () => {
               size="icon"
               onClick={() => setIsOpen(false)}
               className="h-8 w-8 text-white hover:bg-white/20"
+              aria-label="Fechar"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -514,7 +518,7 @@ export const FinancialChatbot: React.FC = () => {
                 )}
               >
                 {message.type === 'bot' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#3f9094] flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neurobalance-teal flex items-center justify-center">
                     <Bot className="h-5 w-5 text-white" />
                   </div>
                 )}
@@ -555,7 +559,7 @@ export const FinancialChatbot: React.FC = () => {
             
             {isTyping && (
               <div className="flex gap-2 justify-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#3f9094] flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neurobalance-teal flex items-center justify-center">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
                 <div className="bg-gray-100 rounded-lg p-3">
@@ -585,6 +589,7 @@ export const FinancialChatbot: React.FC = () => {
               disabled={!inputValue.trim() || isTyping}
               size="icon"
               className="bg-blue-600 hover:bg-blue-700"
+              aria-label="Enviar mensagem"
             >
               <Send className="h-4 w-4" />
             </Button>

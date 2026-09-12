@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,13 +10,17 @@ import { BulkSuggestionsGenerator } from '@/components/admin/availability/BulkSu
 const AdminAvailabilityPage = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  useEffect(() => {
+    document.title = 'Disponibilidades | NeuroBalance';
+  }, []);
+
   return (
     <PageLayout>
       <div className="space-y-6">
         {/* Header */}
         <PageHeader
           title="Gestão de Disponibilidades"
-          description="Gerencie disponibilidades de clientes, gere sugestões automáticas e visualize analytics"
+          description="Faça a gestão das disponibilidades dos clientes, gere sugestões automáticas e visualize analytics"
           icon={<Calendar className="h-5 w-5" />}
         />
 
@@ -64,8 +68,8 @@ const AdminAvailabilityPage = () => {
                 Calendário Unificado
               </h3>
               <p className="text-blue-800 dark:text-blue-200 max-w-lg mx-auto">
-                Em breve: Visualize todas as disponibilidades e sugestões de todos os clientes em
-                um calendário interativo unificado.
+                Em breve: visualize todas as disponibilidades e sugestões de todos os clientes
+                num calendário interativo unificado.
               </p>
               <div className="mt-6 flex items-center justify-center gap-4 text-sm text-blue-700 dark:text-blue-300">
                 <div className="flex items-center gap-2">

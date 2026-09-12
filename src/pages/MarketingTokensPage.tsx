@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import MarketingTokenManager from '@/components/marketing/MarketingTokenManager';
@@ -5,6 +6,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield } from 'lucide-react';
 
 const MarketingTokensPage = () => {
+    useEffect(() => {
+        document.title = 'Acessos ao Marketing | NeuroBalance';
+    }, []);
+
     return (
         <PageLayout>
             <div className="space-y-6">

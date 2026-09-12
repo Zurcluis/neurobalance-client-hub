@@ -28,8 +28,8 @@ export const AvailabilityList: React.FC<AvailabilityListProps> = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3f9094]"></div>
-        <span className="ml-3 text-gray-600">Carregando...</span>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neurobalance-teal"></div>
+        <span className="ml-3 text-gray-600">A carregar...</span>
       </div>
     );
   }
@@ -38,7 +38,7 @@ export const AvailabilityList: React.FC<AvailabilityListProps> = ({
     return (
       <EmptyState
         icon={<Clock className="h-12 w-12" />}
-        title="Nenhum horário cadastrado"
+        title="Nenhum horário registado"
         description="Adicione seus horários disponíveis para começar a receber sugestões de agendamentos"
       />
     );
@@ -61,7 +61,7 @@ export const AvailabilityList: React.FC<AvailabilityListProps> = ({
 
   const getPreferenceIcon = (preferencia: string) => {
     switch (preferencia) {
-      case 'alta': return '⭐';
+      case 'alta': return '★';
       case 'media': return '◆';
       case 'baixa': return '○';
       default: return '';
@@ -83,8 +83,8 @@ export const AvailabilityList: React.FC<AvailabilityListProps> = ({
         .sort(([a], [b]) => parseInt(a) - parseInt(b))
         .map(([day, avails]) => (
           <Card key={day} className="overflow-hidden">
-            <div className="bg-gradient-to-r from-[#3f9094]/10 to-[#2A5854]/10 px-4 py-3 border-b">
-              <h3 className="font-semibold text-[#3f9094] flex items-center gap-2">
+          <div className="bg-gradient-to-r from-neurobalance-teal/10 to-neurobalance-secondary/10 px-4 py-3 border-b">
+            <h3 className="font-semibold text-neurobalance-teal flex items-center gap-2">
                 <span className="text-2xl">{DIAS_SEMANA_CURTO[parseInt(day) as keyof typeof DIAS_SEMANA_CURTO]}</span>
                 <span>{DIAS_SEMANA[parseInt(day) as keyof typeof DIAS_SEMANA]}</span>
                 <Badge variant="secondary" className="ml-auto">
@@ -144,7 +144,7 @@ export const AvailabilityList: React.FC<AvailabilityListProps> = ({
                         {/* Validade (se temporário) */}
                         {avail.status === 'temporario' && (avail.valido_de || avail.valido_ate) && (
                           <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                            📅 Válido:
+                            Válido:
                             {avail.valido_de && <span>de {new Date(avail.valido_de).toLocaleDateString('pt-PT')}</span>}
                             {avail.valido_ate && <span>até {new Date(avail.valido_ate).toLocaleDateString('pt-PT')}</span>}
                           </div>

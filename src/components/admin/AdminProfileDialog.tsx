@@ -144,21 +144,27 @@ export const AdminProfileDialog: React.FC<AdminProfileDialogProps> = ({
     }
 
     setLoading(true);
-    const res = await updateCurrentAdminProfile({
-      nome: nome.trim(),
-      email: email.trim(),
-      contacto: contacto.trim(),
-      morada: morada.trim(),
-      data_nascimento: dataNascimento,
-      password: newPassword ? newPassword : undefined,
-    });
+    try {
+      const res = await updateCurrentAdminProfile({
+        nome: nome.trim(),
+        email: email.trim(),
+        contacto: contacto.trim(),
+        morada: morada.trim(),
+        data_nascimento: dataNascimento,
+        password: newPassword ? newPassword : undefined,
+      });
 
-    if (res.success) {
-      setNewPassword('');
-      setConfirmPassword('');
-      onOpenChange(false);
+      if (res.success) {
+        setNewPassword('');
+        setConfirmPassword('');
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error('Erro ao guardar o perfil:', error);
+      toast.error('Erro ao guardar o perfil. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

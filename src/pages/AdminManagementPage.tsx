@@ -251,7 +251,7 @@ const AdminManagementPage = () => {
                         </CardTitle>
                         {isCurrentUser && (
                           <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 shrink-0">
-                            Você
+                            A minha conta
                           </Badge>
                         )}
                       </div>
@@ -319,6 +319,7 @@ const AdminManagementPage = () => {
                           variant="outline"
                           onClick={() => handleToggleAdminStatus(admin.id)}
                           disabled={isCurrentUser}
+                          aria-label={admin.ativo ? 'Desativar' : 'Ativar'}
                           title={isCurrentUser
                             ? "Não pode desativar a sua própria conta"
                             : admin.ativo ? "Desativar" : "Ativar"}
@@ -332,6 +333,7 @@ const AdminManagementPage = () => {
                           onClick={() => setAdminToDelete(admin)}
                           disabled={isCurrentUser}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          aria-label="Eliminar"
                           title={isCurrentUser
                             ? "Não pode eliminar a sua própria conta"
                             : "Eliminar"}

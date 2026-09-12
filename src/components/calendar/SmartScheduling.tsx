@@ -693,7 +693,7 @@ const SmartScheduling: React.FC = () => {
     if (t.includes('psicologia')) return 'bg-orange-100 text-orange-800';
     if (t.includes('constelações')) return 'bg-purple-100 text-purple-800';
     switch (t) {
-      case 'sessão': return 'bg-[#e6f2f3] text-[#3f9094]';
+      case 'sessão': return 'bg-neurobalance-teal/10 text-neurobalance-teal';
       case 'consulta': return 'bg-yellow-100 text-yellow-800';
       case 'reunião': return 'bg-red-100 text-red-800';
       case 'pagamento': return 'bg-green-100 text-green-800';
@@ -707,7 +707,7 @@ const SmartScheduling: React.FC = () => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) { setReview(null); setConflictState(null); setRescheduleState(null); setSeriesState(null); } }}>
       <DialogTrigger asChild>
-        <Button className="bg-[#3f9094] hover:bg-[#265255] text-white">
+        <Button className="bg-neurobalance-teal hover:bg-neurobalance-secondary text-white">
           <Zap className="h-4 w-4 mr-2" />
           Agendamento Inteligente
         </Button>
@@ -742,6 +742,7 @@ const SmartScheduling: React.FC = () => {
                     variant={isListening ? "destructive" : "outline"}
                     size="icon"
                     title="Ditar comando (duplo Ctrl em qualquer página)"
+                    aria-label="Ditar comando de agendamento"
                     disabled={!isSupported}
                   >
                     {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -749,20 +750,21 @@ const SmartScheduling: React.FC = () => {
                 </div>
 
                 {isListening && (
-                  <div className="inline-flex items-center gap-3 rounded-full border border-[#3f9094]/30 bg-[#3f9094]/10 px-3 py-1.5">
+                  <div className="inline-flex items-center gap-3 rounded-full border border-neurobalance-teal/30 bg-neurobalance-teal/10 px-3 py-1.5">
                     <span className="flex items-end gap-[3px]" aria-hidden="true">
-                      <span className="h-2.5 w-1 rounded-sm bg-[#3f9094] animate-pulse" />
-                      <span className="h-3.5 w-1 rounded-sm bg-[#3f9094] animate-pulse [animation-delay:150ms]" />
-                      <span className="h-2.5 w-1 rounded-sm bg-[#3f9094] animate-pulse [animation-delay:300ms]" />
+                      <span className="h-2.5 w-1 rounded-sm bg-neurobalance-teal animate-pulse" />
+                      <span className="h-3.5 w-1 rounded-sm bg-neurobalance-teal animate-pulse [animation-delay:150ms]" />
+                      <span className="h-2.5 w-1 rounded-sm bg-neurobalance-teal animate-pulse [animation-delay:300ms]" />
                     </span>
-                    <span className="text-sm text-[#265255]">
+                    <span className="text-sm text-neurobalance-secondary">
                       A ouvir... pare de falar para agendar automaticamente.
                     </span>
                     <button
                       type="button"
                       onClick={() => stop(false)}
                       title="Cancelar ditado"
-                      className="rounded-full p-0.5 text-[#3f9094] transition-colors hover:bg-[#3f9094]/20 hover:text-[#265255]"
+                      aria-label="Cancelar ditado"
+                      className="rounded-full p-0.5 text-neurobalance-teal transition-colors hover:bg-neurobalance-teal/20 hover:text-neurobalance-secondary"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -771,7 +773,7 @@ const SmartScheduling: React.FC = () => {
 
                 {isSupported ? (
                   <p className="text-xs text-muted-foreground">
-                    <kbd className="mr-1 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#265255]">
+                    <kbd className="mr-1 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-neurobalance-secondary">
                       Ctrl 2×
                     </kbd>
                     para ditar em qualquer página da aplicação
@@ -785,12 +787,12 @@ const SmartScheduling: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={!textInput.trim() || isProcessing}
-                  className="w-full bg-[#3f9094] hover:bg-[#265255]"
+                  className="w-full bg-neurobalance-teal hover:bg-neurobalance-secondary"
                 >
                   {isProcessing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processando...
+                      A processar...
                     </>
                   ) : (
                     'Agendar'
@@ -862,7 +864,7 @@ const SmartScheduling: React.FC = () => {
                   />
                 )}
                 <Button
-                  className="w-full bg-[#3f9094] hover:bg-[#265255]"
+                  className="w-full bg-neurobalance-teal hover:bg-neurobalance-secondary"
                   disabled={rescheduleState.busy || isProcessing}
                   onClick={handleConfirmReschedule}
                 >
@@ -902,7 +904,7 @@ const SmartScheduling: React.FC = () => {
                   ))}
                 </ul>
                 <Button
-                  className="w-full bg-[#3f9094] hover:bg-[#265255]"
+                  className="w-full bg-neurobalance-teal hover:bg-neurobalance-secondary"
                   disabled={isProcessing}
                   onClick={handleConfirmSeries}
                 >
@@ -970,7 +972,7 @@ const SmartScheduling: React.FC = () => {
                           type="button"
                           size="sm"
                           variant={review.weekdays.includes(wd.label) ? "default" : "outline"}
-                          className={review.weekdays.includes(wd.label) ? "bg-[#3f9094] hover:bg-[#265255]" : ""}
+                          className={review.weekdays.includes(wd.label) ? "bg-neurobalance-teal hover:bg-neurobalance-secondary" : ""}
                           onClick={() => toggleWeekday(wd.label)}
                         >
                           {wd.short}
@@ -1041,12 +1043,12 @@ const SmartScheduling: React.FC = () => {
                 <Button
                   onClick={handleConfirmReview}
                   disabled={isProcessing || reviewDates.length === 0}
-                  className="w-full bg-[#3f9094] hover:bg-[#265255]"
+                  className="w-full bg-neurobalance-teal hover:bg-neurobalance-secondary"
                 >
                   {isProcessing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Criando...
+                      A criar...
                     </>
                   ) : (
                     `Marcar ${reviewDates.length === 1 ? 'Agendamento' : `${reviewDates.length} Agendamentos`}`
@@ -1065,14 +1067,14 @@ const SmartScheduling: React.FC = () => {
               <div className="space-y-3">
                 {smartSchedulingExamples.map((category, index) => (
                   <div key={index}>
-                    <h4 className="font-medium text-sm text-[#265255] mb-2">{category.category}</h4>
+                    <h4 className="font-medium text-sm text-neurobalance-secondary mb-2">{category.category}</h4>
                     <div className="space-y-1">
                       {category.examples.slice(0, 2).map((example, exIndex) => (
                         <button
                           key={exIndex}
                           type="button"
                           onClick={() => setTextInput(example)}
-                          className="block w-full text-left text-xs text-gray-600 pl-2 border-l-2 border-[#3f9094]/20 hover:text-[#3f9094] hover:border-[#3f9094]"
+                          className="block w-full text-left text-xs text-gray-600 pl-2 border-l-2 border-neurobalance-teal/20 hover:text-neurobalance-teal hover:border-neurobalance-teal"
                         >
                           "{example}"
                         </button>
@@ -1081,7 +1083,7 @@ const SmartScheduling: React.FC = () => {
                   </div>
                 ))}
                 <div className="mt-3 pt-3 border-t">
-                  <h4 className="font-medium text-sm text-[#265255] mb-2">Dicas</h4>
+                  <h4 className="font-medium text-sm text-neurobalance-secondary mb-2">Dicas</h4>
                   <div className="space-y-1">
                     {tips.slice(0, 5).map((tip, tipIndex) => (
                       <p key={tipIndex} className="text-xs text-gray-600">

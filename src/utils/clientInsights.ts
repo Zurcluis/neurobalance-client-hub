@@ -101,7 +101,8 @@ export const parseDateSafe = (value: string): Date | null => {
 export const isSessionRealized = (estado: string, data: string, now: Date): boolean => {
   const date = parseDateSafe(data);
   if (!date) return false;
-  return estado === 'realizado' || (estado !== 'cancelado' && date.getTime() <= now.getTime());
+  if (NO_SHOW_STATES.includes(estado)) return false;
+  return estado === 'realizado' || date.getTime() <= now.getTime();
 };
 
 const average = (values: number[]): number | null => {
@@ -345,23 +346,33 @@ export const findInactiveClients = (
   return inactive.sort((a, b) => (b.daysInactive ?? 0) - (a.daysInactive ?? 0));
 };
 
-const sessionMoodAverages = (
+// Cada registo de humor conta, no máximo, uma vez: é atribuído apenas à sessão
+// realizada mais próxima dentro de MOOD_WINDOW_DAYS (diferença em dias de calendário).
+// Isto evita que, com sessões a menos de 14 dias entre si, o mesmo registo seja
+// contado como "depois" de uma e "antes" da seguinte. Em caso de empate prevalece
+// a sessão mais antiga. "Mesmo dia" (diff 0) conta como "antes".
+const assignMoodAveragesBySession = (
   sessionDates: Date[],
   moods: { date: Date; score: number }[]
-): { antes: number | null; depois: number | null } => {
-  const before: number[] = [];
-  const after: number[] = [];
-  sessionDates.forEach(sessionDate => {
-    moods.forEach(mood => {
-      const diff = differenceInCalendarDays(sessionDate, mood.date);
-      if (diff >= 0 && diff <= MOOD_WINDOW_DAYS) {
-        before.push(mood.score);
-      } else if (diff < 0 && -diff <= MOOD_WINDOW_DAYS) {
-        after.push(mood.score);
+): Array<{ antes: number | null; depois: number | null }> => {
+  const buckets = sessionDates.map(() => ({ before: [] as number[], after: [] as number[] }));
+  moods.forEach(mood => {
+    let bestIndex = -1;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    sessionDates.forEach((sessionDate, index) => {
+      const distance = Math.abs(differenceInCalendarDays(sessionDate, mood.date));
+      if (distance > MOOD_WINDOW_DAYS) return;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
       }
     });
+    if (bestIndex === -1) return;
+    const signedDiff = differenceInCalendarDays(sessionDates[bestIndex], mood.date);
+    if (signedDiff >= 0) buckets[bestIndex].before.push(mood.score);
+    else buckets[bestIndex].after.push(mood.score);
   });
-  return { antes: average(before), depois: average(after) };
+  return buckets.map(({ before, after }) => ({ antes: average(before), depois: average(after) }));
 };
 
 export const computeMoodSessionCorrelation = (
@@ -394,38 +405,45 @@ export const computeMoodSessionCorrelation = (
     sessionDatesByClient.set(appointment.id_cliente, list);
   });
 
-  const perSession: Record<number, { antes: number[]; depois: number[] }> = {};
+  const perClientAverages: Record<number, Array<{ antes: number | null; depois: number | null }>> = {};
   const allBefore: number[] = [];
   const allAfter: number[] = [];
 
   sessionDatesByClient.forEach((dates, id) => {
     const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime());
     const clientMoods = byClientMoods.get(id) ?? [];
-    sorted.forEach(sessionDate => {
-      const { antes, depois } = sessionMoodAverages([sessionDate], clientMoods);
-      perSession[id] = perSession[id] ?? { antes: [], depois: [] };
-      if (antes !== null) {
-        perSession[id].antes.push(antes);
-        allBefore.push(antes);
-      }
-      if (depois !== null) {
-        perSession[id].depois.push(depois);
-        allAfter.push(depois);
-      }
+    const averages = assignMoodAveragesBySession(sorted, clientMoods);
+    perClientAverages[id] = averages;
+    averages.forEach(({ antes, depois }) => {
+      if (antes !== null) allBefore.push(antes);
+      if (depois !== null) allAfter.push(depois);
     });
   });
 
-  const maxSessions = Math.max(
-    0,
-    ...Object.values(perSession).map(s => Math.max(s.antes.length, s.depois.length))
-  );
+  const clientAverages = Object.values(perClientAverages);
+  // Só emitimos pontos até ao último índice de sessão com dados em algum cliente;
+  // sessões sem qualquer humor próximo não geram ponto vazio.
+  let maxSessions = 0;
+  while (
+    clientAverages.some(
+      list => list[maxSessions] && (list[maxSessions].antes !== null || list[maxSessions].depois !== null)
+    )
+  ) {
+    maxSessions += 1;
+  }
 
   const points: MoodSessionPoint[] = [];
   for (let i = 0; i < maxSessions; i++) {
     points.push({
       session: i + 1,
-      antes: average(Object.values(perSession).map(s => s.antes[i]).filter(v => v !== undefined)) ?? null,
-      depois: average(Object.values(perSession).map(s => s.depois[i]).filter(v => v !== undefined)) ?? null,
+      antes:
+        average(
+          clientAverages.map(list => list[i]?.antes).filter((v): v is number => v != null)
+        ) ?? null,
+      depois:
+        average(
+          clientAverages.map(list => list[i]?.depois).filter((v): v is number => v != null)
+        ) ?? null,
     });
   }
 

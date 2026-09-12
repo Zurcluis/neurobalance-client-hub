@@ -47,6 +47,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { format, parseISO } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { 
@@ -173,6 +174,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
   });
   const [availableCategories, setAvailableCategories] = useState<string[]>(expenseCategories['Fixas']);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Efeito para atualizar categorias disponíveis quando o tipo muda
   useEffect(() => {
@@ -184,6 +186,8 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
 
   // Função para adicionar nova despesa
   const handleAddExpense = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (!formValues.tipo || !formValues.categoria || !formValues.data || !formValues.valor) {
         toast.error('Preencha todos os campos obrigatórios');
@@ -223,11 +227,15 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
     } catch (err) {
       console.error('Erro ao adicionar despesa:', err);
       toast.error('Falha ao adicionar despesa');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Função para editar despesa existente
   const handleEditExpense = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (!currentExpenseId || !formValues.tipo || !formValues.categoria || !formValues.data || !formValues.valor) {
         toast.error('Preencha todos os campos obrigatórios');
@@ -268,12 +276,22 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
     } catch (err) {
       console.error('Erro ao atualizar despesa:', err);
       toast.error('Falha ao atualizar despesa');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Função para excluir uma despesa
-  const handleDeleteExpense = async (id: number) => {
-    if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
+  const [expenseToDelete, setExpenseToDelete] = useState<number | null>(null);
+
+  const handleDeleteExpense = (id: number) => {
+    setExpenseToDelete(id);
+  };
+
+  const confirmDeleteExpense = async () => {
+    if (expenseToDelete === null) return;
+    const id = expenseToDelete;
+    setExpenseToDelete(null);
     try {
       await deleteExpense(id);
       // Notificar componentes pai sobre a mudança
@@ -473,7 +491,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3f9094] mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neurobalance-teal mx-auto"></div>
           <p className="mt-2 text-gray-600">Carregando despesas...</p>
         </div>
       </div>
@@ -516,7 +534,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
               {/* Botão de nova despesa */}
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-[#3f9094] hover:bg-[#265255]">
+                  <Button className="bg-neurobalance-teal hover:bg-neurobalance-secondary">
                     <Plus className="h-4 w-4 mr-2" />
                     Nova Despesa
                   </Button>
@@ -615,7 +633,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
                     <DialogClose asChild>
                       <Button variant="outline">Cancelar</Button>
                     </DialogClose>
-                    <Button onClick={handleAddExpense} className="bg-[#3f9094] hover:bg-[#265255]">Adicionar</Button>
+                    <Button onClick={handleAddExpense} disabled={isSubmitting} className="bg-neurobalance-teal hover:bg-neurobalance-secondary">Adicionar</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -681,7 +699,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={exportToCSV} className="bg-[#3f9094] hover:bg-[#265255]">
+                    <Button onClick={exportToCSV} className="bg-neurobalance-teal hover:bg-neurobalance-secondary">
                       Exportar CSV
                     </Button>
                   </DialogFooter>
@@ -1133,14 +1151,27 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({ onExpenseChange }) => {
                 <DialogClose asChild>
                   <Button variant="outline">Cancelar</Button>
                 </DialogClose>
-                <Button onClick={handleEditExpense} className="bg-[#3f9094] hover:bg-[#265255]">Salvar Alterações</Button>
+                <Button onClick={handleEditExpense} disabled={isSubmitting} className="bg-neurobalance-teal hover:bg-neurobalance-secondary">Guardar Alterações</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </>
       )}
+
+      <ConfirmDialog
+        open={expenseToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setExpenseToDelete(null);
+        }}
+        onConfirm={confirmDeleteExpense}
+        title="Eliminar despesa"
+        description="Tem a certeza que deseja eliminar esta despesa? Esta ação não pode ser desfeita."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </div>
   );
 };
 
-export default ExpenseManager; 
+export default ExpenseManager;

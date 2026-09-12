@@ -303,9 +303,9 @@ const PaymentImport: React.FC<PaymentImportProps> = ({
                             <Button
                                 onClick={processFiles}
                                 disabled={files.length === 0 || isUploading || isLoadingClients}
-                                className="bg-[#3f9094] hover:bg-[#2A5854] text-white"
+                                className="bg-neurobalance-teal hover:bg-neurobalance-secondary text-white"
                             >
-                                {isLoadingClients ? 'Carregando Clientes...' : 'Processar'}
+                                {isLoadingClients ? 'A carregar clientes...' : 'Processar'}
                             </Button>
                         </CardFooter>
                     </Card>
@@ -339,7 +339,7 @@ const PaymentImport: React.FC<PaymentImportProps> = ({
                                             <p className="text-sm text-gray-500">{item.descricao} • {item.nif_original || 'Sem NIF'}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-bold text-[#3f9094]">€ {item.valor_total.toFixed(2)}</p>
+                                            <p className="font-bold text-neurobalance-teal">€ {item.valor_total.toFixed(2)}</p>
                                             <p className="text-xs text-gray-400">{item.data}</p>
                                         </div>
                                     </div>
@@ -360,7 +360,7 @@ const PaymentImport: React.FC<PaymentImportProps> = ({
                         <Button variant="outline" onClick={() => setCurrentTab('upload')}>Voltar</Button>
                         <Button
                             onClick={handleFinalImport}
-                            className="bg-[#3f9094] hover:bg-[#2A5854] text-white"
+                            className="bg-neurobalance-teal hover:bg-neurobalance-secondary text-white"
                             disabled={extractedData.filter(p => p.isValid).length === 0}
                         >
                             Importar {extractedData.filter(p => p.isValid).length} Itens

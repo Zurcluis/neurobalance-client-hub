@@ -502,10 +502,10 @@ const ClientForm = ({ onSubmit, onCancel, defaultValues = {}, isEditing = false,
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 mt-6 sticky bottom-0 bg-white/90 dark:bg-[#18181b]/90 z-10 p-2 sm:p-0">
+      <div className="flex flex-col sm:flex-row gap-4 mt-6 sticky bottom-0 bg-white/90 dark:bg-zinc-900/90 z-10 p-2 sm:p-0">
         {isEditing ? (
           <>
-            <Button type="submit" className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11">
+            <Button type="submit" className="w-full sm:w-auto bg-neurobalance-primary hover:bg-neurobalance-secondary text-white h-11">
               Atualizar Cliente
             </Button>
             <Button
@@ -518,7 +518,7 @@ const ClientForm = ({ onSubmit, onCancel, defaultValues = {}, isEditing = false,
             </Button>
           </>
         ) : (
-          <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-[#3A726D] hover:bg-[#2A5854] text-white h-11 gap-2">
+          <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-neurobalance-primary hover:bg-neurobalance-secondary text-white h-11 gap-2">
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {isSubmitting ? 'A guardar...' : 'Adicionar Cliente'}
           </Button>

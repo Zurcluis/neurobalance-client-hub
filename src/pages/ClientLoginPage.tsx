@@ -15,6 +15,10 @@ const ClientLoginPage = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Portal do Cliente | NeuroBalance';
+  }, []);
+
   const { login, loginWithToken, isAuthenticated, loading } = useClientAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -62,12 +66,12 @@ const ClientLoginPage = () => {
     e.preventDefault();
 
     if (!email.trim()) {
-      setError('Por favor, insira seu email');
+      setError('Por favor, insira o seu e-mail');
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Por favor, insira um email válido');
+      setError('Por favor, insira um e-mail válido');
       return;
     }
 
@@ -95,17 +99,17 @@ const ClientLoginPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f8fffe] to-[#e8f5f4]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#3f9094] mx-auto mb-4" />
-          <p className="text-gray-600">Carregando...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">A carregar...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f8fffe] to-[#e8f5f4] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Logo e Título */}
         <div className="text-center space-y-6">
@@ -117,9 +121,9 @@ const ClientLoginPage = () => {
             />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Portal do Cliente</h1>
-            <p className="mt-2 text-gray-600">
-              {searchParams.get('token') ? 'A autenticar o seu acesso...' : 'Acesse seu dashboard pessoal'}
+            <h1 className="text-3xl font-bold text-foreground">Portal do Cliente</h1>
+            <p className="mt-2 text-muted-foreground">
+              {searchParams.get('token') ? 'A autenticar o seu acesso...' : 'Aceda ao seu painel pessoal'}
             </p>
           </div>
         </div>
@@ -127,17 +131,17 @@ const ClientLoginPage = () => {
         {/* Formulário de Login */}
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-semibold text-center text-gray-900">
+            <CardTitle className="text-2xl font-semibold text-center text-foreground">
               {searchParams.get('token') ? (
                 <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#3f9094]" />
-                  <span>Entrando...</span>
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span>A entrar...</span>
                 </div>
               ) : 'Entrar'}
             </CardTitle>
             {!searchParams.get('token') && (
-              <CardDescription className="text-center text-gray-600">
-                Insira seu email para acessar seu dashboard
+              <CardDescription className="text-center text-muted-foreground">
+                Insira o seu e-mail para aceder ao seu painel
               </CardDescription>
             )}
           </CardHeader>
@@ -150,9 +154,9 @@ const ClientLoginPage = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">E-mail</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
@@ -168,13 +172,13 @@ const ClientLoginPage = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-[#3f9094] hover:bg-[#2d6b6e] text-white font-medium"
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Entrando...
+                    A entrar...
                   </div>
                 ) : (
                   'Entrar'
@@ -187,7 +191,7 @@ const ClientLoginPage = () => {
               <Button
                 variant="ghost"
                 onClick={() => setShowHelp(!showHelp)}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                className="text-sm text-muted-foreground hover:text-foreground"
               >
                 {showHelp ? (
                   <>
@@ -205,17 +209,17 @@ const ClientLoginPage = () => {
 
             {/* Seção de Ajuda */}
             {showHelp && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 className="font-semibold text-blue-900 mb-2">Como acessar seu dashboard:</h3>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Use o email que forneceu à clínica</li>
-                  <li>• Verifique se o email está correto</li>
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-950/40 dark:border-blue-900">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">Como aceder ao seu painel:</h3>
+                <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                  <li>• Utilize o e-mail que forneceu à clínica</li>
+                  <li>• Verifique se o e-mail está correto</li>
                   <li>• Se não conseguir aceder, contacte a clínica</li>
                 </ul>
-                <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300">
-                  <p className="text-xs text-blue-700">
+                <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300 dark:bg-blue-900/40 dark:border-blue-800">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
                     <Shield className="h-4 w-4 inline mr-1" />
-                    Seus dados estão seguros e protegidos
+                    Os seus dados estão seguros e protegidos
                   </p>
                 </div>
               </div>
@@ -224,14 +228,14 @@ const ClientLoginPage = () => {
         </Card>
 
         {/* Informações de Segurança */}
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-muted-foreground">
           <p>
-            Ao entrar, você concorda com nossos{' '}
-            <a href="#" className="text-[#3f9094] hover:underline">
-              Termos de Uso
+            Ao entrar, aceita os nossos{' '}
+            <a href="#" className="text-primary hover:underline">
+              Termos de Utilização
             </a>{' '}
             e{' '}
-            <a href="#" className="text-[#3f9094] hover:underline">
+            <a href="#" className="text-primary hover:underline">
               Política de Privacidade
             </a>
           </p>

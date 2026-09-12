@@ -53,8 +53,14 @@ const getLastSundayOfMarch = (year: number): Date => {
   return date;
 };
 
+// Cache por ano: a geração é determinística e é invocada dezenas de vezes por render do calendário
+const holidaysByYearCache = new Map<number, Holiday[]>();
+
 // Função para gerar feriados para um ano específico
 const generateHolidaysForYear = (year: number): Holiday[] => {
+  const cached = holidaysByYearCache.get(year);
+  if (cached) return cached;
+
   const easterDate = getEasterDate(year);
   const easterDay = easterDate.getDate();
   const easterMonth = easterDate.getMonth();
@@ -279,7 +285,9 @@ const generateHolidaysForYear = (year: number): Holiday[] => {
     },
   ];
 
-  return [...nationalHolidays, ...mobileHolidays, ...municipalHolidays, ...importantDays, ...traditions, ...culturalDays, ...timeChanges];
+  const holidays = [...nationalHolidays, ...mobileHolidays, ...municipalHolidays, ...importantDays, ...traditions, ...culturalDays, ...timeChanges];
+  holidaysByYearCache.set(year, holidays);
+  return holidays;
 };
 
 // Função para gerar feriados para um intervalo de anos

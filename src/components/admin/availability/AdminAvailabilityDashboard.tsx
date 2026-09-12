@@ -34,7 +34,7 @@ import { useAdminAvailabilityManagement } from '@/hooks/useAdminAvailabilityMana
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { ClientAvailability, SuggestedAppointment } from '@/types/availability';
 
@@ -130,10 +130,10 @@ export const AdminAvailabilityDashboard: React.FC = () => {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="border-l-4 border-l-[#3f9094]">
+        <Card className="border-l-4 border-l-neurobalance-teal">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Total de Clientes</CardTitle>
-            <Users className="h-5 w-5 text-[#3f9094]" />
+            <Users className="h-5 w-5 text-neurobalance-teal" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{overview.total_clientes}</div>
@@ -205,9 +205,9 @@ export const AdminAvailabilityDashboard: React.FC = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Gerenciamento de Disponibilidades</CardTitle>
+              <CardTitle>Gestão de Disponibilidades</CardTitle>
               <CardDescription>
-                Visualize e gerencie as disponibilidades de todos os clientes
+                Visualize e gere as disponibilidades de todos os clientes
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -253,7 +253,7 @@ export const AdminAvailabilityDashboard: React.FC = () => {
               description={
                 searchTerm
                   ? 'Nenhum cliente corresponde à sua busca.'
-                  : 'Nenhum cliente cadastrado no sistema.'
+                  : 'Nenhum cliente registado no sistema.'
               }
             />
           ) : (
@@ -315,7 +315,7 @@ export const AdminAvailabilityDashboard: React.FC = () => {
                         {client.ultima_atualizacao ? (
                           <span className="text-sm text-gray-600">
                             {format(parseISO(client.ultima_atualizacao), 'dd/MM/yyyy', {
-                              locale: ptBR,
+                              locale: pt,
                             })}
                           </span>
                         ) : (
@@ -362,7 +362,7 @@ export const AdminAvailabilityDashboard: React.FC = () => {
               {/* Availabilities */}
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-[#3f9094]" />
+                  <Calendar className="h-5 w-5 text-neurobalance-teal" />
                   Disponibilidades ({clientDetails.availabilities.length})
                 </h3>
                 {clientDetails.availabilities.length === 0 ? (
@@ -422,7 +422,7 @@ export const AdminAvailabilityDashboard: React.FC = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium">
                                 {format(parseISO(sugg.data_sugerida), 'dd/MM/yyyy', {
-                                  locale: ptBR,
+                                  locale: pt,
                                 })}
                               </span>
                               <Badge

@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx';
-
 export interface ProcessedFileData {
   type: 'excel' | 'word' | 'pdf' | 'csv';
   content: any[];
@@ -11,9 +9,10 @@ export interface ProcessedFileData {
 export const processExcelFile = async (file: File): Promise<ProcessedFileData> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
-    reader.onload = (e) => {
+
+    reader.onload = async (e) => {
       try {
+        const XLSX = await import('xlsx');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         
@@ -97,16 +96,7 @@ export const processWordFile = async (file: File): Promise<ProcessedFileData> =>
   });
 };
 
-import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
-if (typeof window !== 'undefined') {
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-  } catch {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '5.4.149'}/build/pdf.worker.min.mjs`;
-  }
-}
 
 interface ExtractedPdfLead {
   nome: string;
@@ -199,6 +189,14 @@ const buildReadingOrderTokens = (rowItems: PdfToken[]): PdfToken[] => {
 // Processar arquivos PDF e extrair tabelas e registos de leads
 export const processPdfFile = async (file: File): Promise<ProcessedFileData> => {
   try {
+    const pdfjsLib = await import('pdfjs-dist');
+    if (typeof window !== 'undefined') {
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+      } catch {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '5.4.149'}/build/pdf.worker.min.mjs`;
+      }
+    }
     const arrayBuffer = await file.arrayBuffer();
     const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     

@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { MessageSquare, Save, Calendar, Send, Loader2, RotateCcw } from 'lucide-react';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
 import SmsHistory from '@/components/sms/SmsHistory';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 const DEFAULT_SESSAO = 'Olá {apelido}, lembrete da sua {tipo} amanhã às {hora}. Dashboard: {link}';
 const DEFAULT_EVAL = 'Olá {apelido}, lembrete da sua {tipo} amanhã às {hora}. Dashboard: {link}';
@@ -24,6 +25,7 @@ export const SmsAutomationSettings: React.FC = () => {
     const { sendManualSms, isSending } = useSms();
 
     const [isEnabled, setIsEnabled] = useState(false);
+    const [confirmEnableOpen, setConfirmEnableOpen] = useState(false);
     const [sessionTemplate, setSessionTemplate] = useState(DEFAULT_SESSAO);
     const [evalTemplate, setEvalTemplate] = useState(DEFAULT_EVAL);
     const [isLoading, setIsLoading] = useState(false);
@@ -162,7 +164,7 @@ export const SmsAutomationSettings: React.FC = () => {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <MessageSquare className="h-5 w-5 text-[#3f9094]" />
+                            <MessageSquare className="h-5 w-5 text-neurobalance-teal" />
                             <CardTitle>Configuração de Templates</CardTitle>
                         </div>
                         <div className="flex items-center gap-4">
@@ -172,10 +174,10 @@ export const SmsAutomationSettings: React.FC = () => {
                                     checked={isEnabled}
                                     onCheckedChange={(val) => {
                                         if (val) {
-                                            const confirm = window.confirm('Tem a certeza que quer ativar a automação de SMS? As mensagens serão enviadas automaticamente para os clientes.');
-                                            if (!confirm) return;
+                                            setConfirmEnableOpen(true);
+                                            return;
                                         }
-                                        setIsEnabled(val);
+                                        setIsEnabled(false);
                                         setIsSaved(false);
                                     }}
                                 />
@@ -326,6 +328,21 @@ export const SmsAutomationSettings: React.FC = () => {
 
             {/* Histórico de SMS */}
             <SmsHistory />
+
+            <ConfirmDialog
+                open={confirmEnableOpen}
+                onOpenChange={setConfirmEnableOpen}
+                onConfirm={() => {
+                    setConfirmEnableOpen(false);
+                    setIsEnabled(true);
+                    setIsSaved(false);
+                }}
+                title="Ativar automação de SMS"
+                description="Tem a certeza que quer ativar a automação de SMS? As mensagens serão enviadas automaticamente para os clientes."
+                confirmText="Ativar"
+                cancelText="Cancelar"
+                variant="warning"
+            />
         </div>
     );
 };

@@ -12,7 +12,7 @@ const AdminLoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
     <div className="text-center">
       <Loader2 className="h-12 w-12 animate-spin text-slate-600 mx-auto mb-4" />
-      <p className="text-slate-600 text-lg font-medium">Carregando área administrativa...</p>
+      <p className="text-slate-600 text-lg font-medium">A carregar a área administrativa...</p>
     </div>
   </div>
 );
@@ -29,8 +29,9 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
   }
 
   if (!isAuthenticated) {
-    // Redirecionar para login com a URL atual como redirect
-    return <Navigate to={`/admin-login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+    // Redirecionar para login com a URL atual (caminho + query) como redirect
+    const target = `${location.pathname}${location.search}`;
+    return <Navigate to={`/admin-login?redirect=${encodeURIComponent(target)}`} replace />;
   }
 
   if (requiredPermission && !hasPermission(requiredPermission)) {
@@ -41,7 +42,7 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
           <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
           <p className="text-gray-600 mb-6">
-            Você não tem permissão para acessar esta área. Entre em contato com o administrador.
+            Não tem permissão para aceder a esta área. Contacte o administrador.
           </p>
           <button
             onClick={() => window.history.back()}

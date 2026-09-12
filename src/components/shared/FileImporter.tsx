@@ -179,14 +179,14 @@ const FileImporter: React.FC<FileImporterProps> = ({
             {...getRootProps()}
             className={`
               border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-              ${isDragActive ? 'border-[#3f9094] bg-[#3f9094]/5' : 'border-gray-300 hover:border-[#3f9094]'}
+              ${isDragActive ? 'border-neurobalance-teal bg-neurobalance-teal/5' : 'border-gray-300 hover:border-neurobalance-teal'}
               ${isProcessing ? 'pointer-events-none opacity-50' : ''}
             `}
           >
             <input {...getInputProps()} />
             <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">
-              {isDragActive ? 'Solte os arquivos aqui...' : description}
+              {isDragActive ? 'Largue os ficheiros aqui...' : description}
             </h3>
             <p className="text-gray-600 mb-4">
               Suportados: Excel (.xlsx, .xls), CSV (.csv), Word (.docx), PDF (.pdf)
@@ -194,9 +194,9 @@ const FileImporter: React.FC<FileImporterProps> = ({
             <Button 
               type="button" 
               disabled={isProcessing}
-              className="bg-[#3f9094] hover:bg-[#2d7a7e]"
+              className="bg-neurobalance-teal hover:bg-neurobalance-secondary"
             >
-              {isProcessing ? 'Processando...' : 'Selecionar Arquivos'}
+              {isProcessing ? 'A processar...' : 'Selecionar ficheiros'}
             </Button>
           </div>
 

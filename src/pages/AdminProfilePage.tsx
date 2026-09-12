@@ -55,6 +55,10 @@ const AdminProfilePage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    document.title = 'Meu Perfil | NeuroBalance';
+  }, []);
+
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [contacto, setContacto] = useState('');
@@ -183,7 +187,7 @@ const AdminProfilePage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-1 h-fit">
               <CardContent className="p-6 text-center space-y-4">
-                <div className="mx-auto h-24 w-24 rounded-full bg-[#3f9094] flex items-center justify-center text-white text-3xl font-bold">
+                <div className="mx-auto h-24 w-24 rounded-full bg-primary flex items-center justify-center text-white text-3xl font-bold">
                   {nome ? nome.charAt(0).toUpperCase() : 'U'}
                 </div>
 
@@ -199,19 +203,19 @@ const AdminProfilePage: React.FC = () => {
                 <div className="pt-4 border-t text-left space-y-2.5 text-xs text-muted-foreground">
                   {contacto && (
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-[#3f9094]" />
+                      <Phone className="h-4 w-4 text-primary" />
                       <span>{contacto}</span>
                     </div>
                   )}
                   {morada && (
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-[#3f9094]" />
+                      <MapPin className="h-4 w-4 text-primary" />
                       <span className="truncate">{morada}</span>
                     </div>
                   )}
                   {dataNascimento && (
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-[#3f9094]" />
+                      <Calendar className="h-4 w-4 text-primary" />
                       <span className="tabular-nums">
                         {calculateAge(dataNascimento)} anos ({new Date(dataNascimento).toLocaleDateString('pt-PT')})
                       </span>
@@ -219,7 +223,7 @@ const AdminProfilePage: React.FC = () => {
                   )}
                   {session?.last_login && (
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-[#3f9094]" />
+                      <Clock className="h-4 w-4 text-primary" />
                       <span>Último acesso: {new Date(session.last_login).toLocaleDateString('pt-PT')}</span>
                     </div>
                   )}
@@ -242,15 +246,15 @@ const AdminProfilePage: React.FC = () => {
                   <Tabs defaultValue="info" className="w-full">
                     <TabsList className="grid grid-cols-3 w-full mb-6">
                       <TabsTrigger value="info" className="flex items-center gap-2 text-xs sm:text-sm py-2">
-                        <User className="h-4 w-4 text-[#3f9094]" />
+                        <User className="h-4 w-4 text-primary" />
                         <span>{t('personalInfo') || 'Dados Pessoais'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="security" className="flex items-center gap-2 text-xs sm:text-sm py-2">
-                        <Lock className="h-4 w-4 text-[#3f9094]" />
+                        <Lock className="h-4 w-4 text-primary" />
                         <span>{t('security') || 'Segurança'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="permissions" className="flex items-center gap-2 text-xs sm:text-sm py-2">
-                        <Shield className="h-4 w-4 text-[#3f9094]" />
+                        <Shield className="h-4 w-4 text-primary" />
                         <span>{t('permissions') || 'Permissões'}</span>
                       </TabsTrigger>
                     </TabsList>
@@ -259,7 +263,7 @@ const AdminProfilePage: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1 sm:col-span-2">
                           <Label htmlFor="page-nome" className="text-xs font-semibold flex items-center gap-1.5">
-                            <User className="h-3.5 w-3.5 text-[#3f9094]" />
+                            <User className="h-3.5 w-3.5 text-primary" />
                             {t('fullName') || 'Nome Completo'} *
                           </Label>
                           <Input
@@ -274,7 +278,7 @@ const AdminProfilePage: React.FC = () => {
 
                         <div className="space-y-1">
                           <Label htmlFor="page-email" className="text-xs font-semibold flex items-center gap-1.5">
-                            <Mail className="h-3.5 w-3.5 text-[#3f9094]" />
+                            <Mail className="h-3.5 w-3.5 text-primary" />
                             {t('email') || 'E-mail'} *
                           </Label>
                           <Input
@@ -290,7 +294,7 @@ const AdminProfilePage: React.FC = () => {
 
                         <div className="space-y-1">
                           <Label htmlFor="page-contacto" className="text-xs font-semibold flex items-center gap-1.5">
-                            <Phone className="h-3.5 w-3.5 text-[#3f9094]" />
+                            <Phone className="h-3.5 w-3.5 text-primary" />
                             {t('contact') || 'Contacto Telefónico'}
                           </Label>
                           <Input
@@ -306,11 +310,11 @@ const AdminProfilePage: React.FC = () => {
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
                             <Label htmlFor="page-nasc" className="text-xs font-semibold flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 text-[#3f9094]" />
+                              <Calendar className="h-3.5 w-3.5 text-primary" />
                               {t('dateOfBirth') || 'Data de Nascimento'}
                             </Label>
                             {dataNascimento && (
-                              <span className="text-xs font-medium text-[#3f9094] tabular-nums">
+                              <span className="text-xs font-medium text-primary tabular-nums">
                                 {calculateAge(dataNascimento)} anos
                               </span>
                             )}
@@ -326,7 +330,7 @@ const AdminProfilePage: React.FC = () => {
 
                         <div className="space-y-1">
                           <Label htmlFor="page-morada" className="text-xs font-semibold flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-[#3f9094]" />
+                            <MapPin className="h-3.5 w-3.5 text-primary" />
                             {t('address') || 'Morada / Localidade'}
                           </Label>
                           <Input
@@ -354,7 +358,7 @@ const AdminProfilePage: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <Label htmlFor="page-new-pass" className="text-xs font-semibold flex items-center gap-1.5">
-                            <Lock className="h-3.5 w-3.5 text-[#3f9094]" />
+                            <Lock className="h-3.5 w-3.5 text-primary" />
                             {t('newPassword') || 'Nova Palavra-passe'}
                           </Label>
                           <div className="relative">
@@ -370,6 +374,7 @@ const AdminProfilePage: React.FC = () => {
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              aria-label={showPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
                             >
                               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
@@ -378,7 +383,7 @@ const AdminProfilePage: React.FC = () => {
 
                         <div className="space-y-1">
                           <Label htmlFor="page-confirm-pass" className="text-xs font-semibold flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-[#3f9094]" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                             {t('confirmPassword') || 'Confirmar Nova Palavra-passe'}
                           </Label>
                           <div className="relative">
@@ -394,6 +399,7 @@ const AdminProfilePage: React.FC = () => {
                               type="button"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              aria-label={showConfirmPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
                             >
                               {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>

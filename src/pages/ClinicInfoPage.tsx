@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import PageHeader from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +45,11 @@ interface FieldConfig {
 
 const ClinicInfoPage = () => {
     const { clinicInfo, isLoading, error, updateClinicInfo, fetchClinicInfo } = useClinicInfo();
+
+    useEffect(() => {
+        document.title = 'Ficha da Clínica | NeuroBalance';
+    }, []);
+
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [draft, setDraft] = useState<ClinicInfo | null>(null);
@@ -239,7 +244,7 @@ const ClinicInfoPage = () => {
                                 </Button>
                                 <Button
                                     size="sm"
-                                    className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+                                    className="gap-2"
                                     onClick={handleSave}
                                     disabled={isSaving}
                                 >
@@ -259,7 +264,7 @@ const ClinicInfoPage = () => {
                         ) : (
                             <Button
                                 size="sm"
-                                className="gap-2 bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+                                className="gap-2"
                                 onClick={handleEdit}
                             >
                                 <Edit className="h-4 w-4" />

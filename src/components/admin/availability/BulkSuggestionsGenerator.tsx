@@ -197,7 +197,7 @@ export const BulkSuggestionsGenerator: React.FC = () => {
     const total = generationResults.reduce((sum, r) => sum + r.suggestionsCount, 0);
 
     if (success > 0) {
-      toast.success(`✅ ${total} sugestões geradas para ${success} clientes!`);
+      toast.success(`${total} sugestões geradas para ${success} clientes!`);
     } else {
       toast.warning('Nenhuma sugestão foi gerada. Verifique os resultados.');
     }
@@ -233,7 +233,7 @@ export const BulkSuggestionsGenerator: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#3f9094]" />
+            <Sparkles className="h-5 w-5 text-neurobalance-teal" />
             Gerador de Sugestões em Massa
           </CardTitle>
           <CardDescription>
@@ -356,7 +356,7 @@ export const BulkSuggestionsGenerator: React.FC = () => {
           <Button
             onClick={handleGenerateBulk}
             disabled={isGenerating || selectedClients.size === 0}
-            className="w-full bg-gradient-to-r from-[#3f9094] to-[#2A5854] hover:opacity-90"
+            className="w-full bg-gradient-brand hover:opacity-90"
             size="lg"
           >
             {isGenerating ? (
@@ -407,14 +407,14 @@ export const BulkSuggestionsGenerator: React.FC = () => {
                       <p className="font-medium">{result.clienteNome}</p>
                       {result.status === 'success' && (
                         <p className="text-sm text-green-600">
-                          ✅ {result.suggestionsCount} sugestões geradas
+                          {result.suggestionsCount} sugestões geradas
                         </p>
                       )}
                       {result.status === 'error' && (
-                        <p className="text-sm text-red-600">❌ Erro: {result.error}</p>
+                        <p className="text-sm text-red-600">Erro: {result.error}</p>
                       )}
                       {result.status === 'skipped' && (
-                        <p className="text-sm text-yellow-600">⚠️ {result.error}</p>
+                        <p className="text-sm text-yellow-600">Ignorado: {result.error}</p>
                       )}
                     </div>
                   </div>

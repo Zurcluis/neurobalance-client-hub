@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -22,6 +22,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import { useClientAuth, useClientData, useClientMessages, useClientNotifications } from '@/hooks/useClientAuth';
+import useTabSync from '@/hooks/useTabSync';
 import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { parseLocalISO } from '@/utils/dateUtils';
@@ -63,15 +64,23 @@ const ClientDashboardPage = () => {
   const { clientData, loading: clientLoading, error: clientError, refetch: refetchClientData } = useClientData();
   const { unreadCount: unreadMessages = 0 } = useClientMessages();
   const { notifications, unreadCount: unreadNotifications = 0 } = useClientNotifications();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useTabSync<string>(
+    'overview',
+    ['overview', 'profile', 'appointments', 'availability', 'payments', 'chat', 'notifications']
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    document.title = 'Portal do Cliente | NeuroBalance';
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated && !clientLoading) {
-      navigate('/client-login', { replace: true });
+      navigate(`/client-login?redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
     }
-  }, [isAuthenticated, clientLoading, authLoading, navigate]);
+  }, [isAuthenticated, clientLoading, authLoading, navigate, location]);
 
   const handleLogout = () => {
     logout();

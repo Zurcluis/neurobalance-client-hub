@@ -113,6 +113,55 @@ export const createSamplePayment = async (supabase: any) => {
   }
 };
 
+// Partilha pedidos idênticos concorrentes (vários componentes montados em simultâneo)
+const paymentsFetchInFlight = new Map<string, Promise<PaymentWithClient[]>>();
+
+const fetchPaymentsShared = (
+  supabase: ReturnType<typeof useSupabaseClient>,
+  clientId?: number
+): Promise<PaymentWithClient[]> => {
+  const key = clientId == null ? 'all' : String(clientId);
+  let request = paymentsFetchInFlight.get(key);
+
+  if (!request) {
+    request = (async () => {
+      const tableExists = await ensurePaymentsTable(supabase);
+      if (!tableExists) {
+        throw new Error('Falha ao acessar tabela de pagamentos');
+      }
+
+      let query = supabase
+        .from('pagamentos')
+        .select(`
+          *,
+          clientes (
+            nome,
+            id_manual
+          )
+        `)
+        .order('data', { ascending: false });
+
+      if (clientId) {
+        query = query.eq('id_cliente', clientId);
+      }
+
+      const { data, error: paymentError } = await query;
+
+      if (paymentError) {
+        console.error('Erro ao buscar pagamentos:', paymentError);
+        throw new Error('Erro ao carregar pagamentos: ' + paymentError.message);
+      }
+
+      return (data || []) as PaymentWithClient[];
+    })().finally(() => {
+      paymentsFetchInFlight.delete(key);
+    });
+    paymentsFetchInFlight.set(key, request);
+  }
+
+  return request;
+};
+
 /**
  * Hook unificado de pagamentos.
  * - Sem clientId: carrega todos os pagamentos (Finanças, Estatísticas, Relatórios)
@@ -137,35 +186,7 @@ export function usePayments(clientId?: number) {
       setIsLoading(true);
       setError(null);
 
-      // Garantir que a tabela existe
-      const tableExists = await ensurePaymentsTable(supabase);
-      if (!tableExists) {
-        throw new Error('Falha ao acessar tabela de pagamentos');
-      }
-
-      let query = supabase
-        .from('pagamentos')
-        .select(`
-          *,
-          clientes (
-            nome,
-            id_manual
-          )
-        `)
-        .order('data', { ascending: false });
-
-      // Se um clientId for fornecido, filtrar por esse cliente
-      if (clientId) {
-        query = query.eq('id_cliente', clientId);
-      }
-
-      const { data, error: paymentError } = await query;
-
-      if (paymentError) {
-        console.error('Erro ao buscar pagamentos:', paymentError);
-        throw new Error('Erro ao carregar pagamentos: ' + paymentError.message);
-      }
-
+      const data = await fetchPaymentsShared(supabase, clientId);
       setPayments(formatPayments((data || []) as PaymentWithClient[]));
     } catch (err) {
       console.error('Erro ao carregar pagamentos:', err);

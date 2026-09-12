@@ -1,7 +1,38 @@
 ﻿# PROGRESSO — NeuroBalance Client Hub
 
-> Última atualização: 12/09/2026 (sessão 7 — 6 agentes em paralelo: camada "inteligente")
-> Estado: app enriquecida com agendamento inteligente (sugestões/conflitos/lista de espera), score de churn, previsões financeiras, atribuição de marketing, auto-agendamento no portal, lembretes SMS e pesquisa em lingu natural. **Pendente: setup externo de SMS/email (ver Sessão 7) + SQL de cleanup + key Finnhub (ver PENDENTES).**
+> Última atualização: 12/09/2026 (sessão 8 — qualidade, segurança, performance, revisão total)
+> Estado: 222 testes Vitest verdes; bugs de refresh/realtime/parsers corrigidos; bundle de entrada 437→266KB; RLS proposto por aplicar. **Pendente: aplicar/rever 20260912120000_harden_rls_proposal.sql + rodar tokens de marketing + .env.production no git + setup SMS/email (ver Sessões 7-8).**
+
+---
+
+## ✅ SESSÃO 8 (12/09 — qualidade, segurança, performance e revisão total; 12 agentes em 3 fases)
+
+### Bugs do utilizador (corrigidos)
+- **Refresh não voltava à página**: falta de `public/_redirects` (404 no Cloudflare Pages em rotas profundas); tabs internas em useState perdiam-se no refresh → novo hook `useTabSync` (?tab= no URL) em Clients, Finances, Monitoring, Marketing, ClientDetail e portal; redirects pós-login preservam a rota original (LoginPage, MarketingLogin, AuthCallback, AdminProtectedRoute)
+- **Agendamento inteligente só aparecia após refresh**: `useAppointments` tinha estado por-instância; reescrito como store partilhado (`useSyncExternalStore` + canal realtime singleton) — mutações refletem-se de imediato no calendário
+- **Parser**: "sábado"/"terça" nunca resolviam (chaves acentuadas vs texto normalizado); "Ana" matcheava dentro de "joana"; contagem de série lida como ID de cliente; nlpQuery "receita deste mês/do mês/singular" ; parseLocalISO('') e formatDateForInput em UTC
+
+### Testes (Vitest — novo)
+- Vitest + `npm run test`; **222 testes verdes** em 8 ficheiros: scheduleCommandParser (45), slotSuggestions (32), nlpQuery (40), sessionSummary (24), clientInsights (29), financeInsights (19), dateUtils (20), formatUtils (7)
+- Bugs de lógica corrigidos com testes de regressão: `isSessionRealized` ('falta' ≠ realizada), horizonte de `nextPayments`, renovações de pack (sobre-uso/inatividade >180d), sobreposição de janelas na correlação humor×sessões
+
+### Limpeza técnica
+- 27 console.log/info/debug removidos (mantidos error/warn); 5 ficheiros mortos apagados (AdminTokenManager, clients/ClientTokenManager, lead-compra/ImportManager, date-range-picker, barrel availability/admin); 8 `window.confirm` → ConfirmDialog
+
+### Segurança (auditoria — migration proposta POR APLICAR)
+- `supabase/migrations/20260912120000_harden_rls_proposal.sql` — NÃO aplicada; rever e correr no SQL Editor
+- Achados críticos: `marketing_access_tokens` legível/escrevível por anónimos (rodar tokens após aplicar); tabelas de marketing 100% públicas (PII); **.env.production committed** (git rm --cached + .gitignore + rodar segredos); Edge Function send-lead-email sem auth (open relay); password de admins validada no browser (mover para RPC SECURITY DEFINER ou Supabase Auth)
+- Médios: entropia fraca de tokens de sessão, sem rate limiting, CORS * nas Edge Functions
+
+### Performance
+- **Entry JS: 437KB → 266KB**; xlsx/jspdf/html2canvas/tesseract/pdfjs agora carregam só on-demand (import/export); manualChunks vendor/docs-pdf/docs-sheets; páginas 1119KB→245KB (Clientes) e 1077KB→203KB (Finanças)
+- Feriados gerados 84×/render → cache por ano; getDayAvailabilities 4×→1× por célula; dedupe de fetches duplicados no mount (clients/payments/expenses); agregações memoizadas em ClientsPage; SmsHistory paginado (50 + "mostrar mais")
+
+### Revisão total (polimento)
+- ~215 hex → tokens (tailwind: neurobalance.teal + bg-gradient-brand); ~45 emojis de UI removidos; pt-BR → pt-PT (~30 strings); document.title em +19 páginas; aria-labels (~20); ErrorBoundary granular no PageLayout; double-submit guards; toasts/erros pt-PT
+
+### Verificação final
+- `npx tsc -b --force` 0 erros · **222 testes verdes** · build OK (33s) · smoke test browser sem erros de consola · entry 266KB eager, resto lazy
 
 ---
 
@@ -288,6 +319,7 @@
 - **SQL**: aplicar no Supabase SQL Editor ou Management API (com personal access token)
 - **NÃO commitar**: `public/leads/` (PII de clientes), `.env*`, tokens
 - tsc limpo (0 erros) — manter assim; não usar @ts-ignore. **ATENÇÃO: usar `npx tsc -b`** (o `--noEmit` com o tsconfig raiz não verifica nada)
+- **Testes**: Vitest (`npm run test`) — lógica pura em src/utils/*.test.ts; manter verde; novo código de lógica → testes
 - Gráficos: usar `utils/chartUtils.ts` (CHART, STATUS_META, tooltipStyle, axisProps) + `formatUtils.ts` (formatCurrency)
 - Responsivo: testar sempre a 390px (mobile), 820px (tablet), 1280px+ (desktop)
 

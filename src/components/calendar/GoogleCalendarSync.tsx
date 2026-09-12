@@ -89,20 +89,20 @@ const GoogleCalendarSync = ({ open, onOpenChange }: GoogleCalendarSyncProps) => 
                     onOpenChange(false);
                     toast.success('Configurações salvas');
                   }}
-                  className="bg-[#3f9094] hover:bg-[#265255]"
+                  className="bg-neurobalance-teal hover:bg-neurobalance-secondary"
                 >
-                  Salvar Configurações
+                  Guardar Configurações
                 </Button>
               </div>
             </>
           ) : (
             <>
               <p className="text-sm text-gray-600">
-                Conecte-se ao Google Calendar para sincronizar seus agendamentos entre o NeuroBalance e o seu Google Calendar.
+                Ligue o NeuroBalance ao Google Calendar para sincronizar os seus agendamentos entre o NeuroBalance e o seu Google Calendar.
               </p>
               
               <div className="bg-gray-50 border rounded-md p-4">
-                <h3 className="font-medium mb-2">Ao conectar você poderá:</h3>
+                <h3 className="font-medium mb-2">Ao ligar, poderá:</h3>
                 <ul className="list-disc list-inside space-y-1 text-sm">
                   <li>Ver seus agendamentos do NeuroBalance no Google Calendar</li>
                   <li>Receber notificações de agendamentos</li>
@@ -114,7 +114,7 @@ const GoogleCalendarSync = ({ open, onOpenChange }: GoogleCalendarSyncProps) => 
                 <Button
                   onClick={handleConnect}
                   disabled={isLoading}
-                  className="bg-[#3f9094] hover:bg-[#265255]"
+                  className="bg-neurobalance-teal hover:bg-neurobalance-secondary"
                 >
                   {isLoading ? 'Conectando...' : 'Conectar com Google Calendar'}
                 </Button>

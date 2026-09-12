@@ -16,7 +16,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, parseISO, isToday, isYesterday, differenceInMinutes } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -210,11 +210,11 @@ const AdminChatPanel: React.FC = () => {
     try {
       const date = parseISO(timestamp);
       if (isToday(date)) {
-        return format(date, 'HH:mm', { locale: ptBR });
+        return format(date, 'HH:mm', { locale: pt });
       } else if (isYesterday(date)) {
-        return 'Ontem ' + format(date, 'HH:mm', { locale: ptBR });
+        return 'Ontem ' + format(date, 'HH:mm', { locale: pt });
       } else {
-        return format(date, 'dd/MM HH:mm', { locale: ptBR });
+        return format(date, 'dd/MM HH:mm', { locale: pt });
       }
     } catch {
       return 'Data inválida';
@@ -246,7 +246,7 @@ const AdminChatPanel: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-[#3f9094]" />
+        <Loader2 className="h-8 w-8 animate-spin text-neurobalance-teal" />
       </div>
     );
   }
@@ -300,13 +300,13 @@ const AdminChatPanel: React.FC = () => {
                 <div
                   key={conv.clientId}
                   className={`p-4 cursor-pointer hover:bg-gray-50 border-b transition-colors ${
-                    selectedClientId === conv.clientId ? 'bg-blue-50 border-l-4 border-l-[#3f9094]' : ''
+                    selectedClientId === conv.clientId ? 'bg-blue-50 border-l-4 border-l-neurobalance-teal' : ''
                   }`}
                   onClick={() => setSelectedClientId(conv.clientId)}
                 >
                   <div className="flex items-start gap-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-[#3f9094] text-white">
+                      <AvatarFallback className="bg-neurobalance-teal text-white">
                         {getInitials(conv.clientName)}
                       </AvatarFallback>
                     </Avatar>
@@ -346,7 +346,7 @@ const AdminChatPanel: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-[#3f9094] text-white">
+                  <AvatarFallback className="bg-neurobalance-teal text-white">
                     {getInitials(selectedConversation.clientName)}
                   </AvatarFallback>
                 </Avatar>
@@ -373,7 +373,7 @@ const AdminChatPanel: React.FC = () => {
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                           message.sender_type === 'admin'
-                            ? 'bg-[#3f9094] text-white'
+                            ? 'bg-neurobalance-teal text-white'
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
@@ -410,7 +410,7 @@ const AdminChatPanel: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={sending || !newMessage.trim()}
-                  className="bg-[#3f9094] hover:bg-[#2d6b6e]"
+                  className="bg-neurobalance-teal hover:bg-neurobalance-secondary"
                 >
                   {sending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

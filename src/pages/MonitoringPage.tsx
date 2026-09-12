@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import useTabSync from '@/hooks/useTabSync';
 import TeamActivitySection from '@/components/monitoring/TeamActivitySection';
 import ClientRiskSection from '@/components/insights/ClientRiskSection';
 import {
@@ -59,7 +60,7 @@ const MonitoringPage = () => {
   const [activities, setActivities] = useState<TokenActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('acessos');
+  const [activeTab, setActiveTab] = useTabSync<string>('acessos', ['acessos', 'equipa', 'risco']);
 
   useEffect(() => {
     document.title = 'Monitorização | NeuroBalance';

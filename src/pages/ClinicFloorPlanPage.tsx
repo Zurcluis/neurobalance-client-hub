@@ -77,7 +77,7 @@ const ClinicFloorPlanPage: React.FC<ClinicFloorPlanPageProps> = ({ isEmbedded = 
       osc.start();
       osc.stop(audioCtx.currentTime + 0.8);
     } catch (e) {
-      console.log('Audio not supported or permitted yet', e);
+      // Áudio é opcional; falha silenciosa
     }
   }, [soundEnabled]);
 

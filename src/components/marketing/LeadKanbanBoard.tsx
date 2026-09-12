@@ -44,6 +44,7 @@ import KpiCard from '@/components/shared/KpiCard';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 // ─── Lead Card ───────────────────────────────────────────────────────────────
 
@@ -367,9 +368,14 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
 
   const handleSaveObservacoes = async () => {
     if (selectedLead) {
-      await updateLead(selectedLead.id, { observacoes: editForm.observacoes });
-      setSelectedLead({ ...selectedLead, observacoes: editForm.observacoes });
-      toast.success('Notas guardadas!');
+      try {
+        await updateLead(selectedLead.id, { observacoes: editForm.observacoes });
+        setSelectedLead({ ...selectedLead, observacoes: editForm.observacoes });
+        toast.success('Notas guardadas!');
+      } catch (error) {
+        console.error('Erro ao guardar notas:', error);
+        toast.error('Erro ao guardar as notas. Tente novamente.');
+      }
     }
   };
 
@@ -392,7 +398,7 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
         setSelectedLead({ ...selectedLead, status: 'Contactado' });
       }
 
-      const novaObs = `${editForm.observacoes ? editForm.observacoes + '\n\n' : ''}📧 Email preparado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: pt })}:\nPara: ${selectedLead.email}\nAssunto: ${emailForm.assunto}`;
+      const novaObs = `${editForm.observacoes ? editForm.observacoes + '\n\n' : ''}Email preparado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: pt })}:\nPara: ${selectedLead.email}\nAssunto: ${emailForm.assunto}`;
       await updateLead(selectedLead.id, { observacoes: novaObs });
       setEditForm({ observacoes: novaObs });
 
@@ -405,11 +411,18 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
     }
   };
 
-  const handleDeleteLead = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja eliminar este lead?')) {
-      await deleteLead(id);
-      if (selectedLead?.id === id) setSelectedLead(null);
-    }
+  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
+
+  const handleDeleteLead = (id: string) => {
+    setLeadToDelete(id);
+  };
+
+  const confirmDeleteLead = async () => {
+    if (!leadToDelete) return;
+    const id = leadToDelete;
+    setLeadToDelete(null);
+    await deleteLead(id);
+    if (selectedLead?.id === id) setSelectedLead(null);
   };
 
   const handleCall = (telefone: string) => {
@@ -468,7 +481,7 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="icon" onClick={() => fetchLeads()} title="Atualizar">
+          <Button variant="outline" size="icon" onClick={() => fetchLeads()} title="Atualizar" aria-label="Atualizar">
             <RefreshCw className="h-4 w-4" />
           </Button>
           {props.onImportClick && (
@@ -481,7 +494,7 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
               Importar PDF
             </Button>
           )}
-          <Button onClick={() => setIsCreateLeadOpen(true)} className="gap-1.5 bg-[#3f9094] hover:bg-[#265255] text-white">
+          <Button onClick={() => setIsCreateLeadOpen(true)} className="gap-1.5 bg-neurobalance-teal hover:bg-neurobalance-secondary text-white">
             <UserPlus className="h-4 w-4" />
             Novo Lead
           </Button>
@@ -728,6 +741,19 @@ const LeadKanbanBoard: React.FC<LeadKanbanBoardProps> = (props) => {
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={leadToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setLeadToDelete(null);
+        }}
+        onConfirm={confirmDeleteLead}
+        title="Eliminar lead"
+        description="Tem a certeza que deseja eliminar este lead? Esta ação não pode ser desfeita."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </div>
   );
 };

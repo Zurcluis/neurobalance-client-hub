@@ -236,7 +236,7 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
               {selectedClientId && (
                 <a 
                   href={`tel:${clients.find(c => String(c.id) === selectedClientId)?.telefone}`}
-                  className="text-[#3f9094] flex items-center gap-1 hover:underline"
+                  className="text-neurobalance-teal flex items-center gap-1 hover:underline"
                 >
                   <Phone className="h-4 w-4" />
                   <span>Ligar</span>
@@ -250,7 +250,7 @@ const CommunicationsPanel = ({ onClose }: CommunicationsPanelProps) => {
       <div className="flex justify-end">
         <Button 
           onClick={handleSend}
-          className="bg-[#3f9094] hover:bg-[#265255] flex items-center gap-2"
+          className="bg-neurobalance-teal hover:bg-neurobalance-secondary flex items-center gap-2"
         >
           <Send className="h-4 w-4" />
           {activeTab === 'call' ? 'Registrar Chamada' : `Enviar ${activeTab === 'sms' ? 'SMS' : 'Email'}`}

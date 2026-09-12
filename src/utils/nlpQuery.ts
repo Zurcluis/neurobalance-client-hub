@@ -111,7 +111,7 @@ export const parseNlpQuery = (raw: string): NlpQuery => {
     hasAny(normalized, [
       /pagamentos?\s+em\s+atraso/,
       /pagamentos?\s+atrasados/,
-      /valores?\s+em\s+atraso/,
+      /valor(?:es)?\s+em\s+atraso/,
       /por\s+regularizar/,
       /dividas/,
     ])
@@ -131,8 +131,8 @@ export const parseNlpQuery = (raw: string): NlpQuery => {
 
   if (
     hasAny(normalized, [
-      /leads?\s+frios/,
-      /leads?\s+frias/,
+      /leads?\s+frios?/,
+      /leads?\s+frias?/,
       /leads?\s+sem\s+resposta/,
       /leads?\s+antigos/,
     ])
@@ -140,23 +140,17 @@ export const parseNlpQuery = (raw: string): NlpQuery => {
     return { ...base, intent: 'leads_cold', text: '' };
   }
 
+  // "de/do/em/no" aceita determinantes colados ("deste mês", "este mês") e o
+  // token "mês" sem qualificador refere o mês corrente (não o anterior).
   const revenueMatch = normalized.match(
-    /(receita|faturacao|ganhos)\s+(de|do|em|no)\s+([a-z0-9]+)(\s+(passado|anterior|corrente))?(?:\s+.*)?$/
+    /(receita|faturacao|ganhos)\s+(?:(?:de|do|em|no|na)\s+)?(?:(este|deste)\s+)?([a-z0-9]+)(?:\s+(passado|anterior|corrente))?(?:\s+.*)?$/
   );
   if (revenueMatch) {
+    const determiner = revenueMatch[2];
     const monthToken = revenueMatch[3];
-    const qualifier = revenueMatch[5];
+    const qualifier = revenueMatch[4];
     const now = new Date();
-    if (monthToken === 'este' || monthToken === 'deste' || monthToken === 'atual' || qualifier === 'corrente') {
-      return {
-        ...base,
-        intent: 'revenue_month',
-        text: '',
-        month: now.getMonth(),
-        monthLabel: MONTH_LABELS_PT[now.getMonth()],
-      };
-    }
-    if (monthToken === 'mes' || qualifier === 'passado' || qualifier === 'anterior') {
+    if (qualifier === 'passado' || qualifier === 'anterior') {
       const month = (now.getMonth() + 11) % 12;
       return {
         ...base,
@@ -164,6 +158,22 @@ export const parseNlpQuery = (raw: string): NlpQuery => {
         text: '',
         month,
         monthLabel: MONTH_LABELS_PT[month],
+      };
+    }
+    const refersToCurrentMonth =
+      qualifier === 'corrente' ||
+      determiner !== undefined ||
+      monthToken === 'este' ||
+      monthToken === 'deste' ||
+      monthToken === 'atual' ||
+      monthToken === 'mes';
+    if (refersToCurrentMonth) {
+      return {
+        ...base,
+        intent: 'revenue_month',
+        text: '',
+        month: now.getMonth(),
+        monthLabel: MONTH_LABELS_PT[now.getMonth()],
       };
     }
     const monthIndex = MONTHS_PT[monthToken];

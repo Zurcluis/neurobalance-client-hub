@@ -22,7 +22,7 @@ import {
 import { VALIDITY_PERIODS } from '@/types/marketing-tokens';
 import { useMarketingTokens, MarketingAccessToken } from '@/hooks/useMarketingTokens';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 
 const MarketingTokenManager = () => {
     const { tokens, loading, createToken, deleteToken, refreshTokens, migrateLocalTokens } = useMarketingTokens();
@@ -119,7 +119,7 @@ const MarketingTokenManager = () => {
         <div className="space-y-6">
             {/* Gerador de Token */}
             <Card>
-                <CardHeader className="bg-gradient-to-r from-[#3f9094] to-[#2A5854] text-white">
+                <CardHeader className="bg-gradient-brand text-white">
                     <CardTitle className="flex items-center gap-2">
                         <Key className="h-5 w-5" />
                         Gerar Link de Acesso ao Marketing
@@ -189,7 +189,7 @@ const MarketingTokenManager = () => {
 
                     <Button
                         onClick={handleGenerateToken}
-                        className="w-full bg-[#3f9094] hover:bg-[#2d7a7e]"
+                        className="w-full bg-neurobalance-teal hover:bg-neurobalance-secondary"
                         disabled={isCreating}
                     >
                         {isCreating ? (
@@ -270,7 +270,7 @@ const MarketingTokenManager = () => {
                                             <div className="flex items-center gap-4 text-xs text-gray-500">
                                                 <span className="flex items-center gap-1">
                                                     <Clock className="h-3 w-3" />
-                                                    Valid até: {format(new Date(token.expires_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                                    Valid até: {format(new Date(token.expires_at), "dd/MM/yyyy 'às' HH:mm", { locale: pt })}
                                                 </span>
                                                 <span>
                                                     Token: <code className="bg-gray-100 px-2 py-0.5 rounded">{token.token}</code>

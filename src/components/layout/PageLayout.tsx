@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import { useIsMobile, useScreenSize, useSidebarCollapsed } from '@/hooks/use-mobile';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { useGlobalKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -43,7 +44,9 @@ const PageLayout = ({ children, showBreadcrumbs = true }: PageLayoutProps) => {
               <Breadcrumbs />
             </div>
           )}
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
     </div>

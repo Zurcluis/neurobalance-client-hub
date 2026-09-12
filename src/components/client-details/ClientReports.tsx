@@ -6,8 +6,7 @@ import { ClientDetailData, Session, Payment } from '@/types/client';
 import { format, isValid, parseISO, subMonths, isBefore, isAfter, startOfDay, endOfDay } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Textarea } from '@/components/ui/textarea';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import type jsPDF from 'jspdf';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -374,10 +373,15 @@ const ClientReports = ({ client, sessions, payments }: ClientReportsProps) => {
     }
   };
 
-  const generatePdfReportWithAttachments = () => {
+  const generatePdfReportWithAttachments = async () => {
     setIsGenerating(true);
     try {
-      const doc = new jsPDF() as JsPDFWithAutoTable;
+      // Carrega jsPDF + plugin de tabelas apenas quando o utilizador exporta
+      const [{ default: JsPDF }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+      const doc = new JsPDF() as JsPDFWithAutoTable;
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 20;
       let y = 20;

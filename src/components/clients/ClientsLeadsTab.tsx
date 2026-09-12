@@ -16,6 +16,7 @@ import { LeadCompra, LeadCompraFilters } from '@/types/lead-compra';
 import LeadKanbanBoard from '@/components/marketing/LeadKanbanBoard';
 import LeadCompraForm from '@/components/lead-compra/LeadCompraForm';
 import { LandingLeadForm } from '@/components/marketing/LandingLeadForm';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 export default function ClientsLeadsTab() {
   const {
@@ -36,6 +37,7 @@ export default function ClientsLeadsTab() {
   const [editingLead, setEditingLead] = useState<LeadCompra | null>(null);
   const [leadSearchTerm, setLeadSearchTerm] = useState('');
   const [showLeadFilters, setShowLeadFilters] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
   const [leadFilters, setLeadFilters] = useState<LeadCompraFilters>({
     tipo: 'Todos'
   });
@@ -118,14 +120,19 @@ export default function ClientsLeadsTab() {
     setIsLeadFormOpen(true);
   };
 
-  const handleDeleteLead = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este lead?')) {
-      try {
-        await deleteLead(id);
-        toast.success('Lead removido com sucesso!');
-      } catch (error) {
-        console.error('Erro ao remover lead:', error);
-      }
+  const handleDeleteLead = (id: string) => {
+    setLeadToDelete(id);
+  };
+
+  const confirmDeleteLead = async () => {
+    if (!leadToDelete) return;
+    const id = leadToDelete;
+    setLeadToDelete(null);
+    try {
+      await deleteLead(id);
+      toast.success('Lead removido com sucesso!');
+    } catch (error) {
+      console.error('Erro ao remover lead:', error);
     }
   };
 
@@ -283,7 +290,7 @@ export default function ClientsLeadsTab() {
           {/* Lista de leads */}
           {leadsLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="text-gray-500">Carregando leads...</div>
+              <div className="text-gray-500">A carregar leads...</div>
             </div>
           ) : (
             <div className="grid gap-4">
@@ -370,6 +377,19 @@ export default function ClientsLeadsTab() {
           )}
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={leadToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setLeadToDelete(null);
+        }}
+        onConfirm={confirmDeleteLead}
+        title="Remover lead"
+        description="Tem a certeza que deseja remover este lead? Esta ação não pode ser desfeita."
+        confirmText="Remover"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </div>
   );
 }

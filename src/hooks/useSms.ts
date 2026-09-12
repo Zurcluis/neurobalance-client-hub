@@ -64,8 +64,6 @@ export const useSms = () => {
                 headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
             }
 
-            console.log('Enviando SMS para:', to, 'via Edge Function...');
-
             const { data, error } = await supabase.functions.invoke('send-sms-reminder', {
                 body: { to, message, id_agendamento, id_historico: historyId },
                 headers

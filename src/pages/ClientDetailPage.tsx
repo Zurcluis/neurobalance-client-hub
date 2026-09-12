@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAdminContext } from '@/contexts/AdminContext';
@@ -24,6 +24,7 @@ import ClientDetailHeader from '@/components/client-details/ClientDetailHeader';
 import ClientDetailTabs from '@/components/client-details/ClientDetailTabs';
 import { useClientDetailData } from '@/components/client-details/useClientDetailData';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import useTabSync from '@/hooks/useTabSync';
 import usePayments from '@/hooks/usePayments';
 import { supabase } from '@/integrations/supabase/client';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -70,14 +71,24 @@ const ClientDetailPage = () => {
     deletePayment: deletePaymentInDb,
   } = usePayments(clientId ? parseInt(clientId, 10) : undefined);
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const [urlTab, setUrlTab] = useTabSync<string>(
+    'profile',
+    ['profile', 'sessions', 'payments', 'files', 'reports', 'mood', 'notifications']
+  );
+
+  useEffect(() => {
+    document.title = 'Cliente | NeuroBalance';
+  }, []);
+
+  const activeTab =
+    isPartner && !PARTNER_ALLOWED_TABS.includes(urlTab) ? 'profile' : urlTab;
 
   const handleTabChange = useCallback(
     (tab: string) => {
       if (isPartner && !PARTNER_ALLOWED_TABS.includes(tab)) return;
-      setActiveTab(tab);
+      setUrlTab(tab);
     },
-    [isPartner]
+    [isPartner, setUrlTab]
   );
 
   const clientNotifications = useMemo(

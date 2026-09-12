@@ -85,11 +85,11 @@ const ConvertLeadDialog: React.FC<ConvertLeadDialogProps> = ({
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <UserPlus className="h-6 w-6 text-[#3f9094]" />
+            <UserPlus className="h-6 w-6 text-neurobalance-teal" />
             Converter Lead em Cliente
           </DialogTitle>
           <DialogDescription>
-            Revise e complete os dados do cliente
+            Reveja e complete os dados do cliente
           </DialogDescription>
         </DialogHeader>
 
@@ -108,7 +108,7 @@ const ConvertLeadDialog: React.FC<ConvertLeadDialogProps> = ({
         ) : (
           <>
             {/* Lead Info Card */}
-            <Card className="bg-gradient-to-br from-[#E6ECEA]/50 to-white border-[#3f9094]/20 mb-4">
+            <Card className="bg-gradient-to-br from-neurobalance-tertiary/50 to-white border-neurobalance-teal/20 mb-4">
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -134,7 +134,7 @@ const ConvertLeadDialog: React.FC<ConvertLeadDialogProps> = ({
                       )}
                     </div>
                   </div>
-                  <ArrowRight className="h-5 w-5 text-[#3f9094]" />
+                  <ArrowRight className="h-5 w-5 text-neurobalance-teal" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 text-sm">

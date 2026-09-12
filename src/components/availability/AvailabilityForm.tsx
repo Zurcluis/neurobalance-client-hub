@@ -188,7 +188,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
                 <div key={pref} className="flex items-center space-x-2">
                   <RadioGroupItem value={pref} id={`pref-${pref}`} />
                   <Label htmlFor={`pref-${pref}`} className="cursor-pointer capitalize">
-                    {pref === 'alta' && '⭐'} 
+                    {pref === 'alta' && '★'}
                     {pref === 'media' && '◆'} 
                     {pref === 'baixa' && '○'} 
                     {' '}{pref}
@@ -199,7 +199,7 @@ export const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
           )}
         />
         <p className="text-xs text-gray-500">
-          Alta preferência = Horários que você mais prefere | 
+          Alta preferência = Horários preferidos |
           Média = Disponível se necessário | 
           Baixa = Última opção
         </p>

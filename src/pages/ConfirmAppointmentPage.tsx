@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 interface AppointmentData {
@@ -53,6 +53,10 @@ const ConfirmAppointmentPage = () => {
     const [showCannotAttend, setShowCannotAttend] = useState(false);
     const [message, setMessage] = useState('');
     const [actionCompleted, setActionCompleted] = useState<'confirmed' | 'cannot_attend' | null>(null);
+
+    useEffect(() => {
+        document.title = 'Confirmar Sessão | NeuroBalance';
+    }, []);
 
     useEffect(() => {
         const fetchAppointment = async () => {
@@ -155,7 +159,7 @@ const ConfirmAppointmentPage = () => {
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-teal-50/30 to-cyan-50/20">
                 <div className="text-center">
                     <Loader2 className="h-12 w-12 animate-spin text-teal-600 mx-auto mb-4" />
-                    <p className="text-gray-600">A carregar os dados da sessão...</p>
+                    <p className="text-muted-foreground">A carregar os dados da sessão...</p>
                 </div>
             </div>
         );
@@ -170,9 +174,9 @@ const ConfirmAppointmentPage = () => {
                         <div className="w-16 h-16 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center">
                             <XCircle className="h-8 w-8 text-red-600" />
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900 mb-2">Link Inválido</h2>
-                        <p className="text-gray-600 mb-6">{error}</p>
-                        <p className="text-sm text-gray-500">
+                        <h2 className="text-xl font-bold text-foreground mb-2">Link Inválido</h2>
+                        <p className="text-muted-foreground mb-6">{error}</p>
+                        <p className="text-sm text-muted-foreground">
                             Se precisar de ajuda, contacte a clínica directamente.
                         </p>
                     </CardContent>
@@ -194,19 +198,19 @@ const ConfirmAppointmentPage = () => {
                                 : <AlertTriangle className="h-8 w-8 text-amber-600" />
                             }
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900 mb-2">
+                        <h2 className="text-xl font-bold text-foreground mb-2">
                             {previousAction === 'confirmed' ? 'Sessão Já Confirmada' : 'Pedido Já Registado'}
                         </h2>
-                        <p className="text-gray-600 mb-4">
+                        <p className="text-muted-foreground mb-4">
                             {previousAction === 'confirmed'
                                 ? 'Esta sessão já foi confirmada anteriormente.'
                                 : 'Já recebemos o seu pedido de reagendamento.'
                             }
                         </p>
-                        <div className="bg-gray-50 rounded-xl p-4 text-left">
-                            <p className="font-semibold text-gray-900">{appointment.titulo}</p>
-                            <p className="text-sm text-gray-600">
-                                {format(parseISO(appointment.data), "EEEE, d 'de' MMMM", { locale: ptBR })} às {appointment.hora}
+                        <div className="bg-muted/50 rounded-xl p-4 text-left">
+                            <p className="font-semibold text-foreground">{appointment.titulo}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {format(parseISO(appointment.data), "EEEE, d 'de' MMMM", { locale: pt })} às {appointment.hora}
                             </p>
                         </div>
                     </CardContent>
@@ -233,8 +237,8 @@ const ConfirmAppointmentPage = () => {
 
                         {actionCompleted === 'confirmed' ? (
                             <>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Sessão Confirmada!</h2>
-                                <p className="text-gray-600 mb-6">
+                                <h2 className="text-2xl font-bold text-foreground mb-2">Sessão Confirmada!</h2>
+                                <p className="text-muted-foreground mb-6">
                                     Obrigado por confirmar. Esperamos por si!
                                 </p>
                                 {appointment && (
@@ -242,7 +246,7 @@ const ConfirmAppointmentPage = () => {
                                         <div className="flex items-center gap-2 mb-2">
                                             <Calendar className="h-4 w-4 text-emerald-600" />
                                             <span className="font-semibold text-emerald-800">
-                                                {format(parseISO(appointment.data), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                                                {format(parseISO(appointment.data), "EEEE, d 'de' MMMM", { locale: pt })}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -254,8 +258,8 @@ const ConfirmAppointmentPage = () => {
                             </>
                         ) : (
                             <>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Pedido Registado</h2>
-                                <p className="text-gray-600 mb-6">
+                                <h2 className="text-2xl font-bold text-foreground mb-2">Pedido Registado</h2>
+                                <p className="text-muted-foreground mb-6">
                                     A clínica foi notificada e entrará em contacto consigo brevemente para reagendar.
                                 </p>
                                 <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
@@ -302,21 +306,21 @@ const ConfirmAppointmentPage = () => {
                                         <User className="h-6 w-6 text-teal-600" />
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500">Olá,</p>
-                                        <p className="font-semibold text-gray-900">{appointment.cliente_nome}</p>
+                                        <p className="text-sm text-muted-foreground">Olá,</p>
+                                        <p className="font-semibold text-foreground">{appointment.cliente_nome}</p>
                                     </div>
                                 </div>
 
                                 {/* Appointment details */}
-                                <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-3">
+                                <div className="bg-muted/50 rounded-xl p-4 mb-6 space-y-3">
                                     <div className="flex items-start gap-3">
                                         <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center flex-shrink-0">
                                             <Calendar className="h-5 w-5 text-teal-600" />
                                         </div>
                                         <div>
-                                            <p className="text-sm text-gray-500">Data</p>
-                                            <p className="font-semibold text-gray-900">
-                                                {format(parseISO(appointment.data), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                            <p className="text-sm text-muted-foreground">Data</p>
+                                            <p className="font-semibold text-foreground">
+                                                {format(parseISO(appointment.data), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })}
                                             </p>
                                         </div>
                                     </div>
@@ -326,12 +330,12 @@ const ConfirmAppointmentPage = () => {
                                             <Clock className="h-5 w-5 text-teal-600" />
                                         </div>
                                         <div>
-                                            <p className="text-sm text-gray-500">Hora</p>
-                                            <p className="font-semibold text-gray-900">{appointment.hora}</p>
+                                            <p className="text-sm text-muted-foreground">Hora</p>
+                                            <p className="font-semibold text-foreground">{appointment.hora}</p>
                                         </div>
                                     </div>
 
-                                    <div className="pt-2 border-t border-gray-200">
+                                    <div className="pt-2 border-t border-border">
                                         <Badge variant="secondary" className="bg-teal-100 text-teal-700 hover:bg-teal-100">
                                             {appointment.tipo || appointment.titulo}
                                         </Badge>
@@ -358,9 +362,9 @@ const ConfirmAppointmentPage = () => {
                                             onClick={() => setShowCannotAttend(true)}
                                             disabled={submitting}
                                             variant="outline"
-                                            className="w-full h-12 border-2 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl"
+                                            className="w-full h-12 border-2 border-border text-foreground hover:bg-muted rounded-xl"
                                         >
-                                            <XCircle className="h-4 w-4 mr-2 text-gray-500" />
+                                            <XCircle className="h-4 w-4 mr-2 text-muted-foreground" />
                                             Não Posso Comparecer
                                         </Button>
                                     </div>
@@ -376,7 +380,7 @@ const ConfirmAppointmentPage = () => {
                                             Voltar
                                         </Button>
 
-                                        <Alert className="bg-amber-50 border-amber-200">
+                                        <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900">
                                             <AlertTriangle className="h-4 w-4 text-amber-600" />
                                             <AlertDescription className="text-amber-800">
                                                 A clínica será notificada e entrará em contacto para reagendar.
@@ -414,7 +418,7 @@ const ConfirmAppointmentPage = () => {
                 </Card>
 
                 {/* Footer */}
-                <p className="text-center text-xs text-gray-400 mt-6">
+                <p className="text-center text-xs text-muted-foreground/70 mt-6">
                     NeuroBalance • Cuide da sua saúde
                 </p>
             </div>

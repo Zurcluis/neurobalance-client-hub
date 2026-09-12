@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,11 @@ import { Megaphone, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const MarketingLoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, loading, error, isAuthenticated } = useMarketingAuth();
+
+  const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from;
+  const redirectTo = from?.pathname ? `${from.pathname}${from.search || ''}` : '/marketing';
 
   const [formData, setFormData] = useState({
     email: '',
@@ -20,12 +24,16 @@ const MarketingLoginPage = () => {
   const [showToken, setShowToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    document.title = 'Marketing | NeuroBalance';
+  }, []);
+
   // Redirecionar se já estiver autenticado
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/marketing');
+      navigate(redirectTo, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, redirectTo]);
 
   // Auto-preencher email e token a partir da URL
   useEffect(() => {
@@ -74,7 +82,7 @@ const MarketingLoginPage = () => {
 
       if (response.success) {
         toast.success(response.message || 'Login realizado com sucesso!');
-        navigate('/marketing');
+        navigate(redirectTo, { replace: true });
       } else {
         toast.error(response.message || 'Credenciais inválidas');
       }
@@ -88,17 +96,17 @@ const MarketingLoginPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted/50">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Carregando...</span>
+          <span>A carregar...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <img
@@ -107,17 +115,17 @@ const MarketingLoginPage = () => {
             className="mx-auto h-20 w-auto mb-4"
           />
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Megaphone className="h-8 w-8 text-[#3f9094]" />
-            <h2 className="text-3xl font-bold text-gray-900">Marketing</h2>
+            <Megaphone className="h-8 w-8 text-primary" />
+            <h2 className="text-3xl font-bold text-foreground">Marketing</h2>
           </div>
-          <p className="text-gray-600">Acesso à área de marketing</p>
+          <p className="text-muted-foreground">Acesso à área de marketing</p>
         </div>
 
         <Card className="shadow-lg border-0">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center text-[#3f9094]">Entrar</CardTitle>
+            <CardTitle className="text-2xl text-center text-primary">Entrar</CardTitle>
             <CardDescription className="text-center">
-              Use suas credenciais de marketing para acessar
+              Utilize as suas credenciais de marketing para aceder
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -157,19 +165,20 @@ const MarketingLoginPage = () => {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowToken(!showToken)}
                     disabled={isSubmitting}
+                    aria-label={showToken ? 'Ocultar token' : 'Mostrar token'}
                   >
                     {showToken ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
+                      <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
                 </div>
               </div>
 
               {error && (
-                <Alert className="border-red-200 bg-red-50">
-                  <AlertDescription className="text-red-700">
+                <Alert className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40">
+                  <AlertDescription className="text-red-700 dark:text-red-300">
                     {error}
                   </AlertDescription>
                 </Alert>
@@ -177,13 +186,13 @@ const MarketingLoginPage = () => {
 
               <Button
                 type="submit"
-                className="w-full bg-[#3f9094] hover:bg-[#2d7a7e]"
+                className="w-full bg-primary hover:bg-primary/90"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
+                    A entrar...
                   </>
                 ) : (
                   'Entrar'
@@ -193,9 +202,9 @@ const MarketingLoginPage = () => {
 
             {import.meta.env.DEV && (
               <div className="mt-6 text-center">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   <p className="mb-2"><strong>Tokens de exemplo:</strong></p>
-                  <div className="bg-gray-100 p-3 rounded-md text-left">
+                  <div className="bg-muted p-3 rounded-md text-left">
                     <p><strong>Manager:</strong> MKT2024, MARKETING123</p>
                     <p><strong>Assistant:</strong> ASSIST_MKT, MKT_HELPER</p>
                   </div>
@@ -205,7 +214,7 @@ const MarketingLoginPage = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-muted-foreground">
           <p>NeuroBalance Marketing v1.0.0</p>
           <p className="mt-1">Acesso restrito a pessoal autorizado</p>
         </div>

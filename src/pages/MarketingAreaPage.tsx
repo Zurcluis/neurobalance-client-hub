@@ -10,7 +10,7 @@ const MarketingAreaPage: React.FC = () => {
 
   return (
     <MarketingContext.Provider value={{ isMarketingContext: true }}>
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-muted/50">
         <MarketingSidebar />
         
         <main className={cn(

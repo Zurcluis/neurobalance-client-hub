@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { toast } from 'sonner';
@@ -19,7 +20,6 @@ export type NewAppointment = Omit<Database['public']['Tables']['agendamentos']['
 
 const LOCAL_STORAGE_KEY = 'neurobalance_agendamentos_cache';
 
-// "2026-09-12" → "12/09" para os detalhes legíveis do registo de atividade
 const formatDayMonth = (date: string) => {
   try {
     return format(new Date(`${date}T00:00:00`), 'dd/MM');
@@ -28,8 +28,7 @@ const formatDayMonth = (date: string) => {
   }
 };
 
-// Helper to sanitize id_cliente so 0, NaN, "", or invalid numbers become null
-const sanitizeClientId = (val: any): number | null => {
+const sanitizeClientId = (val: unknown): number | null => {
   if (val === null || val === undefined || val === '' || val === 'null') return null;
   const num = Number(val);
   return !isNaN(num) && num > 0 ? num : null;
@@ -56,16 +55,39 @@ const saveToCache = (data: Appointment[]) => {
   }
 };
 
-export function useAppointments() {
-  const supabase = useSupabaseClient();
-  const { logActivity } = useActivityLogger();
-  const [appointments, setAppointments] = useState<Appointment[]>(() => loadFromCache());
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface StoreState {
+  appointments: Appointment[];
+  isLoading: boolean;
+  error: string | null;
+}
 
-  const fetchAppointments = useCallback(async () => {
+let storeState: StoreState = { appointments: loadFromCache(), isLoading: true, error: null };
+const listeners = new Set<() => void>();
+
+const notify = () => {
+  listeners.forEach(listener => listener());
+};
+
+const setStore = (patch: Partial<StoreState>) => {
+  storeState = { ...storeState, ...patch };
+  notify();
+};
+
+const setAppointments = (updater: (prev: Appointment[]) => Appointment[]) => {
+  const next = updater(storeState.appointments);
+  storeState = { ...storeState, appointments: next };
+  saveToCache(next);
+  notify();
+};
+
+let activeFetch: Promise<void> | null = null;
+let hasInitialFetch = false;
+
+const fetchAppointments = async (supabase: SupabaseClient): Promise<void> => {
+  if (activeFetch) return activeFetch;
+  activeFetch = (async () => {
     try {
-      setIsLoading(true);
+      if (!hasInitialFetch) setStore({ isLoading: true });
       let allFetched: Appointment[] = [];
       let page = 0;
       const pageSize = 1000;
@@ -105,48 +127,60 @@ export function useAppointments() {
         }
       }
 
-      // Mesclar agendamentos do Supabase com agendamentos locais porventura ainda não sincronizados
       const cached = loadFromCache();
       const localOnly = cached.filter(c => typeof c.id === 'string' || (typeof c.id === 'number' && c.id < 0 && !allFetched.some(f => f.id === c.id)));
       const merged = [...allFetched, ...localOnly];
-      setAppointments(merged);
+      hasInitialFetch = true;
+      setStore({ appointments: merged, error: null, isLoading: false });
       saveToCache(merged);
-      setError(null);
     } catch (err) {
       console.warn('Falha ao carregar agendamentos do Supabase, recorrendo ao cache local:', err);
-      const cached = loadFromCache();
-      if (cached.length > 0) {
-        setAppointments(cached);
-      }
-      setError('Error loading appointments');
+      setStore({ error: 'Error loading appointments', isLoading: false });
     } finally {
-      setIsLoading(false);
+      activeFetch = null;
     }
+  })();
+  return activeFetch;
+};
+
+let realtimeChannel: RealtimeChannel | null = null;
+
+const ensureRealtime = (supabase: SupabaseClient) => {
+  if (realtimeChannel) return;
+  realtimeChannel = supabase
+    .channel('agendamentos-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'agendamentos' },
+      () => {
+        void fetchAppointments(supabase);
+      }
+    )
+    .subscribe();
+};
+
+export function useAppointments() {
+  const supabase = useSupabaseClient();
+  const { logActivity } = useActivityLogger();
+
+  const subscribe = useCallback((onStoreChange: () => void) => {
+    listeners.add(onStoreChange);
+    return () => {
+      listeners.delete(onStoreChange);
+    };
+  }, []);
+
+  const getSnapshot = useCallback(() => storeState, []);
+
+  const { appointments, isLoading, error } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  useEffect(() => {
+    void fetchAppointments(supabase);
+    ensureRealtime(supabase);
   }, [supabase]);
 
-  // Load appointments and subscribe to real-time changes
-  useEffect(() => {
-    fetchAppointments();
+  const refetch = useCallback(() => fetchAppointments(supabase), [supabase]);
 
-    const channelId = Math.random().toString(36).substring(2, 9);
-    const channel = supabase
-      .channel(`agendamentos-changes_${channelId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'agendamentos' },
-        () => {
-          console.log('Alterações detectadas na tabela agendamentos');
-          fetchAppointments();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchAppointments, supabase]);
-
-  // Add new appointment
   const addAppointment = useCallback(async (appointment: {
     titulo: string;
     data: string;
@@ -171,8 +205,6 @@ export function useAppointments() {
       cor: appointment.cor || '#3B82F6'
     };
 
-    console.log('Inserindo agendamento:', appointmentToInsert);
-
     try {
       const { data, error } = await supabase
         .from('agendamentos')
@@ -195,11 +227,7 @@ export function useAppointments() {
       }
 
       const newAppointment = data as Appointment;
-      setAppointments(prev => {
-        const next = [...prev, newAppointment];
-        saveToCache(next);
-        return next;
-      });
+      setAppointments(prev => [...prev, newAppointment]);
 
       toast.success('Agendamento adicionado com sucesso');
       logActivity(
@@ -209,30 +237,24 @@ export function useAppointments() {
         `Agendamento de ${formatDayMonth(appointment.data)} às ${appointment.hora} criado${newAppointment?.clientes?.nome ? ` (${newAppointment.clientes.nome})` : ''}`
       );
       return data;
-    } catch (error: any) {
+    } catch (error) {
       console.warn('Erro ao inserir agendamento no Supabase, salvando localmente:', error);
-      
-      // Fallback local se o Supabase falhar
+
       const fallbackAppt: Appointment = {
-        id: -Date.now() as any,
+        id: -Date.now(),
         criado_em: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         ...appointmentToInsert,
         clientes: null
       };
 
-      setAppointments(prev => {
-        const next = [...prev, fallbackAppt];
-        saveToCache(next);
-        return next;
-      });
+      setAppointments(prev => [...prev, fallbackAppt]);
 
       toast.success('Agendamento salvo localmente');
       return fallbackAppt;
     }
   }, [supabase, logActivity]);
 
-  // Add multiple appointments (batch)
   const addAppointmentsBatch = useCallback(async (appointmentsList: Array<{
     titulo: string;
     data: string;
@@ -256,8 +278,6 @@ export function useAppointments() {
       cor: apt.cor || '#3B82F6'
     }));
 
-    console.log('Inserindo lote de agendamentos:', inserts);
-
     try {
       const { data, error } = await supabase
         .from('agendamentos')
@@ -279,11 +299,7 @@ export function useAppointments() {
       }
 
       const newAppointments = data as Appointment[];
-      setAppointments(prev => {
-        const next = [...prev, ...newAppointments];
-        saveToCache(next);
-        return next;
-      });
+      setAppointments(prev => [...prev, ...newAppointments]);
 
       toast.success(`${inserts.length} agendamentos adicionados com sucesso`);
       logActivity(
@@ -293,29 +309,24 @@ export function useAppointments() {
         `${inserts.length} agendamentos criados em lote`
       );
       return data;
-    } catch (error: any) {
+    } catch (error) {
       console.warn('Erro ao adicionar lote no Supabase, salvando localmente:', error);
-      
+
       const fallbackAppts: Appointment[] = inserts.map((ins, idx) => ({
-        id: (-Date.now() - idx) as any,
+        id: -Date.now() - idx,
         criado_em: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         ...ins,
         clientes: null
       }));
 
-      setAppointments(prev => {
-        const next = [...prev, ...fallbackAppts];
-        saveToCache(next);
-        return next;
-      });
+      setAppointments(prev => [...prev, ...fallbackAppts]);
 
       toast.success(`${inserts.length} agendamentos salvos localmente`);
       return fallbackAppts;
     }
   }, [supabase, logActivity]);
 
-  // Update appointment
   const updateAppointment = useCallback(async (id: number, appointment: {
     titulo?: string;
     data?: string;
@@ -327,12 +338,12 @@ export function useAppointments() {
     terapeuta?: string;
     cor?: string;
   }) => {
-    const previous = appointments.find(app => app.id === id);
+    const previous = storeState.appointments.find(app => app.id === id);
     const when = previous?.data ? ` de ${formatDayMonth(previous.data)}${previous.hora ? ` às ${previous.hora}` : ''}` : '';
     const who = previous?.clientes?.nome || previous?.titulo || '';
 
     try {
-      const updateData: any = {};
+      const updateData: Partial<Database['public']['Tables']['agendamentos']['Update']> = {};
       if (appointment.titulo !== undefined) updateData.titulo = appointment.titulo;
       if (appointment.data !== undefined) updateData.data = appointment.data;
       if (appointment.hora !== undefined) updateData.hora = appointment.hora;
@@ -365,13 +376,9 @@ export function useAppointments() {
         .maybeSingle();
 
       const updatedAppointment = data as Appointment;
-      setAppointments(prev => {
-        const next = prev.map(app =>
-          app.id === id ? (updatedAppointment || { ...app, ...updateData }) : app
-        );
-        saveToCache(next);
-        return next;
-      });
+      setAppointments(prev =>
+        prev.map(app => (app.id === id ? (updatedAppointment || { ...app, ...updateData }) : app))
+      );
 
       toast.success('Agendamento atualizado com sucesso');
       if (appointment.estado && previous && previous.estado !== appointment.estado) {
@@ -387,19 +394,16 @@ export function useAppointments() {
       return data;
     } catch (error) {
       console.error('Erro ao atualizar agendamento:', error);
-      setAppointments(prev => {
-        const next = prev.map(app =>
+      setAppointments(prev =>
+        prev.map(app =>
           app.id === id ? { ...app, ...appointment, id_cliente: sanitizeClientId(appointment.id_cliente) } : app
-        );
-        saveToCache(next);
-        return next;
-      });
+        )
+      );
       toast.success('Agendamento atualizado localmente');
       return null;
     }
-  }, [supabase, appointments, logActivity]);
+  }, [supabase, logActivity]);
 
-  // Delete appointment
   const deleteAppointment = useCallback(async (id: number) => {
     try {
       const { error: deleteError } = await supabase
@@ -411,26 +415,18 @@ export function useAppointments() {
         console.warn('Aviso Supabase ao eliminar:', deleteError);
       }
 
-      setAppointments(prev => {
-        const next = prev.filter(appointment => appointment.id !== id);
-        saveToCache(next);
-        return next;
-      });
+      setAppointments(prev => prev.filter(appointment => appointment.id !== id));
       toast.success('Agendamento eliminado com sucesso');
-      const target = appointments.find(app => app.id === id);
+      const target = storeState.appointments.find(app => app.id === id);
       const when = target?.data ? ` de ${formatDayMonth(target.data)}${target.hora ? ` às ${target.hora}` : ''}` : '';
       const who = target?.clientes?.nome || target?.titulo || '';
       logActivity('appointment_deleted', 'agendamento', id, `Agendamento${when}${who ? ` (${who})` : ''} eliminado`);
     } catch (err) {
       console.error('Erro ao eliminar agendamento:', err);
-      setAppointments(prev => {
-        const next = prev.filter(appointment => appointment.id !== id);
-        saveToCache(next);
-        return next;
-      });
+      setAppointments(prev => prev.filter(appointment => appointment.id !== id));
       toast.success('Agendamento eliminado localmente');
     }
-  }, [supabase, appointments, logActivity]);
+  }, [supabase, logActivity]);
 
   return {
     appointments,
@@ -440,7 +436,7 @@ export function useAppointments() {
     addAppointmentsBatch,
     updateAppointment,
     deleteAppointment,
-    refetch: fetchAppointments,
+    refetch,
   };
 }
 

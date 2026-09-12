@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { pt } from 'date-fns/locale';
 import { 
   readExcelFile, 
   readCSVFile, 
@@ -51,12 +51,12 @@ const ALLOWED_FILE_TYPES = {
   'image/png': { icon: <ImageIcon className="h-8 w-8 text-purple-500" />, label: 'Imagem PNG' },
   'image/jpeg': { icon: <ImageIcon className="h-8 w-8 text-purple-500" />, label: 'Imagem JPEG' },
   'application/pdf': { icon: <File className="h-8 w-8 text-red-500" />, label: 'Documento PDF' },
-  'text/plain': { icon: <FileText className="h-8 w-8 text-blue-500" />, label: 'Arquivo de Texto' },
+  'text/plain': { icon: <FileText className="h-8 w-8 text-blue-500" />, label: 'Ficheiro de Texto' },
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { 
     icon: <FileSpreadsheet className="h-8 w-8 text-green-500" />, 
     label: 'Planilha Excel' 
   },
-  'text/csv': { icon: <FileSpreadsheet className="h-8 w-8 text-green-500" />, label: 'Arquivo CSV' },
+  'text/csv': { icon: <FileSpreadsheet className="h-8 w-8 text-green-500" />, label: 'Ficheiro CSV' },
 };
 
 type FileType = keyof typeof ALLOWED_FILE_TYPES;
@@ -240,7 +240,7 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
   // Analisa o texto extraído para encontrar dados de despesa
   const parseExpenseData = (text: string): Partial<ExpenseImportData>[] => {
     const result: Partial<ExpenseImportData>[] = [];
-    let currentExpense: Partial<ExpenseImportData> = {};
+    const currentExpense: Partial<ExpenseImportData> = {};
     const lines = text.split(/\r?\n/);
     
     // Primeiro tenta encontrar pares chave-valor (Chave: Valor ou Chave = Valor)
@@ -359,12 +359,12 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
       });
       
       if (invalidFiles.length > 0) {
-        toast.error(`Arquivo(s) não suportado(s): ${invalidFiles.join(', ')}`);
+        toast.error(`Ficheiro(s) não suportado(s): ${invalidFiles.join(', ')}`);
       }
       
       if (validFiles.length > 0) {
         setFiles(prev => [...prev, ...validFiles]);
-        toast.success(`${validFiles.length} arquivo(s) adicionado(s)`);
+        toast.success(`${validFiles.length} ficheiro(s) adicionado(s)`);
       }
     }
   }, []);
@@ -489,7 +489,7 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
               if (!expense.valor || expense.valor <= 0) missingFields.push('Valor');
               
               if (missingFields.length > 0) {
-                newErrors.push(`Arquivo ${file.name}: Campos obrigatórios faltando: ${missingFields.join(', ')}`);
+                newErrors.push(`Ficheiro ${file.name}: campos obrigatórios em falta: ${missingFields.join(', ')}`);
               }
             }
           }
@@ -509,7 +509,7 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
         setCurrentTab('preview');
         toast.success(`${extractedExpenses.length} despesa(s) extraída(s) com sucesso!`);
       } else {
-        toast.error('Não foi possível extrair dados de despesas dos arquivos.');
+        toast.error('Não foi possível extrair os dados de despesas dos ficheiros.');
       }
     } catch (err) {
       console.error('Erro ao processar arquivos:', err);
@@ -553,7 +553,7 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
       <TabsContent value="upload">
         <Card className="mb-4">
           <CardHeader>
-            <CardTitle>Upload de Arquivos</CardTitle>
+            <CardTitle>Upload de Ficheiros</CardTitle>
             <CardDescription>
               Carregue recibos ou planilhas com despesas para extrair automaticamente.
             </CardDescription>
@@ -587,14 +587,14 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
             
             {isUploading && (
               <div className="mt-4">
-                <p className="text-sm mb-2">Processando arquivos...</p>
+                <p className="text-sm mb-2">A processar ficheiros...</p>
                 <Progress value={progress} className="h-2" />
               </div>
             )}
             
             {files.length > 0 && (
               <div className="mt-4">
-                <h3 className="font-medium mb-2">Arquivos ({files.length})</h3>
+                <h3 className="font-medium mb-2">Ficheiros ({files.length})</h3>
                 <div className="space-y-2 max-h-44 overflow-y-auto pr-2">
                   {files.map((file, index) => (
                     <div key={index} className="flex items-center justify-between p-2 border rounded-md">
@@ -644,11 +644,11 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
               Limpar
             </Button>
             <Button 
-              className="bg-[#3f9094] hover:bg-[#265255]"
+              className="bg-neurobalance-teal hover:bg-neurobalance-secondary"
               onClick={processFiles}
               disabled={files.length === 0 || isUploading}
             >
-              {isUploading ? 'Processando...' : 'Processar Arquivos'}
+              {isUploading ? 'A processar...' : 'Processar Ficheiros'}
             </Button>
           </CardFooter>
         </Card>
@@ -685,12 +685,12 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
                       <p className="text-gray-500">Data</p>
                       <p className="font-medium flex items-center">
                         <Calendar className="h-3 w-3 mr-1" />
-                        {format(new Date(expense.data), 'dd/MM/yyyy', { locale: ptBR })}
+                        {format(new Date(expense.data), 'dd/MM/yyyy', { locale: pt })}
                       </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Valor</p>
-                      <p className="font-medium text-[#3f9094]">
+                      <p className="font-medium text-neurobalance-teal">
                         {`€${expense.valor.toLocaleString('pt-PT', { 
                           minimumFractionDigits: 2, 
                           maximumFractionDigits: 2 
@@ -716,7 +716,7 @@ const ExpenseImport: React.FC<ExpenseImportProps> = ({
               Voltar
             </Button>
             <Button 
-              className="bg-[#3f9094] hover:bg-[#265255]"
+              className="bg-neurobalance-teal hover:bg-neurobalance-secondary"
               onClick={importExpenses}
               disabled={extractedData.length === 0}
             >
